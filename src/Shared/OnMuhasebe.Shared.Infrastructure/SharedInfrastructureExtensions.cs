@@ -13,6 +13,9 @@ public static class SharedInfrastructureExtensions
     {
         ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("tr-TR");
 
+        // Zincirdeki ilk kural (ör. NotNull) başarısızsa devamı çalışmaz; eksik gönderilen liste/nesne alanında 500 yerine 400 döner.
+        ValidatorOptions.Global.DefaultRuleLevelCascadeMode = CascadeMode.Stop;
+
         services.AddSingleton(TimeProvider.System);
         services.AddHttpContextAccessor();
         services.AddScoped<IMevcutKullanici, HttpMevcutKullanici>();

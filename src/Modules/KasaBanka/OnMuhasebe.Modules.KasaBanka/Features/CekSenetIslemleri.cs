@@ -42,9 +42,9 @@ internal static class CekSenetIslemleri
     [
         new(KasaBankaZorunluAlanlari.BordroAciklama, nameof(AlinanBordroIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama)),
         new(KasaBankaZorunluAlanlari.SenetKesideYeri, nameof(AlinanBordroIstegi.Evraklar),
-            x => x.Evraklar.Where(e => e.Tur == EvrakTuru.Senet).All(e => ZorunluAlanKurali.Dolu(e.KesideYeri))),
+            x => (x.Evraklar ?? []).Where(e => e.Tur == EvrakTuru.Senet).All(e => ZorunluAlanKurali.Dolu(e.KesideYeri))),
         new(KasaBankaZorunluAlanlari.SenetKefil, nameof(AlinanBordroIstegi.Evraklar),
-            x => x.Evraklar.Where(e => e.Tur == EvrakTuru.Senet).All(e => ZorunluAlanKurali.Dolu(e.KefilAdi)))
+            x => (x.Evraklar ?? []).Where(e => e.Tur == EvrakTuru.Senet).All(e => ZorunluAlanKurali.Dolu(e.KefilAdi)))
     ];
 
     private static readonly AlanKontrolu<VerilenBordroIstegi>[] _verilenZorunlulari =
@@ -66,9 +66,12 @@ internal static class CekSenetIslemleri
                 e.RuleFor(x => x.Tutar).GreaterThan(0).LessThan(1_000_000_000_000m);
                 e.RuleFor(x => x.ParaBirimi).Must(ParaBirimleri.GecerliMi).WithMessage("Geçersiz para birimi.");
                 e.RuleFor(x => x.Borclu).NotNull();
-                e.RuleFor(x => x.Borclu.Ad).MaximumLength(200);
-                e.RuleFor(x => x.Borclu.KimlikNo).Must(VergiKimlik.GecerliMi).When(x => !string.IsNullOrWhiteSpace(x.Borclu.KimlikNo))
-                    .WithMessage("Keşideci/borçlu VKN/TCKN geçersiz.");
+                e.When(x => x.Borclu is not null, () =>
+                {
+                    e.RuleFor(x => x.Borclu.Ad).MaximumLength(200);
+                    e.RuleFor(x => x.Borclu.KimlikNo).Must(VergiKimlik.GecerliMi).When(x => !string.IsNullOrWhiteSpace(x.Borclu.KimlikNo))
+                        .WithMessage("Keşideci/borçlu VKN/TCKN geçersiz.");
+                });
                 e.RuleFor(x => x.KefilKimlikNo).Must(VergiKimlik.GecerliMi).When(x => !string.IsNullOrWhiteSpace(x.KefilKimlikNo))
                     .WithMessage("Kefil VKN/TCKN geçersiz.");
                 e.RuleFor(x => x.BankaAdi).MaximumLength(100);

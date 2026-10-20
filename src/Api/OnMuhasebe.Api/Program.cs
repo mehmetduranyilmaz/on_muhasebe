@@ -5,6 +5,7 @@ using OnMuhasebe.Modules.KasaBanka;
 using OnMuhasebe.Modules.Stok;
 using OnMuhasebe.Modules.Yonetim;
 using OnMuhasebe.Shared.Infrastructure;
+using OnMuhasebe.Shared.Infrastructure.Guvenlik;
 using OnMuhasebe.Shared.Infrastructure.Modules;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Tekrar;
@@ -22,6 +23,7 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddSharedInfrastructure();
+builder.Services.AddGuvenlik(builder.Configuration);
 builder.Services.AddModuller(builder.Configuration,
     new YonetimModulu(),
     new DovizModulu(),
@@ -40,12 +42,14 @@ if (app.Environment.IsDevelopment())
 
 // CORS en dışta: hata yanıtlarında da CORS başlıkları bulunsun, tarayıcı hata mesajını okuyabilsin.
 app.UseCors();
+app.UseGuvenlikBasliklari(app.Environment);
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+app.UseUcGovdeSiniri();
 app.UseTekrarKorumasi();
 
 app.MapHealthChecks("/health");

@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
+using OnMuhasebe.Shared.Infrastructure.Guvenlik;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
@@ -18,7 +19,8 @@ internal static class EkstreIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        grup.MapPost("/hesaplar/{hesapId:guid}/ekstre-aktarimlari", YukleAsync).DisableAntiforgery();
+        grup.MapPost("/hesaplar/{hesapId:guid}/ekstre-aktarimlari", YukleAsync).DisableAntiforgery()
+            .WithMetadata(new YuklemeBoyutu(GuvenlikExtensions.AzamiYuklemeBoyutu));
         grup.MapGet("/hesaplar/{hesapId:guid}/ekstre-aktarimlari", ListeleAsync);
         grup.MapGet("/ekstre-aktarimlari/{id:guid}", GetirAsync);
         grup.MapPut("/ekstre-aktarimlari/{id:guid}/esleme", EslemeAsync).Dogrula<EslemeIstegi>();
@@ -37,11 +39,15 @@ internal static class EkstreIslemleri
     {
         public EslemeDogrulayici()
         {
-            RuleFor(x => x.Esleme.BaslikSatiri).GreaterThanOrEqualTo(-1);
-            RuleFor(x => x.Esleme.TarihKolonu).GreaterThanOrEqualTo(0);
-            RuleFor(x => x.Esleme.AciklamaKolonu).GreaterThanOrEqualTo(0);
+            RuleFor(x => x.Esleme).NotNull().WithMessage("Kolon eşlemesi gönderilmelidir.");
+            When(x => x.Esleme is not null, () =>
+            {
+                RuleFor(x => x.Esleme.BaslikSatiri).GreaterThanOrEqualTo(-1);
+                RuleFor(x => x.Esleme.TarihKolonu).GreaterThanOrEqualTo(0);
+                RuleFor(x => x.Esleme.AciklamaKolonu).GreaterThanOrEqualTo(0);
+            });
             RuleFor(x => x.Esleme).Must(e => e.TutarKolonu is not null || (e.AlacakKolonu is not null && e.BorcKolonu is not null))
-                .WithMessage("Tutar kolonu ya da giriş (alacak) ve çıkış (borç) kolonları seçilmelidir.");
+                .WithMessage("Tutar kolonu ya da giriş (alacak) ve çıkış (borç) kolonları seçilmelidir.").When(x => x.Esleme is not null);
         }
     }
 
