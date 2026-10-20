@@ -1,4 +1,5 @@
 using System.Globalization;
+using OnMuhasebe.Shared.Contracts.Birimler;
 using OnMuhasebe.Shared.Contracts.Doviz;
 
 namespace OnMuhasebe.Web;
@@ -22,6 +23,11 @@ public static class Bicim
     };
 
     public static string Kur(decimal kur) => kur.ToString("0.######", _tr);
+
+    // Miktar en fazla 4 ondalıkla, birim adıyla: "1.234,5 Kilogram".
+    public static string Miktar(decimal miktar) => miktar.ToString("#,0.####", _tr);
+
+    public static string Miktar(decimal miktar, string birim) => $"{Miktar(miktar)} {Birimler.Ad(birim)}";
 
     public static string Tarih(DateOnly tarih) => tarih.ToString("dd.MM.yyyy", _tr);
 

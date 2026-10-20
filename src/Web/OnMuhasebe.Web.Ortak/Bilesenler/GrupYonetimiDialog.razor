@@ -1,3 +1,5 @@
+@* Modüllerin grup listelerini (cari grubu, stok grubu...) yöneten ortak diyalog. API: GET/POST {ApiAdresi}, DELETE {ApiAdresi}/{id}. *@
+@using OnMuhasebe.Shared.Contracts.Tanimlar
 @inject ApiIstemcisi Api
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
@@ -8,19 +10,24 @@
         @if (!Oturum.SaltOkunurMu)
         {
             <div class="d-flex gap-2 align-center mb-3">
-                <MudTextField Variant="Variant.Outlined" @bind-Value="_yeniAd" Label="Yeni grup adı" MaxLength="100" Margin="Margin.Dense" />
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yeniAd" Label="Yeni grup adı" MaxLength="100" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="string.IsNullOrWhiteSpace(_yeniAd)" OnClick="EkleAsync">Ekle</MudButton>
             </div>
+        }
+        @if (_gruplar.Count == 0)
+        {
+            <BosDurum Ikon="@Icons.Material.Outlined.Label" Baslik="Henüz grup yok" Aciklama="Gruplar listeleri filtrelemenizi ve raporlamanızı kolaylaştırır." />
         }
         <MudList T="string" Dense="true">
             @foreach (var grup in _gruplar)
             {
                 <MudListItem T="string">
                     <div class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" Color="Color.Secondary" Class="mr-2" />
                         <MudText>@grup.Ad</MudText>
-                        <MudText Typo="Typo.caption" Class="ml-2">(@grup.CariSayisi cari)</MudText>
+                        <MudText Typo="Typo.caption" Class="ml-2">(@grup.KayitSayisi @KayitAdi)</MudText>
                         <MudSpacer />
-                        @if (!Oturum.SaltOkunurMu && grup.CariSayisi == 0)
+                        @if (!Oturum.SaltOkunurMu && grup.KayitSayisi == 0)
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Sil" OnClick="() => SilAsync(grup)" />
                         }
@@ -28,10 +35,6 @@
                 </MudListItem>
             }
         </MudList>
-        @if (_gruplar.Count == 0)
-        {
-            <MudText Typo="Typo.body2">Henüz grup yok.</MudText>
-        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => MudDialog.Close()">Kapat</MudButton>
@@ -42,7 +45,11 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = null!;
 
-    private List<CariGrubu> _gruplar = [];
+    [Parameter, EditorRequired] public string ApiAdresi { get; set; } = "";
+    // Kayıt sayısının yanında görünen ad: "cari", "ürün"...
+    [Parameter] public string KayitAdi { get; set; } = "kayıt";
+
+    private List<GrupOzeti> _gruplar = [];
     private string _yeniAd = "";
     private ApiHatasi? _hata;
 
@@ -50,14 +57,14 @@
 
     private async Task YukleAsync()
     {
-        var sonuc = await Api.GetAsync<List<CariGrubu>>("api/cari/gruplar");
+        var sonuc = await Api.GetAsync<List<GrupOzeti>>(ApiAdresi);
         _gruplar = sonuc.BasariliMi ? sonuc.Deger : [];
         _hata = sonuc.Hata;
     }
 
     private async Task EkleAsync()
     {
-        var sonuc = await Api.PostAsync<CariGrubu>("api/cari/gruplar", new CariGrubuKaydetIstegi(_yeniAd));
+        var sonuc = await Api.PostAsync<GrupOzeti>(ApiAdresi, new GrupKaydetIstegi(_yeniAd));
         _hata = sonuc.Hata;
         if (sonuc.BasariliMi)
         {
@@ -66,9 +73,9 @@
         }
     }
 
-    private async Task SilAsync(CariGrubu grup)
+    private async Task SilAsync(GrupOzeti grup)
     {
-        var sonuc = await Api.DeleteAsync($"api/cari/gruplar/{grup.Id}");
+        var sonuc = await Api.DeleteAsync($"{ApiAdresi}/{grup.Id}");
         if (sonuc.BasariliMi)
         {
             Snackbar.Add($"{grup.Ad} grubu silindi.", Severity.Success);

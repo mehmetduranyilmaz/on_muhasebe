@@ -1,0 +1,42 @@
+@page "/ayarlar"
+@attribute [Authorize(Roles = Roller.Yonetici)]
+@inject OturumYoneticisi Oturum
+@inject ModulYukleyici Yukleyici
+
+<SayfaBasligi Baslik="Ayarlar" AltBaslik="@(Oturum.Bilgi?.AktifFirma?.Unvan is { } unvan ? $"{unvan} için firma ayarları" : null)"
+             Ikon="@Icons.Material.Filled.Tune" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="260px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else if (_paneller.Count == 0)
+{
+    <BosDurum Ikon="@Icons.Material.Outlined.Tune" Baslik="Ayarlanacak bir şey yok" Aciklama="Lisansınızdaki modüllerin firma ayarı bulunmuyor." />
+}
+else
+{
+    @for (var i = 0; i < _paneller.Count; i++)
+    {
+        <DynamicComponent Type="_paneller[i]" Parameters="@(new Dictionary<string, object> { ["Sira"] = i })" />
+    }
+}
+
+@code {
+    private readonly List<Type> _paneller = [];
+    private bool _yukleniyor = true;
+
+    // Her lisanslı modül kendi ayar panelini kendi lazy paketinde sunar.
+    protected override async Task OnInitializedAsync()
+    {
+        foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)))
+        {
+            if (await Yukleyici.AyarPaneliAsync(modul.Kod) is { } panel)
+            {
+                _paneller.Add(panel);
+            }
+        }
+
+        _yukleniyor = false;
+    }
+}

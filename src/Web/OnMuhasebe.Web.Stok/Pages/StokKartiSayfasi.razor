@@ -1,0 +1,337 @@
+@page "/stok/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_kart is { } kart)
+{
+    var urunMu = kart.Tur == StokTuru.Urun;
+    var kritikMi = urunMu && kart.KritikSeviye is { } ks && kart.Miktar <= ks;
+
+    <SayfaBasligi Baslik="@kart.Ad" GeriAdres="stok" Ikon="@(urunMu ? Icons.Material.Filled.Inventory2 : Icons.Material.Filled.MiscellaneousServices)">
+        <AltIcerik>
+            <span>@kart.Kod · @StokMetinleri.Tur(kart.Tur) · @Birimler.Ad(kart.TemelBirim) · KDV %@kart.KdvOrani</span>
+            @if (kart.GrupAdi is not null)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" Class="ml-2">@kart.GrupAdi</MudChip>
+            }
+            @if (!kart.AktifMi)
+            {
+                <MudChip T="string" Size="Size.Small" Class="ml-1">Pasif</MudChip>
+            }
+        </AltIcerik>
+        <Islemler>
+            @if (urunMu)
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"stok/{kart.Id}/ekstre")">Ekstre</MudButton>
+            }
+            @if (!Oturum.SaltOkunurMu)
+            {
+                @if (urunMu)
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.SwapHoriz" Disabled="!kart.AktifMi" OnClick="TransferAsync">Transfer</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd" Disabled="!kart.AktifMi" OnClick="HareketEkleAsync">Hareket Ekle</MudButton>
+                }
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" Href="@($"stok/{kart.Id}/duzenle")">Düzenle</MudMenuItem>
+                    @if (kart.AktifMi)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="() => DurumDegistirAsync(false)">Pasifleştir</MudMenuItem>
+                    }
+                    else
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => DurumDegistirAsync(true)">Aktifleştir</MudMenuItem>
+                    }
+                    @if (!kart.HareketVarMi)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudMenuItem>
+                    }
+                </MudMenu>
+            }
+        </Islemler>
+    </SayfaBasligi>
+
+    <MudGrid Spacing="3" Class="mb-4">
+        @if (urunMu)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart kart-hover belirme" style="--i:0; --vurgu:@(kart.Miktar < 0 ? "#EF4444" : kritikMi ? "#F59E0B" : "#14B8A6")">
+                    <div class="ozet-baslik mb-2">Toplam miktar</div>
+                    <div class="ozet-deger @(kart.Miktar < 0 ? "bakiye-borclu" : kritikMi ? "miktar-kritik" : "")">
+                        <SayacDegeri Deger="kart.Miktar" Bicimle="@(d => Bicim.Miktar(d, kart.TemelBirim))" />
+                    </div>
+                    @foreach (var ek in kart.EkBirimler)
+                    {
+                        <div class="ozet-alt">= @Bicim.Miktar(kart.Miktar / ek.Katsayi, ek.BirimKodu)</div>
+                    }
+                    @if (kart.KritikSeviye is { } seviye)
+                    {
+                        <div class="ozet-alt">Kritik seviye: @Bicim.Miktar(seviye, kart.TemelBirim)@(kritikMi ? " · altında!" : "")</div>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart kart-hover belirme" style="--i:1; --vurgu:#3B82F6">
+                    <div class="ozet-baslik mb-2">Stok değeri</div>
+                    <div class="ozet-deger"><SayacDegeri Deger="kart.StokDegeri" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" /></div>
+                    <div class="ozet-alt">Birim maliyet: @Bicim.Tutar(kart.BirimMaliyet, ParaBirimleri.Tl)</div>
+                    <div class="ozet-alt">Yöntem: @StokMetinleri.MaliyetYontemi(kart.MaliyetYontemi)</div>
+                </div>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <div class="panel-kart kart belirme" style="--i:2">
+                    <div class="ozet-baslik mb-3">Depolara göre</div>
+                    @if (kart.DepoMiktarlari.Count == 0)
+                    {
+                        <div class="ozet-alt">Henüz stok hareketi yok.</div>
+                    }
+                    else
+                    {
+                        <CubukListesi Ogeler="@(kart.DepoMiktarlari.Select(d => new CubukOgesi(d.DepoAdi, d.Miktar, Bicim.Miktar(d.Miktar, kart.TemelBirim))).ToList())" />
+                    }
+                </div>
+            </MudItem>
+        }
+        <MudItem xs="12" md="@(urunMu ? 12 : 6)">
+            <div class="panel-kart kart belirme" style="--i:3">
+                <div class="d-flex flex-wrap gap-6">
+                    <div><div class="ozet-baslik">Alış fiyatı</div><b>@(kart.AlisFiyati is { } a ? Bicim.Tutar(a, kart.ParaBirimi) : "—")</b></div>
+                    <div><div class="ozet-baslik">Satış fiyatı</div><b>@(kart.SatisFiyati is { } s ? Bicim.Tutar(s, kart.ParaBirimi) : "—")</b></div>
+                    <div><div class="ozet-baslik">Barkod</div><b>@(kart.Barkod ?? "—")</b></div>
+                    @foreach (var ek in kart.EkBirimler)
+                    {
+                        <div><div class="ozet-baslik">1 @Birimler.Ad(ek.BirimKodu)</div><b>@Bicim.Miktar(ek.Katsayi, kart.TemelBirim)</b>@(ek.Barkod is null ? "" : $" · {ek.Barkod}")</div>
+                    }
+                </div>
+                @if (kart.Aciklama is not null)
+                {
+                    <div class="ozet-alt mt-3">@kart.Aciklama</div>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    @if (urunMu)
+    {
+        <div class="panel-baslik belirme" style="--i:4"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Hareketler</div>
+        <VeriTablosu T="StokHareketSatiri" Kayitlar="_hareketler?.Kayitlar" Yukleniyor="_hareketlerYukleniyor" Dense="true"
+                     Sayfa="_sayfa" ToplamSayfa="_hareketler?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
+                     BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz hareket yok"
+                     BosAciklama="Eldeki stokla başlamak için açılış hareketi girin.">
+            <Basliklar>
+                <MudTh>Tarih</MudTh>
+                <MudTh>Tür</MudTh>
+                <MudTh>Depo</MudTh>
+                <MudTh>Açıklama</MudTh>
+                <MudTh Class="sayi">Giriş</MudTh>
+                <MudTh Class="sayi">Çıkış</MudTh>
+                <MudTh Class="sayi">Birim maliyet</MudTh>
+                <MudTh></MudTh>
+            </Basliklar>
+            <Satir>
+                <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+                <MudTd DataLabel="Tür">
+                    @StokMetinleri.HareketTuru(context.Tur)
+                    @if (context.IptalKaydiMi)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text" Class="ml-1">İptal kaydı</MudChip>
+                    }
+                    else if (context.IptalEdildiMi)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ml-1">İptal edildi</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Depo">@context.DepoAdi</MudTd>
+                <MudTd DataLabel="Açıklama">@context.Aciklama</MudTd>
+                <MudTd DataLabel="Giriş" Class="sayi">
+                    @if (context.Giris > 0)
+                    {
+                        <span class="bakiye-alacakli">@Bicim.Miktar(context.Giris)</span>
+                        @if (context.GirilenBirim != kart.TemelBirim)
+                        {
+                            <span class="mobil-alt-bilgi">@Bicim.Miktar(context.GirilenMiktar, context.GirilenBirim)</span>
+                        }
+                    }
+                </MudTd>
+                <MudTd DataLabel="Çıkış" Class="sayi">
+                    @if (context.Cikis > 0)
+                    {
+                        <span class="bakiye-borclu">@Bicim.Miktar(context.Cikis)</span>
+                        @if (context.GirilenBirim != kart.TemelBirim)
+                        {
+                            <span class="mobil-alt-bilgi">@Bicim.Miktar(context.GirilenMiktar, context.GirilenBirim)</span>
+                        }
+                    }
+                </MudTd>
+                <MudTd DataLabel="Birim maliyet" Class="sayi">@(context.BirimFiyat is { } f ? Bicim.Tutar(f) : "")</MudTd>
+                <MudTd Style="text-align:right">
+                    @if (context.ElleIptalEdilebilirMi && !Oturum.SaltOkunurMu)
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => IptalEtAsync(context)">İptal</MudButton>
+                    }
+                </MudTd>
+            </Satir>
+            <BosIslemler>
+                @if (!Oturum.SaltOkunurMu && kart.AktifMi)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd" OnClick="HareketEkleAsync">Hareket Ekle</MudButton>
+                }
+            </BosIslemler>
+        </VeriTablosu>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Class="belirme">Hizmet kartları stok tutmaz; faturalarda satır olarak kullanılır.</MudAlert>
+    }
+}
+else if (_hata is null)
+{
+    <MudSkeleton Height="56px" Width="40%" Animation="Animation.Wave" />
+    <MudGrid Spacing="3" Class="my-2">
+        @for (var i = 0; i < 3; i++)
+        {
+            <MudItem xs="12" md="4"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" Animation="Animation.Wave" Class="rounded-lg" /></MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private StokKartiDetayi? _kart;
+    private SayfaliSonuc<StokHareketSatiri>? _hareketler;
+    private int _sayfa = 1;
+    private bool _hareketlerYukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await KartYukleAsync();
+        await HareketleriYukleAsync();
+    }
+
+    private async Task KartYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{Id}");
+        _hata = sonuc.Hata;
+        _kart = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task HareketleriYukleAsync()
+    {
+        if (_kart?.Tur != StokTuru.Urun)
+        {
+            return;
+        }
+
+        _hareketlerYukleniyor = true;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<StokHareketSatiri>>($"api/stok/kartlar/{Id}/hareketler?sayfa={_sayfa}");
+        _hareketler = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<StokHareketSatiri>([], 1, 20, 0);
+        _hareketlerYukleniyor = false;
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await HareketleriYukleAsync();
+    }
+
+    private async Task YenileAsync()
+    {
+        _sayfa = 1;
+        await KartYukleAsync();
+        await HareketleriYukleAsync();
+    }
+
+    private async Task HareketEkleAsync()
+    {
+        var parametreler = new DialogParameters<StokHareketDialog> { { d => d.Kart, _kart! } };
+        var dialog = await DialogService.ShowAsync<StokHareketDialog>("Stok Hareketi", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: StokHareketCevabi cevap })
+        {
+            SonucuBildir(cevap, "Hareket kaydedildi.");
+            await YenileAsync();
+        }
+    }
+
+    private async Task TransferAsync()
+    {
+        var parametreler = new DialogParameters<TransferDialog> { { d => d.Kart, _kart! } };
+        var dialog = await DialogService.ShowAsync<TransferDialog>("Depolar Arası Transfer", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: StokHareketCevabi cevap })
+        {
+            SonucuBildir(cevap, "Transfer kaydedildi.");
+            await YenileAsync();
+        }
+    }
+
+    private void SonucuBildir(StokHareketCevabi cevap, string mesaj)
+    {
+        Snackbar.Add(mesaj, Severity.Success);
+        if (cevap.Uyari is not null)
+        {
+            Snackbar.Add(cevap.Uyari, Severity.Warning, o => o.VisibleStateDuration = 8000);
+        }
+    }
+
+    private async Task IptalEtAsync(StokHareketSatiri hareket)
+    {
+        var transferMi = hareket.Tur is StokHareketTuru.TransferGiris or StokHareketTuru.TransferCikis;
+        if (!await Onay.SorAsync("Hareketi iptal et",
+                transferMi ? "Transferin iki bacağı (çıkış ve giriş) birlikte ters kayıtla iptal edilecek."
+                           : $"{Bicim.Tarih(hareket.Tarih)} tarihli {StokMetinleri.HareketTuru(hareket.Tur).ToLower(CultureInfo.CurrentCulture)} için ters kayıt atılacak.",
+                "İptal et", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync($"api/stok/hareketler/{hareket.Id}/iptal");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Hareket iptal edildi.", Severity.Success);
+            await YenileAsync();
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private async Task DurumDegistirAsync(bool aktif)
+    {
+        var sonuc = await Api.PostAsync($"api/stok/kartlar/{Id}/{(aktif ? "aktiflestir" : "pasiflestir")}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(aktif ? "Kart aktifleştirildi." : "Kart pasifleştirildi.", Severity.Success);
+            await KartYukleAsync();
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Stok kartını sil", $"{_kart!.Ad} silinecek. Bu işlem geri alınamaz.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/stok/kartlar/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Stok kartı silindi.", Severity.Success);
+            Navigasyon.NavigateTo("stok");
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

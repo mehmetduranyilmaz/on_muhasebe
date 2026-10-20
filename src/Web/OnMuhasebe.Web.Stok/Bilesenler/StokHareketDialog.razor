@@ -1,0 +1,151 @@
+@inject ApiIstemcisi Api
+@inject TimeProvider Zaman
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" T="StokHareketTuru" Value="_tur" ValueChanged="TurDegisti" Label="Hareket türü"
+                               HelperText="@StokMetinleri.ElleTurler.First(t => t.Tur == _tur).Aciklama">
+                        @foreach (var (tur, _) in StokMetinleri.ElleTurler)
+                        {
+                            <MudSelectItem Value="tur">@StokMetinleri.HareketTuru(tur) @(StokMetinleri.GirisMi(tur) ? "(giriş)" : "(çıkış)")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_depoId" Label="Depo">
+                        @foreach (var depo in _depolar)
+                        {
+                            <MudSelectItem T="Guid?" Value="depo.Id">@depo.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Tarih" Required="true" RequiredError="Tarih gerekli." />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_miktar" Label="Miktar" Min="0" HideSpinButtons="true"
+                                     Required="true" RequiredError="Miktar gerekli." />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" T="string" Value="_birim" ValueChanged="BirimDegisti" Label="Birim">
+                        @foreach (var (kod, katsayi) in Birimleri())
+                        {
+                            <MudSelectItem Value="kod">@Birimler.Ad(kod)@(katsayi == 1 ? "" : $" ({Bicim.Miktar(katsayi, Kart.TemelBirim)})")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                @if (StokMetinleri.GirisMi(_tur))
+                {
+                    <MudItem xs="12">
+                        <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_birimFiyat"
+                                         Label="@($"Birim maliyet (TL / {Birimler.Ad(_birim)})")" Format="N2" Min="0" HideSpinButtons="true"
+                                         Required="true" RequiredError="Giriş hareketinde maliyet gerekli." HelperText="Stok değerlemesinde kullanılır" />
+                    </MudItem>
+                }
+                @if (_miktar is > 0 && Katsayi() != 1)
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2">= <b>@Bicim.Miktar(_miktar.Value * Katsayi(), Kart.TemelBirim)</b>@(StokMetinleri.GirisMi(_tur) && _birimFiyat is > 0 ? $" · toplam {Bicim.Tutar(_miktar.Value * _birimFiyat.Value, ParaBirimleri.Tl)}" : "")</MudText>
+                    </MudItem>
+                }
+                <MudItem xs="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeNo" Label="Belge no" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="8">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public StokKartiDetayi Kart { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private List<Depo> _depolar = [];
+    private StokHareketTuru _tur = StokHareketTuru.Acilis;
+    private Guid? _depoId;
+    private DateTime? _tarih;
+    private string _birim = "";
+    private decimal? _miktar;
+    private decimal? _birimFiyat;
+    private string? _belgeNo;
+    private string? _aciklama;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tarih = Zaman.GetLocalNow().Date;
+        _birim = Kart.TemelBirim;
+        if (Kart.HareketVarMi)
+        {
+            _tur = StokHareketTuru.SayimFazlasi;
+        }
+
+        var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
+        _depolar = depolar.BasariliMi ? depolar.Deger.Where(d => d.AktifMi).ToList() : [];
+        _depoId = _depolar.Find(d => d.VarsayilanMi)?.Id ?? _depolar.FirstOrDefault()?.Id;
+        FiyatOner();
+    }
+
+    private IEnumerable<(string Kod, decimal Katsayi)> Birimleri() =>
+        Kart.EkBirimler.Select(b => (b.BirimKodu, b.Katsayi)).Prepend((Kart.TemelBirim, 1m));
+
+    private decimal Katsayi() => Birimleri().FirstOrDefault(b => b.Kod == _birim).Katsayi is var k and > 0 ? k : 1m;
+
+    private void TurDegisti(StokHareketTuru tur)
+    {
+        _tur = tur;
+        FiyatOner();
+    }
+
+    private void BirimDegisti(string birim)
+    {
+        _birim = birim;
+        FiyatOner();
+    }
+
+    // Giriş maliyeti önerisi: önce kartın güncel birim maliyeti, yoksa TL alış fiyatı; seçili birime çevrilir.
+    private void FiyatOner()
+    {
+        if (!StokMetinleri.GirisMi(_tur))
+        {
+            return;
+        }
+
+        var temelFiyat = Kart.BirimMaliyet > 0 ? Kart.BirimMaliyet
+            : Kart.ParaBirimi == ParaBirimleri.Tl ? Kart.AlisFiyati : null;
+        _birimFiyat = temelFiyat is { } f ? Math.Round(f * Katsayi(), 2) : _birimFiyat;
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var istek = new StokHareketKaydetIstegi(_tur, _depoId, DateOnly.FromDateTime(_tarih!.Value), _birim, _miktar!.Value,
+            StokMetinleri.GirisMi(_tur) ? _birimFiyat : null, _belgeNo, _aciklama);
+        var sonuc = await Api.PostAsync<StokHareketCevabi>($"api/stok/kartlar/{Kart.Id}/hareketler", istek);
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

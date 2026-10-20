@@ -3,7 +3,7 @@
     @for (var i = 0; i < Ogeler.Count; i++)
     {
         var oge = Ogeler[i];
-        var oran = EnBuyuk == 0 ? 0 : (double)(Math.Abs(oge.Deger) / EnBuyuk) * 100;
+        var oran = EnBuyuk == 0 ? 0 : Math.Min((double)(Math.Abs(oge.Deger) / EnBuyuk) * 100, 100);
         <li class="satir-belirme" style="--i:@i">
             <a href="@oge.Href" class="@(oge.Href is null ? "tiklanamaz" : "")">
                 <div class="cubuk-ust">
@@ -21,6 +21,8 @@
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<CubukOgesi> Ogeler { get; set; } = [];
     [Parameter] public string Renk { get; set; } = $"linear-gradient(90deg, {UygulamaTemasi.Turkuaz}, #3B82F6)";
+    // Verilirse çubuklar bu değere göre ölçeklenir (ör. kritik seviyeye oran için 1); yoksa listedeki en büyük değere göre.
+    [Parameter] public decimal? Olcek { get; set; }
 
-    private decimal EnBuyuk => Ogeler.Count == 0 ? 0 : Ogeler.Max(o => Math.Abs(o.Deger));
+    private decimal EnBuyuk => Olcek ?? (Ogeler.Count == 0 ? 0 : Ogeler.Max(o => Math.Abs(o.Deger)));
 }

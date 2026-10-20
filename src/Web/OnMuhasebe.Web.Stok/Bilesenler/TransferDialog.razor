@@ -1,0 +1,106 @@
+@inject ApiIstemcisi Api
+@inject TimeProvider Zaman
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (_depolar.Count < 2)
+        {
+            <BosDurum Ikon="@Icons.Material.Outlined.Warehouse" Baslik="Tek depo var" Aciklama="Transfer için Stok > Depolar ekranından ikinci bir depo ekleyin." />
+        }
+        else
+        {
+            <MudForm @ref="_form">
+                <MudGrid Spacing="2">
+                    <MudItem xs="5">
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kaynak" Label="Çıkış deposu">
+                            @foreach (var depo in _depolar)
+                            {
+                                <MudSelectItem T="Guid?" Value="depo.Id">@depo.Ad (@Bicim.Miktar(Kart.DepoMiktarlari.FirstOrDefault(m => m.DepoId == depo.Id)?.Miktar ?? 0))</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="2" Class="d-flex align-center justify-center">
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Color="Color.Secondary" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hedef" Label="Giriş deposu">
+                            @foreach (var depo in _depolar.Where(d => d.Id != _kaynak))
+                            {
+                                <MudSelectItem T="Guid?" Value="depo.Id">@depo.Ad</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_miktar" Label="Miktar" Min="0" HideSpinButtons="true"
+                                         Required="true" RequiredError="Miktar gerekli." />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_birim" Label="Birim">
+                            <MudSelectItem Value="Kart.TemelBirim">@Birimler.Ad(Kart.TemelBirim)</MudSelectItem>
+                            @foreach (var ek in Kart.EkBirimler)
+                            {
+                                <MudSelectItem Value="ek.BirimKodu">@Birimler.Ad(ek.BirimKodu)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Tarih" Required="true" RequiredError="Tarih gerekli." />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" Disabled="_depolar.Count < 2 || _hedef is null">Transfer Et</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public StokKartiDetayi Kart { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private List<Depo> _depolar = [];
+    private Guid? _kaynak;
+    private Guid? _hedef;
+    private DateTime? _tarih;
+    private string _birim = "";
+    private decimal? _miktar;
+    private string? _aciklama;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tarih = Zaman.GetLocalNow().Date;
+        _birim = Kart.TemelBirim;
+        var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
+        _depolar = depolar.BasariliMi ? depolar.Deger.Where(d => d.AktifMi).ToList() : [];
+        _kaynak = _depolar.Find(d => d.VarsayilanMi)?.Id ?? _depolar.FirstOrDefault()?.Id;
+        _hedef = _depolar.FirstOrDefault(d => d.Id != _kaynak)?.Id;
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid || _kaynak is null || _hedef is null)
+        {
+            return;
+        }
+
+        var istek = new TransferIstegi(_kaynak.Value, _hedef.Value, DateOnly.FromDateTime(_tarih!.Value), _birim, _miktar!.Value, _aciklama);
+        var sonuc = await Api.PostAsync<StokHareketCevabi>($"api/stok/kartlar/{Kart.Id}/transferler", istek);
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

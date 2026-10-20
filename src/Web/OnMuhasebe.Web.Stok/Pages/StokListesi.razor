@@ -1,0 +1,184 @@
+@page "/stok"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Stok" AltBaslik="Ürün ve hizmet kartlarınız, güncel miktarlarıyla" Ikon="@Icons.Material.Filled.Inventory2">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Assessment" Href="stok/durum">Stok Durumu</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Warehouse" OnClick="DepolariAcAsync">Depolar</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Label" OnClick="GruplariAcAsync">Gruplar</MudButton>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="stok/yeni">Yeni Kart</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<FiltreCubugu>
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync"
+                      Placeholder="Ad, kod veya barkod" DebounceInterval="400" Clearable="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudSelect T="StokTuru?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_tur" ValueChanged="TurDegistiAsync" Label="Tür" Clearable="true">
+            <MudSelectItem T="StokTuru?" Value="StokTuru.Urun">Ürün</MudSelectItem>
+            <MudSelectItem T="StokTuru?" Value="StokTuru.Hizmet">Hizmet</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_grupId" ValueChanged="GrupDegistiAsync" Label="Grup" Clearable="true">
+            @foreach (var grup in _gruplar)
+            {
+                <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="2" Class="d-flex align-center">
+        <MudSwitch T="bool" Value="_pasifleriGoster" ValueChanged="PasifDegistiAsync" Color="Color.Secondary" Label="Pasifler" />
+    </MudItem>
+</FiltreCubugu>
+
+<VeriTablosu T="StokKartiOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+             SayfaDegisti="SayfaDegistiAsync" SatirTiklandi="@(k => Navigasyon.NavigateTo($"stok/{k.Id}"))"
+             BosIkon="@Icons.Material.Outlined.Inventory2" BosBaslik="Stok kartı bulunamadı"
+             BosAciklama="@(FiltreVarMi ? "Filtreleri değiştirmeyi deneyin." : "Sattığınız ürünleri ve hizmetleri ekleyerek başlayın.")">
+    <Basliklar>
+        <MudTh>Kod</MudTh>
+        <MudTh>Ad</MudTh>
+        <MudTh>Grup</MudTh>
+        <MudTh Class="sayi">Miktar</MudTh>
+        <MudTh Class="sayi">Satış Fiyatı</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Kod" HideSmall="true"><span style="opacity:.7">@context.Kod</span></MudTd>
+        <MudTd DataLabel="Ad">
+            <div>
+                <b>@context.Ad</b>
+                @if (context.Tur == StokTuru.Hizmet)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Class="ml-1">Hizmet</MudChip>
+                }
+                @if (!context.AktifMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Class="ml-1">Pasif</MudChip>
+                }
+                <span class="d-sm-none mobil-alt-bilgi">@context.Kod@(context.Barkod is null ? "" : $" · {context.Barkod}")</span>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Grup" HideSmall="true">
+            @if (context.GrupAdi is not null)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@context.GrupAdi</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Miktar" Class="sayi">
+            @if (context.Tur == StokTuru.Urun)
+            {
+                <span class="@(context.EksiMi ? "bakiye-borclu" : context.KritikMi ? "miktar-kritik" : "")" style="font-weight:600">
+                    @Bicim.Miktar(context.Miktar, context.TemelBirim)
+                </span>
+                @if (context.KritikMi)
+                {
+                    <MudTooltip Text="@(context.EksiMi ? "Stok eksiye düştü" : "Kritik seviyenin altında")">
+                        <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Color="@(context.EksiMi ? Color.Error : Color.Warning)" Class="ml-1" Style="vertical-align:middle" />
+                    </MudTooltip>
+                }
+            }
+            else
+            {
+                <span style="opacity:.5">—</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Satış Fiyatı" Class="sayi">@(context.SatisFiyati is { } f ? Bicim.Tutar(f, context.ParaBirimi) : "")</MudTd>
+    </Satir>
+    <BosIslemler>
+        @if (!FiltreVarMi && !Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="stok/yeni">İlk stok kartınızı ekleyin</MudButton>
+        }
+    </BosIslemler>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<StokKartiOzeti>? _sonuc;
+    private List<GrupOzeti> _gruplar = [];
+    private string? _arama;
+    private StokTuru? _tur;
+    private Guid? _grupId;
+    private bool _pasifleriGoster;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    private bool FiltreVarMi => !string.IsNullOrWhiteSpace(_arama) || _tur is not null || _grupId is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GruplariYukleAsync();
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/stok/kartlar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
+                    + (_tur is { } t ? $"&tur={t}" : "")
+                    + (_grupId is { } g ? $"&grupId={g}" : "")
+                    + (_pasifleriGoster ? "" : "&aktif=true");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<StokKartiOzeti>>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<StokKartiOzeti>([], 1, 20, 0);
+        _yukleniyor = false;
+    }
+
+    private async Task GruplariYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<GrupOzeti>>("api/stok/gruplar");
+        _gruplar = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private Task AraAsync(string? arama) => FiltreAsync(() => _arama = arama);
+
+    private Task TurDegistiAsync(StokTuru? tur) => FiltreAsync(() => _tur = tur);
+
+    private Task GrupDegistiAsync(Guid? grupId) => FiltreAsync(() => _grupId = grupId);
+
+    private Task PasifDegistiAsync(bool goster) => FiltreAsync(() => _pasifleriGoster = goster);
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task GruplariAcAsync()
+    {
+        var parametreler = new DialogParameters<GrupYonetimiDialog>
+        {
+            { d => d.ApiAdresi, "api/stok/gruplar" },
+            { d => d.KayitAdi, "kart" }
+        };
+        var dialog = await DialogService.ShowAsync<GrupYonetimiDialog>("Stok Grupları", parametreler);
+        await dialog.Result;
+        await GruplariYukleAsync();
+        await YukleAsync();
+    }
+
+    private async Task DepolariAcAsync()
+    {
+        var dialog = await DialogService.ShowAsync<DepolarDialog>("Depolar");
+        await dialog.Result;
+    }
+}

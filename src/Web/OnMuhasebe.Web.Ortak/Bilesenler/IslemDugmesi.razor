@@ -9,7 +9,8 @@
 </MudButton>
 
 @code {
-    [Parameter, EditorRequired] public Func<Task> Islem { get; set; } = null!;
+    // EventCallback: işlem bitince onu veren bileşen (form, diyalog) yeniden çizilir; hata mesajları ekrana yansır.
+    [Parameter, EditorRequired] public EventCallback Islem { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public Variant Variant { get; set; } = Variant.Filled;
     [Parameter] public Color Color { get; set; } = Color.Primary;
@@ -31,7 +32,7 @@
         _calisiyor = true;
         try
         {
-            await Islem();
+            await Islem.InvokeAsync();
         }
         finally
         {

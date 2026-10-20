@@ -1,0 +1,215 @@
+@page "/stok/yeni"
+@page "/stok/{Id:guid}/duzenle"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="@(Id is null ? "Yeni Stok Kartı" : "Stok Kartı Düzenle")" GeriAdres="@(Id is null ? "stok" : $"stok/{Id}")"
+             Ikon="@(Id is null ? Icons.Material.Filled.AddBox : Icons.Material.Filled.Edit)"
+             AltBaslik="@(Id is null ? "Ürün veya hizmet tanımı" : _ad)" />
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else
+{
+    <MudForm @ref="_form">
+        <FormBolumu Baslik="Genel bilgiler" Aciklama="Ad, tür, grup ve barkod" Ikon="@Icons.Material.Filled.Badge" Sira="0">
+            <MudItem xs="12" sm="4" md="2">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kod" Label="Kod" MaxLength="30" HelperText="Boşsa otomatik" />
+            </MudItem>
+            <MudItem xs="12" sm="8" md="5">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" Required="true" RequiredError="Ad gerekli." MaxLength="250" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür" Disabled="_hareketVarMi"
+                           HelperText="@(_tur == StokTuru.Hizmet ? "Stok tutulmaz" : null)">
+                    <MudSelectItem Value="StokTuru.Urun">Ürün</MudSelectItem>
+                    <MudSelectItem Value="StokTuru.Hizmet">Hizmet</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_grupId" Label="Grup" Clearable="true">
+                    @foreach (var grup in _gruplar)
+                    {
+                        <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_barkod" Label="Barkod" MaxLength="50"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.QrCode2" />
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" />
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="Birimler" Aciklama="Temel birim ve dönüşümlü ek birimler (ör. 1 Koli = 12 Adet)" Ikon="@Icons.Material.Filled.Straighten" Sira="1">
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_temelBirim" Label="Temel birim" Disabled="_hareketVarMi"
+                           HelperText="@(_hareketVarMi ? "Hareketi olan kartta değiştirilemez" : "Stok bu birimde tutulur")">
+                    @foreach (var birim in Birimler.Tumu)
+                    {
+                        <MudSelectItem Value="birim.Kod">@birim.Ad</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                @foreach (var ek in _ekBirimler)
+                {
+                    <div class="ek-birim-satiri satir-belirme">
+                        <span class="ek-birim-on">1</span>
+                        <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="ek.BirimKodu" Label="Birim" Style="min-width:140px">
+                            @foreach (var birim in Birimler.Tumu.Where(b => b.Kod != _temelBirim))
+                            {
+                                <MudSelectItem Value="birim.Kod">@birim.Ad</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <span class="ek-birim-on">=</span>
+                        <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="ek.Katsayi" Label="Katsayı" Min="0" HideSpinButtons="true" Class="ek-birim-katsayi" />
+                        <span class="ek-birim-on">@Birimler.Ad(_temelBirim)</span>
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="ek.Barkod" Label="Barkod (isteğe bağlı)" MaxLength="50" />
+                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline" Color="Color.Error" aria-label="Birimi kaldır" OnClick="() => _ekBirimler.Remove(ek)" />
+                    </div>
+                }
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AddCircleOutline" OnClick="EkBirimEkle">Ek birim ekle</MudButton>
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="Fiyat ve vergi" Aciklama="@($"Fiyatlar 1 {Birimler.Ad(_temelBirim)} içindir")" Ikon="@Icons.Material.Filled.Sell" Sira="2">
+            <MudItem xs="6" md="3">
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_alisFiyati" Label="Alış fiyatı" Format="N2" Min="0" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_satisFiyati" Label="Satış fiyatı" Format="N2" Min="0" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_paraBirimi" Label="Para birimi">
+                    @foreach (var pb in ParaBirimleri.Tumu)
+                    {
+                        <MudSelectItem Value="pb.Kod">@pb.Kod - @pb.Ad</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kdvOrani" Label="KDV oranı">
+                    @foreach (var oran in KdvOranlari.Tumu)
+                    {
+                        <MudSelectItem Value="oran">%@oran</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </FormBolumu>
+
+        @if (_tur == StokTuru.Urun)
+        {
+            <FormBolumu Baslik="Stok takibi" Aciklama="Miktar bu seviyeye inince uyarı verilir" Ikon="@Icons.Material.Filled.NotificationImportant" Sira="3">
+                <MudItem xs="12" sm="6" md="3">
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kritikSeviye"
+                                     Label="@($"Kritik seviye ({Birimler.Ad(_temelBirim)})")" Min="0" HideSpinButtons="true" />
+                </MudItem>
+            </FormBolumu>
+        }
+    </MudForm>
+
+    <div class="d-flex gap-2 justify-end">
+        <MudButton Href="@(Id is null ? "stok" : $"stok/{Id}")">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private sealed class EkBirimSatiri
+    {
+        public string BirimKodu { get; set; } = "KOLI";
+        public decimal Katsayi { get; set; } = 1;
+        public string? Barkod { get; set; }
+    }
+
+    private MudForm _form = null!;
+    private List<GrupOzeti> _gruplar = [];
+    private readonly List<EkBirimSatiri> _ekBirimler = [];
+    private string? _kod;
+    private string _ad = "";
+    private StokTuru _tur = StokTuru.Urun;
+    private string _temelBirim = Birimler.Adet;
+    private string? _barkod;
+    private int _kdvOrani = KdvOranlari.Genel;
+    private decimal? _alisFiyati;
+    private decimal? _satisFiyati;
+    private string _paraBirimi = ParaBirimleri.Tl;
+    private Guid? _grupId;
+    private decimal? _kritikSeviye;
+    private string? _aciklama;
+    private uint _surum;
+    private bool _hareketVarMi;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var gruplar = await Api.GetAsync<List<GrupOzeti>>("api/stok/gruplar");
+        _gruplar = gruplar.BasariliMi ? gruplar.Deger : [];
+
+        if (Id is { } id)
+        {
+            var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{id}");
+            if (!sonuc.BasariliMi)
+            {
+                _hata = sonuc.Hata;
+                _yukleniyor = false;
+                return;
+            }
+
+            var k = sonuc.Deger;
+            (_kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani) = (k.Kod, k.Ad, k.Tur, k.TemelBirim, k.Barkod, k.KdvOrani);
+            (_alisFiyati, _satisFiyati, _paraBirimi, _grupId, _kritikSeviye) = (k.AlisFiyati, k.SatisFiyati, k.ParaBirimi, k.GrupId, k.KritikSeviye);
+            (_aciklama, _surum, _hareketVarMi) = (k.Aciklama, k.Surum, k.HareketVarMi);
+            _ekBirimler.AddRange(k.EkBirimler.Select(b => new EkBirimSatiri { BirimKodu = b.BirimKodu, Katsayi = b.Katsayi, Barkod = b.Barkod }));
+        }
+
+        _yukleniyor = false;
+    }
+
+    private void EkBirimEkle()
+    {
+        // Adet gibi kesirsiz temel birimlerde önce ambalaj birimleri önerilir (Koli, Paket, Kutu, Düzine).
+        string[] oncelikli = ["KOLI", "PAKET", "KUTU", "DUZINE"];
+        var adaylar = oncelikli.Select(k => Birimler.Tumu.First(b => b.Kod == k)).Concat(Birimler.Tumu);
+        var bos = adaylar.FirstOrDefault(b => b.Kod != _temelBirim && _ekBirimler.All(e => e.BirimKodu != b.Kod));
+        _ekBirimler.Add(new EkBirimSatiri { BirimKodu = bos?.Kod ?? "KOLI", Katsayi = bos?.Kod == "DUZINE" ? 12 : 1 });
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var istek = new StokKartiKaydetIstegi(
+            _kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani, _alisFiyati, _satisFiyati, _paraBirimi, _grupId,
+            _tur == StokTuru.Urun ? _kritikSeviye : null, _aciklama,
+            _ekBirimler.Select(e => new EkBirim(e.BirimKodu, e.Katsayi, e.Barkod)).ToList(), _surum);
+        var sonuc = Id is { } id
+            ? await Api.PutAsync<StokKartiDetayi>($"api/stok/kartlar/{id}", istek)
+            : await Api.PostAsync<StokKartiDetayi>("api/stok/kartlar", istek);
+
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(Id is null ? $"{sonuc.Deger.Kod} kodlu kart oluşturuldu." : "Stok kartı güncellendi.", Severity.Success);
+            Navigasyon.NavigateTo($"stok/{sonuc.Deger.Id}");
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

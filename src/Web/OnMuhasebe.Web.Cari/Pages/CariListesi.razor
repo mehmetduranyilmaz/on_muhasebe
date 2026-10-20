@@ -96,7 +96,7 @@
 
 @code {
     private SayfaliSonuc<CariOzeti>? _sonuc;
-    private List<CariGrubu> _gruplar = [];
+    private List<GrupOzeti> _gruplar = [];
     private string? _arama;
     private CariTuru? _tur;
     private Guid? _grupId;
@@ -128,7 +128,7 @@
 
     private async Task GruplariYukleAsync()
     {
-        var sonuc = await Api.GetAsync<List<CariGrubu>>("api/cari/gruplar");
+        var sonuc = await Api.GetAsync<List<GrupOzeti>>("api/cari/gruplar");
         _gruplar = sonuc.BasariliMi ? sonuc.Deger : [];
     }
 
@@ -155,7 +155,12 @@
 
     private async Task GruplariAcAsync()
     {
-        var dialog = await DialogService.ShowAsync<GruplarDialog>("Cari Grupları");
+        var parametreler = new DialogParameters<GrupYonetimiDialog>
+        {
+            { d => d.ApiAdresi, "api/cari/gruplar" },
+            { d => d.KayitAdi, "cari" }
+        };
+        var dialog = await DialogService.ShowAsync<GrupYonetimiDialog>("Cari Grupları", parametreler);
         await dialog.Result;
         await GruplariYukleAsync();
         await YukleAsync();

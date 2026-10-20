@@ -38,8 +38,12 @@ public sealed class ModulYukleyici(LazyAssemblyLoader derlemeYukleyici, OturumYo
         }
     }
 
-    public async Task<Type?> OzetPaneliAsync(string modulKodu) =>
-        ModulPaketleri.OzetPanelleri.TryGetValue(modulKodu, out var tipAdi)
+    public Task<Type?> OzetPaneliAsync(string modulKodu) => PanelAsync(ModulPaketleri.OzetPanelleri, modulKodu);
+
+    public Task<Type?> AyarPaneliAsync(string modulKodu) => PanelAsync(ModulPaketleri.AyarPanelleri, modulKodu);
+
+    private async Task<Type?> PanelAsync(IReadOnlyDictionary<string, string> paneller, string modulKodu) =>
+        paneller.TryGetValue(modulKodu, out var tipAdi)
             ? (await YukleAsync(modulKodu)).Select(d => d.GetType(tipAdi)).FirstOrDefault(t => t is not null)
             : null;
 }

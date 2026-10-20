@@ -1,0 +1,160 @@
+@page "/stok/durum"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="Stok Durumu" AltBaslik="Miktarlar ve maliyet yöntemine göre stok değeri" GeriAdres="stok" Ikon="@Icons.Material.Filled.Assessment">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_sonuc is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<FiltreCubugu>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Date="_tarih" DateChanged="TarihDegistiAsync" Label="Tarih" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_depoId" ValueChanged="DepoDegistiAsync" Label="Depo" Clearable="true">
+            @foreach (var depo in _depolar)
+            {
+                <MudSelectItem T="Guid?" Value="depo.Id">@depo.Ad</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_grupId" ValueChanged="GrupDegistiAsync" Label="Grup" Clearable="true">
+            @foreach (var grup in _gruplar)
+            {
+                <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Placeholder="Ad veya kod"
+                      DebounceInterval="400" Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+    <MudItem xs="12" md="3" Class="d-flex align-center gap-2">
+        <MudSwitch T="bool" Value="_sadeceKritik" ValueChanged="KritikDegistiAsync" Color="Color.Warning" Label="Kritik" />
+        <MudSwitch T="bool" Value="_sadeceEksi" ValueChanged="EksiDegistiAsync" Color="Color.Error" Label="Eksi" />
+    </MudItem>
+</FiltreCubugu>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_sonuc is { } s)
+{
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" sm="4">
+            <OzetKarti Baslik="Stok değeri" Deger="s.ToplamDeger" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Inventory"
+                       Renk="#3B82F6" Sira="0" AltMetin="@($"{Bicim.Tarih(s.Tarih)} itibarıyla · {StokMetinleri.MaliyetYontemi(s.MaliyetYontemi)}")" />
+        </MudItem>
+        <MudItem xs="6" sm="4">
+            <OzetKarti Baslik="Kritik seviyede" Deger="s.KritikSayisi" Bicimle="@(d => $"{d:0} ürün")" Ikon="@Icons.Material.Filled.WarningAmber"
+                       Renk="#F59E0B" Sira="1" AltMetin="Kritik seviyenin altındakiler" />
+        </MudItem>
+        <MudItem xs="6" sm="4">
+            <OzetKarti Baslik="Eksi stok" Deger="s.EksiSayisi" Bicimle="@(d => $"{d:0} ürün")" Ikon="@Icons.Material.Filled.RemoveCircle"
+                       Renk="#EF4444" Sira="2" AltMetin="Miktarı sıfırın altına düşenler" />
+        </MudItem>
+    </MudGrid>
+}
+
+<VeriTablosu T="StokDurumuSatiri" Kayitlar="_sonuc?.Satirlar.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.Satirlar.ToplamSayfa ?? 0"
+             SayfaDegisti="SayfaDegistiAsync" SatirTiklandi="@(r => Navigasyon.NavigateTo($"stok/{r.StokKartiId}"))"
+             BosIkon="@Icons.Material.Outlined.Inventory" BosBaslik="Gösterilecek ürün yok">
+    <Basliklar>
+        <MudTh>Kod</MudTh>
+        <MudTh>Ad</MudTh>
+        <MudTh>Grup</MudTh>
+        <MudTh Class="sayi">Miktar</MudTh>
+        <MudTh Class="sayi">Birim maliyet</MudTh>
+        <MudTh Class="sayi">Değer</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Kod" HideSmall="true"><span style="opacity:.7">@context.Kod</span></MudTd>
+        <MudTd DataLabel="Ad">
+            <div>
+                <b>@context.Ad</b>
+                @if (context.EksiMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text" Class="ml-1">Eksi</MudChip>
+                }
+                else if (context.KritikMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text" Class="ml-1">Kritik</MudChip>
+                }
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Grup" HideSmall="true">@context.GrupAdi</MudTd>
+        <MudTd DataLabel="Miktar" Class="sayi"><b>@Bicim.Miktar(context.Miktar, context.TemelBirim)</b></MudTd>
+        <MudTd DataLabel="Birim maliyet" Class="sayi">@Bicim.Tutar(context.BirimMaliyet)</MudTd>
+        <MudTd DataLabel="Değer" Class="sayi"><b>@Bicim.Tutar(context.Deger, ParaBirimleri.Tl)</b></MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private StokDurumuCevabi? _sonuc;
+    private List<Depo> _depolar = [];
+    private List<GrupOzeti> _gruplar = [];
+    private DateTime? _tarih;
+    private Guid? _depoId;
+    private Guid? _grupId;
+    private string? _arama;
+    private bool _sadeceKritik;
+    private bool _sadeceEksi;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tarih = Zaman.GetLocalNow().Date;
+        var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
+        _depolar = depolar.BasariliMi ? depolar.Deger : [];
+        var gruplar = await Api.GetAsync<List<GrupOzeti>>("api/stok/gruplar");
+        _gruplar = gruplar.BasariliMi ? gruplar.Deger : [];
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/stok/raporlar/durum?sayfa={_sayfa}&boyut=50"
+                    + (_tarih is { } t ? $"&tarih={Bicim.Iso(DateOnly.FromDateTime(t))}" : "")
+                    + (_depoId is { } d ? $"&depoId={d}" : "")
+                    + (_grupId is { } g ? $"&grupId={g}" : "")
+                    + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}")
+                    + (_sadeceKritik ? "&sadeceKritik=true" : "")
+                    + (_sadeceEksi ? "&sadeceEksi=true" : "");
+        var sonuc = await Api.GetAsync<StokDurumuCevabi>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private Task TarihDegistiAsync(DateTime? tarih) => FiltreAsync(() => _tarih = tarih);
+
+    private Task DepoDegistiAsync(Guid? depoId) => FiltreAsync(() => _depoId = depoId);
+
+    private Task GrupDegistiAsync(Guid? grupId) => FiltreAsync(() => _grupId = grupId);
+
+    private Task AraAsync(string? arama) => FiltreAsync(() => _arama = arama);
+
+    private Task KritikDegistiAsync(bool deger) => FiltreAsync(() => _sadeceKritik = deger);
+
+    private Task EksiDegistiAsync(bool deger) => FiltreAsync(() => _sadeceEksi = deger);
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}

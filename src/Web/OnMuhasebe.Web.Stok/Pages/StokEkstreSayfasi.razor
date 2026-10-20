@@ -1,0 +1,132 @@
+@page "/stok/{Id:guid}/ekstre"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Ürün Hareket Dökümü" AltBaslik="@(_ekstre is { } e0 ? $"{e0.Kod} - {e0.Ad}" : null)" GeriAdres="@($"stok/{Id}")"
+             Ikon="@Icons.Material.Filled.Description">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ekstre is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<FiltreCubugu>
+    <MudItem xs="6" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_baslangic" Label="Başlangıç" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_bitis" Label="Bitiş" />
+    </MudItem>
+    <MudItem xs="8" md="4">
+        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_depoId" Label="Depo" Clearable="true" Placeholder="Tüm depolar">
+            @foreach (var depo in _depolar)
+            {
+                <MudSelectItem T="Guid?" Value="depo.Id">@depo.Ad</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4" md="2" Class="d-flex align-center">
+        <IslemDugmesi Islem="YukleAsync" FullWidth="true">Göster</IslemDugmesi>
+    </MudItem>
+</FiltreCubugu>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_ekstre is { } e)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">@e.Kod - @e.Ad</MudText>
+        <MudText Typo="Typo.body2">@Bicim.Tarih(e.Baslangic) – @Bicim.Tarih(e.Bitis)@(e.DepoId is null ? " · Tüm depolar" : "")</MudText>
+    </div>
+
+    <div class="kart belirme pa-2" style="overflow-x:auto">
+        <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+            <thead>
+                <tr>
+                    <th>Tarih</th>
+                    <th>Tür</th>
+                    <th>Depo</th>
+                    <th>Belge No</th>
+                    <th>Açıklama</th>
+                    <th class="sayi">Giriş</th>
+                    <th class="sayi">Çıkış</th>
+                    <th class="sayi">Bakiye</th>
+                    <th class="sayi">Birim maliyet</th>
+                    <th class="sayi">Tutar</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="7"><i>Devreden miktar</i></td>
+                    <td class="sayi">@Bicim.Miktar(e.DevirMiktar)</td>
+                    <td colspan="2"></td>
+                </tr>
+                @foreach (var s in e.Satirlar)
+                {
+                    <tr>
+                        <td>@Bicim.Tarih(s.Tarih)</td>
+                        <td>@StokMetinleri.HareketTuru(s.Tur)</td>
+                        <td>@s.DepoAdi</td>
+                        <td>@s.BelgeNo</td>
+                        <td>@s.Aciklama</td>
+                        <td class="sayi bakiye-alacakli">@(s.Giris > 0 ? Bicim.Miktar(s.Giris) : "")</td>
+                        <td class="sayi bakiye-borclu">@(s.Cikis > 0 ? Bicim.Miktar(s.Cikis) : "")</td>
+                        <td class="sayi"><b>@Bicim.Miktar(s.Bakiye)</b></td>
+                        <td class="sayi">@(s.BirimMaliyet > 0 ? Bicim.Tutar(s.BirimMaliyet) : "")</td>
+                        <td class="sayi">@(s.Tutar > 0 ? Bicim.Tutar(s.Tutar) : "")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:600">
+                    <td colspan="5">Dönem toplamı</td>
+                    <td class="sayi">@Bicim.Miktar(e.ToplamGiris)</td>
+                    <td class="sayi">@Bicim.Miktar(e.ToplamCikis)</td>
+                    <td class="sayi">@Bicim.Miktar(e.SonMiktar, e.TemelBirim)</td>
+                    <td class="sayi">@Bicim.Tutar(e.SonBirimMaliyet)</td>
+                    <td class="sayi">@Bicim.Tutar(e.SonDeger, ParaBirimleri.Tl)</td>
+                </tr>
+            </tfoot>
+        </MudSimpleTable>
+    </div>
+    <MudText Typo="Typo.caption" Class="mt-2 d-block" Style="opacity:.7">
+        Miktarlar @Birimler.Ad(e.TemelBirim) cinsindendir. Maliyetler TL ve "@StokMetinleri.MaliyetYontemi(e.MaliyetYontemi)" yöntemine göredir.
+    </MudText>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private Guid? _depoId;
+    private List<Depo> _depolar = [];
+    private StokEkstresi? _ekstre;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow().Date;
+        _baslangic = new DateTime(bugun.Year, 1, 1);
+        _bitis = bugun;
+        var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
+        _depolar = depolar.BasariliMi ? depolar.Deger : [];
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        var adres = $"api/stok/kartlar/{Id}/ekstre?baslangic={Bicim.Iso(DateOnly.FromDateTime(_baslangic ?? DateTime.Today))}"
+                    + $"&bitis={Bicim.Iso(DateOnly.FromDateTime(_bitis ?? DateTime.Today))}"
+                    + (_depoId is { } d ? $"&depoId={d}" : "");
+        var sonuc = await Api.GetAsync<StokEkstresi>(adres);
+        _hata = sonuc.Hata;
+        _ekstre = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+}

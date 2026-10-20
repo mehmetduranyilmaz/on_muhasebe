@@ -18,6 +18,8 @@
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Web.Cari.wasm" />
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Cari.Contracts.wasm" />
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Doviz.Contracts.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Web.Stok.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Stok.Contracts.wasm" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OnMuhasebe.Web.Cari\OnMuhasebe.Web.Cari.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Web.Stok\OnMuhasebe.Web.Stok.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
   </ItemGroup>
 

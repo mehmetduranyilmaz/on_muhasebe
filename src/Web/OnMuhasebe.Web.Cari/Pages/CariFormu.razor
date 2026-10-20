@@ -116,7 +116,7 @@ else
     private string Baslik => Id is null ? "Yeni Cari" : "Cari Düzenle";
 
     private MudForm _form = null!;
-    private List<CariGrubu> _gruplar = [];
+    private List<GrupOzeti> _gruplar = [];
     private string? _kod;
     private string _unvan = "";
     private CariTuru _tur = CariTuru.Musteri;
@@ -142,7 +142,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var gruplar = await Api.GetAsync<List<CariGrubu>>("api/cari/gruplar");
+        var gruplar = await Api.GetAsync<List<GrupOzeti>>("api/cari/gruplar");
         _gruplar = gruplar.BasariliMi ? gruplar.Deger : [];
 
         if (Id is { } id)

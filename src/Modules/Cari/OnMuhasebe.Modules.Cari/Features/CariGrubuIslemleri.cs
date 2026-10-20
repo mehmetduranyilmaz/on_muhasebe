@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
 using OnMuhasebe.Modules.Cari.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Tanimlar;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -18,12 +19,12 @@ internal static class CariGrubuIslemleri
     {
         var gruplar = grup.MapGroup("/gruplar");
         gruplar.MapGet("", ListeleAsync);
-        gruplar.MapPost("", EkleAsync).Dogrula<CariGrubuKaydetIstegi>();
-        gruplar.MapPut("/{id:guid}", GuncelleAsync).Dogrula<CariGrubuKaydetIstegi>();
+        gruplar.MapPost("", EkleAsync).Dogrula<GrupKaydetIstegi>();
+        gruplar.MapPut("/{id:guid}", GuncelleAsync).Dogrula<GrupKaydetIstegi>();
         gruplar.MapDelete("/{id:guid}", SilAsync);
     }
 
-    internal sealed class Dogrulayici : AbstractValidator<CariGrubuKaydetIstegi>
+    internal sealed class Dogrulayici : AbstractValidator<GrupKaydetIstegi>
     {
         public Dogrulayici() => RuleFor(x => x.Ad).NotEmpty().MaximumLength(100);
     }
@@ -31,10 +32,10 @@ internal static class CariGrubuIslemleri
     private static async Task<IResult> ListeleAsync(CariDbContext db, CancellationToken cancellationToken) =>
         TypedResults.Ok(await db.CariGruplari.AsNoTracking()
             .OrderBy(g => g.Ad)
-            .Select(g => new CariGrubu(g.Id, g.Ad, db.CariHesaplar.Count(c => c.GrupId == g.Id)))
+            .Select(g => new GrupOzeti(g.Id, g.Ad, db.CariHesaplar.Count(c => c.GrupId == g.Id)))
             .ToListAsync(cancellationToken));
 
-    private static async Task<IResult> EkleAsync(CariGrubuKaydetIstegi istek, CariDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> EkleAsync(GrupKaydetIstegi istek, CariDbContext db, CancellationToken cancellationToken)
     {
         if (await AdKullanimdaMiAsync(db, istek.Ad, null, cancellationToken))
         {
@@ -44,11 +45,11 @@ internal static class CariGrubuIslemleri
         var grup = CariGrup.Olustur(istek.Ad);
         db.CariGruplari.Add(grup);
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Created($"/api/cari/gruplar/{grup.Id}", new CariGrubu(grup.Id, grup.Ad, 0));
+        return TypedResults.Created($"/api/cari/gruplar/{grup.Id}", new GrupOzeti(grup.Id, grup.Ad, 0));
     }
 
     private static async Task<IResult> GuncelleAsync(
-        Guid id, CariGrubuKaydetIstegi istek, CariDbContext db, CancellationToken cancellationToken)
+        Guid id, GrupKaydetIstegi istek, CariDbContext db, CancellationToken cancellationToken)
     {
         var grup = await db.CariGruplari.SingleOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (grup is null)

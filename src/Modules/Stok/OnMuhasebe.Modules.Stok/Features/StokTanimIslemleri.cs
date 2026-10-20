@@ -7,10 +7,10 @@ using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Domain;
 using OnMuhasebe.Modules.Stok.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Contracts.Tanimlar;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
-using StokGrubuDto = OnMuhasebe.Modules.Stok.Contracts.StokGrubu;
 using DepoDto = OnMuhasebe.Modules.Stok.Contracts.Depo;
 
 namespace OnMuhasebe.Modules.Stok.Features;
@@ -29,8 +29,8 @@ internal static class StokTanimIslemleri
 
         var gruplar = grup.MapGroup("/gruplar");
         gruplar.MapGet("", GruplariListeleAsync);
-        gruplar.MapPost("", GrupEkleAsync).Dogrula<StokGrubuKaydetIstegi>();
-        gruplar.MapPut("/{id:guid}", GrupGuncelleAsync).Dogrula<StokGrubuKaydetIstegi>();
+        gruplar.MapPost("", GrupEkleAsync).Dogrula<GrupKaydetIstegi>();
+        gruplar.MapPut("/{id:guid}", GrupGuncelleAsync).Dogrula<GrupKaydetIstegi>();
         gruplar.MapDelete("/{id:guid}", GrupSilAsync);
 
         grup.MapGet("/ayarlar", AyarlariGetirAsync);
@@ -42,7 +42,7 @@ internal static class StokTanimIslemleri
         public DepoDogrulayici() => RuleFor(x => x.Ad).NotEmpty().MaximumLength(100);
     }
 
-    internal sealed class GrupDogrulayici : AbstractValidator<StokGrubuKaydetIstegi>
+    internal sealed class GrupDogrulayici : AbstractValidator<GrupKaydetIstegi>
     {
         public GrupDogrulayici() => RuleFor(x => x.Ad).NotEmpty().MaximumLength(100);
     }
@@ -129,10 +129,10 @@ internal static class StokTanimIslemleri
     private static async Task<IResult> GruplariListeleAsync(StokDbContext db, CancellationToken cancellationToken) =>
         TypedResults.Ok(await db.StokGruplari.AsNoTracking()
             .OrderBy(g => g.Ad)
-            .Select(g => new StokGrubuDto(g.Id, g.Ad, db.StokKartlari.Count(k => k.GrupId == g.Id)))
+            .Select(g => new GrupOzeti(g.Id, g.Ad, db.StokKartlari.Count(k => k.GrupId == g.Id)))
             .ToListAsync(cancellationToken));
 
-    private static async Task<IResult> GrupEkleAsync(StokGrubuKaydetIstegi istek, StokDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GrupEkleAsync(GrupKaydetIstegi istek, StokDbContext db, CancellationToken cancellationToken)
     {
         var ad = istek.Ad.Trim();
         if (await db.StokGruplari.AnyAsync(g => g.Ad == ad, cancellationToken))
@@ -143,10 +143,10 @@ internal static class StokTanimIslemleri
         var grup = Domain.StokGrubu.Olustur(ad);
         db.StokGruplari.Add(grup);
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Created($"/api/stok/gruplar/{grup.Id}", new StokGrubuDto(grup.Id, grup.Ad, 0));
+        return TypedResults.Created($"/api/stok/gruplar/{grup.Id}", new GrupOzeti(grup.Id, grup.Ad, 0));
     }
 
-    private static async Task<IResult> GrupGuncelleAsync(Guid id, StokGrubuKaydetIstegi istek, StokDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GrupGuncelleAsync(Guid id, GrupKaydetIstegi istek, StokDbContext db, CancellationToken cancellationToken)
     {
         var grup = await db.StokGruplari.SingleOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (grup is null)

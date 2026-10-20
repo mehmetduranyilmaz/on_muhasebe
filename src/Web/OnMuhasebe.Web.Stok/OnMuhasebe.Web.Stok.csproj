@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Stok modülü ekranları. Web uygulamasına lazy yüklenir: yalnızca lisans varsa ve modüle girilince indirilir. -->
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Stok\OnMuhasebe.Modules.Stok.Contracts\OnMuhasebe.Modules.Stok.Contracts.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
+  </ItemGroup>
+
+</Project>

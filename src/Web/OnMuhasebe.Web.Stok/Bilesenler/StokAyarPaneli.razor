@@ -1,0 +1,88 @@
+@* Ayarlar ekranındaki Stok paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<FormBolumu Baslik="Stok" Aciklama="Maliyet hesabı ve eksi stok davranışı" Ikon="@Icons.Material.Filled.Inventory2" Sira="Sira">
+    @if (_ayar is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="160px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Maliyet yöntemi</div>
+            <MudRadioGroup T="MaliyetYontemi" @bind-Value="_maliyet">
+                @foreach (var yontem in Enum.GetValues<MaliyetYontemi>())
+                {
+                    <div class="ayar-secenek @(_maliyet == yontem ? "secili" : "")">
+                        <MudRadio Value="yontem" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu">@StokMetinleri.MaliyetYontemi(yontem)</MudRadio>
+                        <div class="ayar-aciklama">@StokMetinleri.MaliyetYontemiAciklamasi(yontem)</div>
+                    </div>
+                }
+            </MudRadioGroup>
+            @if (_maliyet != _ayar.MaliyetYontemi)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                    Yöntem değişince tüm stok değerleri ve maliyetler geçmişe dönük olarak yeni yöntemle hesaplanır.
+                    Vergi Usul Kanunu'na göre maliyet yöntemi hesap dönemi içinde değiştirilmemelidir.
+                </MudAlert>
+            }
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Stok eksiye düşerse</div>
+            <MudRadioGroup T="EksiStokDavranisi" @bind-Value="_eksiStok">
+                @foreach (var davranis in Enum.GetValues<EksiStokDavranisi>())
+                {
+                    <div class="ayar-secenek @(_eksiStok == davranis ? "secili" : "")">
+                        <MudRadio Value="davranis" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu">@StokMetinleri.EksiStok(davranis)</MudRadio>
+                        <div class="ayar-aciklama">@StokMetinleri.EksiStokAciklamasi(davranis)</div>
+                    </div>
+                }
+            </MudRadioGroup>
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save"
+                          Disabled="@(Oturum.SaltOkunurMu || (_maliyet == _ayar.MaliyetYontemi && _eksiStok == _ayar.EksiStokDavranisi))">
+                Stok ayarlarını kaydet
+            </IslemDugmesi>
+        </MudItem>
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private StokAyarlari? _ayar;
+    private MaliyetYontemi _maliyet;
+    private EksiStokDavranisi _eksiStok;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<StokAyarlari>("api/stok/ayarlar");
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(StokAyarlari ayar)
+    {
+        _ayar = ayar;
+        (_maliyet, _eksiStok) = (ayar.MaliyetYontemi, ayar.EksiStokDavranisi);
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<StokAyarlari>("api/stok/ayarlar", new StokAyarlari(_maliyet, _eksiStok));
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+            Snackbar.Add("Stok ayarları kaydedildi.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

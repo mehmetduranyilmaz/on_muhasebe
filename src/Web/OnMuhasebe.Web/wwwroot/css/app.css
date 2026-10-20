@@ -993,3 +993,73 @@ html, body {
 h1:focus {
     outline: none;
 }
+
+/* ---------- Stok ---------- */
+
+.miktar-kritik {
+    color: var(--mud-palette-warning);
+}
+
+.ek-birim-satiri {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--om-turkuaz) 6%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--om-turkuaz) 35%, transparent);
+}
+
+.ek-birim-satiri .mud-input-control {
+    flex: 1 1 140px;
+    margin: 0 !important;
+}
+
+.ek-birim-on {
+    font-weight: 700;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* ---------- Ayarlar ---------- */
+
+.ayar-baslik {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.ayar-secenek {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 12px;
+    padding: 6px 12px 10px;
+    margin-bottom: 8px;
+    transition: border-color .25s, background-color .25s, transform .25s var(--om-yay);
+}
+
+.ayar-secenek:hover {
+    transform: translateX(3px);
+}
+
+.ayar-secenek.secili {
+    border-color: var(--om-turkuaz);
+    background: color-mix(in srgb, var(--om-turkuaz) 8%, transparent);
+}
+
+.ayar-aciklama {
+    font-size: .82rem;
+    color: var(--mud-palette-text-secondary);
+    margin-left: 42px;
+}
+
+.ek-birim-satiri .mud-input-control.ek-birim-katsayi {
+    flex: 0 0 120px;
+}
+
+.ayar-secenek {
+    width: 100%;
+}
+
+.ayar-secenek .mud-radio {
+    width: 100%;
+}

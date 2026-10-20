@@ -81,7 +81,3 @@ public sealed record CariDetayi(
     decimal BakiyeTl,
     bool HareketVarMi,
     uint Surum);
-
-public sealed record CariGrubu(Guid Id, string Ad, int CariSayisi);
-
-public sealed record CariGrubuKaydetIstegi(string Ad);

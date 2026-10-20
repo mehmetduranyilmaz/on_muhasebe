@@ -78,10 +78,6 @@ public sealed record StokKartiDetayi(
 // Barkod okutma: barkod kartın kendisine ya da ek birimlerinden birine ait olabilir.
 public sealed record BarkodSonucu(Guid StokKartiId, string Kod, string Ad, string Birim, decimal Katsayi);
 
-public sealed record StokGrubu(Guid Id, string Ad, int KartSayisi);
-
-public sealed record StokGrubuKaydetIstegi(string Ad);
-
 public sealed record Depo(Guid Id, string Ad, bool VarsayilanMi, bool AktifMi);
 
 public sealed record DepoKaydetIstegi(string Ad);

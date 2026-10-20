@@ -1,0 +1,108 @@
+@* Ana sayfadaki Stok özet paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject ApiIstemcisi Api
+
+<div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.Inventory2" Color="Color.Secondary" /> Stok özeti</div>
+
+@if (_ozet is null)
+{
+    <MudGrid Spacing="3" Class="mb-4">
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" lg="3"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="128px" Animation="Animation.Wave" Class="rounded-lg" /></MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    var o = _ozet;
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Stok değeri" Deger="o.ToplamDeger" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Inventory"
+                       Renk="#3B82F6" Href="stok/durum" Sira="0" AltMetin="@StokMetinleri.MaliyetYontemi(o.MaliyetYontemi)" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Ürün sayısı" Deger="o.UrunSayisi" Bicimle="@(d => $"{d:0} ürün")" Ikon="@Icons.Material.Filled.Category"
+                       Renk="#8B5CF6" Href="stok" Sira="1" AltMetin="Aktif stoklu ürün kartları" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Kritik stok" Deger="o.KritikSayisi" Bicimle="@(d => $"{d:0} ürün")" Ikon="@Icons.Material.Filled.WarningAmber"
+                       Renk="#F59E0B" Href="stok/durum" Sira="2" AltMetin="Kritik seviyenin altındakiler" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Eksi stok" Deger="o.EksiSayisi" Bicimle="@(d => $"{d:0} ürün")" Ikon="@Icons.Material.Filled.RemoveCircle"
+                       Renk="#EF4444" Href="stok/durum" Sira="3" AltMetin="Miktarı sıfırın altındakiler" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" md="6" lg="4">
+            <div class="panel-kart kart belirme" style="--i:4">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Warehouse" Size="Size.Small" Color="Color.Secondary" /> Depolara göre değer</div>
+                @if (o.DepoDegerleri.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.Warehouse" Baslik="Henüz stok yok" Aciklama="Açılış hareketiyle eldeki stoğu girin." />
+                }
+                else
+                {
+                    <HalkaGrafik Dilimler="@(o.DepoDegerleri.Select(d => new GrafikDilimi(d.DepoAdi, d.Deger, Bicim.Tutar(d.Deger, ParaBirimleri.Tl))).ToList())"
+                                 OrtaBaslik="Toplam" OrtaDeger="@KisaTutar(o.ToplamDeger)" />
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="6" lg="4">
+            <div class="panel-kart kart belirme" style="--i:5">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.NotificationImportant" Size="Size.Small" Color="Color.Warning" /> Kritik stoklar</div>
+                @if (o.KritikStoklar.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.CheckCircle" Baslik="Her şey yolunda" Aciklama="Kritik seviyenin altında ürün yok." />
+                }
+                else
+                {
+                    <CubukListesi Renk="linear-gradient(90deg, #EF4444, #F59E0B)" Olcek="1"
+                                  Ogeler="@(o.KritikStoklar.Select(k => new CubukOgesi(k.Ad, k.KritikSeviye == 0 ? 1 : Math.Max(k.Miktar, 0) / k.KritikSeviye, $"{Bicim.Miktar(k.Miktar)} / {Bicim.Miktar(k.KritikSeviye, k.TemelBirim)}", $"stok/{k.Id}")).ToList())" />
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <div class="panel-kart kart belirme" style="--i:6">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Secondary" /> Son stok hareketleri</div>
+                @if (o.SonHareketler.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.ReceiptLong" Baslik="Henüz hareket yok" />
+                }
+                @for (var i = 0; i < o.SonHareketler.Count; i++)
+                {
+                    var h = o.SonHareketler[i];
+                    var girisMi = h.Giris > 0;
+                    <a href="@($"stok/{h.StokKartiId}")" class="son-hareket satir-belirme" style="--i:@i">
+                        <span class="son-hareket-ikon @(girisMi ? "alacak" : "borc")">
+                            <MudIcon Icon="@(girisMi ? Icons.Material.Filled.ArrowDownward : Icons.Material.Filled.ArrowUpward)" Size="Size.Small" />
+                        </span>
+                        <span style="flex:1; min-width:0">
+                            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">@h.Ad</div>
+                            <div style="font-size:.8rem; opacity:.7">@Bicim.Tarih(h.Tarih) · @StokMetinleri.HareketTuru(h.Tur)</div>
+                        </span>
+                        <span class="bakiye @(girisMi ? "bakiye-alacakli" : "bakiye-borclu")">@(girisMi ? "+" : "−")@Bicim.Miktar(girisMi ? h.Giris : h.Cikis, h.TemelBirim)</span>
+                    </a>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private StokOzetRaporu? _ozet;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<StokOzetRaporu>("api/stok/raporlar/ozet");
+        _ozet = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private static string KisaTutar(decimal tutar) => Math.Abs(tutar) switch
+    {
+        >= 1_000_000 => $"{tutar / 1_000_000:0.#} Mn TL",
+        >= 1_000 => $"{tutar / 1_000:0.#} B TL",
+        _ => $"{tutar:0} TL"
+    };
+}
