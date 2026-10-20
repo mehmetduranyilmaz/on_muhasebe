@@ -91,3 +91,17 @@ internal sealed class FirmaZorunluAlaniConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
     }
 }
+
+internal sealed class IstekKaydiConfiguration : IEntityTypeConfiguration<IstekKaydi>
+{
+    public void Configure(EntityTypeBuilder<IstekKaydi> builder)
+    {
+        builder.ToTable("istek_kaydi");
+        builder.Property(x => x.Anahtar).HasMaxLength(100);
+        builder.Property(x => x.Ozet).HasMaxLength(64);
+        builder.Property(x => x.IcerikTuru).HasMaxLength(200);
+        builder.Property(x => x.Konum).HasMaxLength(500);
+        builder.HasIndex(x => new { x.FirmaId, x.KullaniciId, x.Anahtar }).IsUnique();
+        builder.HasIndex(x => x.OlusturmaTarihi);
+    }
+}

@@ -315,6 +315,8 @@ else
 }
 
 @code {
+    private readonly IslemAnahtari _anahtar = new();
+
     [Parameter] public string? TurYolu { get; set; }
     [Parameter] public Guid? Id { get; set; }
     [SupplyParameterFromQuery(Name = "cari")] public Guid? CariParametresi { get; set; }
@@ -727,8 +729,9 @@ else
             UygunPesinHesaplar.Any(h => h.Id == _pesinHesapId) ? _pesinHesapId : null);
 
         var sonuc = Id is { } id
-            ? await Api.PutAsync<FaturaCevabi>($"api/fatura/faturalar/{id}", istek)
-            : await Api.PostAsync<FaturaCevabi>("api/fatura/faturalar", istek);
+            ? await Api.PutAsync<FaturaCevabi>($"api/fatura/faturalar/{id}", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PostAsync<FaturaCevabi>("api/fatura/faturalar", istek, islemAnahtari: _anahtar.Deger);
+            _anahtar.Sonuc(sonuc.Hata);
         if (!sonuc.BasariliMi)
         {
             _hata = sonuc.Hata;

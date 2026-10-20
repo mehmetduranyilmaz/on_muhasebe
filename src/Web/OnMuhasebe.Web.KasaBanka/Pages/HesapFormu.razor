@@ -97,6 +97,8 @@ else
 }
 
 @code {
+    private readonly IslemAnahtari _anahtar = new();
+
     [Parameter] public Guid? Id { get; set; }
 
     private MudForm _form = null!;
@@ -160,8 +162,9 @@ else
 
         var istek = new HesapKaydetIstegi(_kod, _ad, _tur, _paraBirimi, _bankaAdi, _sube, _hesapNo, _iban, _limit, _aciklama, _surum);
         var sonuc = Id is { } id
-            ? await Api.PutAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}", istek)
-            : await Api.PostAsync<HesapDetayi>("api/kasabanka/hesaplar", istek);
+            ? await Api.PutAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PostAsync<HesapDetayi>("api/kasabanka/hesaplar", istek, islemAnahtari: _anahtar.Deger);
+            _anahtar.Sonuc(sonuc.Hata);
         if (!sonuc.BasariliMi)
         {
             _hata = sonuc.Hata;

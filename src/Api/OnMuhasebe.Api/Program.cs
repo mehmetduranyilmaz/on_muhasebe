@@ -7,6 +7,7 @@ using OnMuhasebe.Modules.Yonetim;
 using OnMuhasebe.Shared.Infrastructure;
 using OnMuhasebe.Shared.Infrastructure.Modules;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
+using OnMuhasebe.Shared.Infrastructure.Tekrar;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+app.UseTekrarKorumasi();
 
 app.MapHealthChecks("/health");
 app.MapModuller();

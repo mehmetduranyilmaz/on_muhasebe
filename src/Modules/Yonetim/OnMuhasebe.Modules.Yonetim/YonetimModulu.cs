@@ -17,6 +17,7 @@ using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Modules;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
+using OnMuhasebe.Shared.Infrastructure.Tekrar;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
 namespace OnMuhasebe.Modules.Yonetim;
@@ -74,6 +75,8 @@ public sealed class YonetimModulu : IModul
         services.AddScoped<ILisansSorgusu, LisansSorgusu>();
         services.AddScoped<ZorunluAlanSorgusu>();
         services.AddScoped<IZorunluAlanSorgusu>(sp => sp.GetRequiredService<ZorunluAlanSorgusu>());
+        services.AddScoped<IIstekKaydiDeposu, IstekKaydiDeposu>();
+        services.AddHostedService<IstekKaydiTemizleyici>();
         services.AddHostedService<SistemYoneticisiTohumlayici>();
     }
 

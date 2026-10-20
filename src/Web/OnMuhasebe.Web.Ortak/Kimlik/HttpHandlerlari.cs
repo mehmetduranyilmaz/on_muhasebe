@@ -34,6 +34,13 @@ internal sealed class ApiYetkiHandler(OturumYoneticisi oturum) : DelegatingHandl
 
         cevap.Dispose();
         using var tekrar = new HttpRequestMessage(request.Method, request.RequestUri);
+
+        // İşlem anahtarı (Idempotency-Key) gibi istek başlıkları da taşınır; aksi halde tekrar gönderim ayrı bir işlem sayılır.
+        foreach (var baslik in request.Headers.Where(b => b.Key != "Authorization"))
+        {
+            tekrar.Headers.TryAddWithoutValidation(baslik.Key, baslik.Value);
+        }
+
         if (govde is not null)
         {
             tekrar.Content = new ByteArrayContent(govde);

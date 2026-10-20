@@ -101,6 +101,7 @@
     private decimal _tutar;
     private string? _aciklama;
     private ApiHatasi? _hata;
+    private readonly IslemAnahtari _anahtar = new();
 
     private IslemGirdisi Girdi => CekSenetMetinleri.Girdi(Islem);
 
@@ -135,7 +136,8 @@
         var istek = new EvrakIslemIstegi(Islem, DateOnly.FromDateTime(_tarih!.Value), Evraklar.Select(e => e.Id).ToList(),
             HesapGerekli ? _hesapId : null, Girdi == IslemGirdisi.Cari ? _cari?.Id : null, tutar, null, null,
             string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim());
-        var sonuc = await Api.PostAsync<BordroSonucu>("api/kasabanka/cek-senet/islemler", istek);
+        var sonuc = await Api.PostAsync<BordroSonucu>("api/kasabanka/cek-senet/islemler", istek, islemAnahtari: _anahtar.Deger);
+        _anahtar.Sonuc(sonuc.Hata);
         if (sonuc.BasariliMi)
         {
             MudDialog.Close(DialogResult.Ok(sonuc.Deger));

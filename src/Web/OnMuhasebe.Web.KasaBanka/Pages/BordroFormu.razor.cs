@@ -48,6 +48,7 @@ public partial class BordroFormu
     private List<HesapOzeti> _hesaplar = [];
     private CekSenetAyarlari _ayar = new(true, false, RiskDavranisi.UyarVeOnayIste);
     private ApiHatasi? _hata;
+    private readonly IslemAnahtari _anahtar = new();
     private IReadOnlySet<string> _zorunlu = new HashSet<string>();
 
     private bool Z(string kod) => _zorunlu.Contains(kod);
@@ -277,6 +278,8 @@ public partial class BordroFormu
             sonuc = await GirisAsync(true);
         }
 
+        _anahtar.Sonuc(sonuc.Hata);
+
         if (!sonuc.BasariliMi)
         {
             _hata = sonuc.Hata;
@@ -295,14 +298,14 @@ public partial class BordroFormu
                 s.YeniBorclu ? new BorcluGirdisi(null, Bos(s.BorcluAdi), Bos(s.KimlikNo), null) : new BorcluGirdisi(s.Borclu!.Id, null, null, null),
                 s.Tur == EvrakTuru.Cek ? Bos(s.BankaAdi) : null, s.Tur == EvrakTuru.Cek ? Bos(s.Sube) : null, s.Tur == EvrakTuru.Cek ? Bos(s.HesapNo) : null,
                 s.Tur == EvrakTuru.Senet ? Bos(s.KesideYeri) : null, s.Tur == EvrakTuru.Senet ? Bos(s.KefilAdi) : null,
-                s.Tur == EvrakTuru.Senet ? Bos(s.KefilKimlikNo) : null, Bos(s.Aciklama))).ToList()));
+                s.Tur == EvrakTuru.Senet ? Bos(s.KefilKimlikNo) : null, Bos(s.Aciklama))).ToList()), islemAnahtari: _anahtar.Deger);
 
     private Task<ApiSonucu<BordroSonucu>> CikisAsync() =>
         Api.PostAsync<BordroSonucu>("api/kasabanka/cek-senet/cikis", new VerilenBordroIstegi(
             _cari!.Id, DateOnly.FromDateTime(_tarih!.Value), Bos(_aciklama),
             _satirlar.Select(s => new VerilenEvrakGirdisi(
                 s.Tur, s.SeriNo!.Trim(), DateOnly.FromDateTime(s.Vade!.Value), s.Tutar, s.Tur == EvrakTuru.Senet ? s.ParaBirimi : null,
-                s.Tur == EvrakTuru.Cek ? s.KendiHesapId : null, null, null, Bos(s.Aciklama))).ToList()));
+                s.Tur == EvrakTuru.Cek ? s.KendiHesapId : null, null, null, Bos(s.Aciklama))).ToList()), islemAnahtari: _anahtar.Deger);
 
     private static string? Bos(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

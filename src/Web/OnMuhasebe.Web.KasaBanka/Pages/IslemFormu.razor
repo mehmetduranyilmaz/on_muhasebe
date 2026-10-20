@@ -220,6 +220,8 @@ else
 }
 
 @code {
+    private readonly IslemAnahtari _anahtar = new();
+
     [Parameter] public string? TurYolu { get; set; }
     [SupplyParameterFromQuery(Name = "hesap")] public Guid? HesapParametresi { get; set; }
     [SupplyParameterFromQuery(Name = "cari")] public Guid? CariParametresi { get; set; }
@@ -482,16 +484,17 @@ else
         ApiSonucu<IslemCevabi> sonuc = _tur switch
         {
             IslemTuru.Tahsilat or IslemTuru.Odeme => await Api.PostAsync<IslemCevabi>($"api/kasabanka/islemler/{(_tur == IslemTuru.Tahsilat ? "tahsilat" : "odeme")}",
-                new TahsilatOdemeIstegi(_hesapId!.Value, _cari!.Id, tarih, _tutar, kur, cariKuru, _belgeNo, _aciklama, BelgeParametresi)),
+                new TahsilatOdemeIstegi(_hesapId!.Value, _cari!.Id, tarih, _tutar, kur, cariKuru, _belgeNo, _aciklama, BelgeParametresi), islemAnahtari: _anahtar.Deger),
             IslemTuru.Virman => await Api.PostAsync<IslemCevabi>("api/kasabanka/islemler/virman",
                 new VirmanIstegi(_hesapId!.Value, _hedefHesapId!.Value, tarih, _tutar, HedefFarkliDoviz ? _hedefTutar : null, kur,
-                    HedefFarkliDoviz ? _hedefKur : null, _aciklama)),
+                    HedefFarkliDoviz ? _hedefKur : null, _aciklama), islemAnahtari: _anahtar.Deger),
             IslemTuru.Acilis => await Api.PostAsync<IslemCevabi>("api/kasabanka/islemler/acilis",
-                new AcilisIstegi(_hesapId!.Value, tarih, _borcBakiyesi ? -_tutar : _tutar, kur, _aciklama)),
+                new AcilisIstegi(_hesapId!.Value, tarih, _borcBakiyesi ? -_tutar : _tutar, kur, _aciklama), islemAnahtari: _anahtar.Deger),
             _ => await Api.PostAsync<IslemCevabi>("api/kasabanka/islemler/gelir-gider",
                 new GelirGiderIstegi(GelirGiderTuru, _bicim, _kategoriId!.Value, HesapGerekli ? _hesapId : null, _cari?.Id, tarih,
-                    _bicim == GelirGiderBicimi.Tahakkuk ? Bicim.Gun(_vade) : null, _tutar, kur, cariKuru, _belgeNo, _aciklama))
+                    _bicim == GelirGiderBicimi.Tahakkuk ? Bicim.Gun(_vade) : null, _tutar, kur, cariKuru, _belgeNo, _aciklama), islemAnahtari: _anahtar.Deger)
         };
+        _anahtar.Sonuc(sonuc.Hata);
 
         if (!sonuc.BasariliMi)
         {

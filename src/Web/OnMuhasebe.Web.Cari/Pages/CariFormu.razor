@@ -119,6 +119,8 @@ else
 }
 
 @code {
+    private readonly IslemAnahtari _anahtar = new();
+
     [Parameter]
     public Guid? Id { get; set; }
 
@@ -195,8 +197,9 @@ else
             _kod, _unvan, _tur, _kisiTipi, _vergiNo, _vergiDairesi, _il, _ilce, _adres, _telefon, _eposta,
             _paraBirimi, _vadeGun, _riskLimiti, _grupId, _yetkiliAd, _yetkiliTelefon, _not, _farkliDovizdeIslem, _surum, _iban);
         var sonuc = Id is { } id
-            ? await Api.PutAsync<CariDetayi>($"api/cari/hesaplar/{id}", istek)
-            : await Api.PostAsync<CariDetayi>("api/cari/hesaplar", istek);
+            ? await Api.PutAsync<CariDetayi>($"api/cari/hesaplar/{id}", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PostAsync<CariDetayi>("api/cari/hesaplar", istek, islemAnahtari: _anahtar.Deger);
+            _anahtar.Sonuc(sonuc.Hata);
 
         if (sonuc.BasariliMi)
         {

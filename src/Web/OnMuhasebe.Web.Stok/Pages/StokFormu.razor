@@ -127,6 +127,8 @@ else
 }
 
 @code {
+    private readonly IslemAnahtari _anahtar = new();
+
     [Parameter] public Guid? Id { get; set; }
 
     private sealed class EkBirimSatiri
@@ -209,8 +211,9 @@ else
             _tur == StokTuru.Urun ? _kritikSeviye : null, _aciklama,
             _ekBirimler.Select(e => new EkBirim(e.BirimKodu, e.Katsayi, e.Barkod)).ToList(), _surum);
         var sonuc = Id is { } id
-            ? await Api.PutAsync<StokKartiDetayi>($"api/stok/kartlar/{id}", istek)
-            : await Api.PostAsync<StokKartiDetayi>("api/stok/kartlar", istek);
+            ? await Api.PutAsync<StokKartiDetayi>($"api/stok/kartlar/{id}", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PostAsync<StokKartiDetayi>("api/stok/kartlar", istek, islemAnahtari: _anahtar.Deger);
+            _anahtar.Sonuc(sonuc.Hata);
 
         if (sonuc.BasariliMi)
         {

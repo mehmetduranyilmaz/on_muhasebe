@@ -57,6 +57,8 @@
 </MudDialog>
 
 @code {
+    private readonly IslemAnahtari _anahtar = new();
+
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = null!;
 
@@ -123,7 +125,8 @@
         var istek = new CariHareketKaydetIstegi(
             _tur, _yon, DateOnly.FromDateTime(_tarih!.Value), Bicim.Gun(_vade), _tutar!.Value,
             DovizliMi ? _kur : null, _belgeNo, _aciklama);
-        var sonuc = await Api.PostAsync<CariHareketSatiri>($"api/cari/hesaplar/{Cari.Id}/hareketler", istek);
+        var sonuc = await Api.PostAsync<CariHareketSatiri>($"api/cari/hesaplar/{Cari.Id}/hareketler", istek, islemAnahtari: _anahtar.Deger);
+        _anahtar.Sonuc(sonuc.Hata);
         _islemde = false;
 
         if (sonuc.BasariliMi)
