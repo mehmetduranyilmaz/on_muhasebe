@@ -37,6 +37,7 @@ public sealed record CariKaydetIstegi(
     string? YetkiliAd,
     string? YetkiliTelefon,
     string? Not,
+    bool FarkliDovizdeIslem = false,
     uint Surum = 0);
 
 public sealed record CariOzeti(
@@ -77,6 +78,7 @@ public sealed record CariDetayi(
     string? YetkiliTelefon,
     string? Not,
     bool AktifMi,
+    bool FarkliDovizdeIslem,
     decimal Bakiye,
     decimal BakiyeTl,
     bool HareketVarMi,

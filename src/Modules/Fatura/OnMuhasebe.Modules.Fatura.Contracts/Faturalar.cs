@@ -40,6 +40,9 @@ public static class FaturaTurleri
     public static bool GidenMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade;
 
     public static bool SatisTarafiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.SatistanIade;
+
+    // Peşin işlemde paranın yönü: satışta ve alıştan iadede para bize girer.
+    public static bool ParaGirisiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade;
 }
 
 // Cari seçilmeyen perakende fatura nihai tüketiciye kesilir; bilgiler boşsa "Nihai Tüketici" / 11111111111 yazılır.
@@ -60,6 +63,7 @@ public sealed record FaturaSatiriIstegi(
     decimal Iskonto2,
     decimal Iskonto3);
 
+// PesinHesapId verilirse fatura kesinleşirken o kasa/banka/POS hesabından peşin tahsil edilir (ödenir).
 // Numara yalnızca gelen faturalarda (alış, satıştan iade) girilir; giden faturaların numarası otomatik verilir.
 // Kur boşsa dövizli faturada TCMB kuru kullanılır. Surum yalnızca güncellemede gönderilir.
 public sealed record FaturaKaydetIstegi(
@@ -75,7 +79,8 @@ public sealed record FaturaKaydetIstegi(
     decimal GenelIskonto,
     string? Aciklama,
     IReadOnlyList<FaturaSatiriIstegi> Satirlar,
-    uint Surum = 0);
+    uint Surum = 0,
+    Guid? PesinHesapId = null);
 
 public sealed record FaturaOzeti(
     Guid Id,
@@ -89,7 +94,8 @@ public sealed record FaturaOzeti(
     string CariUnvan,
     string ParaBirimi,
     decimal GenelToplam,
-    decimal GenelToplamTl);
+    decimal GenelToplamTl,
+    decimal? Kalan);
 
 public sealed record FaturaSatiriDetayi(
     Guid Id,
@@ -148,7 +154,9 @@ public sealed record FaturaDetayi(
     Guid Ettn,
     DateTime? OnayTarihi,
     DateTime? IptalTarihi,
-    uint Surum);
+    uint Surum,
+    Guid? PesinHesapId,
+    decimal? Kalan);
 
 // Eksi stok ayarı "Uyar" ise kayıt yapılır ve uyarı döner.
 public sealed record FaturaCevabi(FaturaDetayi Fatura, string? Uyari);

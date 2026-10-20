@@ -32,8 +32,13 @@ internal sealed class CariHareket : FirmaEntity
     public Guid? IptalEdilenHareketId { get; private set; }
     public Guid? IptalHareketId { get; private set; }
 
+    // Elle kapama yapılan kalem otomatik (FIFO) kapamaya katılmaz; kullanıcının seçimi korunur.
+    public bool ElleKapamaMi { get; private set; }
+
     public bool IptalEdildiMi => IptalHareketId is not null;
     public bool IptalKaydiMi => IptalEdilenHareketId is not null;
+
+    public void ElleKapamaAyarla(bool elle) => ElleKapamaMi = elle;
 
     // Kaynak belgeden gelen hareketler (fatura, tahsilat) yalnızca kendi belgesinden iptal edilir.
     public static bool ElleGirilebilirMi(CariHareketTuru tur) => tur is CariHareketTuru.Acilis or CariHareketTuru.Dekont;

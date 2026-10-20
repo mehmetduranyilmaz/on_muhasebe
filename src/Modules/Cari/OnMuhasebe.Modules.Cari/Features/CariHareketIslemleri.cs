@@ -64,7 +64,7 @@ internal static class CariHareketIslemleri
     }
 
     private static async Task<IResult> EkleAsync(
-        Guid cariId, CariHareketKaydetIstegi istek, CariDbContext db, CancellationToken cancellationToken)
+        Guid cariId, CariHareketKaydetIstegi istek, CariDbContext db, CariKapamaServisi kapama, CancellationToken cancellationToken)
     {
         var cari = await db.CariHesaplar.AsNoTracking().SingleOrDefaultAsync(c => c.Id == cariId, cancellationToken);
         if (cari is null)
@@ -105,11 +105,13 @@ internal static class CariHareketIslemleri
         var hareket = sonuc.Deger;
         db.CariHareketler.Add(hareket);
         await db.SaveChangesAsync(cancellationToken);
+        await kapama.KapatAsync(cariId, hareket.Id, null, cancellationToken);
 
         return TypedResults.Created($"/api/cari/hesaplar/{cariId}/hareketler/{hareket.Id}", Satir(hareket));
     }
 
-    private static async Task<IResult> IptalEtAsync(Guid hareketId, CariDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> IptalEtAsync(
+        Guid hareketId, CariDbContext db, CariKapamaServisi kapama, CancellationToken cancellationToken)
     {
         var hareket = await db.CariHareketler.SingleOrDefaultAsync(h => h.Id == hareketId, cancellationToken);
         if (hareket is null)
@@ -131,6 +133,7 @@ internal static class CariHareketIslemleri
         // Orijinal ve ters kayıt aynı SaveChanges'ta: ikisi birlikte yazılır ya da hiçbiri yazılmaz.
         db.CariHareketler.Add(sonuc.Deger);
         await db.SaveChangesAsync(cancellationToken);
+        await kapama.CozVeKapatAsync(hareket.CariHesapId, [hareket.Id], cancellationToken);
         return TypedResults.Ok(Satir(sonuc.Deger));
     }
 

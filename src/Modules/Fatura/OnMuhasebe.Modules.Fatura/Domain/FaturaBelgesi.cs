@@ -40,6 +40,9 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir
     public decimal GenelIskonto { get; private set; }
     public string? Aciklama { get; private set; }
 
+    // Kesinleşirken bu kasa/banka/POS hesabından peşin tahsil edilir (ödenir).
+    public Guid? PesinHesapId { get; private set; }
+
     public decimal BrutToplam { get; private set; }
     public decimal SatirIskontoToplami { get; private set; }
     public decimal GenelIskontoTutari { get; private set; }
@@ -155,6 +158,7 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir
         GenelIskontoTuru = b.GenelIskontoTuru;
         GenelIskonto = b.GenelIskonto;
         Aciklama = b.Aciklama;
+        PesinHesapId = b.PesinHesapId;
 
         _satirlar.Clear();
         for (var i = 0; i < b.Satirlar.Count; i++)
@@ -266,4 +270,5 @@ internal sealed record FaturaBilgileri(
     GenelIskontoTuru GenelIskontoTuru,
     decimal GenelIskonto,
     string? Aciklama,
-    IReadOnlyList<FaturaSatiriBilgisi> Satirlar);
+    IReadOnlyList<FaturaSatiriBilgisi> Satirlar,
+    Guid? PesinHesapId = null);

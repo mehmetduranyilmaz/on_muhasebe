@@ -4,6 +4,7 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Doviz.Contracts;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
+using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Moduller;
@@ -48,6 +49,7 @@ internal sealed class FaturaHazirlayici(
     ICariSorgusu cariSorgusu,
     IStokSorgusu stokSorgusu,
     IKurSorgusu kurSorgusu,
+    IKasaBankaSorgusu kasaSorgusu,
     ILisansSorgusu lisansSorgusu,
     IMevcutKullanici mevcutKullanici)
 {
@@ -81,10 +83,40 @@ internal sealed class FaturaHazirlayici(
             return satirlar.Hata;
         }
 
+        if (istek.PesinHesapId is { } pesinHesapId
+            && await PesinHesapHatasiAsync(pesinHesapId, istek.Tur, paraBirimi, moduller, cancellationToken) is { } pesinHatasi)
+        {
+            return pesinHatasi;
+        }
+
         return new FaturaBilgileri(
             istek.Tur, satisSekli, faturaCarisi, istek.Tarih, istek.VadeTarihi,
             FaturaTurleri.GidenMi(istek.Tur) ? null : Temiz(istek.Numara)?.ToUpperInvariant(),
-            paraBirimi, kur, istek.GenelIskontoTuru, istek.GenelIskonto, Temiz(istek.Aciklama), satirlar.Deger);
+            paraBirimi, kur, istek.GenelIskontoTuru, istek.GenelIskonto, Temiz(istek.Aciklama), satirlar.Deger, istek.PesinHesapId);
+    }
+
+    // Satış tarafında para hesaba girer (kredi kartına tahsilat olmaz), alış tarafında çıkar (POS'tan ödeme olmaz).
+    private async Task<Hata?> PesinHesapHatasiAsync(
+        Guid hesapId, FaturaTuru tur, string paraBirimi, IReadOnlyList<string> moduller, CancellationToken cancellationToken)
+    {
+        if (!moduller.Contains(ModulKodlari.KasaBanka))
+        {
+            return FaturaHatalari.KasaLisansiYok;
+        }
+
+        var hesap = await kasaSorgusu.HesapGetirAsync(hesapId, cancellationToken);
+        if (hesap is not { AktifMi: true })
+        {
+            return FaturaHatalari.PesinHesapBulunamadi;
+        }
+
+        if (hesap.ParaBirimi != paraBirimi)
+        {
+            return FaturaHatalari.PesinHesapDovizi;
+        }
+
+        var girisMi = FaturaTurleri.ParaGirisiMi(tur);
+        return (girisMi && hesap.Tur == HesapTuru.KrediKarti) || (!girisMi && hesap.Tur == HesapTuru.Pos) ? FaturaHatalari.PesinHesapTuru : null;
     }
 
     private async Task<Sonuc<(FaturaCarisi Cari, string ParaBirimi)>> CariAsync(

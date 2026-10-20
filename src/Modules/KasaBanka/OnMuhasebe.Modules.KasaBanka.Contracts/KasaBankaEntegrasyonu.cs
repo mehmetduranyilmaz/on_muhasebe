@@ -1,0 +1,32 @@
+using OnMuhasebe.Shared.Domain.Results;
+
+namespace OnMuhasebe.Modules.KasaBanka.Contracts;
+
+// Diğer modüllerin (fatura) kasa/bankayla konuştuğu sözleşmeler.
+
+public sealed record KasaHesapBilgisi(Guid Id, string Kod, string Ad, HesapTuru Tur, string ParaBirimi, bool AktifMi);
+
+public interface IKasaBankaSorgusu
+{
+    Task<KasaHesapBilgisi?> HesapGetirAsync(Guid hesapId, CancellationToken cancellationToken = default);
+}
+
+// Faturanın peşin tahsilatı/ödemesi. Tutar ve kur hesabın (= faturanın) dövizindedir. Cari varsa cari hareketi de yazılır
+// ve önce kaynak belgenin kalemini kapatır; cari yoksa (nihai tüketici) yalnızca kasa/banka etkilenir.
+public sealed record BelgeTahsilati(
+    Guid HesapId,
+    Guid? CariHesapId,
+    bool GirisMi,
+    DateOnly Tarih,
+    decimal Tutar,
+    decimal Kur,
+    string? BelgeNo,
+    string? Aciklama);
+
+public interface IKasaBankaYazici
+{
+    Task<Sonuc> BelgeTahsilatiYazAsync(Guid kaynakBelgeId, BelgeTahsilati tahsilat, CancellationToken cancellationToken = default);
+
+    // Belgeye bağlı tüm kasa/banka işlemleri (ve onların cari hareketleri) ters kayıtla iptal edilir.
+    Task<Sonuc> BelgeIslemleriniIptalEtAsync(Guid kaynakBelgeId, CancellationToken cancellationToken = default);
+}

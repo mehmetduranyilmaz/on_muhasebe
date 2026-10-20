@@ -237,6 +237,10 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("para_birimi");
 
+                    b.Property<Guid?>("PesinHesapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pesin_hesap_id");
+
                     b.Property<decimal>("SatirIskontoToplami")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")

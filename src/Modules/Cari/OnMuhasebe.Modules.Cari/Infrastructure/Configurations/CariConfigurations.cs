@@ -62,3 +62,16 @@ internal sealed class CariGrupConfiguration : IEntityTypeConfiguration<CariGrup>
         builder.HasIndex(x => new { x.FirmaId, x.Ad }).IsUnique();
     }
 }
+
+internal sealed class CariKapamaConfiguration : IEntityTypeConfiguration<CariKapama>
+{
+    public void Configure(EntityTypeBuilder<CariKapama> builder)
+    {
+        builder.ToTable("cari_kapama");
+        builder.HasIndex(x => new { x.FirmaId, x.CariHesapId });
+        builder.HasIndex(x => x.BorcHareketId);
+        builder.HasIndex(x => x.AlacakHareketId);
+        builder.HasOne<CariHareket>().WithMany().HasForeignKey(x => x.BorcHareketId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<CariHareket>().WithMany().HasForeignKey(x => x.AlacakHareketId).OnDelete(DeleteBehavior.Restrict);
+    }
+}

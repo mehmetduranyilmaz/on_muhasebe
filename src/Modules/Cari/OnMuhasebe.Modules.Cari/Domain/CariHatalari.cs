@@ -22,4 +22,6 @@ internal static class CariHatalari
     public static readonly Hata ElleIptalEdilemez = Hata.IsKurali("kaynak_belgeden_iptal", "Bu hareket kaynak belgesinden (fatura, tahsilat vb.) iptal edilmelidir.");
     public static readonly Hata ZatenIptalEdilmis = Hata.IsKurali("zaten_iptal", "Bu hareket zaten iptal edilmiş.");
     public static readonly Hata IptalKaydiIptalEdilemez = Hata.IsKurali("iptal_kaydi", "İptal kaydı iptal edilemez.");
+    public static readonly Hata IptalliKalemKapanmaz = Hata.IsKurali("iptalli_kalem", "İptal edilmiş hareket kapamaya katılmaz.");
+    public static readonly Hata KapamaTutariGecersiz = Hata.Dogrulama("kapama_gecersiz", "Kapama satırları geçersiz: karşı kalem aynı caride, ters yönde olmalı ve tutar açık kısmı aşmamalıdır.");
 }

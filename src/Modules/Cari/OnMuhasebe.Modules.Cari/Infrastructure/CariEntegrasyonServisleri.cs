@@ -2,19 +2,32 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Infrastructure.Persistence;
 
 namespace OnMuhasebe.Modules.Cari.Infrastructure;
 
-internal sealed class CariSorgusu(CariDbContext db) : ICariSorgusu
+internal sealed class CariSorgusu(CariDbContext db, CariKapamaServisi kapama) : ICariSorgusu
 {
     public Task<CariBilgisi?> GetirAsync(Guid cariId, CancellationToken cancellationToken = default) =>
         db.CariHesaplar.AsNoTracking()
             .Where(c => c.Id == cariId)
-            .Select(c => new CariBilgisi(c.Id, c.Kod, c.Unvan, c.VergiNo, c.VergiDairesi, c.Il, c.Ilce, c.Adres, c.ParaBirimi, c.AktifMi))
+            .Select(c => new CariBilgisi(c.Id, c.Kod, c.Unvan, c.VergiNo, c.VergiDairesi, c.Il, c.Ilce, c.Adres, c.ParaBirimi, c.AktifMi, c.FarkliDovizdeIslem))
             .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, decimal>> BelgeKalanlariAsync(
+        IReadOnlyCollection<Guid> belgeIdleri, CancellationToken cancellationToken = default) =>
+        await kapama.BelgeKalanlariAsync(belgeIdleri, cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, string>> UnvanlarAsync(
+        IReadOnlyCollection<Guid> cariIdleri, CancellationToken cancellationToken = default) =>
+        await db.CariHesaplar.AsNoTracking()
+            .IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi])
+            .Where(c => cariIdleri.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.Unvan, cancellationToken);
 }
 
-internal sealed class CariHareketYazici(CariDbContext db) : ICariHareketYazici
+// Yazılan her kalem açık kalemlerle eşleştirilir; iptalde kapamalar çözülür ve karşı kalemler yeniden eşleştirilir.
+internal sealed class CariHareketYazici(CariDbContext db, CariKapamaServisi kapama) : ICariHareketYazici
 {
     public async Task<Sonuc> YazAsync(Guid kaynakBelgeId, BelgeCariHareketi hareket, CancellationToken cancellationToken = default)
     {
@@ -33,6 +46,11 @@ internal sealed class CariHareketYazici(CariDbContext db) : ICariHareketYazici
 
         db.CariHareketler.Add(sonuc.Deger);
         await db.SaveChangesAsync(cancellationToken);
+        if (hareket.OtomatikKapama)
+        {
+            await kapama.KapatAsync(cari.Id, sonuc.Deger.Id, hareket.OncelikliKapamaBelgeId, cancellationToken);
+        }
+
         return Sonuc.Basarili();
     }
 
@@ -55,6 +73,11 @@ internal sealed class CariHareketYazici(CariDbContext db) : ICariHareketYazici
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        foreach (var cari in hareketler.GroupBy(h => h.CariHesapId))
+        {
+            await kapama.CozVeKapatAsync(cari.Key, cari.Select(h => h.Id).ToList(), cancellationToken);
+        }
+
         return Sonuc.Basarili();
     }
 }

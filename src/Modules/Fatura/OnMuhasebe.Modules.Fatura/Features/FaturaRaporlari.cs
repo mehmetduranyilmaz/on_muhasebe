@@ -53,7 +53,7 @@ internal static class FaturaRaporlari
             .OrderByDescending(f => f.Tarih).ThenByDescending(f => f.OlusturmaTarihi)
             .Take(OzetListeBoyutu)
             .Select(f => new FaturaOzeti(f.Id, f.Tur, f.SatisSekli, f.Durum, f.Numara, f.Tarih, f.VadeTarihi, f.CariHesapId, f.CariUnvan,
-                f.ParaBirimi, f.GenelToplam, f.GenelToplamTl))
+                f.ParaBirimi, f.GenelToplam, f.GenelToplamTl, null))
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new FaturaOzetRaporu(

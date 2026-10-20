@@ -15,4 +15,5 @@ internal sealed class CariDbContext(DbContextOptions<CariDbContext> options, IMe
     public DbSet<CariHesap> CariHesaplar => Set<CariHesap>();
     public DbSet<CariHareket> CariHareketler => Set<CariHareket>();
     public DbSet<CariGrup> CariGruplari => Set<CariGrup>();
+    public DbSet<CariKapama> CariKapamalari => Set<CariKapama>();
 }

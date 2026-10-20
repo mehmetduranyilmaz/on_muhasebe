@@ -1,6 +1,7 @@
 using OnMuhasebe.Modules.Cari;
 using OnMuhasebe.Modules.Doviz;
 using OnMuhasebe.Modules.Fatura;
+using OnMuhasebe.Modules.KasaBanka;
 using OnMuhasebe.Modules.Stok;
 using OnMuhasebe.Modules.Yonetim;
 using OnMuhasebe.Shared.Infrastructure;
@@ -25,7 +26,8 @@ builder.Services.AddModuller(builder.Configuration,
     new DovizModulu(),
     new CariModulu(),
     new StokModulu(),
-    new FaturaModulu());
+    new FaturaModulu(),
+    new KasaBankaModulu());
 
 var app = builder.Build();
 

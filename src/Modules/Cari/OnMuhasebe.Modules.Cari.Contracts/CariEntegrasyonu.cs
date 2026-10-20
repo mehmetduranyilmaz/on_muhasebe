@@ -14,14 +14,21 @@ public sealed record CariBilgisi(
     string? Ilce,
     string? Adres,
     string ParaBirimi,
-    bool AktifMi);
+    bool AktifMi,
+    bool FarkliDovizdeIslem);
 
 public interface ICariSorgusu
 {
     Task<CariBilgisi?> GetirAsync(Guid cariId, CancellationToken cancellationToken = default);
+
+    // Belgelerin (fatura vb.) kapanmamış tutarı, carinin para biriminde. Cari hareketi olmayan ya da iptal edilmiş belge listede yoktur.
+    Task<IReadOnlyDictionary<Guid, decimal>> BelgeKalanlariAsync(IReadOnlyCollection<Guid> belgeIdleri, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, string>> UnvanlarAsync(IReadOnlyCollection<Guid> cariIdleri, CancellationToken cancellationToken = default);
 }
 
 // Tutar carinin para birimindedir; TL carilerde kur 1'dir.
+// OtomatikKapama false ise kalem yazılınca FIFO çalışmaz (ör. peşin faturayı hemen ardından gelen tahsilat kapatacaktır).
 public sealed record BelgeCariHareketi(
     Guid CariHesapId,
     CariHareketTuru Tur,
@@ -31,7 +38,9 @@ public sealed record BelgeCariHareketi(
     decimal Tutar,
     decimal Kur,
     string? BelgeNo,
-    string? Aciklama);
+    string? Aciklama,
+    Guid? OncelikliKapamaBelgeId = null,
+    bool OtomatikKapama = true);
 
 // Kaynak belgeye bağlı hareketler yalnızca bu sözleşmeyle yazılır ve iptal edilir; elle iptal edilemez.
 // Birden çok modülü kapsayan işlemlerde çağıran taraf IIslemKapsami ile tek transaction açar.

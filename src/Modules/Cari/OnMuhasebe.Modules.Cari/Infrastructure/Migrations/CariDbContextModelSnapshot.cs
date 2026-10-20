@@ -111,6 +111,10 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("cari_hesap_id");
 
+                    b.Property<bool>("ElleKapamaMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("elle_kapama_mi");
+
                     b.Property<Guid>("FirmaId")
                         .HasColumnType("uuid")
                         .HasColumnName("firma_id");
@@ -210,6 +214,10 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("eposta");
+
+                    b.Property<bool>("FarkliDovizdeIslem")
+                        .HasColumnType("boolean")
+                        .HasColumnName("farkli_dovizde_islem");
 
                     b.Property<Guid>("FirmaId")
                         .HasColumnType("uuid")
@@ -344,6 +352,70 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
                     b.ToTable("cari_hesap", "cari");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Cari.Domain.CariKapama", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AlacakHareketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("alacak_hareket_id");
+
+                    b.Property<Guid>("BorcHareketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("borc_hareket_id");
+
+                    b.Property<Guid>("CariHesapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cari_hesap_id");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal>("Tutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tutar");
+
+                    b.HasKey("Id")
+                        .HasName("pk_cari_kapama");
+
+                    b.HasIndex("AlacakHareketId")
+                        .HasDatabaseName("ix_cari_kapama_alacak_hareket_id");
+
+                    b.HasIndex("BorcHareketId")
+                        .HasDatabaseName("ix_cari_kapama_borc_hareket_id");
+
+                    b.HasIndex("FirmaId", "CariHesapId")
+                        .HasDatabaseName("ix_cari_kapama_firma_id_cari_hesap_id");
+
+                    b.ToTable("cari_kapama", "cari");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Cari.Domain.CariHareket", b =>
                 {
                     b.HasOne("OnMuhasebe.Modules.Cari.Domain.CariHesap", null)
@@ -363,6 +435,23 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
                         .HasConstraintName("fk_cari_hesap_cari_grubu_grup_id");
 
                     b.Navigation("Grup");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Cari.Domain.CariKapama", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.Cari.Domain.CariHareket", null)
+                        .WithMany()
+                        .HasForeignKey("AlacakHareketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_cari_kapama_cari_hareket_alacak_hareket_id");
+
+                    b.HasOne("OnMuhasebe.Modules.Cari.Domain.CariHareket", null)
+                        .WithMany()
+                        .HasForeignKey("BorcHareketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_cari_kapama_cari_hareket_borc_hareket_id");
                 });
 #pragma warning restore 612, 618
         }

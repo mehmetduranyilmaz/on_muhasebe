@@ -63,6 +63,10 @@ else
                         }
                     </MudSelect>
                 </MudItem>
+                <MudItem xs="12" sm="6" md="5" Class="d-flex align-center">
+                    <MudSwitch T="bool" @bind-Value="_farkliDovizdeIslem" Color="Color.Secondary"
+                               Label="Farklı dövizde tahsilat/ödeme kabul et" />
+                </MudItem>
         </FormBolumu>
 
         <FormBolumu Baslik="İletişim" Aciklama="Telefon, e-posta, yetkili ve adres" Ikon="@Icons.Material.Filled.ContactPhone" Sira="1">
@@ -135,6 +139,7 @@ else
     private string? _yetkiliAd;
     private string? _yetkiliTelefon;
     private string? _not;
+    private bool _farkliDovizdeIslem;
     private uint _surum;
     private bool _hareketVarMi;
     private bool _yukleniyor = true;
@@ -160,6 +165,7 @@ else
             (_il, _ilce, _adres, _telefon, _eposta) = (c.Il, c.Ilce, c.Adres, c.Telefon, c.Eposta);
             (_paraBirimi, _vadeGun, _riskLimiti, _grupId) = (c.ParaBirimi, c.VadeGun, c.RiskLimiti, c.GrupId);
             (_yetkiliAd, _yetkiliTelefon, _not, _surum, _hareketVarMi) = (c.YetkiliAd, c.YetkiliTelefon, c.Not, c.Surum, c.HareketVarMi);
+            _farkliDovizdeIslem = c.FarkliDovizdeIslem;
         }
 
         _yukleniyor = false;
@@ -175,7 +181,7 @@ else
 
         var istek = new CariKaydetIstegi(
             _kod, _unvan, _tur, _kisiTipi, _vergiNo, _vergiDairesi, _il, _ilce, _adres, _telefon, _eposta,
-            _paraBirimi, _vadeGun, _riskLimiti, _grupId, _yetkiliAd, _yetkiliTelefon, _not, _surum);
+            _paraBirimi, _vadeGun, _riskLimiti, _grupId, _yetkiliAd, _yetkiliTelefon, _not, _farkliDovizdeIslem, _surum);
         var sonuc = Id is { } id
             ? await Api.PutAsync<CariDetayi>($"api/cari/hesaplar/{id}", istek)
             : await Api.PostAsync<CariDetayi>("api/cari/hesaplar", istek);

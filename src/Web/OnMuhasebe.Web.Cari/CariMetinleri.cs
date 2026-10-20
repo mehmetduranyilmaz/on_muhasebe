@@ -23,6 +23,8 @@ public static class CariMetinleri
         CariHareketTuru.AlistanIadeFaturasi => "Alıştan İade Faturası",
         CariHareketTuru.Tahsilat => "Tahsilat",
         CariHareketTuru.Odeme => "Ödeme",
+        CariHareketTuru.Gelir => "Gelir",
+        CariHareketTuru.Gider => "Gider",
         _ => tur.ToString()
     };
 

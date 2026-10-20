@@ -210,7 +210,7 @@ internal static class CariHesapIslemleri
             .Select(c => new CariDetayi(
                 c.Id, c.Kod, c.Unvan, c.Tur, c.KisiTipi, c.VergiNo, c.VergiDairesi, c.Il, c.Ilce, c.Adres, c.Telefon,
                 c.Eposta, c.ParaBirimi, c.VadeGun, c.RiskLimiti, c.GrupId, c.Grup != null ? c.Grup.Ad : null,
-                c.YetkiliAd, c.YetkiliTelefon, c.Not, c.AktifMi,
+                c.YetkiliAd, c.YetkiliTelefon, c.Not, c.AktifMi, c.FarkliDovizdeIslem,
                 db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Borc - h.Alacak),
                 db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.BorcTl - h.AlacakTl),
                 db.CariHareketler.Any(h => h.CariHesapId == c.Id),

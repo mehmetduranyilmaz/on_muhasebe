@@ -28,6 +28,10 @@ internal static class FaturaHatalari
     public static readonly Hata CariLisansiYok = Hata.Yetki("cari_lisansi_yok", "Cariye fatura kesmek için Cari modülü lisansı gerekir.");
     public static readonly Hata StokLisansiYok = Hata.Yetki("stok_lisansi_yok", "Stok kartlı satır için Stok modülü lisansı gerekir; serbest satır kullanabilirsiniz.");
     public static readonly Hata NumaraYiliDegistirilemez = Hata.IsKurali("numara_yili", "Numaralanmış faturanın yılı değiştirilemez; numara fatura yılını içerir.");
+    public static readonly Hata KasaLisansiYok = Hata.Yetki("kasabanka_lisansi_yok", "Peşin tahsilat/ödeme için Kasa/Banka modülü lisansı gerekir.");
+    public static readonly Hata PesinHesapBulunamadi = Hata.Bulunamadi("hesap_bulunamadi", "Peşin tahsilat/ödeme hesabı bulunamadı veya pasif.");
+    public static readonly Hata PesinHesapDovizi = Hata.IsKurali("pesin_doviz", "Peşin tahsilat/ödeme hesabının dövizi faturanın dövizi ile aynı olmalıdır.");
+    public static readonly Hata PesinHesapTuru = Hata.IsKurali("pesin_hesap_turu", "Kredi kartı hesabına tahsilat, POS hesabından ödeme yapılamaz.");
 
     // Aynı seride numaralar tarih sırasını izlemelidir (VUK; e-Arşiv/e-Fatura da reddeder).
     public static Hata TarihSirasi(DateOnly sinir, bool oncekiMi) => Hata.IsKurali("tarih_sirasi", oncekiMi

@@ -27,6 +27,8 @@ internal sealed class CariHesap : FirmaEntity, ISilinebilir
     public string? YetkiliAd { get; private set; }
     public string? YetkiliTelefon { get; private set; }
     public string? Not { get; private set; }
+    // Açıksa bu cariyle farklı dövizdeki kasa/banka hesabından tahsilat/ödeme yapılabilir (çevrim kuruyla).
+    public bool FarkliDovizdeIslem { get; private set; }
     public bool AktifMi { get; private set; } = true;
     public bool SilindiMi { get; private set; }
     public DateTime? SilinmeTarihi { get; private set; }
@@ -79,6 +81,7 @@ internal sealed class CariHesap : FirmaEntity, ISilinebilir
         YetkiliAd = b.YetkiliAd;
         YetkiliTelefon = b.YetkiliTelefon;
         Not = b.Not;
+        FarkliDovizdeIslem = b.FarkliDovizdeIslem;
     }
 }
 
@@ -99,12 +102,13 @@ internal sealed record CariBilgileri(
     Guid? GrupId,
     string? YetkiliAd,
     string? YetkiliTelefon,
-    string? Not)
+    string? Not,
+    bool FarkliDovizdeIslem)
 {
     public static CariBilgileri Istekten(CariKaydetIstegi i) => new(
         i.Unvan.Trim(), i.Tur, i.KisiTipi, Temiz(i.VergiNo), Temiz(i.VergiDairesi), Temiz(i.Il), Temiz(i.Ilce),
         Temiz(i.Adres), Temiz(i.Telefon), Temiz(i.Eposta)?.ToLowerInvariant(), i.ParaBirimi, i.VadeGun, i.RiskLimiti,
-        i.GrupId, Temiz(i.YetkiliAd), Temiz(i.YetkiliTelefon), Temiz(i.Not));
+        i.GrupId, Temiz(i.YetkiliAd), Temiz(i.YetkiliTelefon), Temiz(i.Not), i.FarkliDovizdeIslem);
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

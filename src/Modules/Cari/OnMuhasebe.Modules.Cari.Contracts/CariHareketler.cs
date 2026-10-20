@@ -12,7 +12,10 @@ public enum CariHareketTuru
     SatistanIadeFaturasi,
     AlistanIadeFaturasi,
     Tahsilat,
-    Odeme
+    Odeme,
+    // Kasa/banka modülünden gelir/gider tahakkuku (ör. kira bedeli cariye borç yazılır, ödeme sonra yapılır).
+    Gelir,
+    Gider
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<HareketYonu>))]

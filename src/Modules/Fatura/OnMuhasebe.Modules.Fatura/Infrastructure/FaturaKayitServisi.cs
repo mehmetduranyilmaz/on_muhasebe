@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
+using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -20,6 +21,7 @@ internal sealed class FaturaKayitServisi(
     FaturaNumaraUretici numaraUretici,
     ICariHareketYazici cariYazici,
     IStokHareketYazici stokYazici,
+    IKasaBankaYazici kasaYazici,
     IIslemKapsami islemKapsami,
     TimeProvider zaman)
 {
@@ -205,7 +207,8 @@ internal sealed class FaturaKayitServisi(
         {
             var (cariTuru, yon) = CariEtkisi(f.Tur);
             var cari = await cariYazici.YazAsync(f.Id,
-                new BelgeCariHareketi(cariId, cariTuru, yon, f.Tarih, f.VadeTarihi, f.GenelToplam, f.Kur, f.Numara, aciklama),
+                new BelgeCariHareketi(cariId, cariTuru, yon, f.Tarih, f.VadeTarihi, f.GenelToplam, f.Kur, f.Numara, aciklama,
+                    OtomatikKapama: f.PesinHesapId is null),
                 cancellationToken);
             if (!cari.BasariliMi)
             {
@@ -221,11 +224,27 @@ internal sealed class FaturaKayitServisi(
                 s.StokKartiId!.Value, s.DepoId!.Value, stokTuru, f.Tarih, s.Birim, s.Miktar, StokMaliyeti(f, s), f.Numara, aciklama))
             .ToList();
 
-        return await stokYazici.YazAsync(f.Id, stokHareketleri, cancellationToken);
+        var stok = await stokYazici.YazAsync(f.Id, stokHareketleri, cancellationToken);
+        if (!stok.BasariliMi || f.PesinHesapId is not { } hesapId)
+        {
+            return stok;
+        }
+
+        // Peşin tahsilat/ödeme: cari varsa tahsilat önce bu faturayı kapatır; nihai tüketicide para doğrudan kasaya girer.
+        var pesin = await kasaYazici.BelgeTahsilatiYazAsync(f.Id,
+            new BelgeTahsilati(hesapId, f.CariHesapId, FaturaTurleri.ParaGirisiMi(f.Tur), f.Tarih, f.GenelToplam, f.Kur, f.Numara, aciklama),
+            cancellationToken);
+        return pesin.BasariliMi ? stok : pesin.Hata;
     }
 
     private async Task<Sonuc> HareketleriIptalEtAsync(Guid faturaId, CancellationToken cancellationToken)
     {
+        var kasa = await kasaYazici.BelgeIslemleriniIptalEtAsync(faturaId, cancellationToken);
+        if (!kasa.BasariliMi)
+        {
+            return kasa;
+        }
+
         var cari = await cariYazici.IptalEtAsync(faturaId, cancellationToken);
         return cari.BasariliMi ? await stokYazici.IptalEtAsync(faturaId, cancellationToken) : cari;
     }
