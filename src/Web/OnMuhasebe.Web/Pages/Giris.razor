@@ -1,0 +1,76 @@
+@page "/giris"
+@layout BosLayout
+@attribute [AllowAnonymous]
+@inject OturumYoneticisi Oturum
+@inject NavigationManager Navigasyon
+
+<PageTitle>Giriş - Ön Muhasebe</PageTitle>
+
+<MudCard Elevation="3">
+    <form @onsubmit="GirisYapAsync" @onsubmit:preventDefault="true">
+        <MudCardContent>
+            <MudText Typo="Typo.h5" Class="mb-4">Giriş Yap</MudText>
+            <HataGosterimi Hata="_hata" />
+            <MudTextField T="string" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email"
+                          Variant="Variant.Outlined" Class="mb-3" autocomplete="username" />
+            <MudTextField T="string" @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password"
+                          Variant="Variant.Outlined" autocomplete="current-password" />
+        </MudCardContent>
+        <MudCardActions Class="d-flex flex-column gap-2 pa-4">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       Disabled="_islemde">
+                @if (_islemde)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Giriş
+            </MudButton>
+            <MudButton Href="kayit" Variant="Variant.Text" FullWidth="true">Hesabınız yok mu? 14 gün ücretsiz deneyin</MudButton>
+        </MudCardActions>
+    </form>
+</MudCard>
+
+@code {
+    [SupplyParameterFromQuery(Name = "donus")]
+    public string? Donus { get; set; }
+
+    private string _eposta = "";
+    private string _sifre = "";
+    private bool _islemde;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        if (Oturum.Bilgi is not null)
+        {
+            Navigasyon.NavigateTo(GuvenliDonusAdresi());
+        }
+    }
+
+    private async Task GirisYapAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_eposta) || string.IsNullOrEmpty(_sifre))
+        {
+            _hata = new ApiHatasi("E-posta ve şifre girin.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        _islemde = true;
+        _hata = null;
+        var sonuc = await Oturum.GirisAsync(new GirisIstegi(_eposta, _sifre));
+        _islemde = false;
+
+        if (sonuc.BasariliMi)
+        {
+            Navigasyon.NavigateTo(GuvenliDonusAdresi());
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    // Açık yönlendirme (open redirect) saldırısına karşı yalnızca uygulama içi göreli adreslere dönülür.
+    private string GuvenliDonusAdresi() =>
+        Donus is { Length: > 1 } d && d.StartsWith('/') && !d.StartsWith("//") && !d.StartsWith("/\\") ? d.TrimStart('/') : "";
+}

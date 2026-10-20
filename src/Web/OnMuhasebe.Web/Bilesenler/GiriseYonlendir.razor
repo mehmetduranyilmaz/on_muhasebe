@@ -1,0 +1,9 @@
+@inject NavigationManager Navigasyon
+
+@code {
+    protected override void OnInitialized()
+    {
+        var donus = Navigasyon.ToBaseRelativePath(Navigasyon.Uri);
+        Navigasyon.NavigateTo(string.IsNullOrEmpty(donus) ? "giris" : $"giris?donus={Uri.EscapeDataString("/" + donus)}");
+    }
+}

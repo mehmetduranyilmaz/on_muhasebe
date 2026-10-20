@@ -1,26 +1,29 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Ön Muhasebe</a>
-        <button title="Menü" class="navbar-toggler" @onclick="MenuyuDegistir">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+@implements IDisposable
+@inject OturumYoneticisi Oturum
 
-<div class="@MenuCssSinifi nav-scrollable" @onclick="MenuyuDegistir">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Ana Sayfa
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Ana Sayfa</MudNavLink>
+
+    @foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)))
+    {
+        <MudNavLink Href="@modul.Yol" Icon="@modul.Ikon">@modul.Ad</MudNavLink>
+    }
+
+    <AuthorizeView Roles="@Roller.Yonetici">
+        <MudDivider Class="my-2" />
+        <MudNavLink Href="kullanicilar" Icon="@Icons.Material.Filled.ManageAccounts">Kullanıcılar</MudNavLink>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="@Roller.SistemYoneticisi">
+        <MudDivider Class="my-2" />
+        <MudNavLink Href="sistem/firmalar" Icon="@Icons.Material.Filled.AdminPanelSettings">Firmalar ve Lisanslar</MudNavLink>
+    </AuthorizeView>
+</MudNavMenu>
 
 @code {
-    private bool _menuKapali = true;
+    protected override void OnInitialized() => Oturum.Degisti += YenidenCiz;
 
-    private string? MenuCssSinifi => _menuKapali ? "collapse" : null;
+    public void Dispose() => Oturum.Degisti -= YenidenCiz;
 
-    private void MenuyuDegistir() => _menuKapali = !_menuKapali;
+    private void YenidenCiz() => InvokeAsync(StateHasChanged);
 }

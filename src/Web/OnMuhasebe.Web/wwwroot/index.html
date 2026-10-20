@@ -4,10 +4,12 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1e3a5f" />
     <title>Ön Muhasebe</title>
     <base href="/" />
     <link rel="preload" id="webassembly" />
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="OnMuhasebe.Web.styles.css" rel="stylesheet" />
@@ -19,20 +21,47 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <div class="yukleniyor">
+            <div>Ön Muhasebe yükleniyor…</div>
+            <div class="yukleniyor-cubuk"></div>
+        </div>
     </div>
 
     <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
-        <span class="dismiss">🗙</span>
+        Beklenmeyen bir hata oluştu.
+        <a href="." class="reload">Sayfayı yenile</a>
+        <span class="dismiss">✕</span>
     </div>
+
+    <div id="surum-bildirimi">
+        Uygulamanın yeni sürümü hazır.
+        <button type="button" id="surum-yenile">Şimdi güncelle</button>
+    </div>
+
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
-    <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+        // Yeni sürüm yüklendiğinde kullanıcıya bildir; onaylayınca bekleyen service worker devreye alınır.
+        (async () => {
+            if (!('serviceWorker' in navigator)) return;
+            const kayit = await navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });
+            const bildir = () => document.getElementById('surum-bildirimi').style.display = 'block';
+
+            if (kayit.waiting && navigator.serviceWorker.controller) bildir();
+            kayit.addEventListener('updatefound', () => {
+                const yeni = kayit.installing;
+                yeni?.addEventListener('statechange', () => {
+                    if (yeni.state === 'installed' && navigator.serviceWorker.controller) bildir();
+                });
+            });
+
+            document.getElementById('surum-yenile').addEventListener('click', () => kayit.waiting?.postMessage('SKIP_WAITING'));
+            let yenilendi = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!yenilendi) { yenilendi = true; location.reload(); }
+            });
+        })();
+    </script>
 </body>
 
 </html>

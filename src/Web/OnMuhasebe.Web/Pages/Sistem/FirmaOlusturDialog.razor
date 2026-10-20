@@ -1,0 +1,103 @@
+@inject ApiIstemcisi Api
+@inject TimeProvider Zaman
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Firma</MudText>
+            <MudTextField @bind-Value="_unvan" Label="Ünvan" Required="true" RequiredError="Ünvan gerekli." />
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_vergiNo" Label="Vergi / T.C. kimlik no" MaxLength="11" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_vergiDairesi" Label="Vergi dairesi" />
+                </MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Firma yöneticisi</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_yoneticiAd" Label="Ad" Required="true" RequiredError="Ad gerekli." />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_yoneticiSoyad" Label="Soyad" Required="true" RequiredError="Soyad gerekli." />
+                </MudItem>
+            </MudGrid>
+            <MudTextField @bind-Value="_yoneticiEposta" Label="E-posta" InputType="InputType.Email"
+                          Required="true" RequiredError="E-posta gerekli." />
+            <MudTextField @bind-Value="_yoneticiSifre" Label="Şifre" InputType="InputType.Password"
+                          Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
+                          HelperText="Kişi sistemde zaten kayıtlıysa boş bırakın." />
+
+            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Lisans</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudSelect @bind-Value="_paketKodu" Label="Paket" Required="true" RequiredError="Paket seçin.">
+                        @foreach (var paket in Paketler)
+                        {
+                            <MudSelectItem Value="@paket.Kod">@paket.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker @bind-Date="_bitis" Label="Bitiş tarihi (dahil)" Required="true" RequiredError="Tarih seçin." />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_islemde" OnClick="KaydetAsync">Firma Aç</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public IReadOnlyList<PaketOzeti> Paketler { get; set; } = [];
+
+    private MudForm _form = null!;
+    private string _unvan = "";
+    private string? _vergiNo;
+    private string? _vergiDairesi;
+    private string _yoneticiAd = "";
+    private string _yoneticiSoyad = "";
+    private string _yoneticiEposta = "";
+    private string? _yoneticiSifre;
+    private string? _paketKodu = PaketKodlari.Basic;
+    private DateTime? _bitis;
+    private bool _islemde;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized() => _bitis = Zaman.GetLocalNow().Date.AddYears(1);
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _islemde = true;
+        var istek = new FirmaOlusturIstegi(
+            _unvan, _vergiNo, _vergiDairesi, _yoneticiAd, _yoneticiSoyad, _yoneticiEposta,
+            string.IsNullOrEmpty(_yoneticiSifre) ? null : _yoneticiSifre,
+            _paketKodu!, DateOnly.FromDateTime(_bitis!.Value));
+        var sonuc = await Api.PostAsync<FirmaOlusturCevabi>("api/yonetim/sistem/firmalar", istek);
+        _islemde = false;
+
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

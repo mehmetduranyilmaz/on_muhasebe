@@ -23,6 +23,7 @@ namespace OnMuhasebe.Modules.Yonetim;
 public sealed class YonetimModulu : IModul
 {
     internal const string KimlikLimitPolitikasi = "kimlik";
+    internal const string YenilemeLimitPolitikasi = "yenileme";
 
     public string Ad => "Yonetim";
 
@@ -54,14 +55,16 @@ public sealed class YonetimModulu : IModul
             });
         services.AddAuthorization();
 
-        // Kaba kuvvet denemelerine karşı IP başına dakikalık istek sınırı. Ters vekil arkasında ForwardedHeaders yapılandırılmalı.
-        var dakikalikLimit = configuration.GetValue("Kimlik:DakikalikIstekLimiti", 10);
+        // IP başına dakikalık istek sınırları. Ters vekil arkasında ForwardedHeaders yapılandırılmalı.
+        // Giriş/kayıt kaba kuvvete karşı sıkı; yenileme her sayfa açılışında çağrıldığı için daha geniş
+        // (refresh token 512 bit rastgele olduğundan tahminle kırılamaz).
+        var kimlikLimiti = configuration.GetValue("Kimlik:DakikalikIstekLimiti", 10);
+        var yenilemeLimiti = configuration.GetValue("Kimlik:DakikalikYenilemeLimiti", 60);
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-            options.AddPolicy(KimlikLimitPolitikasi, http => RateLimitPartition.GetFixedWindowLimiter(
-                http.Connection.RemoteIpAddress?.ToString() ?? "bilinmiyor",
-                _ => new FixedWindowRateLimiterOptions { PermitLimit = dakikalikLimit, Window = TimeSpan.FromMinutes(1) }));
+            options.AddPolicy(KimlikLimitPolitikasi, http => IpLimiti(http, kimlikLimiti));
+            options.AddPolicy(YenilemeLimitPolitikasi, http => IpLimiti(http, yenilemeLimiti));
         });
 
         services.AddSingleton<IPasswordHasher<Kullanici>, PasswordHasher<Kullanici>>();
@@ -84,4 +87,9 @@ public sealed class YonetimModulu : IModul
         KullaniciIslemleri.Map(grup);
         SistemIslemleri.Map(grup);
     }
+
+    private static RateLimitPartition<string> IpLimiti(HttpContext http, int dakikalikLimit) =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            http.Connection.RemoteIpAddress?.ToString() ?? "bilinmiyor",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = dakikalikLimit, Window = TimeSpan.FromMinutes(1) });
 }

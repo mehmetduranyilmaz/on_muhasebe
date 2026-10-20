@@ -1,5 +1,43 @@
 @page "/"
+@inject OturumYoneticisi Oturum
 
-<PageTitle>Ön Muhasebe</PageTitle>
+<PageTitle>Ana Sayfa - Ön Muhasebe</PageTitle>
 
-<h1>Ön Muhasebe</h1>
+<MudText Typo="Typo.h4" Class="mb-1">Hoş geldiniz, @Oturum.Bilgi?.Ad</MudText>
+<MudText Typo="Typo.subtitle1" Class="mb-6">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+
+@if (_acikModuller.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">
+        @(Oturum.Bilgi?.SistemYoneticisiMi == true
+            ? "Sistem yöneticisi olarak firmaları ve lisansları soldaki menüden yönetebilirsiniz."
+            : "Firmanızın lisansında açık modül bulunmuyor.")
+    </MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var modul in _acikModuller)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="1" Style="height: 100%;">
+                    <MudCardContent>
+                        <MudIcon Icon="@modul.Ikon" Color="Color.Primary" Size="Size.Large" Class="mb-2" />
+                        <MudText Typo="Typo.h6">@modul.Ad</MudText>
+                        <MudText Typo="Typo.body2">@modul.Aciklama</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="@modul.Yol" Color="Color.Primary">Aç</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<ModulMenuOgesi> _acikModuller = [];
+
+    protected override void OnParametersSet() =>
+        _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)).ToList();
+}

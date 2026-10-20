@@ -18,7 +18,7 @@ internal static partial class Yenile
     public static void Map(RouteGroupBuilder grup) =>
         grup.MapPost("/yenile", IsleAsync)
             .AllowAnonymous()
-            .RequireRateLimiting(YonetimModulu.KimlikLimitPolitikasi);
+            .RequireRateLimiting(YonetimModulu.YenilemeLimitPolitikasi);
 
     private static async Task<IResult> IsleAsync(
         HttpContext http,

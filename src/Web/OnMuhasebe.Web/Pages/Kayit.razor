@@ -1,0 +1,89 @@
+@page "/kayit"
+@layout BosLayout
+@attribute [AllowAnonymous]
+@inject OturumYoneticisi Oturum
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+
+<PageTitle>Kayıt Ol - Ön Muhasebe</PageTitle>
+
+<MudCard Elevation="3">
+    <MudCardContent>
+        <MudText Typo="Typo.h5">Ücretsiz Deneyin</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">14 gün boyunca tüm modülleri ücretsiz kullanın.</MudText>
+        <HataGosterimi Hata="_hata" />
+
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_firmaUnvani" Label="Firma ünvanı" Variant="Variant.Outlined" Class="mb-3"
+                          Required="true" RequiredError="Firma ünvanı gerekli." MaxLength="250" />
+            <MudTextField @bind-Value="_vergiNo" Label="Vergi / T.C. kimlik no (isteğe bağlı)" Variant="Variant.Outlined" Class="mb-3"
+                          Validation="@(new Func<string?, string?>(VergiNoKontrol))" MaxLength="11" />
+            <MudGrid Spacing="2" Class="mb-1">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_ad" Label="Ad" Variant="Variant.Outlined" Required="true" RequiredError="Ad gerekli." />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_soyad" Label="Soyad" Variant="Variant.Outlined" Required="true" RequiredError="Soyad gerekli." />
+                </MudItem>
+            </MudGrid>
+            <MudTextField @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3"
+                          Required="true" RequiredError="E-posta gerekli." autocomplete="username" />
+            <MudTextField @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-3"
+                          Required="true" RequiredError="Şifre gerekli." Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
+                          HelperText="En az 8 karakter, harf ve rakam içermeli." autocomplete="new-password" />
+            <MudTextField @bind-Value="_sifreTekrar" Label="Şifre (tekrar)" InputType="InputType.Password" Variant="Variant.Outlined"
+                          Required="true" RequiredError="Şifreyi tekrar girin." Validation="@(new Func<string?, string?>(SifreTekrarKontrol))"
+                          autocomplete="new-password" />
+        </MudForm>
+    </MudCardContent>
+    <MudCardActions Class="d-flex flex-column gap-2 pa-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="_islemde" OnClick="KayitOlAsync">
+            Hesap Oluştur
+        </MudButton>
+        <MudButton Href="giris" Variant="Variant.Text" FullWidth="true">Zaten hesabınız var mı? Giriş yapın</MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    private MudForm _form = null!;
+    private string _firmaUnvani = "";
+    private string? _vergiNo;
+    private string _ad = "";
+    private string _soyad = "";
+    private string _eposta = "";
+    private string _sifre = "";
+    private string _sifreTekrar = "";
+    private bool _islemde;
+    private ApiHatasi? _hata;
+
+    private async Task KayitOlAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _islemde = true;
+        _hata = null;
+        var sonuc = await Oturum.KayitAsync(new KayitIstegi(_firmaUnvani, _vergiNo, _ad, _soyad, _eposta, _sifre));
+        _islemde = false;
+
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Hoş geldiniz! 14 günlük deneme süreniz başladı.", Severity.Success);
+            Navigasyon.NavigateTo("");
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    private static string? VergiNoKontrol(string? deger) =>
+        string.IsNullOrWhiteSpace(deger) || (deger.Length is 10 or 11 && deger.All(char.IsAsciiDigit))
+            ? null
+            : "Vergi numarası 10, T.C. kimlik numarası 11 haneli olmalıdır.";
+
+    private string? SifreTekrarKontrol(string? deger) => deger == _sifre ? null : "Şifreler eşleşmiyor.";
+}

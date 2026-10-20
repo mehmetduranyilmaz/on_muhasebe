@@ -9,6 +9,7 @@ using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
+using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -24,8 +25,62 @@ internal static class SistemIslemleri
         var sistem = grup.MapGroup("/sistem")
             .RequireAuthorization(p => p.RequireRole(Roller.SistemYoneticisi));
 
+        sistem.MapGet("/firmalar", FirmalariListeleAsync);
         sistem.MapPost("/firmalar", FirmaOlusturAsync).Dogrula<FirmaOlusturIstegi>();
         sistem.MapPut("/firmalar/{firmaId:guid}/lisans", LisansAtaAsync).Dogrula<LisansAtaIstegi>();
+        sistem.MapGet("/paketler", PaketleriListeleAsync);
+    }
+
+    private static async Task<IResult> FirmalariListeleAsync(
+        YonetimDbContext db, string? arama, int? sayfa, int? boyut, CancellationToken cancellationToken)
+    {
+        var sorgu = db.Firmalar.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(arama))
+        {
+            var desen = $"%{arama.Trim()}%";
+            sorgu = sorgu.Where(f => EF.Functions.ILike(f.Unvan, desen) || f.VergiNo == arama.Trim());
+        }
+
+        var firmalar = await sorgu
+            .OrderBy(f => f.Unvan)
+            .Select(f => new { f.Id, f.Unvan, f.VergiNo, f.AktifMi })
+            .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
+
+        // Lisans ve kullanıcı sayısı yalnızca bu sayfadaki firmalar için ayrı sorgularla toplanır.
+        var idler = firmalar.Kayitlar.Select(f => f.Id).ToList();
+        var lisanslar = await db.FirmaLisanslari
+            .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
+            .AsNoTracking()
+            .Where(l => idler.Contains(l.FirmaId))
+            .Select(l => new { l.FirmaId, l.Paket.Kod, l.BitisTarihi, l.EkModuller })
+            .ToDictionaryAsync(l => l.FirmaId, cancellationToken);
+        var kullaniciSayilari = await db.FirmaKullanicilari
+            .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
+            .Where(u => idler.Contains(u.FirmaId) && u.AktifMi)
+            .GroupBy(u => u.FirmaId)
+            .Select(g => new { FirmaId = g.Key, Sayi = g.Count() })
+            .ToDictionaryAsync(x => x.FirmaId, x => x.Sayi, cancellationToken);
+
+        var kayitlar = firmalar.Kayitlar.Select(f =>
+        {
+            var lisans = lisanslar.GetValueOrDefault(f.Id);
+            return new SistemFirmaOzeti(
+                f.Id, f.Unvan, f.VergiNo, f.AktifMi, lisans?.Kod, lisans?.BitisTarihi,
+                lisans?.EkModuller ?? [], kullaniciSayilari.GetValueOrDefault(f.Id));
+        }).ToList();
+
+        return TypedResults.Ok(new SayfaliSonuc<SistemFirmaOzeti>(kayitlar, firmalar.Sayfa, firmalar.Boyut, firmalar.ToplamKayit));
+    }
+
+    private static async Task<IResult> PaketleriListeleAsync(YonetimDbContext db, CancellationToken cancellationToken)
+    {
+        var paketler = await db.Paketler
+            .AsNoTracking()
+            .OrderBy(p => p.Ad)
+            .Select(p => new PaketOzeti(p.Kod, p.Ad, p.TumModullerMi, p.Moduller))
+            .ToListAsync(cancellationToken);
+
+        return TypedResults.Ok(paketler);
     }
 
     internal sealed class FirmaOlusturDogrulayici : AbstractValidator<FirmaOlusturIstegi>

@@ -5,6 +5,14 @@ using OnMuhasebe.Shared.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Web ayrı bir adresten çağırır; refresh token çerezi için credentials'a izin verilir.
+var izinliKaynaklar = builder.Configuration.GetSection("Cors:IzinliKaynaklar").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
+    .WithOrigins(izinliKaynaklar)
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials()));
+
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddSharedInfrastructure();
@@ -19,6 +27,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// CORS en dışta: hata yanıtlarında da CORS başlıkları bulunsun, tarayıcı hata mesajını okuyabilsin.
+app.UseCors();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseHttpsRedirection();

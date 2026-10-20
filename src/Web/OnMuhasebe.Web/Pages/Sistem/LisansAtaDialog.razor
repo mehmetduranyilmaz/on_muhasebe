@@ -1,0 +1,77 @@
+@inject ApiIstemcisi Api
+@inject TimeProvider Zaman
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudSelect @bind-Value="_paketKodu" Label="Paket" Required="true" RequiredError="Paket seçin." Class="mb-3">
+                @foreach (var paket in Paketler)
+                {
+                    <MudSelectItem Value="@paket.Kod">@paket.Ad</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_ekModuller" Label="Ek modüller" Class="mb-3"
+                       HelperText="Paketin dışında açılacak modüller">
+                @foreach (var modul in ModulMenusu.Tumu)
+                {
+                    <MudSelectItem Value="@modul.Kod">@modul.Ad</MudSelectItem>
+                }
+            </MudSelect>
+            <MudDatePicker @bind-Date="_bitis" Label="Bitiş tarihi (dahil)" Required="true" RequiredError="Tarih seçin." />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_islemde" OnClick="KaydetAsync">Kaydet</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public SistemFirmaOzeti Firma { get; set; } = null!;
+
+    [Parameter]
+    public IReadOnlyList<PaketOzeti> Paketler { get; set; } = [];
+
+    private MudForm _form = null!;
+    private string? _paketKodu;
+    private IReadOnlyCollection<string> _ekModuller = [];
+    private DateTime? _bitis;
+    private bool _islemde;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        _paketKodu = Firma.PaketKodu ?? PaketKodlari.Basic;
+        _ekModuller = Firma.EkModuller.ToList();
+        // API bitişi gün sonu (ertesi gün 00:00) olarak saklar; ekranda dahil olan son gün gösterilir.
+        _bitis = Firma.LisansBitisTarihi?.AddDays(-1).Date ?? Zaman.GetLocalNow().Date.AddYears(1);
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _islemde = true;
+        var istek = new LisansAtaIstegi(_paketKodu!, DateOnly.FromDateTime(_bitis!.Value), _ekModuller.ToList());
+        var sonuc = await Api.PutAsync($"api/yonetim/sistem/firmalar/{Firma.Id}/lisans", istek);
+        _islemde = false;
+
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

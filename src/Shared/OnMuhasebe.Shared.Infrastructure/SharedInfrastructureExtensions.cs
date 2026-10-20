@@ -19,7 +19,10 @@ public static class SharedInfrastructureExtensions
         services.AddScoped<DenetimInterceptor>();
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
-            context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
+        {
+            TurkceProblemBasliklari.Uygula(context);
+            context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+        });
         services.AddExceptionHandler<GlobalHataYakalayici>();
 
         return services;

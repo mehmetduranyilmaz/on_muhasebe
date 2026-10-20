@@ -1,0 +1,32 @@
+@implements IDisposable
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+@if (Oturum.Bilgi?.Lisans is { } lisans)
+{
+    if (lisans.SaltOkunur)
+    {
+        <MudAlert Severity="Severity.Error" Square="true" Dense="true">
+            Lisansınızın süresi doldu. Kayıtlarınızı görüntüleyebilirsiniz ancak yeni kayıt giremezsiniz.
+        </MudAlert>
+    }
+    else if (KalanGun(lisans) <= UyariGunu)
+    {
+        <MudAlert Severity="Severity.Warning" Square="true" Dense="true">
+            Lisansınızın bitmesine @KalanGun(lisans) gün kaldı (@lisans.BitisTarihi.ToLocalTime().ToString("d")).
+        </MudAlert>
+    }
+}
+
+@code {
+    private const int UyariGunu = 7;
+
+    protected override void OnInitialized() => Oturum.Degisti += YenidenCiz;
+
+    public void Dispose() => Oturum.Degisti -= YenidenCiz;
+
+    private void YenidenCiz() => InvokeAsync(StateHasChanged);
+
+    private int KalanGun(LisansOzeti lisans) =>
+        Math.Max(0, (int)Math.Ceiling((lisans.BitisTarihi - Zaman.GetUtcNow().UtcDateTime).TotalDays));
+}

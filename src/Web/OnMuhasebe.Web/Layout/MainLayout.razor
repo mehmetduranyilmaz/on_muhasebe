@@ -1,16 +1,48 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
+@implements IDisposable
+@inject OturumYoneticisi Oturum
+@inject NavigationManager Navigasyon
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="() => _menuAcik = !_menuAcik" aria-label="Menü" />
+        <MudText Typo="Typo.h6" Class="ml-2 d-none d-sm-flex">Ön Muhasebe</MudText>
+        <MudSpacer />
+        <FirmaSecici />
+        <MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" aria-label="Kullanıcı menüsü"
+                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudText Typo="Typo.body2" Class="px-4 pt-2">@Oturum.Bilgi?.Ad @Oturum.Bilgi?.Soyad</MudText>
+            <MudText Typo="Typo.caption" Class="px-4 pb-2">@Oturum.Bilgi?.Eposta</MudText>
+            <MudDivider />
+            <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="CikisAsync">Çıkış</MudMenuItem>
+        </MudMenu>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_menuAcik" ClipMode="DrawerClipMode.Always" Elevation="1" Variant="DrawerVariant.Responsive">
         <NavMenu />
-    </div>
+    </MudDrawer>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    <MudMainContent>
+        <LisansBandi />
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _menuAcik = true;
+
+    protected override void OnInitialized() => Oturum.Degisti += YenidenCiz;
+
+    public void Dispose() => Oturum.Degisti -= YenidenCiz;
+
+    private void YenidenCiz() => InvokeAsync(StateHasChanged);
+
+    private async Task CikisAsync()
+    {
+        await Oturum.CikisAsync();
+        Navigasyon.NavigateTo("giris");
+    }
+}

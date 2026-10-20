@@ -1,6 +1,37 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+﻿<MudThemeProvider Theme="_tema" />
+<MudPopoverProvider />
+<MudDialogProvider CloseOnEscapeKey="true" BackdropClick="false" />
+<MudSnackbarProvider />
+
+<Router AppAssembly="typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="ma-4">Bu sayfaya erişim yetkiniz yok.</MudAlert>
+                }
+                else
+                {
+                    <GiriseYonlendir />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private readonly MudTheme _tema = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#1e3a5f",
+            Secondary = "#2e7d32",
+            AppbarBackground = "#1e3a5f"
+        }
+    };
+}

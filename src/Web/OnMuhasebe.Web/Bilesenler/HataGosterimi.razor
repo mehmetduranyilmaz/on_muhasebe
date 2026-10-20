@@ -1,0 +1,19 @@
+@if (Hata is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">
+        <div>@Hata.Baslik</div>
+        @if (Hata.Alanlar.Count > 0)
+        {
+            <ul class="mt-1 ml-4" style="list-style: disc;">
+                @foreach (var mesaj in Hata.AlanMesajlari)
+                {
+                    <li>@mesaj</li>
+                }
+            </ul>
+        }
+    </MudAlert>
+}
+
+@code {
+    [Parameter] public ApiHatasi? Hata { get; set; }
+}

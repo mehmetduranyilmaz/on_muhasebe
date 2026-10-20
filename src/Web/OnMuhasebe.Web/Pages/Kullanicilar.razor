@@ -1,0 +1,99 @@
+@page "/kullanicilar"
+@attribute [Authorize(Roles = Roller.Yonetici)]
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<PageTitle>Kullanıcılar - Ön Muhasebe</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4">Kullanıcılar</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="EkleAsync">
+        Kullanıcı Ekle
+    </MudButton>
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+<MudTable Items="_kullanicilar" Loading="_yukleniyor" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+    <HeaderContent>
+        <MudTh>Ad Soyad</MudTh>
+        <MudTh>E-posta</MudTh>
+        <MudTh>Rol</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Ad Soyad">@context.Ad @context.Soyad</MudTd>
+        <MudTd DataLabel="E-posta">@context.Eposta</MudTd>
+        <MudTd DataLabel="Rol">@RolAdi(context.Rol)</MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Color="@(context.AktifMi ? Color.Success : Color.Default)">
+                @(context.AktifMi ? "Aktif" : "Pasif")
+            </MudChip>
+        </MudTd>
+        <MudTd Style="text-align: right;">
+            @if (context.AktifMi && context.KullaniciId != Oturum.Bilgi?.Id)
+            {
+                <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => PasiflestirAsync(context)">Pasifleştir</MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText>Kayıtlı kullanıcı yok.</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private List<FirmaKullanicisiCevabi> _kullanicilar = [];
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<List<FirmaKullanicisiCevabi>>("api/yonetim/kullanicilar");
+        _hata = sonuc.Hata;
+        _kullanicilar = sonuc.BasariliMi ? sonuc.Deger : [];
+        _yukleniyor = false;
+    }
+
+    private async Task EkleAsync()
+    {
+        var dialog = await DialogService.ShowAsync<KullaniciEkleDialog>("Kullanıcı Ekle");
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Kullanıcı eklendi.", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private async Task PasiflestirAsync(FirmaKullanicisiCevabi kullanici)
+    {
+        var onay = await DialogService.ShowMessageBoxAsync(
+            "Kullanıcıyı pasifleştir",
+            $"{kullanici.Ad} {kullanici.Soyad} bu firmaya artık erişemeyecek. Devam edilsin mi?",
+            yesText: "Pasifleştir", cancelText: "Vazgeç");
+        if (onay != true)
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync($"api/yonetim/kullanicilar/{kullanici.KullaniciId}/pasiflestir");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Kullanıcı pasifleştirildi.", Severity.Success);
+            await YukleAsync();
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private static string RolAdi(string rol) => rol == Roller.Yonetici ? "Yönetici" : "Kullanıcı";
+}

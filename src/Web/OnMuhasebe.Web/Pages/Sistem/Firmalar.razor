@@ -1,0 +1,129 @@
+@page "/sistem/firmalar"
+@attribute [Authorize(Roles = Roller.SistemYoneticisi)]
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject TimeProvider Zaman
+
+<PageTitle>Firmalar ve Lisanslar - Ön Muhasebe</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4">Firmalar ve Lisanslar</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddBusiness" OnClick="FirmaAcAsync">
+        Firma Aç
+    </MudButton>
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+<MudTextField T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan veya vergi no ile ara"
+              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" DebounceInterval="400"
+              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" Clearable="true" />
+
+<MudTable Items="_sonuc?.Kayitlar" Loading="_yukleniyor" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
+    <HeaderContent>
+        <MudTh>Ünvan</MudTh>
+        <MudTh>Vergi No</MudTh>
+        <MudTh>Paket</MudTh>
+        <MudTh>Ek Modüller</MudTh>
+        <MudTh>Lisans Bitişi</MudTh>
+        <MudTh>Kullanıcı</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Ünvan">@context.Unvan</MudTd>
+        <MudTd DataLabel="Vergi No">@context.VergiNo</MudTd>
+        <MudTd DataLabel="Paket">@(PaketAdi(context.PaketKodu) ?? "—")</MudTd>
+        <MudTd DataLabel="Ek Modüller">@string.Join(", ", context.EkModuller.Select(ModulMenusu.Ad))</MudTd>
+        <MudTd DataLabel="Lisans Bitişi">
+            @if (context.LisansBitisTarihi is { } bitis)
+            {
+                <MudText Typo="Typo.body2" Color="@(bitis <= Zaman.GetUtcNow().UtcDateTime ? Color.Error : Color.Default)">
+                    @bitis.AddDays(-1).ToString("d")
+                </MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Kullanıcı">@context.KullaniciSayisi</MudTd>
+        <MudTd Style="text-align: right;">
+            <MudButton Size="Size.Small" Color="Color.Primary" OnClick="() => LisansAtaAsync(context)">Lisans</MudButton>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText>Firma bulunamadı.</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@if (_sonuc is { ToplamSayfa: > 1 })
+{
+    <div class="d-flex justify-center mt-4">
+        <MudPagination Count="_sonuc.ToplamSayfa" Selected="_sayfa" SelectedChanged="SayfaDegistirAsync" />
+    </div>
+}
+
+@code {
+    private SayfaliSonuc<SistemFirmaOzeti>? _sonuc;
+    private List<PaketOzeti> _paketler = [];
+    private string? _arama;
+    private int _sayfa = 1;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var paketler = await Api.GetAsync<List<PaketOzeti>>("api/yonetim/sistem/paketler");
+        _paketler = paketler.BasariliMi ? paketler.Deger : [];
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/yonetim/sistem/firmalar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}";
+        var sonuc = await Api.GetAsync<SayfaliSonuc<SistemFirmaOzeti>>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistirAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task FirmaAcAsync()
+    {
+        var parametreler = new DialogParameters<FirmaOlusturDialog> { { d => d.Paketler, _paketler } };
+        var dialog = await DialogService.ShowAsync<FirmaOlusturDialog>("Firma Aç", parametreler);
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Firma açıldı.", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private async Task LisansAtaAsync(SistemFirmaOzeti firma)
+    {
+        var parametreler = new DialogParameters<LisansAtaDialog>
+        {
+            { d => d.Firma, firma },
+            { d => d.Paketler, _paketler }
+        };
+        var dialog = await DialogService.ShowAsync<LisansAtaDialog>($"Lisans: {firma.Unvan}", parametreler);
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Lisans güncellendi.", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private string? PaketAdi(string? kod) => kod is null ? null : _paketler.Find(p => p.Kod == kod)?.Ad ?? kod;
+}

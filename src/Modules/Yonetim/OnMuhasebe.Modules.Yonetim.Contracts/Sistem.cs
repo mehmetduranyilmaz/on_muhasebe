@@ -20,3 +20,15 @@ public sealed record FirmaOlusturIstegi(
 public sealed record FirmaOlusturCevabi(Guid FirmaId, Guid YoneticiId);
 
 public sealed record LisansAtaIstegi(string PaketKodu, DateOnly BitisTarihi, IReadOnlyList<string>? EkModuller);
+
+public sealed record SistemFirmaOzeti(
+    Guid Id,
+    string Unvan,
+    string? VergiNo,
+    bool AktifMi,
+    string? PaketKodu,
+    DateTime? LisansBitisTarihi,
+    IReadOnlyList<string> EkModuller,
+    int KullaniciSayisi);
+
+public sealed record PaketOzeti(string Kod, string Ad, bool TumModullerMi, IReadOnlyList<string> Moduller);
