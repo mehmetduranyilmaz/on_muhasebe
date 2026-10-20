@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/Api/">
+    <Project Path="src/Api/OnMuhasebe.Api/OnMuhasebe.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/OnMuhasebe.Shared.Contracts/OnMuhasebe.Shared.Contracts.csproj" />
+    <Project Path="src/Shared/OnMuhasebe.Shared.Domain/OnMuhasebe.Shared.Domain.csproj" />
+    <Project Path="src/Shared/OnMuhasebe.Shared.Infrastructure/OnMuhasebe.Shared.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Web/">
+    <Project Path="src/Web/OnMuhasebe.Web/OnMuhasebe.Web.csproj" />
+  </Folder>
+</Solution>

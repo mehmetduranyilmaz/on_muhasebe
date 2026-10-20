@@ -1,0 +1,43 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,props,csproj,slnx,webmanifest}]
+indent_size = 2
+
+[*.cs]
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_sort_system_directives_first = true
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+csharp_prefer_braces = true:warning
+
+# İsimlendirme: private alanlar _camelCase, interface'ler I ile başlar
+dotnet_naming_rule.private_alanlar.severity = warning
+dotnet_naming_rule.private_alanlar.symbols = private_alanlar
+dotnet_naming_rule.private_alanlar.style = alt_cizgili_camel
+dotnet_naming_symbols.private_alanlar.applicable_kinds = field
+dotnet_naming_symbols.private_alanlar.applicable_accessibilities = private
+dotnet_naming_style.alt_cizgili_camel.capitalization = camel_case
+dotnet_naming_style.alt_cizgili_camel.required_prefix = _
+
+dotnet_naming_rule.interfaceler.severity = warning
+dotnet_naming_rule.interfaceler.symbols = interfaceler
+dotnet_naming_rule.interfaceler.style = i_onekli
+dotnet_naming_symbols.interfaceler.applicable_kinds = interface
+dotnet_naming_style.i_onekli.capitalization = pascal_case
+dotnet_naming_style.i_onekli.required_prefix = I
+
+# Sabitler PascalCase (private alan kuralından daha öncelikli)
+dotnet_naming_rule.sabitler.severity = warning
+dotnet_naming_rule.sabitler.symbols = sabitler
+dotnet_naming_rule.sabitler.style = pascal
+dotnet_naming_symbols.sabitler.applicable_kinds = field
+dotnet_naming_symbols.sabitler.required_modifiers = const
+dotnet_naming_style.pascal.capitalization = pascal_case

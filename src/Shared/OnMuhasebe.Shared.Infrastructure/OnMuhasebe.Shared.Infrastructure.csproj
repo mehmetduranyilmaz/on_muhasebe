@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\OnMuhasebe.Shared.Domain\OnMuhasebe.Shared.Domain.csproj" />
+  </ItemGroup>
+</Project>

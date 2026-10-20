@@ -1,0 +1,26 @@
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Ön Muhasebe</a>
+        <button title="Menü" class="navbar-toggler" @onclick="MenuyuDegistir">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@MenuCssSinifi nav-scrollable" @onclick="MenuyuDegistir">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Ana Sayfa
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool _menuKapali = true;
+
+    private string? MenuCssSinifi => _menuKapali ? "collapse" : null;
+
+    private void MenuyuDegistir() => _menuKapali = !_menuKapali;
+}
