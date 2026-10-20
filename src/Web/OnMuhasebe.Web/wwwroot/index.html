@@ -33,11 +33,6 @@
         <span class="dismiss">✕</span>
     </div>
 
-    <div id="surum-bildirimi">
-        Uygulamanın yeni sürümü hazır.
-        <button type="button" id="surum-yenile">Şimdi güncelle</button>
-    </div>
-
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script>
@@ -49,26 +44,8 @@
         window.omHareketAzaltildiMi = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     </script>
     <script>
-        // Yeni sürüm yüklendiğinde kullanıcıya bildir; onaylayınca bekleyen service worker devreye alınır.
-        (async () => {
-            if (!('serviceWorker' in navigator)) return;
-            const kayit = await navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });
-            const bildir = () => document.getElementById('surum-bildirimi').style.display = 'block';
-
-            if (kayit.waiting && navigator.serviceWorker.controller) bildir();
-            kayit.addEventListener('updatefound', () => {
-                const yeni = kayit.installing;
-                yeni?.addEventListener('statechange', () => {
-                    if (yeni.state === 'installed' && navigator.serviceWorker.controller) bildir();
-                });
-            });
-
-            document.getElementById('surum-yenile').addEventListener('click', () => kayit.waiting?.postMessage('SKIP_WAITING'));
-            let yenilendi = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!yenilendi) { yenilendi = true; location.reload(); }
-            });
-        })();
+        // PWA: yeni sürüm arka planda iner, uygulama bir sonraki açılışta sessizce güncellenir.
+        if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" });
     </script>
 </body>
 

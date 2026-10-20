@@ -839,7 +839,7 @@ html, body {
     transition: width .2s;
 }
 
-#blazor-error-ui, #surum-bildirimi {
+#blazor-error-ui {
     display: none;
     position: fixed;
     bottom: 16px;
@@ -863,21 +863,6 @@ html, body {
     right: 1rem;
 }
 
-#surum-bildirimi {
-    background: var(--om-lacivert);
-    color: #fff;
-}
-
-#surum-bildirimi button {
-    margin-left: 1rem;
-    padding: .3rem .8rem;
-    border: 1px solid #fff;
-    border-radius: 8px;
-    background: transparent;
-    color: #fff;
-    cursor: pointer;
-}
-
 /* ---------- Erişilebilirlik: hareketi azalt ---------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -892,7 +877,7 @@ html, body {
 /* ---------- Yazdırma ---------- */
 
 @media print {
-    .mud-appbar, .mud-drawer, .mud-alert, .yazdirma-gizle, #surum-bildirimi {
+    .mud-appbar, .mud-drawer, .mud-alert, .yazdirma-gizle {
         display: none !important;
     }
 
@@ -1001,4 +986,10 @@ html, body {
 
 .avatar-dugmesi:focus-visible {
     outline: 2px solid var(--om-turkuaz);
+}
+
+/* Sayfa açılınca odak ekran okuyucular için başlığa taşınır (FocusOnNavigate); bu otomatik odakta çerçeve gösterilmez. */
+[tabindex="-1"]:focus,
+h1:focus {
+    outline: none;
 }
