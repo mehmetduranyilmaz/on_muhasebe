@@ -20,6 +20,7 @@
             }
         </AltIcerik>
         <Islemler>
+            <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id" />
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"kasabanka/{h.Id}/ekstre")">Ekstre</MudButton>
             @if (h.Tur != HesapTuru.Kasa && h.AktifMi && !Oturum.SaltOkunurMu)
             {

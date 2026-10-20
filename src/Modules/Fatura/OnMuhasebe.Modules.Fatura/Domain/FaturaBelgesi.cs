@@ -8,7 +8,7 @@ namespace OnMuhasebe.Modules.Fatura.Domain;
 
 // Sınıf adı "Fatura" değil: modül namespace'i (OnMuhasebe.Modules.Fatura) ile çakışmasın.
 // Tutarlar faturanın para biriminde (= carinin para birimi), TL karşılıkları kurla hesaplanır.
-internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir
+internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi
 {
     public const int KurOndalik = 6;
     public const string NihaiTuketiciUnvani = "Nihai Tüketici";

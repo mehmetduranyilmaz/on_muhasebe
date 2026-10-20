@@ -9,6 +9,8 @@ internal sealed class HttpMevcutKullanici(IHttpContextAccessor httpContextAccess
 
     public Guid? FirmaId => ClaimGuid(ClaimTipleri.FirmaId);
 
+    public string? KullaniciAdi => httpContextAccessor.HttpContext?.User.FindFirst(ClaimTipleri.Ad)?.Value;
+
     public bool SistemYoneticisiMi =>
         httpContextAccessor.HttpContext?.User.HasClaim(ClaimTipleri.Rol, Roller.SistemYoneticisi) ?? false;
 

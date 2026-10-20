@@ -28,6 +28,7 @@
             }
         </AltIcerik>
         <Islemler>
+            <DegisiklikGecmisiDugmesi Modul="cari" KayitId="Id" />
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"cari/{cari.Id}/ekstre")">Ekstre</MudButton>
             @if (!Oturum.SaltOkunurMu && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.Fatura))
             {

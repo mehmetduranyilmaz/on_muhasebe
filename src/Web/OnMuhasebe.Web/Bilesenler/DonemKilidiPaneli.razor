@@ -1,0 +1,83 @@
+@* Ayarlar > Dönem kilidi: kilit tarihi ve öncesindeki hareket, fatura ve evraklar eklenemez, değiştirilemez, silinemez. *@
+@using OnMuhasebe.Shared.Contracts.Ayarlar
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<FormBolumu Baslik="Dönem kilidi" Aciklama="Beyannamesi verilen ya da kapatılan dönemin kayıtları sonradan değiştirilemesin"
+            Ikon="@Icons.Material.Filled.Lock" Sira="Sira">
+    @if (_ayar is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="90px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <MudDatePicker Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Date="_tarih" Label="Kilit tarihi (dahil)" Clearable="true"
+                           MaxDate="DateTime.Today" Disabled="Oturum.SaltOkunurMu" HelperText="Boş: kilit yok" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="5">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="300"
+                          Placeholder="ör. Eylül KDV beyannamesi verildi" Disabled="Oturum.SaltOkunurMu" />
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(Oturum.SaltOkunurMu || !DegistiMi)">
+                Dönem kilidini kaydet
+            </IslemDugmesi>
+        </MudItem>
+        @if (_ayar.KilitTarihi is { } kilit)
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" Icon="@Icons.Material.Filled.LockClock">
+                    @kilit.ToString("dd.MM.yyyy") ve öncesine ait hareketler kilitli. Düzeltme için kilidi geri alın ya da güncel tarihli düzeltme kaydı girin.
+                </MudAlert>
+            </MudItem>
+        }
+        @if (_hata is not null)
+        {
+            <MudItem xs="12"><HataGosterimi Hata="_hata" /></MudItem>
+        }
+    }
+</FormBolumu>
+
+@code {
+    private const string Adres = "api/yonetim/donem-kilidi";
+
+    [Parameter] public int Sira { get; set; }
+
+    private DonemKilidiAyari? _ayar;
+    private DateTime? _tarih;
+    private string? _aciklama;
+    private ApiHatasi? _hata;
+
+    private DonemKilidiAyari Yeni => new(_tarih is { } t ? DateOnly.FromDateTime(t) : null, string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim());
+
+    private bool DegistiMi => Yeni != _ayar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<DonemKilidiAyari>(Adres);
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(DonemKilidiAyari ayar)
+    {
+        _ayar = ayar;
+        _tarih = ayar.KilitTarihi?.ToDateTime(TimeOnly.MinValue);
+        _aciklama = ayar.Aciklama;
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<DonemKilidiAyari>(Adres, Yeni);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+            Snackbar.Add(sonuc.Deger.KilitTarihi is null ? "Dönem kilidi kaldırıldı." : "Dönem kilidi kaydedildi.", Severity.Success);
+        }
+    }
+}

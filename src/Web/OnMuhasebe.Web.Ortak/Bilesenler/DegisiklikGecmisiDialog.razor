@@ -1,0 +1,124 @@
+@* Kaydın ve alt satırlarının (fatura satırı, birim, evrak hareketi) güncelleme/silme izleri, yeniden eskiye. *@
+@using System.Text
+@using OnMuhasebe.Shared.Contracts.Ayarlar
+@inject ApiIstemcisi Api
+
+<MudDialog Class="degisiklik-dialog">
+    <DialogContent>
+        @if (_hata is not null)
+        {
+            <HataGosterimi Hata="_hata" />
+        }
+        else if (_satirlar is null)
+        {
+            <MudSkeleton Height="180px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" Class="rounded-lg" />
+        }
+        else if (_satirlar.Count == 0)
+        {
+            <BosDurum Ikon="@Icons.Material.Filled.History" Baslik="Değişiklik yok"
+                      Aciklama="Kayıt oluşturulduğundan beri güncellenmedi. Oluşturan ve tarih kaydın üzerinde görünür." />
+        }
+        else
+        {
+            <ol class="degisiklik-zaman-cizelgesi">
+                @foreach (var (s, i) in _satirlar.Select((s, i) => (s, i)))
+                {
+                    <li class="degisiklik @Sinif(s.Islem)" style="animation-delay:@(Math.Min(i, 12) * 40)ms">
+                        <span class="degisiklik-noktasi"><MudIcon Icon="@Ikon(s.Islem)" Size="Size.Small" /></span>
+                        <div class="degisiklik-govdesi">
+                            <div class="degisiklik-ust">
+                                <strong>@IslemMetni(s)</strong>
+                                <span class="degisiklik-kim">@(s.KullaniciAdi ?? "Sistem") · @s.Zaman.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                            </div>
+                            @if (s.Alanlar.Count > 0)
+                            {
+                                <table class="degisiklik-alanlari">
+                                    @foreach (var a in s.Alanlar)
+                                    {
+                                        <tr>
+                                            <th>@Okunur(a.Alan)</th>
+                                            <td class="eski">@(a.Eski ?? "—")</td>
+                                            <td class="ok"><MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></td>
+                                            <td class="yeni">@(a.Yeni ?? "—")</td>
+                                        </tr>
+                                    }
+                                </table>
+                            }
+                        </div>
+                    </li>
+                }
+            </ol>
+            @if (_satirlar.Count >= AzamiSatir)
+            {
+                <MudText Typo="Typo.caption" Class="mt-2">Son @AzamiSatir değişiklik gösteriliyor.</MudText>
+            }
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    private const int AzamiSatir = 200;
+
+    [Parameter] public string Modul { get; set; } = "";
+    [Parameter] public Guid KayitId { get; set; }
+
+    private List<DegisiklikSatiri>? _satirlar;
+    private ApiHatasi? _hata;
+    private string? _anaTablo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<List<DegisiklikSatiri>>($"api/{Modul}/degisiklikler?kayitId={KayitId}");
+        _hata = sonuc.Hata;
+        _satirlar = sonuc.BasariliMi ? sonuc.Deger : null;
+        _anaTablo = _satirlar?.FirstOrDefault(s => s.KayitId == KayitId)?.Tablo;
+    }
+
+    // Ana kaydın değişikliği "Güncellendi"; alt satırınki tablo adıyla ("Fatura satiri güncellendi").
+    private string IslemMetni(DegisiklikSatiri s)
+    {
+        var fiil = s.Islem switch
+        {
+            DegisiklikIslemi.Silme => "silindi",
+            DegisiklikIslemi.Ekleme => "eklendi",
+            _ => "güncellendi"
+        };
+        return s.KayitId == KayitId ? char.ToUpperInvariant(fiil[0]) + fiil[1..] : $"{TabloAdi(s.Tablo)} {fiil}";
+    }
+
+    private string TabloAdi(string tablo) =>
+        tablo == _anaTablo ? "Kayıt" : char.ToUpperInvariant(tablo[0]) + tablo[1..].Replace('_', ' ');
+
+    private static string Sinif(DegisiklikIslemi islem) => islem switch
+    {
+        DegisiklikIslemi.Silme => "silme",
+        DegisiklikIslemi.Ekleme => "ekleme",
+        _ => "guncelleme"
+    };
+
+    private static string Ikon(DegisiklikIslemi islem) => islem switch
+    {
+        DegisiklikIslemi.Silme => Icons.Material.Filled.DeleteOutline,
+        DegisiklikIslemi.Ekleme => Icons.Material.Filled.Add,
+        _ => Icons.Material.Filled.Edit
+    };
+
+    // "VergiNo" → "Vergi no"
+    private static string Okunur(string alan)
+    {
+        var sb = new StringBuilder(alan.Length + 4);
+        for (var i = 0; i < alan.Length; i++)
+        {
+            if (i > 0 && char.IsUpper(alan[i]) && !char.IsUpper(alan[i - 1]))
+            {
+                sb.Append(' ').Append(char.ToLowerInvariant(alan[i]));
+            }
+            else
+            {
+                sb.Append(alan[i]);
+            }
+        }
+
+        return sb.ToString();
+    }
+}

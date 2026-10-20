@@ -1,8 +1,10 @@
+using OnMuhasebe.Shared.Domain.Abstractions;
 using OnMuhasebe.Shared.Domain.Entities;
 
 namespace OnMuhasebe.Modules.Yonetim.Domain;
 
 // İşlem anahtarlı yazma isteğinin kaydı (tekrar koruması). Başarılı cevap 24 saat saklanır, sonra temizlenir.
+[DenetimDisi]
 internal sealed class IstekKaydi : FirmaEntity
 {
     public const int SaklamaSaati = 24;

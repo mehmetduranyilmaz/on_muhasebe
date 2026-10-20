@@ -92,7 +92,7 @@ internal sealed record HesapBilgileri(
 }
 
 // Değiştirilemez kasa/banka kaydı. Tutarlar hesabın dövizinde; TL karşılığı işlem kuruyla sabitlenir. Düzeltme ters kayıtla yapılır.
-internal sealed class KasaHareketi : FirmaEntity
+internal sealed class KasaHareketi : FirmaEntity, IDonemeTabi
 {
     public const int KurOndalik = 6;
 
@@ -116,9 +116,11 @@ internal sealed class KasaHareketi : FirmaEntity
     // Fatura gibi başka modüldeki kaynak belge (peşin tahsilat); bu işlemler belgesinden iptal edilir.
     public Guid? KaynakBelgeId { get; private set; }
     public Guid? IptalEdilenHareketId { get; private set; }
+    [DonemKilidiDisinda]
     public Guid? IptalHareketId { get; private set; }
 
     // Banka ekstresinde karşılığı olan satır (mutabakat). Bir hareket yalnızca bir ekstre satırıyla eşleşir.
+    [DonemKilidiDisinda]
     public Guid? EkstreSatiriId { get; private set; }
 
     public bool IptalEdildiMi => IptalHareketId is not null;
@@ -201,7 +203,7 @@ internal sealed class KasaHareketi : FirmaEntity
 }
 
 // Gelir/gider raporunun kaynağı. Kasa hareketi (Ödendi) ya da yalnızca cari hareketi (Tahakkuk) aynı IslemId ile bağlıdır.
-internal sealed class GelirGiderKaydi : FirmaEntity
+internal sealed class GelirGiderKaydi : FirmaEntity, IDonemeTabi
 {
     private GelirGiderKaydi() { }
 
@@ -218,6 +220,7 @@ internal sealed class GelirGiderKaydi : FirmaEntity
     public Guid? CariHesapId { get; private set; }
     public string? BelgeNo { get; private set; }
     public string? Aciklama { get; private set; }
+    [DonemKilidiDisinda]
     public DateTime? IptalTarihi { get; private set; }
 
     public static GelirGiderKaydi Olustur(

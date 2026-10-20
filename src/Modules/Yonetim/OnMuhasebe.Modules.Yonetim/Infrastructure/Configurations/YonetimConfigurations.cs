@@ -105,3 +105,13 @@ internal sealed class IstekKaydiConfiguration : IEntityTypeConfiguration<IstekKa
         builder.HasIndex(x => x.OlusturmaTarihi);
     }
 }
+
+internal sealed class DonemKilidiConfiguration : IEntityTypeConfiguration<DonemKilidi>
+{
+    public void Configure(EntityTypeBuilder<DonemKilidi> builder)
+    {
+        builder.ToTable("donem_kilidi");
+        builder.Property(x => x.Aciklama).HasMaxLength(DonemKilidi.AciklamaUzunlugu);
+        builder.HasIndex(x => x.FirmaId).IsUnique();
+    }
+}

@@ -1,4 +1,5 @@
 using OnMuhasebe.Modules.Stok.Contracts;
+using OnMuhasebe.Shared.Domain.Abstractions;
 using OnMuhasebe.Shared.Domain.Entities;
 using OnMuhasebe.Shared.Domain.Results;
 
@@ -7,7 +8,7 @@ namespace OnMuhasebe.Modules.Stok.Domain;
 // Değiştirilemez stok kaydı. Miktarlar temel birimde; girilen birim ve miktar gösterim için ayrıca tutulur.
 // BirimFiyat yalnızca girişlerde, temel birim başına TL maliyettir. Çıkış maliyeti rapor anında
 // firmanın maliyet yöntemiyle hesaplanır (yöntem değişince geriye dönük tutarlı kalsın diye saklanmaz).
-internal sealed class StokHareket : FirmaEntity
+internal sealed class StokHareket : FirmaEntity, IDonemeTabi
 {
     public const int MiktarOndalik = 4;
 
@@ -27,6 +28,7 @@ internal sealed class StokHareket : FirmaEntity
     public Guid? TransferId { get; private set; }
     public Guid? KaynakBelgeId { get; private set; }
     public Guid? IptalEdilenHareketId { get; private set; }
+    [DonemKilidiDisinda]
     public Guid? IptalHareketId { get; private set; }
 
     public bool IptalEdildiMi => IptalHareketId is not null;

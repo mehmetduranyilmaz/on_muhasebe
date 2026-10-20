@@ -43,6 +43,7 @@ public sealed class KasaBankaModulu : IModul
     {
         var grup = endpoints.MapGroup("/api/kasabanka").WithTags("KasaBanka").RequireModul(ModulKodlari.KasaBanka);
 
+        grup.MapDegisiklikGecmisi<KasaBankaDbContext>();
         HesapIslemleri.Map(grup);
         IslemIslemleri.Map(grup);
         KategoriIslemleri.Map(grup);

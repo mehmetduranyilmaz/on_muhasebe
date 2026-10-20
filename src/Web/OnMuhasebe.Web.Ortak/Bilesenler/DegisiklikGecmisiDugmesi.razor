@@ -1,0 +1,30 @@
+@* Kaydın değişiklik geçmişini (kim, ne zaman, hangi alan neyken ne oldu) açan düğme; yalnızca yöneticiye görünür. *@
+@using OnMuhasebe.Shared.Contracts.Kimlik
+@inject OturumYoneticisi Oturum
+@inject IDialogService DialogService
+
+@if (Oturum.Kullanici.IsInRole(Roller.Yonetici))
+{
+    <MudTooltip Text="Değişiklik geçmişi">
+        <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" Class="degisiklik-gecmisi-dugmesi" OnClick="AcAsync"
+                       aria-label="Değişiklik geçmişi" />
+    </MudTooltip>
+}
+
+@code {
+    // API modül öneki: "cari", "stok", "fatura", "kasabanka".
+    [Parameter, EditorRequired] public string Modul { get; set; } = "";
+    [Parameter, EditorRequired] public Guid KayitId { get; set; }
+    [Parameter] public string? Baslik { get; set; }
+
+    private async Task AcAsync()
+    {
+        var parametreler = new DialogParameters<DegisiklikGecmisiDialog>
+        {
+            { d => d.Modul, Modul },
+            { d => d.KayitId, KayitId }
+        };
+        await DialogService.ShowAsync<DegisiklikGecmisiDialog>(Baslik ?? "Değişiklik geçmişi", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+}

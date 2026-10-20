@@ -31,6 +31,17 @@ public abstract class ModulDbContext(DbContextOptions options, IMevcutKullanici 
         modelBuilder.HasDefaultSchema(Sema);
         modelBuilder.ApplyConfigurationsFromAssembly(GetType().Assembly);
 
+        modelBuilder.Entity<DegisiklikKaydi>(b =>
+        {
+            b.ToTable("degisiklik_kaydi");
+            b.Property(x => x.KullaniciAdi).HasMaxLength(200);
+            b.Property(x => x.Tablo).HasMaxLength(100);
+            b.Property(x => x.Islem).HasConversion<string>().HasMaxLength(20);
+            b.Property(x => x.Alanlar).HasColumnType("jsonb");
+            b.HasIndex(x => new { x.FirmaId, x.KayitId });
+            b.HasIndex(x => new { x.FirmaId, x.UstKayitId });
+        });
+
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(t => t.BaseType is null))
         {
             var tip = entityType.ClrType;

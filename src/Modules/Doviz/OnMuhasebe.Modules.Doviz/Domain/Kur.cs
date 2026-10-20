@@ -1,8 +1,10 @@
+using OnMuhasebe.Shared.Domain.Abstractions;
 using OnMuhasebe.Shared.Domain.Entities;
 
 namespace OnMuhasebe.Modules.Doviz.Domain;
 
 // TCMB bülten kuru, 1 birim döviz için TL. Firmadan bağımsızdır.
+[DenetimDisi]
 internal sealed class Kur : BaseEntity
 {
     private Kur() { }
@@ -26,6 +28,7 @@ internal sealed class Kur : BaseEntity
 }
 
 // Bir tarih için TCMB'ye bakıldığını kaydeder; tatil günlerinde (bülten yok) tekrar tekrar istek atılmasın.
+[DenetimDisi]
 internal sealed class KurBulteni : BaseEntity
 {
     private KurBulteni() { }

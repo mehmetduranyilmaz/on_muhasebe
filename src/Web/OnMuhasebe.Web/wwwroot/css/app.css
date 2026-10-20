@@ -2848,3 +2848,92 @@ td.soluk {
     border-color: color-mix(in srgb, var(--om-turkuaz) 60%, transparent);
     background: color-mix(in srgb, var(--om-turkuaz) 12%, transparent);
 }
+
+/* ---------- Değişiklik geçmişi ---------- */
+.degisiklik-zaman-cizelgesi {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 4px;
+    position: relative;
+}
+
+.degisiklik-zaman-cizelgesi::before {
+    content: "";
+    position: absolute;
+    left: 17px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(var(--om-turkuaz), var(--mud-palette-lines-default));
+    border-radius: 2px;
+}
+
+.degisiklik {
+    display: flex;
+    gap: 14px;
+    padding: 8px 0;
+    animation: om-satir-belir .35s var(--om-yumusak) both;
+}
+
+.degisiklik-noktasi {
+    flex: 0 0 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    position: relative;
+    z-index: 1;
+    color: #fff;
+    background: var(--om-mavi);
+    box-shadow: 0 0 0 4px var(--mud-palette-surface);
+}
+
+.degisiklik.silme .degisiklik-noktasi { background: var(--mud-palette-error); }
+.degisiklik.ekleme .degisiklik-noktasi { background: var(--om-turkuaz); }
+
+.degisiklik-govdesi {
+    flex: 1;
+    min-width: 0;
+    background: color-mix(in srgb, var(--mud-palette-background) 55%, transparent);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 12px;
+    padding: 10px 14px;
+}
+
+.degisiklik-ust {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+}
+
+.degisiklik-kim {
+    color: var(--mud-palette-text-secondary);
+    font-size: .8rem;
+}
+
+.degisiklik-alanlari {
+    width: 100%;
+    margin-top: 8px;
+    border-collapse: collapse;
+    font-size: .85rem;
+    table-layout: fixed;
+}
+
+.degisiklik-alanlari th {
+    width: 28%;
+    text-align: left;
+    font-weight: 500;
+    color: var(--mud-palette-text-secondary);
+    padding: 3px 8px 3px 0;
+    vertical-align: top;
+}
+
+.degisiklik-alanlari td { padding: 3px 0; vertical-align: top; overflow-wrap: anywhere; }
+.degisiklik-alanlari td.ok { width: 28px; text-align: center; color: var(--mud-palette-text-secondary); }
+.degisiklik-alanlari td.eski { color: var(--mud-palette-error); text-decoration: line-through; text-decoration-thickness: 1px; opacity: .85; }
+.degisiklik-alanlari td.yeni { color: var(--mud-palette-success); font-weight: 500; }
+
+@media (max-width: 600px) {
+    .degisiklik-alanlari th { width: 34%; }
+}

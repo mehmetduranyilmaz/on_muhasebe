@@ -35,6 +35,7 @@ public sealed class CariModulu : IModul
     {
         var grup = endpoints.MapGroup("/api/cari").WithTags("Cari").RequireModul(ModulKodlari.Cari);
 
+        grup.MapDegisiklikGecmisi<CariDbContext>();
         CariHesapIslemleri.Map(grup);
         CariHareketIslemleri.Map(grup);
         CariRaporlari.Map(grup);

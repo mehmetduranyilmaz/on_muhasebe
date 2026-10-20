@@ -16,6 +16,7 @@
             <span>@CekSenetMetinleri.Yon(e.Yon) · @(e.CariUnvan)</span>
         </AltIcerik>
         <Islemler>
+            <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id" />
             @if (e.GeriAlinabilirMi && !Oturum.SaltOkunurMu)
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Undo" OnClick="GeriAlAsync">Son hareketi geri al</MudButton>

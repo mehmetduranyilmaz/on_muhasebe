@@ -19,6 +19,7 @@ else
         <DynamicComponent Type="_paneller[i]" Parameters="@(new Dictionary<string, object> { ["Sira"] = i + 1 })" />
     }
     <ZorunluAlanlarPaneli Sira="_paneller.Count + 1" />
+    <DonemKilidiPaneli Sira="_paneller.Count + 2" />
 }
 
 @code {

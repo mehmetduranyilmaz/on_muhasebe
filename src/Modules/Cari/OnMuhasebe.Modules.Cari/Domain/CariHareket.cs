@@ -1,6 +1,7 @@
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Domain;
+using OnMuhasebe.Shared.Domain.Abstractions;
 using OnMuhasebe.Shared.Domain.Entities;
 using OnMuhasebe.Shared.Domain.Results;
 
@@ -8,7 +9,7 @@ namespace OnMuhasebe.Modules.Cari.Domain;
 
 // Değiştirilemez muhasebe kaydı. Tutarlar carinin para birimindedir; TL karşılıkları işlem kuruyla sabitlenir.
 // Düzeltme silme/güncelleme ile değil, ters kayıtla yapılır.
-internal sealed class CariHareket : FirmaEntity
+internal sealed class CariHareket : FirmaEntity, IDonemeTabi
 {
     public const int KurOndalik = 6;
 
@@ -30,9 +31,11 @@ internal sealed class CariHareket : FirmaEntity
     // Fatura, tahsilat gibi başka modüldeki kaynak belge.
     public Guid? KaynakBelgeId { get; private set; }
     public Guid? IptalEdilenHareketId { get; private set; }
+    [DonemKilidiDisinda]
     public Guid? IptalHareketId { get; private set; }
 
     // Elle kapama yapılan kalem otomatik (FIFO) kapamaya katılmaz; kullanıcının seçimi korunur.
+    [DonemKilidiDisinda]
     public bool ElleKapamaMi { get; private set; }
 
     public bool IptalEdildiMi => IptalHareketId is not null;

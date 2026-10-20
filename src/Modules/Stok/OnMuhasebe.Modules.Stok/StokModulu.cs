@@ -38,6 +38,7 @@ public sealed class StokModulu : IModul
     {
         var grup = endpoints.MapGroup("/api/stok").WithTags("Stok").RequireModul(ModulKodlari.Stok);
 
+        grup.MapDegisiklikGecmisi<StokDbContext>();
         StokKartiIslemleri.Map(grup);
         StokHareketIslemleri.Map(grup);
         StokTanimIslemleri.Map(grup);

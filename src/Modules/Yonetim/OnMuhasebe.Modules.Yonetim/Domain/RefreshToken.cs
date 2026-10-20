@@ -1,7 +1,9 @@
+using OnMuhasebe.Shared.Domain.Abstractions;
 using OnMuhasebe.Shared.Domain.Entities;
 
 namespace OnMuhasebe.Modules.Yonetim.Domain;
 
+[DenetimDisi]
 internal sealed class RefreshToken : BaseEntity
 {
     private RefreshToken() { }

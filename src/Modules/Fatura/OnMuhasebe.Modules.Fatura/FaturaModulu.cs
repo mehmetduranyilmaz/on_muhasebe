@@ -36,6 +36,7 @@ public sealed class FaturaModulu : IModul
     {
         var grup = endpoints.MapGroup("/api/fatura").WithTags("Fatura").RequireModul(ModulKodlari.Fatura);
 
+        grup.MapDegisiklikGecmisi<FaturaDbContext>();
         FaturaIslemleri.Map(grup);
         FaturaAyarIslemleri.Map(grup);
         FaturaRaporlari.Map(grup);

@@ -12,6 +12,7 @@
         <SayfaBasligi Baslik="@($"Bordro {b.BordroNo}")" GeriAdres="cek-senet" Ikon="@CekSenetMetinleri.IslemIkonu(b.Islem)">
             <AltIcerik><span>@BordroAdi(b.Islem) · @Bicim.Tarih(b.Tarih)</span></AltIcerik>
             <Islemler>
+                <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id" />
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
                 @if (!Oturum.SaltOkunurMu && b.Islem is EvrakIslemi.Giris or EvrakIslemi.Cikis)
                 {

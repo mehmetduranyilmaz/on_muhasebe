@@ -24,6 +24,57 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.DonemKilidi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<DateOnly?>("KilitTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("kilit_tarihi");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_donem_kilidi");
+
+                    b.HasIndex("FirmaId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_donem_kilidi_firma_id");
+
+                    b.ToTable("donem_kilidi", "yonetim");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.Firma", b =>
                 {
                     b.Property<Guid>("Id")
@@ -561,6 +612,88 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasDatabaseName("ix_refresh_token_token_ozeti");
 
                     b.ToTable("refresh_token", "yonetim");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Shared.Infrastructure.Persistence.DegisiklikKaydi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Alanlar")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("alanlar");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("Islem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("islem");
+
+                    b.Property<Guid>("KayitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kayit_id");
+
+                    b.Property<string>("KullaniciAdi")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("kullanici_adi");
+
+                    b.Property<Guid?>("KullaniciId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kullanici_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Tablo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tablo");
+
+                    b.Property<Guid?>("UstKayitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ust_kayit_id");
+
+                    b.Property<DateTime>("Zaman")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("zaman");
+
+                    b.HasKey("Id")
+                        .HasName("pk_degisiklik_kaydi");
+
+                    b.HasIndex("FirmaId", "KayitId")
+                        .HasDatabaseName("ix_degisiklik_kaydi_firma_id_kayit_id");
+
+                    b.HasIndex("FirmaId", "UstKayitId")
+                        .HasDatabaseName("ix_degisiklik_kaydi_firma_id_ust_kayit_id");
+
+                    b.ToTable("degisiklik_kaydi", "yonetim");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaKullanicisi", b =>

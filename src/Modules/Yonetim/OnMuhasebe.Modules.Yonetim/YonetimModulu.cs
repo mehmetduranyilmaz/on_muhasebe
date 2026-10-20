@@ -75,6 +75,8 @@ public sealed class YonetimModulu : IModul
         services.AddScoped<ILisansSorgusu, LisansSorgusu>();
         services.AddScoped<ZorunluAlanSorgusu>();
         services.AddScoped<IZorunluAlanSorgusu>(sp => sp.GetRequiredService<ZorunluAlanSorgusu>());
+        services.AddScoped<DonemKilidiSorgusu>();
+        services.AddScoped<IDonemKilidiSorgusu>(sp => sp.GetRequiredService<DonemKilidiSorgusu>());
         services.AddScoped<IIstekKaydiDeposu, IstekKaydiDeposu>();
         services.AddHostedService<IstekKaydiTemizleyici>();
         services.AddHostedService<SistemYoneticisiTohumlayici>();
@@ -94,6 +96,7 @@ public sealed class YonetimModulu : IModul
         KullaniciIslemleri.Map(grup);
         SistemIslemleri.Map(grup);
         ZorunluAlanIslemleri.Map(grup);
+        DonemKilidiIslemleri.Map(grup);
     }
 
     private static RateLimitPartition<string> IpLimiti(HttpContext http, int dakikalikLimit) =>

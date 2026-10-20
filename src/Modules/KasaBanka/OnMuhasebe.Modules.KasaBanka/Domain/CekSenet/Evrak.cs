@@ -1,5 +1,6 @@
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Shared.Domain;
+using OnMuhasebe.Shared.Domain.Abstractions;
 using OnMuhasebe.Shared.Domain.Entities;
 using OnMuhasebe.Shared.Domain.Results;
 
@@ -236,7 +237,7 @@ internal sealed class Evrak : FirmaEntity
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }
 
-internal sealed class EvrakHareketi : FirmaEntity
+internal sealed class EvrakHareketi : FirmaEntity, IDonemeTabi
 {
     private EvrakHareketi() { }
 
@@ -298,7 +299,7 @@ internal sealed class EvrakHareketi : FirmaEntity
 }
 
 // Aynı anda aynı işleme giren evrakların belgesi (giriş/çıkış/ciro/tahsile verme bordrosu).
-internal sealed class EvrakBordrosu : FirmaEntity
+internal sealed class EvrakBordrosu : FirmaEntity, IDonemeTabi
 {
     private EvrakBordrosu() { }
 

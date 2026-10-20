@@ -4,5 +4,6 @@ public interface IMevcutKullanici
 {
     Guid? KullaniciId { get; }
     Guid? FirmaId { get; }
+    string? KullaniciAdi { get; }
     bool SistemYoneticisiMi { get; }
 }
