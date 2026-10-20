@@ -36,7 +36,7 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    await app.Services.MigrateModulDbContextsAsync();
+    await app.Services.MigrateModulDbContextsAsync(app.Configuration);
     app.MapOpenApi();
 }
 
