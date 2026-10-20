@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Features;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
@@ -26,7 +27,10 @@ public sealed class KasaBankaModulu : IModul
         services.AddValidatorsFromAssemblyContaining<KasaBankaModulu>(includeInternalTypes: true);
         services.AddScoped<KasaKodUretici>();
         services.AddScoped<KategoriServisi>();
+        services.AddScoped<CariDovizServisi>();
         services.AddScoped<KasaIslemServisi>();
+        services.AddScoped<CekSenetServisi>();
+        services.AddScoped<EvrakRiskServisi>();
         services.AddScoped<EkstreServisi>();
         services.AddScoped<IKasaBankaSorgusu, KasaBankaSorgusu>();
         services.AddScoped<IKasaBankaYazici, KasaBankaYazici>();
@@ -41,5 +45,6 @@ public sealed class KasaBankaModulu : IModul
         KategoriIslemleri.Map(grup);
         KasaBankaRaporlari.Map(grup);
         EkstreIslemleri.Map(grup);
+        CekSenetIslemleri.Map(grup);
     }
 }

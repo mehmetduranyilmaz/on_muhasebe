@@ -62,6 +62,8 @@ public static class KasaMetinleri
         KasaHareketTuru.VirmanCikis => "Virman çıkışı",
         KasaHareketTuru.Gelir => "Gelir",
         KasaHareketTuru.Gider => "Gider",
+        KasaHareketTuru.CekSenetTahsil => "Çek/senet tahsili",
+        KasaHareketTuru.CekSenetOdeme => "Çek/senet ödemesi",
         _ => tur.ToString()
     };
 

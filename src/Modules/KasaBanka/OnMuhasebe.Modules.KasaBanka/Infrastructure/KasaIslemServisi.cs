@@ -17,11 +17,8 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure;
 // Cari hareketlerinin kaynak belgesi IslemId'dir; böylece cari ekstresinden işleme ulaşılır ve iptal birlikte yapılır.
 internal sealed class KasaIslemServisi(
     KasaBankaDbContext db,
-    ICariSorgusu cariSorgusu,
     ICariHareketYazici cariYazici,
-    IKurSorgusu kurSorgusu,
-    ILisansSorgusu lisansSorgusu,
-    IMevcutKullanici mevcutKullanici,
+    CariDovizServisi doviz,
     IIslemKapsami islemKapsami,
     TimeProvider zaman)
 {
@@ -39,7 +36,7 @@ internal sealed class KasaIslemServisi(
                 return KasaBankaHatalari.AcilisZatenVar;
             }
 
-            var kur = await KurAsync(hesap.ParaBirimi, istek.Tarih, istek.Kur, ct);
+            var kur = await doviz.KurAsync(hesap.ParaBirimi, istek.Tarih, istek.Kur, ct);
             if (!kur.BasariliMi)
             {
                 return kur.Hata;
@@ -61,14 +58,14 @@ internal sealed class KasaIslemServisi(
                 return KasaBankaHatalari.HesapBulunamadi;
             }
 
-            var kur = await KurAsync(hesap.ParaBirimi, istek.Tarih, istek.Kur, ct);
+            var kur = await doviz.KurAsync(hesap.ParaBirimi, istek.Tarih, istek.Kur, ct);
             if (!kur.BasariliMi)
             {
                 return kur.Hata;
             }
 
             var islemId = Guid.CreateVersion7();
-            var cari = await CariTutariAsync(istek.CariHesapId, hesap, istek.Tutar, kur.Deger, istek.CariKuru, istek.Tarih, ct);
+            var cari = await doviz.CariTutariAsync(istek.CariHesapId, hesap.ParaBirimi, istek.Tutar, kur.Deger, istek.CariKuru, istek.Tarih, ct);
             if (!cari.BasariliMi)
             {
                 return cari.Hata;
@@ -106,7 +103,7 @@ internal sealed class KasaIslemServisi(
                 return KasaBankaHatalari.HesapBulunamadi;
             }
 
-            var kaynakKur = await KurAsync(kaynak.ParaBirimi, istek.Tarih, istek.Kur, ct);
+            var kaynakKur = await doviz.KurAsync(kaynak.ParaBirimi, istek.Tarih, istek.Kur, ct);
             if (!kaynakKur.BasariliMi)
             {
                 return kaynakKur.Hata;
@@ -114,7 +111,7 @@ internal sealed class KasaIslemServisi(
 
             var hedefKur = kaynak.ParaBirimi == hedef.ParaBirimi
                 ? kaynakKur
-                : await KurAsync(hedef.ParaBirimi, istek.Tarih, istek.HedefKur, ct);
+                : await doviz.KurAsync(hedef.ParaBirimi, istek.Tarih, istek.HedefKur, ct);
             if (!hedefKur.BasariliMi)
             {
                 return hedefKur.Hata;
@@ -205,7 +202,7 @@ internal sealed class KasaIslemServisi(
             return KasaBankaHatalari.HesapBulunamadi;
         }
 
-        var kur = await KurAsync(hesap.ParaBirimi, istek.Tarih, istek.Kur, ct);
+        var kur = await doviz.KurAsync(hesap.ParaBirimi, istek.Tarih, istek.Kur, ct);
         if (!kur.BasariliMi)
         {
             return kur.Hata;
@@ -222,7 +219,7 @@ internal sealed class KasaIslemServisi(
         }
 
         // Cari yalnızca kime ödendiğini gösterir: gider tahakkuku ve ödemesi birlikte yazılır, ödeme önce bu gideri kapatır.
-        var cari = await CariTutariAsync(cariId, hesap, istek.Tutar, kur.Deger, istek.CariKuru, istek.Tarih, ct);
+        var cari = await doviz.CariTutariAsync(cariId, hesap.ParaBirimi, istek.Tutar, kur.Deger, istek.CariKuru, istek.Tarih, ct);
         if (!cari.BasariliMi)
         {
             return cari.Hata;
@@ -246,14 +243,14 @@ internal sealed class KasaIslemServisi(
     private async Task<Sonuc<Guid>> TahakkukAsync(
         GelirGiderIstegi istek, GelirGiderKategorisi kategori, bool gider, Guid islemId, string aciklama, CancellationToken ct)
     {
-        var cariSonuc = await CariAsync(istek.CariHesapId!.Value, ct);
+        var cariSonuc = await doviz.CariAsync(istek.CariHesapId!.Value, ct);
         if (!cariSonuc.BasariliMi)
         {
             return cariSonuc.Hata;
         }
 
         var cari = cariSonuc.Deger;
-        var kur = await KurAsync(cari.ParaBirimi, istek.Tarih, istek.Kur, ct);
+        var kur = await doviz.KurAsync(cari.ParaBirimi, istek.Tarih, istek.Kur, ct);
         if (!kur.BasariliMi)
         {
             return kur.Hata;
@@ -269,67 +266,7 @@ internal sealed class KasaIslemServisi(
         return yazim.BasariliMi ? islemId : yazim.Hata;
     }
 
-    private sealed record CariTutari(string Unvan, decimal Tutar, decimal Kur);
-
-    // Tutar hesabın dövizindedir. Cari aynı dövizdeyse aynen, farklıysa (cari izin veriyorsa) TL karşılığı üzerinden cari dövizine çevrilir.
-    private async Task<Sonuc<CariTutari>> CariTutariAsync(
-        Guid cariId, KasaHesabi hesap, decimal tutar, decimal hesapKuru, decimal? cariKuru, DateOnly tarih, CancellationToken ct)
-    {
-        var cariSonuc = await CariAsync(cariId, ct);
-        if (!cariSonuc.BasariliMi)
-        {
-            return cariSonuc.Hata;
-        }
-
-        var cari = cariSonuc.Deger;
-        if (cari.ParaBirimi == hesap.ParaBirimi)
-        {
-            return new CariTutari(cari.Unvan, tutar, hesapKuru);
-        }
-
-        if (!cari.FarkliDovizdeIslem)
-        {
-            return KasaBankaHatalari.FarkliDoviz;
-        }
-
-        var kur = await KurAsync(cari.ParaBirimi, tarih, cariKuru, ct);
-        return kur.BasariliMi ? new CariTutari(cari.Unvan, Para.Yuvarla(tutar * hesapKuru / kur.Deger), kur.Deger) : kur.Hata;
-    }
-
-    private async Task<Sonuc<CariBilgisi>> CariAsync(Guid cariId, CancellationToken ct)
-    {
-        var lisans = await lisansSorgusu.GetirAsync(mevcutKullanici.FirmaId!.Value, ct);
-        if (lisans?.Moduller.Contains(ModulKodlari.Cari) != true)
-        {
-            return KasaBankaHatalari.CariLisansiYok;
-        }
-
-        var cari = await cariSorgusu.GetirAsync(cariId, ct);
-        if (cari is null)
-        {
-            return KasaBankaHatalari.CariBulunamadi;
-        }
-
-        return cari.AktifMi ? cari : KasaBankaHatalari.PasifCari;
-    }
-
     private Task<KasaHesabi?> HesapAsync(Guid id, CancellationToken ct) => db.Hesaplar.SingleOrDefaultAsync(h => h.Id == id, ct);
-
-    // TL için 1; dövizde girilen kur ya da işlem tarihinin TCMB döviz alış kuru.
-    private async Task<Sonuc<decimal>> KurAsync(string paraBirimi, DateOnly tarih, decimal? girilen, CancellationToken ct)
-    {
-        if (paraBirimi == ParaBirimleri.Tl)
-        {
-            return 1m;
-        }
-
-        if (girilen is > 0)
-        {
-            return girilen.Value;
-        }
-
-        return (await kurSorgusu.IslemKuruAsync(paraBirimi, tarih, ct))?.DovizAlis is { } kur ? kur : KasaBankaHatalari.KurGerekli;
-    }
 
     private async Task<Sonuc<Guid>> KaydetAsync(Guid islemId, CancellationToken ct, params Sonuc<KasaHareketi>[] hareketler)
     {

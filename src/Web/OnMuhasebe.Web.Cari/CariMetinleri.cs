@@ -25,6 +25,10 @@ public static class CariMetinleri
         CariHareketTuru.Odeme => "Ödeme",
         CariHareketTuru.Gelir => "Gelir",
         CariHareketTuru.Gider => "Gider",
+        CariHareketTuru.CekSenetGirisi => "Çek/Senet Girişi",
+        CariHareketTuru.CekSenetCikisi => "Çek/Senet Çıkışı",
+        CariHareketTuru.CekSenetIadesi => "Çek/Senet İadesi",
+        CariHareketTuru.KarsiliksizCekSenet => "Karşılıksız Çek/Senet",
         _ => tur.ToString()
     };
 

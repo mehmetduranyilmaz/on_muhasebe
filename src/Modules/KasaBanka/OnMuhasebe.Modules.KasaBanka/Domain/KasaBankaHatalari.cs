@@ -22,7 +22,7 @@ internal static class KasaBankaHatalari
     public static readonly Hata AcilisZatenVar = Hata.IsKurali("acilis_zaten_var", "Bu hesabın açılış bakiyesi zaten girilmiş; önce mevcut açılışı iptal edin.");
     public static readonly Hata BicimGecersiz = Hata.Dogrulama("bicim_gecersiz", "'Ödendi' kaydında hesap, 'Tahakkuk' kaydında cari seçilmelidir.");
     public static readonly Hata KategoriTuruUyusmuyor = Hata.Dogrulama("kategori_turu", "Kategori türü (gelir/gider) işlem türüyle uyuşmuyor.");
-    public static readonly Hata KaynakBelgedenIptal = Hata.IsKurali("kaynak_belgeden_iptal", "Bu işlem faturaya bağlı; faturadan iptal edilmelidir.");
+    public static readonly Hata KaynakBelgedenIptal = Hata.IsKurali("kaynak_belgeden_iptal", "Bu işlem bir belgeye (fatura, çek/senet) bağlı; belgesinden iptal edilmelidir.");
     public static readonly Hata ZatenIptalEdilmis = Hata.IsKurali("zaten_iptal", "Bu işlem zaten iptal edilmiş.");
     public static readonly Hata CariLisansiYok = Hata.Yetki("cari_lisansi_yok", "Cari işlemi için Cari modülü lisansı gerekir.");
     public static readonly Hata KasayaEkstreYok = Hata.IsKurali("kasaya_ekstre_yok", "Ekstre yalnızca banka, kredi kartı ve POS hesaplarına aktarılır.");
@@ -41,4 +41,33 @@ internal static class KasaBankaHatalari
     public static readonly Hata SatirYonuUyusmuyor = Hata.Dogrulama("satir_yonu", "İşlem türü satırın yönüyle uyuşmuyor (giriş: tahsilat/gelir/virman, çıkış: ödeme/gider/virman).");
     public static readonly Hata SatirVirmanDovizi = Hata.IsKurali("satir_virman_dovizi", "Ekstreden virman yalnızca aynı dövizdeki hesaplar arasında yapılır; farklı dövizli virmanı elle girin.");
     public static readonly Hata KuralBulunamadi = Hata.Bulunamadi("kural_bulunamadi", "Kural bulunamadı.");
+
+    public static readonly Hata EvrakBulunamadi = Hata.Bulunamadi("evrak_bulunamadi", "Çek/senet bulunamadı.");
+    public static readonly Hata BordroBulunamadi = Hata.Bulunamadi("bordro_bulunamadi", "Bordro bulunamadı.");
+    public static readonly Hata BorcluBulunamadi = Hata.Bulunamadi("borclu_bulunamadi", "Keşideci/borçlu bulunamadı.");
+    public static readonly Hata EvrakYok = Hata.Dogrulama("evrak_yok", "Bordroda en az bir evrak olmalıdır.");
+    public static readonly Hata EvrakIslemiGecersiz = Hata.IsKurali("evrak_islemi_gecersiz", "Bu işlem evrakın şu anki durumunda yapılamaz.");
+    public static readonly Hata EvrakTarihiGeride = Hata.IsKurali("evrak_tarihi_geride", "İşlem tarihi evrakın son hareket tarihinden önce olamaz.");
+    public static readonly Hata EvrakTahsilTutari = Hata.Dogrulama("evrak_tahsil_tutari", "Tahsil tutarı sıfırdan büyük ve evrakın kalan tutarından küçük ya da eşit olmalıdır.");
+    public static readonly Hata EvrakKismiTahsilTekEvrak = Hata.Dogrulama("evrak_kismi_tahsil", "Kısmi tahsil tutarı yalnızca tek evrakla girilebilir.");
+    public static readonly Hata EvrakGeriAlinamaz = Hata.IsKurali("evrak_geri_alinamaz", "Evrakın geri alınacak hareketi yok.");
+    public static readonly Hata EvrakHesapGerekli = Hata.Dogrulama("evrak_hesap_gerekli", "Bu işlem için hesap seçilmelidir.");
+    public static readonly Hata EvrakHesapTuru = Hata.IsKurali("evrak_hesap_turu", "Evrak tahsile/teminata yalnızca banka hesabına verilir; tahsil ve ödeme kasa ya da banka hesabından yapılır.");
+    public static readonly Hata EvrakHesapDovizi = Hata.IsKurali("evrak_hesap_dovizi", "Hesabın dövizi evrakın dövizinden farklı.");
+    public static readonly Hata EvrakCariGerekli = Hata.Dogrulama("evrak_cari_gerekli", "Ciro edilecek cari seçilmelidir.");
+    public static readonly Hata EvrakAyniCariyeCiro = Hata.IsKurali("evrak_ayni_cari", "Evrak, getiren cariye ciro edilemez; iade işlemini kullanın.");
+    public static readonly Hata VerilenCekHesabi = Hata.Dogrulama("verilen_cek_hesabi", "Verilen çek, firmanın bir banka hesabına bağlı olmalıdır.");
+    public static readonly Hata KimlikNoGerekli = Hata.Dogrulama("kimlik_no_gerekli", "Keşideci/borçlu VKN ya da TCKN girilmelidir (Ayarlar'dan isteğe bağlı yapılabilir).");
+    public static readonly Hata KimlikNoGecersiz = Hata.Dogrulama("kimlik_no_gecersiz", "VKN/TCKN geçersiz; kontrol hanelerini kontrol edin.");
+    public static readonly Hata BorcluAdiGerekli = Hata.Dogrulama("borclu_adi_gerekli", "Keşideci/borçlu adı girilmelidir.");
+    public static readonly Hata KimlikNoKullaniliyor = Hata.Cakisma("kimlik_no_kullaniliyor", "Bu VKN/TCKN ile kayıtlı bir keşideci/borçlu var.");
+    public static readonly Hata BorcluEvrakliSilinemez = Hata.IsKurali("borclu_evrakli", "Evrakı olan keşideci/borçlu silinemez.");
+    public static readonly Hata EvrakZatenKayitli = Hata.Cakisma("evrak_zaten_kayitli", "Bu seri numaralı çek aynı hesaptan zaten kayıtlı.");
+
+    public static Hata RiskOnayiGerekli(string mesaj) => Hata.IsKurali("risk_onayi_gerekli", $"{mesaj} Yine de kabul etmek için onaylayın.");
+
+    public static Hata RiskliBorcluEngellendi(string mesaj) => Hata.IsKurali("riskli_borclu", $"{mesaj} Firma ayarları gereği riskli keşideci/borçludan evrak kabul edilmiyor.");
+
+    public static Hata EvrakIslemiGecersizDetay(string portfoyNo, string durum) =>
+        Hata.IsKurali("evrak_islemi_gecersiz", $"{portfoyNo} numaralı evrak \"{durum}\" durumunda; bu işlem yapılamaz.");
 }

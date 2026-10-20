@@ -22,7 +22,10 @@ public enum KasaHareketTuru
     VirmanGiris,
     VirmanCikis,
     Gelir,
-    Gider
+    Gider,
+    // Çek/senet tahsili (hesaba giriş) ve verilen evrakın ödenmesi (hesaptan çıkış).
+    CekSenetTahsil,
+    CekSenetOdeme
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<GelirGiderTuru>))]

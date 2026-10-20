@@ -15,7 +15,12 @@ public enum CariHareketTuru
     Odeme,
     // Kasa/banka modülünden gelir/gider tahakkuku (ör. kira bedeli cariye borç yazılır, ödeme sonra yapılır).
     Gelir,
-    Gider
+    Gider,
+    // Çek/senet modülünden: alınan evrak (alacak), verilen ya da ciro edilen evrak (borç), iadeler ve karşılıksız geri yansıma.
+    CekSenetGirisi,
+    CekSenetCikisi,
+    CekSenetIadesi,
+    KarsiliksizCekSenet
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<HareketYonu>))]
