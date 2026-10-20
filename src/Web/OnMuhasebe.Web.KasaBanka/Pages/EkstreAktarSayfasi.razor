@@ -1,0 +1,449 @@
+@page "/kasabanka/{Id:guid}/ekstre-aktar"
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_hesap is { } h)
+{
+    <SayfaBasligi Baslik="Ekstre içe aktar" GeriAdres="@($"kasabanka/{Id}")" Ikon="@Icons.Material.Filled.UploadFile">
+        <AltIcerik><span>@h.Ad · @KasaMetinleri.HesapTuru(h.Tur) · @ParaBirimleri.Ad(h.ParaBirimi)</span></AltIcerik>
+        <Islemler>
+            @if (_aktarim is not null)
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="YeniDosyaAsync">Yeni dosya</MudButton>
+            }
+        </Islemler>
+    </SayfaBasligi>
+
+    <div class="ekstre-adimlari belirme" style="--i:1">
+        @for (var i = 0; i < _adimlar.Length; i++)
+        {
+            var no = i;
+            var durum = no < Adim ? "tamam" : no == Adim ? "aktif" : "";
+            <div class="ekstre-adimi @durum">
+                <span class="adim-isareti">
+                    @if (no < Adim)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                    }
+                    else
+                    {
+                        @(no + 1)
+                    }
+                </span>
+                <span class="adim-adi">@_adimlar[no]</span>
+            </div>
+        }
+    </div>
+
+    @if (h.Tur == HesapTuru.Kasa)
+    {
+        <BosDurum Ikon="@Icons.Material.Outlined.Payments" Baslik="Kasa hesabının ekstresi olmaz"
+                  Aciklama="Ekstre yalnızca banka, kredi kartı ve POS hesaplarına aktarılır." />
+    }
+    else if (_aktarim is null)
+    {
+        @DosyaAdimi(h)
+    }
+    else if (_sonuc is { } sonuc)
+    {
+        @SonucAdimi(sonuc)
+    }
+    else if (_aktarim.Durum == AktarimDurumu.EslemeBekliyor)
+    {
+        @EslemeAdimi(_aktarim)
+    }
+    else
+    {
+        @OnayAdimi(_aktarim)
+    }
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private RenderFragment DosyaAdimi(HesapDetayi h) => __builder =>
+    {
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <label class="dosya-birakma kart belirme @(_surukleniyor ? "surukleniyor" : "") @(_yukleniyor ? "yukleniyor" : "")" style="--i:2"
+                   @ondragenter="() => _surukleniyor = true" @ondragleave="() => _surukleniyor = false" @ondrop="() => _surukleniyor = false">
+                <InputFile OnChange="DosyaSecildiAsync" accept="@EkstreMetinleri.KabulEdilenDosyalar" disabled="@_yukleniyor" />
+                <div class="dosya-ikonu">
+                    @if (_yukleniyor)
+                    {
+                        <MudProgressCircular Indeterminate="true" Color="Color.Secondary" Size="Size.Large" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Style="font-size:3rem" />
+                    }
+                </div>
+                <div class="dosya-baslik">@(_yukleniyor ? "Ekstre okunuyor…" : "Ekstre dosyasını sürükleyin ya da seçin")</div>
+                <div class="ozet-alt">
+                    @(h.Tur switch
+                    {
+                        HesapTuru.KrediKarti => "Kart ekstresi",
+                        HesapTuru.Pos => "POS hesap dökümü",
+                        _ => "Banka hesap hareketleri"
+                    }) · CSV, Excel (.xlsx/.xls) ya da MT940 · en fazla 5 MB
+                </div>
+                <div class="dosya-bicimleri">
+                    @foreach (var b in new[] { "CSV", "XLSX", "XLS", "MT940" })
+                    {
+                        <span>@b</span>
+                    }
+                </div>
+            </label>
+            <div class="ozet-alt mt-2 mb-6">
+                Bankanızın internet şubesinden "hesap hareketleri"ni Excel ya da CSV olarak indirin. Aynı dönem tekrar yüklenirse daha önce aktarılan
+                satırlar tanınır; elle girdiğiniz hareketler ±3 gün içinde aynı tutarla eşleşir ve ikinci kez yazılmaz.
+            </div>
+        }
+
+        <div class="panel-baslik belirme" style="--i:3"><MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Secondary" /> Önceki aktarımlar</div>
+        <VeriTablosu T="AktarimOzeti" Kayitlar="_gecmis" Dense="true" SatirTiklandi="AktarimAcAsync" IskeletSatirSayisi="3"
+                     BosIkon="@Icons.Material.Outlined.UploadFile" BosBaslik="Henüz ekstre aktarılmadı">
+            <Basliklar>
+                <MudTh>Yükleme</MudTh>
+                <MudTh>Dosya</MudTh>
+                <MudTh>Dönem</MudTh>
+                <MudTh>Durum</MudTh>
+                <MudTh Class="sayi">Satır</MudTh>
+                <MudTh></MudTh>
+            </Basliklar>
+            <Satir>
+                @{ var (metin, renk) = EkstreMetinleri.AktarimDurumu(context.Durum); }
+                <MudTd DataLabel="Yükleme">@Bicim.Tarih(DateOnly.FromDateTime(context.OlusturmaTarihi.ToLocalTime()))</MudTd>
+                <MudTd DataLabel="Dosya">
+                    <b>@context.DosyaAdi</b>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ml-1">@EkstreMetinleri.Bicim(context.Bicim)</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Dönem">@(context.Baslangic is { } b && context.Bitis is { } s ? $"{Bicim.Tarih(b)} – {Bicim.Tarih(s)}" : "—")</MudTd>
+                <MudTd DataLabel="Durum"><MudChip T="string" Size="Size.Small" Color="renk" Variant="Variant.Text">@metin</MudChip></MudTd>
+                <MudTd DataLabel="Satır" Class="sayi">@context.AktarilanSayisi / @context.SatirSayisi</MudTd>
+                <MudTd Style="text-align:right">
+                    @if (context.Durum != AktarimDurumu.Tamamlandi && !Oturum.SaltOkunurMu)
+                    {
+                        <span @onclick:stopPropagation="true">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Aktarımı sil"
+                                           OnClick="() => AktarimSilAsync(context)" />
+                        </span>
+                    }
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Style="opacity:.5" />
+                </MudTd>
+            </Satir>
+        </VeriTablosu>
+    };
+
+    private RenderFragment EslemeAdimi(AktarimDetayi a) => __builder =>
+    {
+        var kolonSayisi = a.IlkSatirlar.Count == 0 ? 0 : a.IlkSatirlar.Max(r => r.Count);
+        var roller = KolonRolleri();
+        <div class="panel-kart kart belirme mb-4" style="--i:2">
+            <div class="d-flex align-center gap-2 mb-1">
+                <MudIcon Icon="@Icons.Material.Filled.ViewColumn" Color="Color.Secondary" />
+                <b>Kolonları eşleyin</b>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@a.DosyaAdi</MudChip>
+            </div>
+            <div class="ozet-alt mb-4">
+                Kolonları başlıklardan tahmin ettik; kontrol edip gerekirse düzeltin. Başlık satırını değiştirmek için önizlemede satıra tıklayın.
+                Eşlemeyi kaydederseniz bu hesabın sonraki ekstrelerinde bu adım atlanır.
+            </div>
+            <MudGrid Spacing="2">
+                <MudItem xs="6" md="2">
+                    <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlık satırı" Value="_baslik + 1"
+                                     ValueChanged="v => _baslik = Math.Max(0, v - 1)" Min="0" Max="a.IlkSatirlar.Count" HelperText="0 = başlık yok" />
+                </MudItem>
+                <MudItem xs="6" md="2">@KolonSecimi("Tarih", _tarih, v => _tarih = v, kolonSayisi, zorunlu: true)</MudItem>
+                <MudItem xs="12" md="4">@KolonSecimi("Açıklama", _aciklama, v => _aciklama = v, kolonSayisi, zorunlu: true)</MudItem>
+                <MudItem xs="12" md="4">
+                    <MudToggleGroup T="bool" @bind-Value="_tekKolon" Color="Color.Secondary" Size="Size.Small" Outlined="true" Delimiters="true" Class="tutar-secimi">
+                        <MudToggleItem Value="true" Text="Tek tutar kolonu" />
+                        <MudToggleItem Value="false" Text="Ayrı giriş / çıkış" />
+                    </MudToggleGroup>
+                </MudItem>
+                @if (_tekKolon)
+                {
+                    <MudItem xs="12" md="4">@KolonSecimi("Tutar (+ giriş / − çıkış)", _tutar, v => _tutar = v, kolonSayisi, zorunlu: true)</MudItem>
+                }
+                else
+                {
+                    <MudItem xs="6" md="2">@KolonSecimi("Giriş (alacak)", _alacak, v => _alacak = v, kolonSayisi, zorunlu: true)</MudItem>
+                    <MudItem xs="6" md="2">@KolonSecimi("Çıkış (borç)", _borc, v => _borc = v, kolonSayisi, zorunlu: true)</MudItem>
+                }
+                <MudItem xs="6" md="2">@KolonSecimi("Bakiye", _bakiye, v => _bakiye = v, kolonSayisi)</MudItem>
+                <MudItem xs="6" md="2">@KolonSecimi("Referans", _referans, v => _referans = v, kolonSayisi)</MudItem>
+                <MudItem xs="12" md="4" Class="d-flex flex-column">
+                    @if (_tekKolon)
+                    {
+                        <MudSwitch T="bool" @bind-Value="_ters" Color="Color.Secondary" Label="Pozitif tutar harcamadır (kart ekstresi)" />
+                    }
+                    <MudSwitch T="bool" @bind-Value="_sablon" Color="Color.Secondary" Label="Eşlemeyi bu hesap için kaydet" />
+                </MudItem>
+            </MudGrid>
+        </div>
+
+        <div class="esleme-onizleme kart belirme mb-4" style="--i:3">
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        @for (var k = 0; k < kolonSayisi; k++)
+                        {
+                            var rol = roller.GetValueOrDefault(k);
+                            <th style="@(rol.Renk is null ? "" : $"--rol:{rol.Renk}")" class="@(rol.Ad is null ? "" : "rollu")">
+                                <span class="kolon-harfi">@EkstreMetinleri.KolonHarfi(k)</span>
+                                @if (rol.Ad is not null)
+                                {
+                                    <span class="kolon-rolu">@rol.Ad</span>
+                                }
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var r = 0; r < a.IlkSatirlar.Count; r++)
+                    {
+                        var satirNo = r;
+                        var satir = a.IlkSatirlar[satirNo];
+                        <tr class="@(satirNo == _baslik ? "baslik-satiri" : satirNo < _baslik ? "ust-bilgi" : "")" @onclick="() => _baslik = satirNo"
+                            title="Başlık satırı olarak seç">
+                            <td class="satir-no">@(satirNo + 1)</td>
+                            @for (var k = 0; k < kolonSayisi; k++)
+                            {
+                                var rol = roller.GetValueOrDefault(k);
+                                <td style="@(rol.Renk is null ? "" : $"--rol:{rol.Renk}")" class="@(rol.Ad is null ? "" : "rollu")">@(k < satir.Count ? satir[k] : "")</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <HataGosterimi Hata="_islemHatasi" />
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <div class="d-flex justify-end gap-2">
+                <IslemDugmesi Islem="EslemeUygulaAsync" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowForward" Disabled="!EslemeTamamMi">
+                    Satırları oku
+                </IslemDugmesi>
+            </div>
+        }
+    };
+
+    private RenderFragment KolonSecimi(string etiket, int? deger, Action<int?> degisti, int kolonSayisi, bool zorunlu = false) => __builder =>
+    {
+        var basliklar = _aktarim is { } a && _baslik < a.IlkSatirlar.Count ? a.IlkSatirlar[_baslik] : [];
+        <MudSelect T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@etiket" Value="deger" ValueChanged="degisti"
+                   Clearable="!zorunlu" AnchorOrigin="Origin.BottomCenter" Error="zorunlu && deger is null">
+            @for (var k = 0; k < kolonSayisi; k++)
+            {
+                var no = k;
+                <MudSelectItem T="int?" Value="no">@EkstreMetinleri.KolonHarfi(no)@(no < basliklar.Count && basliklar[no].Length > 0 ? $" · {basliklar[no]}" : "")</MudSelectItem>
+            }
+        </MudSelect>
+    };
+
+    private RenderFragment OnayAdimi(AktarimDetayi a) => __builder =>
+    {
+        var salt = Oturum.SaltOkunurMu || a.Durum == AktarimDurumu.Tamamlandi;
+        var gorunen = Filtreli(a).ToList();
+        var sayfaSayisi = Math.Max(1, (gorunen.Count + SayfaBoyutu - 1) / SayfaBoyutu);
+        var sayfa = gorunen.Skip((Math.Min(_sayfa, sayfaSayisi) - 1) * SayfaBoyutu).Take(SayfaBoyutu).ToList();
+
+        <MudGrid Spacing="3" Class="mb-3">
+            <MudItem xs="6" md="3">
+                <OzetKarti Baslik="Giriş" Deger="a.Satirlar.Where(s => s.Tutar > 0).Sum(s => s.Tutar)" Bicimle="d => Bicim.Tutar(d, a.ParaBirimi)"
+                           Ikon="@Icons.Material.Filled.CallReceived" Renk="#16A34A" AltMetin="@($"{a.Satirlar.Count(s => s.Tutar > 0)} satır")" Sira="2" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <OzetKarti Baslik="Çıkış" Deger="-a.Satirlar.Where(s => s.Tutar < 0).Sum(s => s.Tutar)" Bicimle="d => Bicim.Tutar(d, a.ParaBirimi)"
+                           Ikon="@Icons.Material.Filled.CallMade" Renk="#DC2626" AltMetin="@($"{a.Satirlar.Count(s => s.Tutar < 0)} satır")" Sira="3" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <OzetKarti Baslik="Aktarılacak" Deger="a.Satirlar.Count(s => s.Durum is EkstreSatirDurumu.Bekliyor or EkstreSatirDurumu.Hatali && s.IslemTuru != EkstreIslemTuru.Atla)"
+                           Bicimle="Adet" Ikon="@Icons.Material.Filled.PlaylistAddCheck" Renk="#14B8A6"
+                           AltMetin="@(EksikSayisi(a) is > 0 and var e ? $"{e} satırda seçim eksik" : "Hepsi hazır")" Sira="4" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <OzetKarti Baslik="Zaten kayıtlı" Deger="a.Satirlar.Count(s => s.Durum is EkstreSatirDurumu.ZatenKayitli or EkstreSatirDurumu.DahaOnceAktarildi)"
+                           Bicimle="Adet" Ikon="@Icons.Material.Filled.Link" Renk="#3B82F6"
+                           AltMetin="Eşleşen ve önceden aktarılan" Sira="5" />
+            </MudItem>
+        </MudGrid>
+
+        @if (a.BakiyeUyarisi is not null)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3 belirme">@a.BakiyeUyarisi</MudAlert>
+        }
+        @if (a.Durum == AktarimDurumu.Tamamlandi)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3 belirme">Bu ekstre aktarıldı. Satırlar artık değiştirilemez; hareketleri hesap sayfasından iptal edebilirsiniz.</MudAlert>
+        }
+
+        <div class="d-flex flex-wrap align-center gap-2 mb-3">
+            <div class="tur-sekmeleri mb-0">
+                @foreach (var (filtre, ad, renk) in _filtreler)
+                {
+                    var adet = a.Satirlar.Count(s => Uyar(s, filtre));
+                    @if (adet > 0 || filtre == SatirFiltresi.Tumu)
+                    {
+                        <button type="button" class="tur-sekmesi @(_filtre == filtre ? "secili" : "")" style="--vurgu:@renk" @onclick="() => FiltreSec(filtre)">
+                            @ad <span class="sekme-sayisi">@adet</span>
+                        </button>
+                    }
+                }
+            </div>
+            <MudSpacer />
+            @if (_secili.Count > 0 && !salt)
+            {
+                <div class="toplu-cubuk belirme">
+                    <b>@_secili.Count seçili</b>
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="SeciliDuzenleAsync">Düzenle</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => _secili.Clear()">Temizle</MudButton>
+                </div>
+            }
+        </div>
+
+        <VeriTablosu T="EkstreSatiriDetayi" Kayitlar="sayfa" Dense="true" SatirTiklandi="@(salt ? default : EventCallback.Factory.Create<EkstreSatiriDetayi>(this, SatirDuzenleAsync))"
+                     Sayfa="_sayfa" ToplamSayfa="sayfaSayisi" SayfaDegisti="s => _sayfa = s"
+                     BosIkon="@Icons.Material.Outlined.FilterAlt" BosBaslik="Bu filtrede satır yok">
+            <Basliklar>
+                @if (!salt)
+                {
+                    <MudTh Style="width:44px">
+                        <MudCheckBox T="bool" Value="sayfa.Where(EkstreMetinleri.DuzenlenebilirMi).All(s => _secili.Contains(s.Id)) && sayfa.Any(EkstreMetinleri.DuzenlenebilirMi)"
+                                     ValueChanged="v => SayfayiSec(sayfa, v)" Size="Size.Small" Color="Color.Secondary" />
+                    </MudTh>
+                }
+                <MudTh>Tarih</MudTh>
+                <MudTh>Açıklama</MudTh>
+                <MudTh Class="sayi">Tutar</MudTh>
+                <MudTh>İşlem</MudTh>
+                <MudTh>Durum</MudTh>
+            </Basliklar>
+            <Satir>
+                @{
+                    var s = context;
+                    var (durumMetni, durumRengi, durumIkonu) = EkstreMetinleri.Durum(s.Durum);
+                    var eksik = EkstreMetinleri.Eksik(s);
+                    var pasif = s.Durum is EkstreSatirDurumu.DahaOnceAktarildi or EkstreSatirDurumu.Atlandi
+                                || (s.Durum == EkstreSatirDurumu.Bekliyor && s.IslemTuru == EkstreIslemTuru.Atla);
+                }
+                @if (!salt)
+                {
+                    <MudTd>
+                        @if (EkstreMetinleri.DuzenlenebilirMi(s))
+                        {
+                            <span @onclick:stopPropagation="true">
+                                <MudCheckBox T="bool" Value="_secili.Contains(s.Id)" ValueChanged="v => Sec(s.Id, v)" Size="Size.Small" Color="Color.Secondary" />
+                            </span>
+                        }
+                    </MudTd>
+                }
+                <MudTd DataLabel="Tarih" Class="@(pasif ? "soluk" : "")">@Bicim.Tarih(s.Tarih)</MudTd>
+                <MudTd DataLabel="Açıklama" Class="@(pasif ? "soluk" : "")">
+                    <div class="ekstre-aciklama">@s.Aciklama</div>
+                    @if (s.Referans is not null)
+                    {
+                        <span class="mobil-alt-bilgi">Ref: @s.Referans</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Tutar" Class="@($"sayi {(pasif ? "soluk" : "")}")">
+                    <b class="@(s.Tutar > 0 ? "bakiye-alacakli" : "bakiye-borclu")">@Bicim.Tutar(s.Tutar)</b>
+                    @if (s.Bakiye is { } bk)
+                    {
+                        <div class="mobil-alt-bilgi">Bakiye @Bicim.Tutar(bk)</div>
+                    }
+                </MudTd>
+                <MudTd DataLabel="İşlem">
+                    @if (s.Durum is EkstreSatirDurumu.ZatenKayitli or EkstreSatirDurumu.DahaOnceAktarildi)
+                    {
+                        <span class="ozet-alt">@(s.EslesenHareketTarihi is { } t ? $"{Bicim.Tarih(t)} tarihli harekete bağlanır" : "—")</span>
+                    }
+                    else
+                    {
+                        <span class="tur-rozeti" style="color:@EkstreMetinleri.IslemRengi(s.IslemTuru)">
+                            <MudIcon Icon="@EkstreMetinleri.IslemIkonu(s.IslemTuru)" Size="Size.Small" /> @EkstreMetinleri.IslemTuru(s.IslemTuru)
+                        </span>
+                        @if (Hedef(s) is { } hedef)
+                        {
+                            <span class="ekstre-hedef">@hedef</span>
+                        }
+                        else if (eksik is not null)
+                        {
+                            <span class="ekstre-eksik"><MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" /> @eksik</span>
+                        }
+                        @if (s.OneriKaynagi is { } kaynak && kaynak is not ("Varsayılan" or "Elle") && s.Durum == EkstreSatirDurumu.Bekliyor)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" Icon="@Icons.Material.Filled.AutoAwesome" Class="oneri-cipi">@kaynak</MudChip>
+                        }
+                    }
+                </MudTd>
+                <MudTd DataLabel="Durum">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="durumRengi" Icon="@durumIkonu">@durumMetni</MudChip>
+                    @if (s.Hata is not null && s.Durum == EkstreSatirDurumu.Hatali)
+                    {
+                        <div class="ekstre-hata">@s.Hata</div>
+                    }
+                </MudTd>
+            </Satir>
+        </VeriTablosu>
+
+        @if (!salt)
+        {
+            <div class="ekstre-alt-cubuk belirme">
+                <div class="ozet-alt">Satıra tıklayarak işlem türünü ve cari/kategori/hesap seçimini değiştirebilirsiniz. Seçimi eksik satırlar hatalı işaretlenir, diğerleri aktarılır.</div>
+                <IslemDugmesi Islem="AktarAsync" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlaylistAddCheck">Onayla ve aktar</IslemDugmesi>
+            </div>
+        }
+    };
+
+    private RenderFragment SonucAdimi(AktarimSonucu sonuc) => __builder =>
+    {
+        var tamam = sonuc.Aktarim.Durum == AktarimDurumu.Tamamlandi;
+        <div class="ekstre-sonuc kart belirme mb-4" style="--i:2">
+            <div class="sonuc-ikonu @(tamam ? "basarili" : "uyari")">
+                <MudIcon Icon="@(tamam ? Icons.Material.Filled.TaskAlt : Icons.Material.Filled.ReportProblem)" Style="font-size:3.2rem" />
+            </div>
+            <h2>@(tamam ? "Ekstre aktarıldı" : "Ekstrenin bir kısmı aktarıldı")</h2>
+            <div class="ozet-alt">@sonuc.Aktarim.DosyaAdi · @sonuc.Aktarim.HesapAdi</div>
+        </div>
+        <MudGrid Spacing="3" Class="mb-4">
+            @foreach (var (baslik, deger, ikon, renk, i) in new[]
+            {
+                ("Yeni hareket", sonuc.Aktarilan, Icons.Material.Filled.PlaylistAddCheck, "#14B8A6", 3),
+                ("Kayıtlı harekete bağlandı", sonuc.ZatenKayitli, Icons.Material.Filled.Link, "#3B82F6", 4),
+                ("Atlandı", sonuc.Atlanan, Icons.Material.Filled.DoNotDisturbOn, "#64748B", 5),
+                ("Hatalı", sonuc.Hatali, Icons.Material.Filled.ErrorOutline, "#DC2626", 6)
+            })
+            {
+                <MudItem xs="6" md="3">
+                    <OzetKarti Baslik="@baslik" Deger="deger" Bicimle="Adet" Ikon="@ikon" Renk="@renk" Sira="i" />
+                </MudItem>
+            }
+        </MudGrid>
+        @if (sonuc.Hatali > 0)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                @sonuc.Hatali satır aktarılamadı; diğerleri kaydedildi. Hatalı satırları düzeltip tekrar aktarabilirsiniz.
+            </MudAlert>
+        }
+        <div class="d-flex flex-wrap justify-end gap-2">
+            @if (sonuc.Hatali > 0)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Build" OnClick="HatalilariDuzelt">Hatalı satırları düzelt</MudButton>
+            }
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="YeniDosyaAsync">Yeni ekstre</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AccountBalance" Href="@($"kasabanka/{Id}")">Hesaba dön</MudButton>
+        </div>
+    };
+}

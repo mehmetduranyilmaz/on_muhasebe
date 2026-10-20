@@ -1,0 +1,98 @@
+@* Ekstre satırı/kural için işlem türü düğmeleri ve türe göre cari, kategori ya da karşı hesap seçimi. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<div class="tur-sekmeleri mb-3">
+    @foreach (var tur in Turler)
+    {
+        <button type="button" class="tur-sekmesi @(Secim.Tur == tur ? "secili" : "")" style="--vurgu:@EkstreMetinleri.IslemRengi(tur)"
+                @onclick="() => TurSecAsync(tur)">
+            <MudIcon Icon="@EkstreMetinleri.IslemIkonu(tur)" Size="Size.Small" /> @EkstreMetinleri.IslemTuru(tur)
+        </button>
+    }
+</div>
+
+<div class="hedef-alani" @key="Secim.Tur">
+    @if (EkstreMetinleri.CariGerekliMi(Secim.Tur))
+    {
+        @if (Oturum.ModulAcikMi(ModulKodlari.Cari))
+        {
+            <MudAutocomplete T="CariSecim" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Cari" Value="Secim.Cari" ValueChanged="CariSecildiAsync"
+                             SearchFunc="CariAraAsync" ToStringFunc="@(c => c is null ? "" : c.Kod is null ? c.Unvan : $"{c.Unvan} ({c.Kod})")"
+                             DebounceInterval="300" ResetValueOnEmptyText="true" Clearable="true" MaxItems="10"
+                             Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.People" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">Tahsilat/ödeme için Cari modülü gerekir; gelir/gider olarak işleyebilirsiniz.</MudAlert>
+        }
+    }
+    else if (EkstreMetinleri.KategoriGerekliMi(Secim.Tur))
+    {
+        var tur = Secim.Tur == EkstreIslemTuru.Gelir ? GelirGiderTuru.Gelir : GelirGiderTuru.Gider;
+        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Kategori" Value="Secim.KategoriId" ValueChanged="KategoriSecildiAsync"
+                   AnchorOrigin="Origin.BottomCenter" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Label">
+            @foreach (var k in Kategoriler.Where(k => k.Tur == tur && (k.AktifMi || k.Id == Secim.KategoriId)))
+            {
+                <MudSelectItem T="Guid?" Value="k.Id">@k.Ad</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else if (Secim.Tur == EkstreIslemTuru.Virman)
+    {
+        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Karşı hesap" Value="Secim.KarsiHesapId" ValueChanged="KarsiHesapSecildiAsync"
+                   AnchorOrigin="Origin.BottomCenter" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SwapHoriz"
+                   HelperText="@(ParaBirimi is null ? null : "Ekstreden yalnızca aynı dövizdeki hesaplara virman yapılır.")">
+            @foreach (var h in Hesaplar.Where(h => h.Id != HesapId && h.AktifMi && (ParaBirimi is null || h.ParaBirimi == ParaBirimi)))
+            {
+                <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @KasaMetinleri.HesapTuru(h.Tur)</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else
+    {
+        <div class="ozet-alt">Satır kayda geçirilmez; ekstrede bilgi olarak kalır.</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EkstreSecimi Secim { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<EkstreIslemTuru> Turler { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<Kategori> Kategoriler { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<HesapOzeti> Hesaplar { get; set; } = [];
+    // Satırın hesabı karşı hesap listesinde gösterilmez; kural tanımında null.
+    [Parameter] public Guid? HesapId { get; set; }
+    [Parameter] public string? ParaBirimi { get; set; }
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private Task TurSecAsync(EkstreIslemTuru tur)
+    {
+        Secim.Tur = tur;
+        return Degisti.InvokeAsync();
+    }
+
+    private Task CariSecildiAsync(CariSecim? cari)
+    {
+        Secim.Cari = cari;
+        return Degisti.InvokeAsync();
+    }
+
+    private Task KategoriSecildiAsync(Guid? id)
+    {
+        Secim.KategoriId = id;
+        return Degisti.InvokeAsync();
+    }
+
+    private Task KarsiHesapSecildiAsync(Guid? id)
+    {
+        Secim.KarsiHesapId = id;
+        return Degisti.InvokeAsync();
+    }
+
+    private async Task<IEnumerable<CariSecim>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>(
+            $"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar.Select(c => new CariSecim(c.Id, c.Unvan, c.Kod)) : [];
+    }
+}

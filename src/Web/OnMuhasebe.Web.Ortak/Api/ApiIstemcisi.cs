@@ -18,6 +18,14 @@ public sealed class ApiIstemcisi(IHttpClientFactory httpClientFactory)
     public Task<ApiSonucu> PostAsync(string adres, object? govde = null, CancellationToken cancellationToken = default) =>
         GonderAsync(() => Istemci.PostAsJsonAsync(adres, govde, cancellationToken), cancellationToken);
 
+    // Tek dosyalı multipart yükleme; alan adı API'deki IFormFile parametresiyle aynı olmalı.
+    public Task<ApiSonucu<T>> DosyaYukleAsync<T>(string adres, string alanAdi, Stream icerik, string dosyaAdi, CancellationToken cancellationToken = default) =>
+        GonderAsync<T>(() =>
+        {
+            var form = new MultipartFormDataContent { { new StreamContent(icerik), alanAdi, dosyaAdi } };
+            return Istemci.PostAsync(adres, form, cancellationToken);
+        }, cancellationToken);
+
     public Task<ApiSonucu> PutAsync(string adres, object govde, CancellationToken cancellationToken = default) =>
         GonderAsync(() => Istemci.PutAsJsonAsync(adres, govde, cancellationToken), cancellationToken);
 

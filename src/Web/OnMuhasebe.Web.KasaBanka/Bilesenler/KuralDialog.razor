@@ -1,0 +1,84 @@
+@* Ekstre eşleştirme kuralı ekleme/düzenleme: açıklamada geçen kelime + yön → önerilecek işlem. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid Spacing="2" Class="mb-2">
+            <MudItem xs="12" sm="7">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kelime" Label="Açıklamada geçen kelime" MaxLength="100"
+                              AutoFocus="true" HelperText="Büyük/küçük harf ve Türkçe karakter farkı gözetilmez." />
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudSelect T="KuralYonu" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_yon" ValueChanged="YonDegisti" Label="Yön" AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var y in Enum.GetValues<KuralYonu>())
+                    {
+                        <MudSelectItem T="KuralYonu" Value="y">@EkstreMetinleri.Yon(y)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        <HedefSecici Secim="_secim" Turler="EkstreMetinleri.UygunTurler(GirisMi)" Kategoriler="Kategoriler" Hesaplar="Hesaplar" Degisti="StateHasChanged" />
+        <HataGosterimi Hata="_hata" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@((_kelime?.Trim().Length ?? 0) < 3)">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public EslestirmeKurali? Kural { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<Kategori> Kategoriler { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<HesapOzeti> Hesaplar { get; set; } = [];
+
+    private string? _kelime;
+    private KuralYonu _yon = KuralYonu.Cikis;
+    private EkstreSecimi _secim = new() { Tur = EkstreIslemTuru.Gider };
+    private ApiHatasi? _hata;
+
+    private bool? GirisMi => _yon switch { KuralYonu.Giris => true, KuralYonu.Cikis => false, _ => null };
+
+    protected override void OnInitialized()
+    {
+        if (Kural is { } k)
+        {
+            _kelime = k.AnahtarKelime;
+            _yon = k.Yon;
+            _secim = new EkstreSecimi
+            {
+                Tur = k.IslemTuru,
+                Cari = k.CariHesapId is { } c ? new CariSecim(c, k.CariUnvan ?? "Cari") : null,
+                KategoriId = k.KategoriId,
+                KarsiHesapId = k.KarsiHesapId
+            };
+        }
+    }
+
+    private void YonDegisti(KuralYonu yon)
+    {
+        _yon = yon;
+        var uygun = EkstreMetinleri.UygunTurler(GirisMi);
+        if (!uygun.Contains(_secim.Tur))
+        {
+            _secim.Tur = uygun[0];
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new KuralKaydetIstegi(_kelime!.Trim(), _yon, _secim.Tur, _secim.GonderilecekCari, _secim.GonderilecekKategori, _secim.GonderilecekKarsiHesap);
+        var sonuc = Kural is null
+            ? await Api.PostAsync("api/kasabanka/ekstre-kurallari", istek)
+            : await Api.PutAsync($"api/kasabanka/ekstre-kurallari/{Kural.Id}", istek);
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

@@ -1,0 +1,112 @@
+@* Ayarlar: ekstre aktarımında öğrenilen ve elle tanımlanan eşleştirme kuralları. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject OturumYoneticisi Oturum
+
+<FormBolumu Baslik="Ekstre eşleştirme kuralları" Aciklama="Banka ekstresi aktarılırken açıklamasında bu kelimeler geçen satırlara önerilecek işlem"
+            Ikon="@Icons.Material.Filled.AutoAwesome" Sira="Sira">
+    <MudItem xs="12">
+        @if (_kurallar is null)
+        {
+            <MudSkeleton Height="120px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" />
+        }
+        else if (_kurallar.Count == 0)
+        {
+            <BosDurum Ikon="@Icons.Material.Outlined.AutoAwesome" Baslik="Henüz kural yok"
+                      Aciklama="Ekstre aktarırken satırda “Bu seçimi hatırla”yı işaretleyin ya da buradan kural ekleyin." />
+        }
+        else
+        {
+            <div class="kural-listesi">
+                @foreach (var k in _kurallar)
+                {
+                    <div class="kural-ogesi">
+                        <div class="kural-kelime">
+                            <b>@k.AnahtarKelime</b>
+                            <span class="ozet-alt">@EkstreMetinleri.Yon(k.Yon)</span>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowRightAlt" Size="Size.Small" Style="opacity:.5" />
+                        <div class="kural-hedef">
+                            <span class="tur-rozeti" style="color:@EkstreMetinleri.IslemRengi(k.IslemTuru)">
+                                <MudIcon Icon="@EkstreMetinleri.IslemIkonu(k.IslemTuru)" Size="Size.Small" /> @EkstreMetinleri.IslemTuru(k.IslemTuru)
+                            </span>
+                            @if ((k.CariUnvan ?? k.KategoriAdi ?? k.KarsiHesapAdi) is { } hedef)
+                            {
+                                <span class="ekstre-hedef">@hedef</span>
+                            }
+                        </div>
+                        <MudSpacer />
+                        <span class="ozet-alt kural-kullanim">@(k.KullanimSayisi == 0 ? "Kullanılmadı" : $"{k.KullanimSayisi} kez")</span>
+                        @if (!Oturum.SaltOkunurMu)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="() => AcAsync(k)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="() => SilAsync(k)" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Class="mt-3" OnClick="() => AcAsync(null)">Kural ekle</MudButton>
+        }
+    </MudItem>
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private List<EslestirmeKurali>? _kurallar;
+    private List<Kategori> _kategoriler = [];
+    private List<HesapOzeti> _hesaplar = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var kategoriler = await Api.GetAsync<List<Kategori>>("api/kasabanka/kategoriler");
+        var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar");
+        _kategoriler = kategoriler.BasariliMi ? kategoriler.Deger : [];
+        _hesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<EslestirmeKurali>>("api/kasabanka/ekstre-kurallari");
+        _kurallar = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private async Task AcAsync(EslestirmeKurali? kural)
+    {
+        var parametreler = new DialogParameters<KuralDialog>
+        {
+            { d => d.Kural, kural },
+            { d => d.Kategoriler, _kategoriler },
+            { d => d.Hesaplar, _hesaplar }
+        };
+        var dialog = await DialogService.ShowAsync<KuralDialog>(kural is null ? "Kural ekle" : "Kuralı düzenle", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+
+    private async Task SilAsync(EslestirmeKurali kural)
+    {
+        if (!await Onay.SorAsync("Kuralı sil", $"“{kural.AnahtarKelime}” kuralı silinecek. Daha önce aktarılmış hareketler etkilenmez.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/kasabanka/ekstre-kurallari/{kural.Id}");
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        await YukleAsync();
+    }
+}

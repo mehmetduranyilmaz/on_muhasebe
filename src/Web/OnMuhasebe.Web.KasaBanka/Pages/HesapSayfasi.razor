@@ -21,6 +21,10 @@
         </AltIcerik>
         <Islemler>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"kasabanka/{h.Id}/ekstre")">Ekstre</MudButton>
+            @if (h.Tur != HesapTuru.Kasa && h.AktifMi && !Oturum.SaltOkunurMu)
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Href="@($"kasabanka/{h.Id}/ekstre-aktar")">Ekstre içe aktar</MudButton>
+            }
             @if (!Oturum.SaltOkunurMu)
             {
                 @if (h.AktifMi)

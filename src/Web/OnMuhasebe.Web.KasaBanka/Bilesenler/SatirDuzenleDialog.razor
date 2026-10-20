@@ -1,0 +1,120 @@
+@* Ekstre satır(lar)ının işlem türünü ve hedefini değiştirir. Tek satırda "kuralı hatırla" ile seçim sonraki ekstrelere de uygulanır.
+   Sonuç olarak güncel aktarım detayı döner. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        @if (Satirlar.Count == 1)
+        {
+            var s = Satirlar[0];
+            <div class="ekstre-satir-ozeti mb-4">
+                <div>
+                    <div class="ozet-baslik">@Bicim.Tarih(s.Tarih)@(s.Referans is null ? "" : $" · {s.Referans}")</div>
+                    <b>@s.Aciklama</b>
+                </div>
+                <b class="@(s.Tutar > 0 ? "bakiye-alacakli" : "bakiye-borclu")">@Bicim.Tutar(s.Tutar, ParaBirimi)</b>
+            </div>
+        }
+        else
+        {
+            <div class="ekstre-satir-ozeti mb-4">
+                <div>
+                    <div class="ozet-baslik">Toplu düzenleme</div>
+                    <b>@Satirlar.Count satır</b>
+                    @if (GirisMi is null)
+                    {
+                        <div class="ozet-alt">Seçimde hem giriş hem çıkış var; yalnızca virman ya da atlama uygulanabilir.</div>
+                    }
+                </div>
+                <b>@Bicim.Tutar(Satirlar.Sum(x => x.Tutar), ParaBirimi)</b>
+            </div>
+        }
+
+        <HedefSecici Secim="_secim" Turler="EkstreMetinleri.UygunTurler(GirisMi)" Kategoriler="Kategoriler" Hesaplar="Hesaplar"
+                     HesapId="HesapId" ParaBirimi="ParaBirimi" Degisti="StateHasChanged" />
+
+        @if (Satirlar.Any(x => x.Durum == EkstreSatirDurumu.ZatenKayitli))
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                @(Satirlar.Count == 1 && Satirlar[0].EslesenHareketTarihi is { } t
+                    ? $"Bu satır {Bicim.Tarih(t)} tarihli, elle girilmiş bir hareketle eşleşti; aktarımda yeniden yazılmaz."
+                    : "Seçimdeki bazı satırlar elle girilmiş hareketlerle eşleşti; aktarımda yeniden yazılmaz.")
+                <MudSwitch T="bool" @bind-Value="_eslesmeyiKaldir" Color="Color.Warning" Label="Eşleşmeyi kaldır, yeni hareket olarak aktar" Class="mt-1" />
+            </MudAlert>
+        }
+
+        @if (Satirlar.Count == 1 && _secim.Tur != EkstreIslemTuru.Atla)
+        {
+            <div class="kural-hatirla mt-4">
+                <MudSwitch T="bool" @bind-Value="_hatirla" Color="Color.Secondary" Label="Bu seçimi hatırla" />
+                @if (_hatirla)
+                {
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kelime" Label="Açıklamada geçen kelime" MaxLength="100"
+                                  HelperText="Bu kelimeyi içeren sonraki ekstre satırlarına aynı seçim önerilir; bu ekstredeki benzer satırlara da hemen uygulanır." />
+                }
+            </div>
+        }
+        <HataGosterimi Hata="_hata" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_hatirla && (_kelime?.Trim().Length ?? 0) < 3)">Uygula</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid AktarimId { get; set; }
+    [Parameter, EditorRequired] public Guid HesapId { get; set; }
+    [Parameter, EditorRequired] public string ParaBirimi { get; set; } = ParaBirimleri.Tl;
+    [Parameter, EditorRequired] public IReadOnlyList<EkstreSatiriDetayi> Satirlar { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<Kategori> Kategoriler { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<HesapOzeti> Hesaplar { get; set; } = [];
+
+    private EkstreSecimi _secim = new();
+    private bool _eslesmeyiKaldir;
+    private bool _hatirla;
+    private string? _kelime;
+    private ApiHatasi? _hata;
+
+    private bool? GirisMi => Satirlar.All(s => s.Tutar > 0) ? true : Satirlar.All(s => s.Tutar < 0) ? false : null;
+
+    protected override void OnInitialized()
+    {
+        var ilk = Satirlar[0];
+        var uygun = EkstreMetinleri.UygunTurler(GirisMi);
+        _secim = new EkstreSecimi
+        {
+            Tur = uygun.Contains(ilk.IslemTuru) ? ilk.IslemTuru : uygun[0],
+            Cari = ilk.CariHesapId is { } c ? new CariSecim(c, ilk.CariUnvan ?? "Cari") : null,
+            KategoriId = ilk.KategoriId,
+            KarsiHesapId = ilk.KarsiHesapId
+        };
+        _kelime = EkstreMetinleri.OnerilenKelime(ilk.Aciklama);
+    }
+
+    private async Task KaydetAsync()
+    {
+        _hata = null;
+        AktarimDetayi? son = null;
+        foreach (var s in Satirlar)
+        {
+            var istek = new SatirGuncelleIstegi(
+                _secim.Tur, _secim.GonderilecekCari, _secim.GonderilecekKategori, _secim.GonderilecekKarsiHesap,
+                _eslesmeyiKaldir && s.Durum == EkstreSatirDurumu.ZatenKayitli,
+                _hatirla && Satirlar.Count == 1 && _secim.Tur != EkstreIslemTuru.Atla ? _kelime?.Trim() : null);
+            var sonuc = await Api.PutAsync<AktarimDetayi>($"api/kasabanka/ekstre-aktarimlari/{AktarimId}/satirlar/{s.Id}", istek);
+            // Toplu düzenlemede önceki satırlar kaydedilmiş olabilir; çağıran ekran diyalog kapanınca aktarımı yeniden yükler.
+            if (!sonuc.BasariliMi)
+            {
+                _hata = sonuc.Hata;
+                return;
+            }
+
+            son = sonuc.Deger;
+        }
+
+        MudDialog.Close(DialogResult.Ok(son!));
+    }
+}
