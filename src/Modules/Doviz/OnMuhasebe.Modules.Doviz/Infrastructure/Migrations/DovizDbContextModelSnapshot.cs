@@ -26,7 +26,6 @@ namespace OnMuhasebe.Modules.Doviz.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Doviz.Domain.Kur", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -95,7 +94,6 @@ namespace OnMuhasebe.Modules.Doviz.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Doviz.Domain.KurBulteni", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

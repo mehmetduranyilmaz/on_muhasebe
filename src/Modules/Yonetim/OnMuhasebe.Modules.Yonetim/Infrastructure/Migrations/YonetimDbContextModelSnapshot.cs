@@ -27,7 +27,6 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.Firma", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -82,7 +81,6 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaKullanicisi", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -142,7 +140,6 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaLisansi", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -205,7 +202,6 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.Kullanici", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -288,7 +284,6 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.Paket", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -348,7 +343,6 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

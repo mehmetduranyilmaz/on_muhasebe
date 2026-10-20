@@ -26,7 +26,6 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Cari.Domain.CariGrup", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -75,7 +74,6 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Cari.Domain.CariHareket", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -196,7 +194,6 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.Cari.Domain.CariHesap", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

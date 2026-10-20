@@ -39,6 +39,10 @@ public abstract class ModulDbContext(DbContextOptions options, IMevcutKullanici 
             if (typeof(BaseEntity).IsAssignableFrom(tip))
             {
                 builder.Property(nameof(BaseEntity.Surum)).IsRowVersion();
+
+                // Id'ler uygulamada (Guid v7) üretilir. Aksi halde EF, var olan bir kayda eklenen yeni alt kaydı
+                // (ör. stok kartına yeni birim) "dolu anahtarlı = mevcut" sanıp INSERT yerine UPDATE dener.
+                builder.Property(nameof(BaseEntity.Id)).ValueGeneratedNever();
             }
 
             if (typeof(IFirmaVarligi).IsAssignableFrom(tip))
