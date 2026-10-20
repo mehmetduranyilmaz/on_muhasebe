@@ -13,6 +13,8 @@
     <ProjectReference Include="..\..\Modules\Yonetim\OnMuhasebe.Modules.Yonetim\OnMuhasebe.Modules.Yonetim.csproj" />
     <ProjectReference Include="..\..\Shared\OnMuhasebe.Shared.Contracts\OnMuhasebe.Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\Shared\OnMuhasebe.Shared.Infrastructure\OnMuhasebe.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Doviz\OnMuhasebe.Modules.Doviz\OnMuhasebe.Modules.Doviz.csproj" />
+    <ProjectReference Include="..\..\Modules\Cari\OnMuhasebe.Modules.Cari\OnMuhasebe.Modules.Cari.csproj" />
   </ItemGroup>
 
 </Project>

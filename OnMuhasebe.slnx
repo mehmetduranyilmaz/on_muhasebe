@@ -4,6 +4,14 @@
     <Project Path="src/Api/OnMuhasebe.Api/OnMuhasebe.Api.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Cari/">
+    <Project Path="src/Modules/Cari/OnMuhasebe.Modules.Cari.Contracts/OnMuhasebe.Modules.Cari.Contracts.csproj" />
+    <Project Path="src/Modules/Cari/OnMuhasebe.Modules.Cari/OnMuhasebe.Modules.Cari.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Doviz/">
+    <Project Path="src/Modules/Doviz/OnMuhasebe.Modules.Doviz.Contracts/OnMuhasebe.Modules.Doviz.Contracts.csproj" />
+    <Project Path="src/Modules/Doviz/OnMuhasebe.Modules.Doviz/OnMuhasebe.Modules.Doviz.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Yonetim/">
     <Project Path="src/Modules/Yonetim/OnMuhasebe.Modules.Yonetim.Contracts/OnMuhasebe.Modules.Yonetim.Contracts.csproj" />
     <Project Path="src/Modules/Yonetim/OnMuhasebe.Modules.Yonetim/OnMuhasebe.Modules.Yonetim.csproj" />
@@ -15,5 +23,8 @@
   </Folder>
   <Folder Name="/src/Web/">
     <Project Path="src/Web/OnMuhasebe.Web/OnMuhasebe.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OnMuhasebe.Hesaplama.Tests/OnMuhasebe.Hesaplama.Tests.csproj" />
   </Folder>
 </Solution>

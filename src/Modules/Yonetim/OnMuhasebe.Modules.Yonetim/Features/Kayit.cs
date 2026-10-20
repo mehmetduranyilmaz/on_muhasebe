@@ -29,8 +29,7 @@ internal static class Kayit
         public Dogrulayici()
         {
             RuleFor(x => x.FirmaUnvani).NotEmpty().MaximumLength(250);
-            RuleFor(x => x.VergiNo).Matches("^[0-9]{10,11}$").When(x => !string.IsNullOrWhiteSpace(x.VergiNo))
-                .WithMessage("Vergi numarası 10, T.C. kimlik numarası 11 haneli olmalıdır.");
+            RuleFor(x => x.VergiNo).VergiNo();
             RuleFor(x => x.Ad).NotEmpty().MaximumLength(100);
             RuleFor(x => x.Soyad).NotEmpty().MaximumLength(100);
             RuleFor(x => x.Eposta).Eposta();

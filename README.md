@@ -57,7 +57,7 @@ Canlıda Web ve API **aynı ana alan adında** olmalıdır (ör. `app.firma.com`
 ```
 src/Api        API host
 src/Shared     Ortak domain, altyapı ve sözleşmeler (DTO)
-src/Modules    İş modülleri (Yonetim; sırada Cari, Stok, Fatura, KasaBanka)
+src/Modules    İş modülleri (Yonetim, Doviz, Cari; sırada Stok, Fatura, KasaBanka)
 src/Web        Blazor WebAssembly PWA
-tests          Hesaplama testleri
+tests          Hesaplama testleri (dotnet test)
 ```

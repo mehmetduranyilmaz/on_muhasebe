@@ -1,3 +1,5 @@
+using OnMuhasebe.Modules.Cari;
+using OnMuhasebe.Modules.Doviz;
 using OnMuhasebe.Modules.Yonetim;
 using OnMuhasebe.Shared.Infrastructure;
 using OnMuhasebe.Shared.Infrastructure.Modules;
@@ -17,7 +19,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddSharedInfrastructure();
 builder.Services.AddModuller(builder.Configuration,
-    new YonetimModulu());
+    new YonetimModulu(),
+    new DovizModulu(),
+    new CariModulu());
 
 var app = builder.Build();
 

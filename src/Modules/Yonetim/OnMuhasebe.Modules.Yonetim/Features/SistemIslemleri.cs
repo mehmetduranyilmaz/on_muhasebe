@@ -88,7 +88,7 @@ internal static class SistemIslemleri
         public FirmaOlusturDogrulayici()
         {
             RuleFor(x => x.FirmaUnvani).NotEmpty().MaximumLength(250);
-            RuleFor(x => x.VergiNo).Matches("^[0-9]{10,11}$").When(x => !string.IsNullOrWhiteSpace(x.VergiNo));
+            RuleFor(x => x.VergiNo).VergiNo();
             RuleFor(x => x.VergiDairesi).MaximumLength(100);
             RuleFor(x => x.YoneticiAd).NotEmpty().MaximumLength(100);
             RuleFor(x => x.YoneticiSoyad).NotEmpty().MaximumLength(100);
