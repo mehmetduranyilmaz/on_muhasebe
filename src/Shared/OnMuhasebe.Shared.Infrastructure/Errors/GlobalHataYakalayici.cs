@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace OnMuhasebe.Shared.Infrastructure.Errors;
 
@@ -16,6 +17,8 @@ internal sealed partial class GlobalHataYakalayici(
         {
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict,
                 "Kayıt siz düzenlerken başka bir kullanıcı tarafından değiştirildi. Lütfen yenileyip tekrar deneyin."),
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>
+                (StatusCodes.Status409Conflict, "Bu bilgilerle bir kayıt zaten mevcut."),
             _ => (StatusCodes.Status500InternalServerError, "Beklenmeyen bir hata oluştu.")
         };
 

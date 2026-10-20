@@ -1,3 +1,5 @@
+using System.Globalization;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using OnMuhasebe.Shared.Infrastructure.Errors;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
@@ -9,6 +11,8 @@ public static class SharedInfrastructureExtensions
 {
     public static IServiceCollection AddSharedInfrastructure(this IServiceCollection services)
     {
+        ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("tr-TR");
+
         services.AddSingleton(TimeProvider.System);
         services.AddHttpContextAccessor();
         services.AddScoped<IMevcutKullanici, HttpMevcutKullanici>();

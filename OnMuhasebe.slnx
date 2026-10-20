@@ -1,6 +1,12 @@
 <Solution>
+  <Folder Name="/src/" />
   <Folder Name="/src/Api/">
     <Project Path="src/Api/OnMuhasebe.Api/OnMuhasebe.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Yonetim/">
+    <Project Path="src/Modules/Yonetim/OnMuhasebe.Modules.Yonetim.Contracts/OnMuhasebe.Modules.Yonetim.Contracts.csproj" />
+    <Project Path="src/Modules/Yonetim/OnMuhasebe.Modules.Yonetim/OnMuhasebe.Modules.Yonetim.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/OnMuhasebe.Shared.Contracts/OnMuhasebe.Shared.Contracts.csproj" />

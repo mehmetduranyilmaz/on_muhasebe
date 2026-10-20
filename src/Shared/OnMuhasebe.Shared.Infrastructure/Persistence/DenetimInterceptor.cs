@@ -64,7 +64,7 @@ internal sealed class DenetimInterceptor(IMevcutKullanici mevcutKullanici, TimeP
     }
 
     // FirmaId istemciden alınmaz: yeni kayıtta oturumdaki firmadan atanır ve sonradan değiştirilemez.
-    // Oturumu olmayan sistem işlemleri (ör. firma kaydı) FirmaId'yi kendisi atar.
+    // Oturumu olmayan işlemler (ör. firma kaydı) ve sistem yöneticisi FirmaId'yi kendisi atayabilir.
     private void FirmaKontrolEt(EntityEntry entry, IFirmaVarligi firmaVarligi)
     {
         var oturumFirmaId = mevcutKullanici.FirmaId;
@@ -76,7 +76,7 @@ internal sealed class DenetimInterceptor(IMevcutKullanici mevcutKullanici, TimeP
                 Ata(entry, nameof(IFirmaVarligi.FirmaId), oturumFirmaId
                     ?? throw new InvalidOperationException($"{entry.Metadata.ClrType.Name} için firma bilgisi yok."));
             }
-            else if (oturumFirmaId is not null && firmaVarligi.FirmaId != oturumFirmaId)
+            else if (oturumFirmaId is not null && firmaVarligi.FirmaId != oturumFirmaId && !mevcutKullanici.SistemYoneticisiMi)
             {
                 throw new InvalidOperationException($"{entry.Metadata.ClrType.Name} başka bir firmaya kaydedilemez.");
             }

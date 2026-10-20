@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\OnMuhasebe.Shared.Infrastructure\OnMuhasebe.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Modules.Yonetim.Contracts\OnMuhasebe.Modules.Yonetim.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

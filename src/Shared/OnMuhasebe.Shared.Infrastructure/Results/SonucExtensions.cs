@@ -18,6 +18,7 @@ public static class SonucExtensions
             statusCode: hata.Tur switch
             {
                 HataTuru.Dogrulama => StatusCodes.Status400BadRequest,
+                HataTuru.KimlikDogrulama => StatusCodes.Status401Unauthorized,
                 HataTuru.Bulunamadi => StatusCodes.Status404NotFound,
                 HataTuru.Cakisma => StatusCodes.Status409Conflict,
                 HataTuru.IsKurali => StatusCodes.Status422UnprocessableEntity,

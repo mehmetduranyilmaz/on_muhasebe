@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\OnMuhasebe.Shared.Contracts\OnMuhasebe.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Yonetim\OnMuhasebe.Modules.Yonetim.Contracts\OnMuhasebe.Modules.Yonetim.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
