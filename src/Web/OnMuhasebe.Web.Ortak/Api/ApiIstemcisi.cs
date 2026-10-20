@@ -21,6 +21,12 @@ public sealed class ApiIstemcisi(IHttpClientFactory httpClientFactory)
     public Task<ApiSonucu> PutAsync(string adres, object govde, CancellationToken cancellationToken = default) =>
         GonderAsync(() => Istemci.PutAsJsonAsync(adres, govde, cancellationToken), cancellationToken);
 
+    public Task<ApiSonucu<T>> PutAsync<T>(string adres, object govde, CancellationToken cancellationToken = default) =>
+        GonderAsync<T>(() => Istemci.PutAsJsonAsync(adres, govde, cancellationToken), cancellationToken);
+
+    public Task<ApiSonucu> DeleteAsync(string adres, CancellationToken cancellationToken = default) =>
+        GonderAsync(() => Istemci.DeleteAsync(adres, cancellationToken), cancellationToken);
+
     private static async Task<ApiSonucu<T>> GonderAsync<T>(Func<Task<HttpResponseMessage>> istek, CancellationToken cancellationToken)
     {
         try

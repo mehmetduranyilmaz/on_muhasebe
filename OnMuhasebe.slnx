@@ -22,6 +22,8 @@
     <Project Path="src/Shared/OnMuhasebe.Shared.Infrastructure/OnMuhasebe.Shared.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Web/">
+    <Project Path="src/Web/OnMuhasebe.Web.Cari/OnMuhasebe.Web.Cari.csproj" />
+    <Project Path="src/Web/OnMuhasebe.Web.Ortak/OnMuhasebe.Web.Ortak.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web/OnMuhasebe.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

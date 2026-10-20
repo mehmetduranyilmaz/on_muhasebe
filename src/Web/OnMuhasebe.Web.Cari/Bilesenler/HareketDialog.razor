@@ -1,0 +1,138 @@
+@inject ApiIstemcisi Api
+@inject TimeProvider Zaman
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudSelect @bind-Value="_tur" Label="Hareket türü">
+                        <MudSelectItem Value="CariHareketTuru.Dekont">Dekont</MudSelectItem>
+                        <MudSelectItem Value="CariHareketTuru.Acilis">Açılış bakiyesi</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudSelect @bind-Value="_yon" Label="Yön">
+                        <MudSelectItem Value="HareketYonu.Borc">Borç (cari bize borçlanır)</MudSelectItem>
+                        <MudSelectItem Value="HareketYonu.Alacak">Alacak (cari alacaklanır)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker Date="_tarih" DateChanged="TarihDegistiAsync" Label="Tarih" Required="true" RequiredError="Tarih gerekli." />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker @bind-Date="_vade" Label="Vade tarihi" Clearable="true" />
+                </MudItem>
+                <MudItem xs="@(DovizliMi ? 6 : 12)">
+                    <MudNumericField T="decimal?" @bind-Value="_tutar" Label="@($"Tutar ({Cari.ParaBirimi})")" Format="N2" Min="0"
+                                     HideSpinButtons="true" Required="true" RequiredError="Tutar gerekli." />
+                </MudItem>
+                @if (DovizliMi)
+                {
+                    <MudItem xs="6">
+                        <MudNumericField T="decimal?" @bind-Value="_kur" Label="Kur (TL)" Format="0.######" Min="0" HideSpinButtons="true"
+                                         Required="true" RequiredError="Kur gerekli." HelperText="@_kurAciklamasi" />
+                    </MudItem>
+                    @if (_tutar is > 0 && _kur is > 0)
+                    {
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.body2">TL karşılığı: <b>@Bicim.Tutar(Math.Round(_tutar.Value * _kur.Value, 2, MidpointRounding.AwayFromZero), ParaBirimleri.Tl)</b></MudText>
+                        </MudItem>
+                    }
+                }
+                <MudItem xs="4">
+                    <MudTextField @bind-Value="_belgeNo" Label="Belge no" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="8">
+                    <MudTextField @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_islemde" OnClick="KaydetAsync">Kaydet</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public CariDetayi Cari { get; set; } = null!;
+
+    private bool DovizliMi => Cari.ParaBirimi != ParaBirimleri.Tl;
+
+    private MudForm _form = null!;
+    private CariHareketTuru _tur = CariHareketTuru.Dekont;
+    private HareketYonu _yon = HareketYonu.Borc;
+    private DateTime? _tarih;
+    private DateTime? _vade;
+    private decimal? _tutar;
+    private decimal? _kur;
+    private string? _kurAciklamasi;
+    private string? _belgeNo;
+    private string? _aciklama;
+    private bool _islemde;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => TarihDegistiAsync(Zaman.GetLocalNow().Date);
+
+    // Tarih değişince vade carinin vade gününe göre, kur da o tarih için TCMB'den önerilir.
+    private async Task TarihDegistiAsync(DateTime? tarih)
+    {
+        _tarih = tarih;
+        if (tarih is null)
+        {
+            return;
+        }
+
+        if (Cari.VadeGun is { } gun)
+        {
+            _vade = tarih.Value.AddDays(gun);
+        }
+
+        if (!DovizliMi)
+        {
+            return;
+        }
+
+        var sonuc = await Api.GetAsync<KurBilgisi>($"api/doviz/islem-kuru?paraBirimi={Cari.ParaBirimi}&tarih={Bicim.Iso(DateOnly.FromDateTime(tarih.Value))}");
+        if (sonuc.BasariliMi)
+        {
+            _kur = sonuc.Deger.DovizAlis;
+            _kurAciklamasi = $"TCMB {Bicim.Tarih(sonuc.Deger.KurTarihi)} döviz alış kuru";
+        }
+        else
+        {
+            _kurAciklamasi = "TCMB kuru bulunamadı; kuru elle girin.";
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _islemde = true;
+        var istek = new CariHareketKaydetIstegi(
+            _tur, _yon, DateOnly.FromDateTime(_tarih!.Value), Bicim.Gun(_vade), _tutar!.Value,
+            DovizliMi ? _kur : null, _belgeNo, _aciklama);
+        var sonuc = await Api.PostAsync<CariHareketSatiri>($"api/cari/hesaplar/{Cari.Id}/hareketler", istek);
+        _islemde = false;
+
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

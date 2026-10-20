@@ -65,3 +65,28 @@ html, body {
     color: #fff;
     cursor: pointer;
 }
+
+.sayi {
+    text-align: right !important;
+    white-space: nowrap;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Ekstre ve raporların yazdırılması: yalnızca içerik basılır. */
+@media print {
+    .mud-appbar, .mud-drawer, .mud-alert, .yazdirma-gizle, #surum-bildirimi {
+        display: none !important;
+    }
+
+    .mud-main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    body {
+        font-size: 11px;
+    }
+}

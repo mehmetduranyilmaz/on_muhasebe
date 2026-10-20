@@ -27,6 +27,9 @@ public sealed class OturumYoneticisi(IHttpClientFactory httpClientFactory, TimeP
 
     public bool ModulAcikMi(string modulKodu) => Kullanici.HasClaim(TokenOkuyucu.ModulClaim, modulKodu);
 
+    // Lisans süresi dolduysa kayıt ekranları gizlenir; asıl engel API'dedir.
+    public bool SaltOkunurMu => Bilgi?.Lisans?.SaltOkunur == true;
+
     public Task<ApiSonucu> GirisAsync(GirisIstegi istek) =>
         TokenAlAsync(istemci => istemci.PostAsJsonAsync("api/yonetim/giris", istek));
 

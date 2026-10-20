@@ -1,0 +1,272 @@
+@page "/cari/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<PageTitle>@(_cari?.Unvan ?? "Cari") - Ön Muhasebe</PageTitle>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_cari is { } cari)
+{
+    var dovizliMi = cari.ParaBirimi != ParaBirimleri.Tl;
+
+    <div class="d-flex align-center flex-wrap gap-2 mb-2">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="cari" aria-label="Geri" />
+        <div>
+            <MudText Typo="Typo.h5">@cari.Unvan</MudText>
+            <MudText Typo="Typo.body2">
+                @cari.Kod · @CariMetinleri.Tur(cari.Tur) · @ParaBirimleri.Ad(cari.ParaBirimi)
+                @if (cari.GrupAdi is not null)
+                {
+                    <span> · @cari.GrupAdi</span>
+                }
+            </MudText>
+        </div>
+        @if (!cari.AktifMi)
+        {
+            <MudChip T="string" Color="Color.Default">Pasif</MudChip>
+        }
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"cari/{cari.Id}/ekstre")">Ekstre</MudButton>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd"
+                       Disabled="!cari.AktifMi" OnClick="HareketEkleAsync">Hareket Ekle</MudButton>
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                <MudMenuItem Icon="@Icons.Material.Filled.Edit" Href="@($"cari/{cari.Id}/duzenle")">Düzenle</MudMenuItem>
+                @if (cari.AktifMi)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="() => DurumDegistirAsync(false)">Pasifleştir</MudMenuItem>
+                }
+                else
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => DurumDegistirAsync(true)">Aktifleştir</MudMenuItem>
+                }
+                @if (!cari.HareketVarMi)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudMenuItem>
+                }
+            </MudMenu>
+        }
+    </div>
+
+    <MudGrid Spacing="2" Class="mb-3">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-3" Elevation="1">
+                <MudText Typo="Typo.caption">Bakiye</MudText>
+                <MudText Typo="Typo.h6" Color="@(cari.Bakiye > 0 ? Color.Error : cari.Bakiye < 0 ? Color.Success : Color.Default)">
+                    @Bicim.Bakiye(cari.Bakiye, cari.ParaBirimi)
+                </MudText>
+                @if (dovizliMi)
+                {
+                    <MudText Typo="Typo.caption">Kayıtlı TL karşılığı: @Bicim.Bakiye(cari.BakiyeTl, ParaBirimleri.Tl)</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-3" Elevation="1">
+                <MudText Typo="Typo.caption">Risk limiti</MudText>
+                <MudText Typo="Typo.h6">@(cari.RiskLimiti is { } limit ? Bicim.Tutar(limit, cari.ParaBirimi) : "—")</MudText>
+                @if (cari.RiskLimiti is { } l && cari.Bakiye > l)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning">Limit @Bicim.Tutar(cari.Bakiye - l, cari.ParaBirimi) aşıldı</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-3" Elevation="1" Style="height: 100%;">
+                <MudText Typo="Typo.caption">İletişim</MudText>
+                <MudText Typo="Typo.body2">
+                    @(string.Join(" · ", new[] { cari.Telefon, cari.Eposta, cari.YetkiliAd is null ? null : $"Yetkili: {cari.YetkiliAd} {cari.YetkiliTelefon}" }.Where(x => !string.IsNullOrEmpty(x))))
+                </MudText>
+                <MudText Typo="Typo.body2">@string.Join(", ", new[] { cari.Adres, cari.Ilce, cari.Il }.Where(x => !string.IsNullOrEmpty(x)))</MudText>
+                @if (cari.VergiNo is not null)
+                {
+                    <MudText Typo="Typo.body2">@(cari.VergiNo.Length == 11 ? "TCKN" : "VKN"): @cari.VergiNo @cari.VergiDairesi</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudTable T="CariHareketSatiri" Items="_hareketler?.Kayitlar" Loading="_hareketlerYukleniyor" Hover="true" Dense="true"
+              Breakpoint="Breakpoint.Sm" Elevation="1">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Hareketler</MudText>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>Tarih</MudTh>
+            <MudTh>Tür</MudTh>
+            <MudTh>Belge No</MudTh>
+            <MudTh>Açıklama</MudTh>
+            <MudTh>Vade</MudTh>
+            <MudTh Style="text-align: right;">Borç</MudTh>
+            <MudTh Style="text-align: right;">Alacak</MudTh>
+            @if (dovizliMi)
+            {
+                <MudTh Style="text-align: right;">Kur</MudTh>
+                <MudTh Style="text-align: right;">TL</MudTh>
+            }
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+            <MudTd DataLabel="Tür">
+                @CariMetinleri.HareketTuru(context.Tur)
+                @if (context.IptalKaydiMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-1">İptal kaydı</MudChip>
+                }
+                else if (context.IptalEdildiMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Class="ml-1">İptal edildi</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Belge No">@context.BelgeNo</MudTd>
+            <MudTd DataLabel="Açıklama">@context.Aciklama</MudTd>
+            <MudTd DataLabel="Vade">@Bicim.Tarih(context.VadeTarihi)</MudTd>
+            <MudTd DataLabel="Borç" Style="text-align: right;">@(context.Borc > 0 ? Bicim.Tutar(context.Borc) : "")</MudTd>
+            <MudTd DataLabel="Alacak" Style="text-align: right;">@(context.Alacak > 0 ? Bicim.Tutar(context.Alacak) : "")</MudTd>
+            @if (dovizliMi)
+            {
+                <MudTd DataLabel="Kur" Style="text-align: right;">@Bicim.Kur(context.Kur)</MudTd>
+                <MudTd DataLabel="TL" Style="text-align: right;">@Bicim.Tutar(context.BorcTl + context.AlacakTl)</MudTd>
+            }
+            <MudTd Style="text-align: right;">
+                @if (context.ElleIptalEdilebilirMi && !Oturum.SaltOkunurMu)
+                {
+                    <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => IptalEtAsync(context)">İptal</MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Henüz hareket yok. Başka bir programdan geçiyorsanız açılış bakiyesi girerek başlayabilirsiniz.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (_hareketler is { ToplamSayfa: > 1 })
+    {
+        <div class="d-flex justify-center mt-3">
+            <MudPagination Count="_hareketler.ToplamSayfa" Selected="_sayfa" SelectedChanged="SayfaDegistiAsync" />
+        </div>
+    }
+}
+else if (_hata is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private CariDetayi? _cari;
+    private SayfaliSonuc<CariHareketSatiri>? _hareketler;
+    private int _sayfa = 1;
+    private bool _hareketlerYukleniyor = true;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CariYukleAsync();
+        await HareketleriYukleAsync();
+    }
+
+    private async Task CariYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{Id}");
+        _hata = sonuc.Hata;
+        _cari = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task HareketleriYukleAsync()
+    {
+        _hareketlerYukleniyor = true;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariHareketSatiri>>($"api/cari/hesaplar/{Id}/hareketler?sayfa={_sayfa}");
+        _hareketler = sonuc.BasariliMi ? sonuc.Deger : null;
+        _hareketlerYukleniyor = false;
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await HareketleriYukleAsync();
+    }
+
+    private async Task YenileAsync()
+    {
+        _sayfa = 1;
+        await CariYukleAsync();
+        await HareketleriYukleAsync();
+    }
+
+    private async Task HareketEkleAsync()
+    {
+        var parametreler = new DialogParameters<HareketDialog> { { d => d.Cari, _cari! } };
+        var dialog = await DialogService.ShowAsync<HareketDialog>("Hareket Ekle", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Hareket kaydedildi.", Severity.Success);
+            await YenileAsync();
+        }
+    }
+
+    private async Task IptalEtAsync(CariHareketSatiri hareket)
+    {
+        var onay = await DialogService.ShowMessageBoxAsync(
+            "Hareketi iptal et",
+            $"{Bicim.Tarih(hareket.Tarih)} tarihli {CariMetinleri.HareketTuru(hareket.Tur).ToLower(CultureInfo.CurrentCulture)} için ters kayıt atılacak. Orijinal kayıt silinmez. Devam edilsin mi?",
+            yesText: "İptal et", cancelText: "Vazgeç");
+        if (onay != true)
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync($"api/cari/hareketler/{hareket.Id}/iptal");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Hareket iptal edildi.", Severity.Success);
+            await YenileAsync();
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private async Task DurumDegistirAsync(bool aktif)
+    {
+        var sonuc = await Api.PostAsync($"api/cari/hesaplar/{Id}/{(aktif ? "aktiflestir" : "pasiflestir")}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(aktif ? "Cari aktifleştirildi." : "Cari pasifleştirildi.", Severity.Success);
+            await CariYukleAsync();
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        var onay = await DialogService.ShowMessageBoxAsync("Cariyi sil", $"{_cari!.Unvan} silinecek. Emin misiniz?", yesText: "Sil", cancelText: "Vazgeç");
+        if (onay != true)
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/cari/hesaplar/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Cari silindi.", Severity.Success);
+            Navigasyon.NavigateTo("cari");
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

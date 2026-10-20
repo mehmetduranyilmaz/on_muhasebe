@@ -1,9 +1,19 @@
 ﻿@page "/not-found"
 @layout MainLayout
 @attribute [AllowAnonymous]
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
 
-<PageTitle>Sayfa Bulunamadı - Ön Muhasebe</PageTitle>
-
-<MudText Typo="Typo.h4" Class="mb-2">Sayfa bulunamadı</MudText>
-<MudText Class="mb-4">Aradığınız sayfa mevcut değil veya taşınmış olabilir.</MudText>
+@if (ModulPaketleri.AdrestekiModul(Navigasyon.ToBaseRelativePath(Navigasyon.Uri)) is { } modul && !Oturum.ModulAcikMi(modul.Kod))
+{
+    <PageTitle>@modul.Ad - Ön Muhasebe</PageTitle>
+    <MudText Typo="Typo.h4" Class="mb-2">@modul.Ad</MudText>
+    <MudAlert Severity="Severity.Info" Class="mb-4">Firmanızın lisansı bu modülü kapsamıyor. Lisansınızı yükseltmek için bizimle iletişime geçin.</MudAlert>
+}
+else
+{
+    <PageTitle>Sayfa Bulunamadı - Ön Muhasebe</PageTitle>
+    <MudText Typo="Typo.h4" Class="mb-2">Sayfa bulunamadı</MudText>
+    <MudText Class="mb-4">Aradığınız sayfa mevcut değil veya taşınmış olabilir.</MudText>
+}
 <MudButton Href="" Variant="Variant.Filled" Color="Color.Primary">Ana sayfaya dön</MudButton>

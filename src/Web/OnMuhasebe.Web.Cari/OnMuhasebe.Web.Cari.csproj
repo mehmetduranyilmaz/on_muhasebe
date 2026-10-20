@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Cari modülü ekranları. Web uygulamasına lazy yüklenir: yalnızca lisans varsa ve /cari'ye girilince indirilir. -->
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Cari\OnMuhasebe.Modules.Cari.Contracts\OnMuhasebe.Modules.Cari.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Doviz\OnMuhasebe.Modules.Doviz.Contracts\OnMuhasebe.Modules.Doviz.Contracts.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
+  </ItemGroup>
+
+</Project>

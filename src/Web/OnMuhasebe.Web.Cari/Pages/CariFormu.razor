@@ -1,0 +1,209 @@
+@page "/cari/yeni"
+@page "/cari/{Id:guid}/duzenle"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+
+<PageTitle>@Baslik - Ön Muhasebe</PageTitle>
+
+<div class="d-flex align-center gap-2 mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="@(Id is null ? "cari" : $"cari/{Id}")" aria-label="Geri" />
+    <MudText Typo="Typo.h4">@Baslik</MudText>
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudForm @ref="_form">
+        <MudPaper Class="pa-4 mb-3" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Genel bilgiler</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="4" md="2">
+                    <MudTextField @bind-Value="_kod" Label="Kod" MaxLength="20" HelperText="Boş bırakılırsa otomatik verilir" />
+                </MudItem>
+                <MudItem xs="12" sm="8" md="6">
+                    <MudTextField @bind-Value="_unvan" Label="Ünvan" Required="true" RequiredError="Ünvan gerekli." MaxLength="250" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudSelect @bind-Value="_tur" Label="Tür">
+                        @foreach (var tur in Enum.GetValues<CariTuru>())
+                        {
+                            <MudSelectItem Value="tur">@CariMetinleri.Tur(tur)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudSelect @bind-Value="_kisiTipi" Label="Kişi tipi">
+                        @foreach (var tip in Enum.GetValues<KisiTipi>())
+                        {
+                            <MudSelectItem Value="tip">@CariMetinleri.KisiTipi(tip)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField @bind-Value="_vergiNo" MaxLength="11"
+                                  Label="@(_kisiTipi == KisiTipi.Sahis ? "T.C. kimlik no" : "Vergi no / T.C. kimlik no")" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField @bind-Value="_vergiDairesi" Label="Vergi dairesi" MaxLength="100" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="Guid?" @bind-Value="_grupId" Label="Grup" Clearable="true">
+                        @foreach (var grup in _gruplar)
+                        {
+                            <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect @bind-Value="_paraBirimi" Label="Para birimi" Disabled="_hareketVarMi"
+                               HelperText="@(_hareketVarMi ? "Hareketi olan carinin para birimi değiştirilemez" : null)">
+                        @foreach (var pb in ParaBirimleri.Tumu)
+                        {
+                            <MudSelectItem Value="pb.Kod">@pb.Kod - @pb.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-3" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">İletişim</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField @bind-Value="_telefon" Label="Telefon" MaxLength="30" InputType="InputType.Telephone" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField @bind-Value="_eposta" Label="E-posta" MaxLength="256" InputType="InputType.Email" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField @bind-Value="_yetkiliAd" Label="Yetkili kişi" MaxLength="100" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField @bind-Value="_yetkiliTelefon" Label="Yetkili telefonu" MaxLength="30" InputType="InputType.Telephone" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudTextField @bind-Value="_il" Label="İl" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudTextField @bind-Value="_ilce" Label="İlçe" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_adres" Label="Adres" MaxLength="500" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-3" Elevation="1">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Ticari koşullar</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="6" md="3">
+                    <MudNumericField T="int?" @bind-Value="_vadeGun" Label="Vade (gün)" Min="0" Max="365" HideSpinButtons="true" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudNumericField T="decimal?" @bind-Value="_riskLimiti" Label="@($"Risk limiti ({_paraBirimi})")" Min="0" Format="N2"
+                                     HideSpinButtons="true" HelperText="Bakiye bu tutarı aşınca uyarı verilir" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_not" Label="Not" MaxLength="1000" Lines="2" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudForm>
+
+    <div class="d-flex gap-2 justify-end">
+        <MudButton Href="@(Id is null ? "cari" : $"cari/{Id}")">Vazgeç</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_islemde" OnClick="KaydetAsync">Kaydet</MudButton>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private string Baslik => Id is null ? "Yeni Cari" : "Cari Düzenle";
+
+    private MudForm _form = null!;
+    private List<CariGrubu> _gruplar = [];
+    private string? _kod;
+    private string _unvan = "";
+    private CariTuru _tur = CariTuru.Musteri;
+    private KisiTipi _kisiTipi = KisiTipi.Tuzel;
+    private string? _vergiNo;
+    private string? _vergiDairesi;
+    private string? _il;
+    private string? _ilce;
+    private string? _adres;
+    private string? _telefon;
+    private string? _eposta;
+    private string _paraBirimi = ParaBirimleri.Tl;
+    private int? _vadeGun;
+    private decimal? _riskLimiti;
+    private Guid? _grupId;
+    private string? _yetkiliAd;
+    private string? _yetkiliTelefon;
+    private string? _not;
+    private uint _surum;
+    private bool _hareketVarMi;
+    private bool _yukleniyor = true;
+    private bool _islemde;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var gruplar = await Api.GetAsync<List<CariGrubu>>("api/cari/gruplar");
+        _gruplar = gruplar.BasariliMi ? gruplar.Deger : [];
+
+        if (Id is { } id)
+        {
+            var sonuc = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{id}");
+            if (!sonuc.BasariliMi)
+            {
+                _hata = sonuc.Hata;
+                _yukleniyor = false;
+                return;
+            }
+
+            var c = sonuc.Deger;
+            (_kod, _unvan, _tur, _kisiTipi, _vergiNo, _vergiDairesi) = (c.Kod, c.Unvan, c.Tur, c.KisiTipi, c.VergiNo, c.VergiDairesi);
+            (_il, _ilce, _adres, _telefon, _eposta) = (c.Il, c.Ilce, c.Adres, c.Telefon, c.Eposta);
+            (_paraBirimi, _vadeGun, _riskLimiti, _grupId) = (c.ParaBirimi, c.VadeGun, c.RiskLimiti, c.GrupId);
+            (_yetkiliAd, _yetkiliTelefon, _not, _surum, _hareketVarMi) = (c.YetkiliAd, c.YetkiliTelefon, c.Not, c.Surum, c.HareketVarMi);
+        }
+
+        _yukleniyor = false;
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _islemde = true;
+        var istek = new CariKaydetIstegi(
+            _kod, _unvan, _tur, _kisiTipi, _vergiNo, _vergiDairesi, _il, _ilce, _adres, _telefon, _eposta,
+            _paraBirimi, _vadeGun, _riskLimiti, _grupId, _yetkiliAd, _yetkiliTelefon, _not, _surum);
+        var sonuc = Id is { } id
+            ? await Api.PutAsync<CariDetayi>($"api/cari/hesaplar/{id}", istek)
+            : await Api.PostAsync<CariDetayi>("api/cari/hesaplar", istek);
+        _islemde = false;
+
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(Id is null ? $"{sonuc.Deger.Kod} kodlu cari oluşturuldu." : "Cari güncellendi.", Severity.Success);
+            Navigasyon.NavigateTo($"cari/{sonuc.Deger.Id}");
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

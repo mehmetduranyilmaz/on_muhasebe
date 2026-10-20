@@ -1,0 +1,197 @@
+@page "/cari/bakiye-listesi"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+
+<PageTitle>Cari Bakiye Listesi - Ön Muhasebe</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-3">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="cari" aria-label="Geri" Class="yazdirma-gizle" />
+    <MudText Typo="Typo.h4">Cari Bakiye Listesi</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Class="yazdirma-gizle" Disabled="_sonuc is null"
+               OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+</div>
+
+<MudPaper Class="pa-3 mb-3 yazdirma-gizle" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="6" md="2">
+            <MudDatePicker Date="_tarih" DateChanged="TarihDegistiAsync" Label="Bakiye tarihi" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="6" md="2">
+            <MudSelect T="BakiyeDurumu" Value="_durum" ValueChanged="DurumDegistiAsync" Label="Durum" Margin="Margin.Dense">
+                @foreach (var durum in Enum.GetValues<BakiyeDurumu>())
+                {
+                    <MudSelectItem Value="durum">@CariMetinleri.BakiyeDurumu(durum)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" md="2">
+            <MudSelect T="CariTuru?" Value="_tur" ValueChanged="TurDegistiAsync" Label="Tür" Clearable="true" Margin="Margin.Dense">
+                <MudSelectItem T="CariTuru?" Value="CariTuru.Musteri">Müşteri</MudSelectItem>
+                <MudSelectItem T="CariTuru?" Value="CariTuru.Tedarikci">Tedarikçi</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" md="2">
+            <MudSelect T="string" Value="_paraBirimi" ValueChanged="ParaBirimiDegistiAsync" Label="Para birimi" Clearable="true" Margin="Margin.Dense">
+                @foreach (var pb in ParaBirimleri.Tumu)
+                {
+                    <MudSelectItem Value="pb.Kod">@pb.Kod</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan veya kod" DebounceInterval="400"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Margin="Margin.Dense" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+
+@if (_sonuc is { } s)
+{
+    var dovizVarMi = s.Toplamlar.Any(t => t.ParaBirimi != ParaBirimleri.Tl);
+
+    <MudText Typo="Typo.body2" Class="mb-2">@Bicim.Tarih(s.Tarih) itibarıyla · @s.Satirlar.ToplamKayit cari</MudText>
+
+    <MudSimpleTable Dense="true" Hover="true" Bordered="true" Style="overflow-x: auto;">
+        <thead>
+            <tr>
+                <th>Kod</th>
+                <th>Ünvan</th>
+                <th class="sayi">Borç</th>
+                <th class="sayi">Alacak</th>
+                <th class="sayi">Bakiye</th>
+                @if (dovizVarMi)
+                {
+                    <th class="sayi">Kayıtlı TL</th>
+                    <th class="sayi">Güncel kur</th>
+                    <th class="sayi">Güncel TL</th>
+                    <th class="sayi">Kur farkı</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var satir in s.Satirlar.Kayitlar)
+            {
+                <tr class="cursor-pointer" @onclick="@(() => Navigasyon.NavigateTo($"cari/{satir.CariId}"))">
+                    <td>@satir.Kod</td>
+                    <td>@satir.Unvan</td>
+                    <td class="sayi">@Bicim.Tutar(satir.Borc)</td>
+                    <td class="sayi">@Bicim.Tutar(satir.Alacak)</td>
+                    <td class="sayi">@Bicim.Bakiye(satir.Bakiye, satir.ParaBirimi)</td>
+                    @if (dovizVarMi)
+                    {
+                        <td class="sayi">@(satir.ParaBirimi == ParaBirimleri.Tl ? "" : Bicim.Bakiye(satir.BakiyeTl, ParaBirimleri.Tl))</td>
+                        <td class="sayi">@(satir.GuncelKur is { } kur ? Bicim.Kur(kur) : "")</td>
+                        <td class="sayi">@(satir.GuncelTl is { } gtl ? Bicim.Bakiye(gtl, ParaBirimleri.Tl) : "")</td>
+                        <td class="sayi">@(satir.KurFarki is { } fark ? Bicim.Tutar(fark) : "")</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    @if (s.Satirlar.ToplamSayfa > 1)
+    {
+        <div class="d-flex justify-center mt-3 yazdirma-gizle">
+            <MudPagination Count="s.Satirlar.ToplamSayfa" Selected="_sayfa" SelectedChanged="SayfaDegistiAsync" />
+        </div>
+    }
+
+    <MudText Typo="Typo.h6" Class="mt-4 mb-2">Para birimine göre toplamlar</MudText>
+    <MudSimpleTable Dense="true" Bordered="true" Style="overflow-x: auto;">
+        <thead>
+            <tr>
+                <th>Para birimi</th>
+                <th class="sayi">Borç</th>
+                <th class="sayi">Alacak</th>
+                <th class="sayi">Bakiye</th>
+                <th class="sayi">Kayıtlı TL</th>
+                <th class="sayi">Güncel TL</th>
+                <th class="sayi">Kur farkı</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in s.Toplamlar)
+            {
+                <tr>
+                    <td>@t.ParaBirimi</td>
+                    <td class="sayi">@Bicim.Tutar(t.Borc)</td>
+                    <td class="sayi">@Bicim.Tutar(t.Alacak)</td>
+                    <td class="sayi">@Bicim.Bakiye(t.Bakiye, t.ParaBirimi)</td>
+                    <td class="sayi">@Bicim.Bakiye(t.BakiyeTl, ParaBirimleri.Tl)</td>
+                    <td class="sayi">@(t.GuncelTl is { } gtl ? Bicim.Bakiye(gtl, ParaBirimleri.Tl) : "")</td>
+                    <td class="sayi">@(t.KurFarki is { } fark ? Bicim.Tutar(fark) : "")</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <MudText Typo="Typo.caption" Class="mt-2 d-block">
+        Güncel TL: döviz bakiyenin rapor tarihi için geçerli TCMB döviz alış kuruyla değeri. Kur farkı: güncel TL ile işlem kurlarıyla
+        kayıtlı TL arasındaki fark (borçlu caride pozitif fark gelir, alacaklı caride negatif fark giderdir).
+    </MudText>
+}
+
+@code {
+    private BakiyeListesiCevabi? _sonuc;
+    private DateTime? _tarih;
+    private BakiyeDurumu _durum = BakiyeDurumu.SifirHaric;
+    private CariTuru? _tur;
+    private string? _paraBirimi;
+    private string? _arama;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tarih = Zaman.GetLocalNow().Date;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/cari/raporlar/bakiye-listesi?sayfa={_sayfa}&boyut=50&durum={_durum}"
+                    + (_tarih is { } t ? $"&tarih={Bicim.Iso(DateOnly.FromDateTime(t))}" : "")
+                    + (_tur is { } tur ? $"&tur={tur}" : "")
+                    + (_paraBirimi is { } pb ? $"&paraBirimi={pb}" : "")
+                    + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
+        var sonuc = await Api.GetAsync<BakiyeListesiCevabi>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private Task TarihDegistiAsync(DateTime? tarih) => FiltreAsync(() => _tarih = tarih);
+
+    private Task DurumDegistiAsync(BakiyeDurumu durum) => FiltreAsync(() => _durum = durum);
+
+    private Task TurDegistiAsync(CariTuru? tur) => FiltreAsync(() => _tur = tur);
+
+    private Task ParaBirimiDegistiAsync(string? paraBirimi) => FiltreAsync(() => _paraBirimi = paraBirimi);
+
+    private Task AraAsync(string? arama) => FiltreAsync(() => _arama = arama);
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}

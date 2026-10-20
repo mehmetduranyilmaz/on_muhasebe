@@ -1,0 +1,82 @@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <div class="d-flex gap-2 align-center mb-3">
+                <MudTextField @bind-Value="_yeniAd" Label="Yeni grup adı" MaxLength="100" Margin="Margin.Dense" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="string.IsNullOrWhiteSpace(_yeniAd)" OnClick="EkleAsync">Ekle</MudButton>
+            </div>
+        }
+        <MudList T="string" Dense="true">
+            @foreach (var grup in _gruplar)
+            {
+                <MudListItem T="string">
+                    <div class="d-flex align-center">
+                        <MudText>@grup.Ad</MudText>
+                        <MudText Typo="Typo.caption" Class="ml-2">(@grup.CariSayisi cari)</MudText>
+                        <MudSpacer />
+                        @if (!Oturum.SaltOkunurMu && grup.CariSayisi == 0)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Sil" OnClick="() => SilAsync(grup)" />
+                        }
+                    </div>
+                </MudListItem>
+            }
+        </MudList>
+        @if (_gruplar.Count == 0)
+        {
+            <MudText Typo="Typo.body2">Henüz grup yok.</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Close()">Kapat</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private List<CariGrubu> _gruplar = [];
+    private string _yeniAd = "";
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<CariGrubu>>("api/cari/gruplar");
+        _gruplar = sonuc.BasariliMi ? sonuc.Deger : [];
+        _hata = sonuc.Hata;
+    }
+
+    private async Task EkleAsync()
+    {
+        var sonuc = await Api.PostAsync<CariGrubu>("api/cari/gruplar", new CariGrubuKaydetIstegi(_yeniAd));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            _yeniAd = "";
+            await YukleAsync();
+        }
+    }
+
+    private async Task SilAsync(CariGrubu grup)
+    {
+        var sonuc = await Api.DeleteAsync($"api/cari/gruplar/{grup.Id}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add($"{grup.Ad} grubu silindi.", Severity.Success);
+            await YukleAsync();
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

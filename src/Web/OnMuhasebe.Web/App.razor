@@ -1,9 +1,15 @@
-﻿<MudThemeProvider Theme="_tema" />
+﻿@using System.Reflection
+@using Microsoft.AspNetCore.Components.WebAssembly.Services
+@inject LazyAssemblyLoader DerlemeYukleyici
+@inject OturumYoneticisi Oturum
+
+<MudThemeProvider Theme="_tema" />
 <MudPopoverProvider />
 <MudDialogProvider CloseOnEscapeKey="true" BackdropClick="false" />
 <MudSnackbarProvider />
 
-<Router AppAssembly="typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+<Router AppAssembly="typeof(App).Assembly" AdditionalAssemblies="_modulDerlemeleri" OnNavigateAsync="NavigasyonAsync"
+        NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>
@@ -22,6 +28,9 @@
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
+    <Navigating>
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    </Navigating>
 </Router>
 
 @code {
@@ -34,4 +43,22 @@
             AppbarBackground = "#1e3a5f"
         }
     };
+
+    private readonly List<Assembly> _modulDerlemeleri = [];
+    private readonly HashSet<string> _yuklenenModuller = [];
+
+    // Modül ekranlarının kodu yalnızca lisans varsa ve modüle ilk girildiğinde indirilir.
+    private async Task NavigasyonAsync(Microsoft.AspNetCore.Components.Routing.NavigationContext context)
+    {
+        if (ModulPaketleri.AdrestekiModul(context.Path) is not { } modul
+            || _yuklenenModuller.Contains(modul.Kod)
+            || !Oturum.ModulAcikMi(modul.Kod)
+            || !ModulPaketleri.Derlemeler.TryGetValue(modul.Kod, out var derlemeler))
+        {
+            return;
+        }
+
+        _modulDerlemeleri.AddRange(await DerlemeYukleyici.LoadAssembliesAsync(derlemeler));
+        _yuklenenModuller.Add(modul.Kod);
+    }
 }

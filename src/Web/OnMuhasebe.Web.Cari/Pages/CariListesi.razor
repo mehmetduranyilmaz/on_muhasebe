@@ -1,0 +1,162 @@
+@page "/cari"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<PageTitle>Cari Hesaplar - Ön Muhasebe</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-4">
+    <MudText Typo="Typo.h4">Cari Hesaplar</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Assessment" Href="cari/bakiye-listesi">Bakiye Listesi</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Label" OnClick="GruplariAcAsync">Gruplar</MudButton>
+    @if (!Oturum.SaltOkunurMu)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cari/yeni">Yeni Cari</MudButton>
+    }
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+<MudPaper Class="pa-3 mb-3" Elevation="1">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="4">
+            <MudTextField T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan, kod veya vergi no" DebounceInterval="400"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudSelect T="CariTuru?" Value="_tur" ValueChanged="TurDegistiAsync" Label="Tür" Clearable="true" Margin="Margin.Dense">
+                @foreach (var tur in Enum.GetValues<CariTuru>().Where(t => t != CariTuru.MusteriVeTedarikci))
+                {
+                    <MudSelectItem T="CariTuru?" Value="tur">@CariMetinleri.Tur(tur)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudSelect T="Guid?" Value="_grupId" ValueChanged="GrupDegistiAsync" Label="Grup" Clearable="true" Margin="Margin.Dense">
+                @foreach (var grup in _gruplar)
+                {
+                    <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="2" Class="d-flex align-center">
+            <MudSwitch T="bool" Value="_pasifleriGoster" ValueChanged="PasifDegistiAsync" Color="Color.Primary" Label="Pasifler" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudTable T="CariOzeti" Items="_sonuc?.Kayitlar" Loading="_yukleniyor" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1"
+          RowClass="cursor-pointer" OnRowClick="@(e => Navigasyon.NavigateTo($"cari/{e.Item!.Id}"))">
+    <HeaderContent>
+        <MudTh>Kod</MudTh>
+        <MudTh>Ünvan</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Grup</MudTh>
+        <MudTh>Telefon</MudTh>
+        <MudTh Style="text-align: right;">Bakiye</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Kod">@context.Kod</MudTd>
+        <MudTd DataLabel="Ünvan">
+            @context.Unvan
+            @if (!context.AktifMi)
+            {
+                <MudChip T="string" Size="Size.Small" Class="ml-1">Pasif</MudChip>
+            }
+            @if (context.RiskAsildiMi)
+            {
+                <MudTooltip Text="Risk limiti aşıldı">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" Class="ml-1" />
+                </MudTooltip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Tür">@CariMetinleri.Tur(context.Tur)</MudTd>
+        <MudTd DataLabel="Grup">@context.GrupAdi</MudTd>
+        <MudTd DataLabel="Telefon">@context.Telefon</MudTd>
+        <MudTd DataLabel="Bakiye" Style="text-align: right; white-space: nowrap;">
+            <MudText Typo="Typo.body2" Color="@(context.Bakiye > 0 ? Color.Error : context.Bakiye < 0 ? Color.Success : Color.Default)">
+                @Bicim.Bakiye(context.Bakiye, context.ParaBirimi)
+            </MudText>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText>Kayıtlı cari bulunamadı.</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@if (_sonuc is { ToplamSayfa: > 1 })
+{
+    <div class="d-flex justify-center mt-4">
+        <MudPagination Count="_sonuc.ToplamSayfa" Selected="_sayfa" SelectedChanged="SayfaDegistiAsync" />
+    </div>
+}
+
+<MudText Typo="Typo.caption" Class="mt-2 d-block">(B) borçlu: bize borçlu. (A) alacaklı: bizim borcumuz var.</MudText>
+
+@code {
+    private SayfaliSonuc<CariOzeti>? _sonuc;
+    private List<CariGrubu> _gruplar = [];
+    private string? _arama;
+    private CariTuru? _tur;
+    private Guid? _grupId;
+    private bool _pasifleriGoster;
+    private int _sayfa = 1;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GruplariYukleAsync();
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/cari/hesaplar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
+                    + (_tur is { } t ? $"&tur={t}" : "")
+                    + (_grupId is { } g ? $"&grupId={g}" : "")
+                    + (_pasifleriGoster ? "" : "&aktif=true");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task GruplariYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<CariGrubu>>("api/cari/gruplar");
+        _gruplar = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private Task AraAsync(string? arama) => FiltreUygulaAsync(() => _arama = arama);
+
+    private Task TurDegistiAsync(CariTuru? tur) => FiltreUygulaAsync(() => _tur = tur);
+
+    private Task GrupDegistiAsync(Guid? grupId) => FiltreUygulaAsync(() => _grupId = grupId);
+
+    private Task PasifDegistiAsync(bool goster) => FiltreUygulaAsync(() => _pasifleriGoster = goster);
+
+    private async Task FiltreUygulaAsync(Action degistir)
+    {
+        degistir();
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task GruplariAcAsync()
+    {
+        var dialog = await DialogService.ShowAsync<GruplarDialog>("Cari Grupları");
+        await dialog.Result;
+        await GruplariYukleAsync();
+        await YukleAsync();
+    }
+}

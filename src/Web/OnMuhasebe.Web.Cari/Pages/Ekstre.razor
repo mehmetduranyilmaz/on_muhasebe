@@ -1,0 +1,136 @@
+@page "/cari/{Id:guid}/ekstre"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<PageTitle>Cari Ekstre - Ön Muhasebe</PageTitle>
+
+<div class="d-flex align-center flex-wrap gap-2 mb-3 yazdirma-gizle">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="@($"cari/{Id}")" aria-label="Geri" />
+    <MudText Typo="Typo.h4">Cari Ekstre</MudText>
+    <MudSpacer />
+    <MudDatePicker @bind-Date="_baslangic" Label="Başlangıç" Style="max-width: 160px;" Margin="Margin.Dense" />
+    <MudDatePicker @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ekstre is null" OnClick="YazdirAsync">Yazdır</MudButton>
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_ekstre is { } e)
+{
+    var dovizliMi = e.ParaBirimi != ParaBirimleri.Tl;
+
+    <div class="mb-3">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">@e.Kod - @e.Unvan</MudText>
+        <MudText Typo="Typo.body2">@Bicim.Tarih(e.Baslangic) – @Bicim.Tarih(e.Bitis) · @ParaBirimleri.Ad(e.ParaBirimi)</MudText>
+    </div>
+
+    <MudSimpleTable Dense="true" Hover="true" Bordered="true" Style="overflow-x: auto;">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Tür</th>
+                <th>Belge No</th>
+                <th>Açıklama</th>
+                <th>Vade</th>
+                <th class="sayi">Borç</th>
+                <th class="sayi">Alacak</th>
+                <th class="sayi">Bakiye</th>
+                @if (dovizliMi)
+                {
+                    <th class="sayi">Kur</th>
+                    <th class="sayi">Bakiye (TL)</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="7"><i>Devreden bakiye</i></td>
+                <td class="sayi">@Bicim.Bakiye(e.DevirBakiye, e.ParaBirimi)</td>
+                @if (dovizliMi)
+                {
+                    <td></td>
+                    <td class="sayi">@Bicim.Bakiye(e.DevirBakiyeTl, ParaBirimleri.Tl)</td>
+                }
+            </tr>
+            @foreach (var s in e.Satirlar)
+            {
+                <tr>
+                    <td>@Bicim.Tarih(s.Tarih)</td>
+                    <td>@CariMetinleri.HareketTuru(s.Tur)</td>
+                    <td>@s.BelgeNo</td>
+                    <td>@s.Aciklama</td>
+                    <td>@Bicim.Tarih(s.VadeTarihi)</td>
+                    <td class="sayi">@(s.Borc > 0 ? Bicim.Tutar(s.Borc) : "")</td>
+                    <td class="sayi">@(s.Alacak > 0 ? Bicim.Tutar(s.Alacak) : "")</td>
+                    <td class="sayi">@Bicim.Bakiye(s.Bakiye, e.ParaBirimi)</td>
+                    @if (dovizliMi)
+                    {
+                        <td class="sayi">@Bicim.Kur(s.Kur)</td>
+                        <td class="sayi">@Bicim.Bakiye(s.BakiyeTl, ParaBirimleri.Tl)</td>
+                    }
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr style="font-weight: 600;">
+                <td colspan="5">Dönem toplamı</td>
+                <td class="sayi">@Bicim.Tutar(e.ToplamBorc)</td>
+                <td class="sayi">@Bicim.Tutar(e.ToplamAlacak)</td>
+                <td class="sayi">@Bicim.Bakiye(e.SonBakiye, e.ParaBirimi)</td>
+                @if (dovizliMi)
+                {
+                    <td></td>
+                    <td class="sayi">@Bicim.Bakiye(e.SonBakiyeTl, ParaBirimleri.Tl)</td>
+                }
+            </tr>
+        </tfoot>
+    </MudSimpleTable>
+
+    @if (e.Satirlar.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mt-2">Bu dönemde hareket yok.</MudText>
+    }
+
+    <MudText Typo="Typo.caption" Class="mt-2 d-block">(B) borçlu, (A) alacaklı bakiye.</MudText>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private EkstreCevabi? _ekstre;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow().Date;
+        _baslangic = new DateTime(bugun.Year, 1, 1);
+        _bitis = bugun;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/cari/hesaplar/{Id}/ekstre"
+                    + $"?baslangic={Bicim.Iso(DateOnly.FromDateTime(_baslangic ?? DateTime.Today))}"
+                    + $"&bitis={Bicim.Iso(DateOnly.FromDateTime(_bitis ?? DateTime.Today))}";
+        var sonuc = await Api.GetAsync<EkstreCevabi>(adres);
+        _hata = sonuc.Hata;
+        _ekstre = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+}
