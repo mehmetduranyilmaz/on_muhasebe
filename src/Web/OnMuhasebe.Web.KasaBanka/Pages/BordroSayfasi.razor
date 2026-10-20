@@ -1,0 +1,121 @@
+@page "/cek-senet/bordro/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_bordro is { } b)
+{
+    var giris = b.Islem == EvrakIslemi.Giris;
+    <div class="yazdirma-gizle">
+        <SayfaBasligi Baslik="@($"Bordro {b.BordroNo}")" GeriAdres="cek-senet" Ikon="@CekSenetMetinleri.IslemIkonu(b.Islem)">
+            <AltIcerik><span>@BordroAdi(b.Islem) · @Bicim.Tarih(b.Tarih)</span></AltIcerik>
+            <Islemler>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
+                @if (!Oturum.SaltOkunurMu && b.Islem is EvrakIslemi.Giris or EvrakIslemi.Cikis)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                               Href="@(giris ? "cek-senet/giris" : "cek-senet/cikis")">Yeni bordro</MudButton>
+                }
+            </Islemler>
+        </SayfaBasligi>
+    </div>
+
+    <div class="bordro-kagidi kart belirme">
+        <div class="bk-ust">
+            <div>
+                <b class="bk-firma">@_firma?.Unvan</b>
+                @if (_firma?.VergiNo is { } vn)
+                {
+                    <div class="ozet-alt">@(_firma.VergiDairesi is null ? "" : $"{_firma.VergiDairesi} V.D. · ")@vn</div>
+                }
+            </div>
+            <div class="text-right">
+                <div class="bk-baslik">@BordroAdi(b.Islem)</div>
+                <div>No <b>@b.BordroNo</b> · @Bicim.Tarih(b.Tarih)</div>
+            </div>
+        </div>
+        <div class="bk-taraflar">
+            @if (b.CariUnvan is not null)
+            {
+                <div><small>@(giris ? "Evrakı teslim eden" : b.Islem == EvrakIslemi.Ciro ? "Ciro edilen" : "Evrakı teslim alan")</small><b>@b.CariUnvan</b></div>
+            }
+            @if (b.HesapAdi is not null)
+            {
+                <div><small>Hesap / banka</small><b>@b.HesapAdi</b></div>
+            }
+            @if (b.Aciklama is not null)
+            {
+                <div><small>Açıklama</small><span>@b.Aciklama</span></div>
+            }
+        </div>
+        <table class="bk-tablo">
+            <thead>
+                <tr>
+                    <th>#</th><th>Portföy no</th><th>Tür</th><th>Evrak no</th><th>@(giris ? "Keşideci / borçlu" : "Banka")</th><th>Vade</th><th class="sayi">Tutar</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (e, i) in b.Evraklar.Select((e, i) => (e, i + 1)))
+                {
+                    <tr>
+                        <td>@i</td>
+                        <td><a href="@($"cek-senet/{e.Id}")" class="baglanti">@e.PortfoyNo</a></td>
+                        <td>@CekSenetMetinleri.Tur(e.Tur)</td>
+                        <td>@e.SeriNo</td>
+                        <td>@(e.BorcluAdi ?? e.BankaAdi)@(e.BorcluAdi is not null && e.BankaAdi is not null ? $" · {e.BankaAdi}" : "")</td>
+                        <td>@Bicim.Tarih(e.VadeTarihi)</td>
+                        <td class="sayi">@Bicim.Tutar(e.Tutar, e.ParaBirimi)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                @foreach (var g in b.Evraklar.GroupBy(e => e.ParaBirimi))
+                {
+                    <tr>
+                        <td colspan="6">Toplam · @g.Count() evrak</td>
+                        <td class="sayi"><b>@Bicim.Tutar(g.Sum(e => e.Tutar), g.Key)</b></td>
+                    </tr>
+                }
+            </tfoot>
+        </table>
+        <div class="bk-imzalar">
+            <div>Teslim eden<span></span></div>
+            <div>Teslim alan<span></span></div>
+        </div>
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private BordroDetayi? _bordro;
+    private FirmaBilgileri? _firma;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var sonuc = await Api.GetAsync<BordroDetayi>($"api/kasabanka/cek-senet/bordrolar/{Id}");
+        _hata = sonuc.Hata;
+        _bordro = sonuc.BasariliMi ? sonuc.Deger : null;
+        var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
+        _firma = firma.BasariliMi ? firma.Deger : null;
+    }
+
+    private static string BordroAdi(EvrakIslemi islem) => islem switch
+    {
+        EvrakIslemi.Giris => "Çek/Senet Giriş Bordrosu",
+        EvrakIslemi.Cikis => "Çek/Senet Çıkış Bordrosu",
+        EvrakIslemi.Ciro => "Ciro Bordrosu",
+        EvrakIslemi.TahsileVerme => "Tahsile Verme Bordrosu",
+        EvrakIslemi.TeminataVerme => "Teminat Bordrosu",
+        _ => $"{CekSenetMetinleri.Islem(islem)} Bordrosu"
+    };
+
+    private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+}

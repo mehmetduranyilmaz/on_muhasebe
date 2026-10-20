@@ -1,10 +1,16 @@
-@* Hareketin kaynak belgesine (fatura) bağlantı. Belgenin modülü lisanslı değilse yalnızca metin gösterilir. *@
+@* Hareketin kaynak belgesine (fatura ya da çek/senet) bağlantı. Belgenin modülü lisanslı değilse yalnızca metin gösterilir. *@
 @inject OturumYoneticisi Oturum
 
 @if (KaynakBelgeId is { } id && FaturaMi && Oturum.ModulAcikMi(ModulKodlari.Fatura))
 {
     <a href="@($"fatura/{id}")" class="baglanti belge-baglantisi" @onclick:stopPropagation="true">
         <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small" /> @(Metin ?? "Faturayı aç")
+    </a>
+}
+else if (KaynakBelgeId is { } evrakId && CekSenetMi && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+{
+    <a href="@($"cek-senet/{evrakId}")" class="baglanti belge-baglantisi" @onclick:stopPropagation="true">
+        <MudIcon Icon="@Icons.Material.Filled.RequestQuote" Size="Size.Small" /> @(Metin ?? "Evrakı aç")
     </a>
 }
 else
@@ -15,5 +21,6 @@ else
 @code {
     [Parameter] public Guid? KaynakBelgeId { get; set; }
     [Parameter] public bool FaturaMi { get; set; }
+    [Parameter] public bool CekSenetMi { get; set; }
     [Parameter] public string? Metin { get; set; }
 }

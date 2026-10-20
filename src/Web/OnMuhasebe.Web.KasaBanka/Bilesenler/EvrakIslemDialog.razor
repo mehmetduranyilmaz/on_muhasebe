@@ -1,0 +1,148 @@
+@* Seçilen evraklara tek bordroyla aynı işlemi uygular (tahsile ver, ciro et, karşılıksız...). Sonuç olarak BordroSonucu döner. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <div class="evrak-islem-basligi" style="--renk:@CekSenetMetinleri.IslemRengi(Islem)">
+            <MudIcon Icon="@CekSenetMetinleri.IslemIkonu(Islem)" />
+            <div>
+                <b>@CekSenetMetinleri.Islem(Islem)</b>
+                <div class="ozet-alt">@CekSenetMetinleri.IslemAciklamasi(Islem)</div>
+            </div>
+        </div>
+
+        <div class="evrak-islem-listesi">
+            @foreach (var e in Evraklar)
+            {
+                <div class="evrak-islem-satiri">
+                    <MudIcon Icon="@CekSenetMetinleri.TurIkonu(e.Tur)" Size="Size.Small" />
+                    <span><b>@e.PortfoyNo</b> · @e.SeriNo</span>
+                    <span class="ozet-alt">vade @Bicim.Tarih(e.VadeTarihi)</span>
+                    <MudSpacer />
+                    <b>@Bicim.Tutar(Islem == EvrakIslemi.KarsiliksizdanTahsil ? e.KalanTutar : e.Tutar, e.ParaBirimi)</b>
+                </div>
+            }
+            @if (Evraklar.Count > 1)
+            {
+                <div class="evrak-islem-satiri toplam">
+                    <span>@Evraklar.Count evrak</span>
+                    <MudSpacer />
+                    @foreach (var g in Evraklar.GroupBy(e => e.ParaBirimi))
+                    {
+                        <b class="ml-3">@Bicim.Tutar(g.Sum(e => e.Tutar), g.Key)</b>
+                    }
+                </div>
+            }
+        </div>
+
+        <MudGrid Spacing="2" Class="mt-2">
+            <MudItem xs="12" sm="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="İşlem tarihi" @bind-Date="_tarih" DateFormat="dd.MM.yyyy" Required="true" />
+            </MudItem>
+            @if (HesapGerekli)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(Girdi == IslemGirdisi.Banka ? "Banka" : "Hesap")"
+                               @bind-Value="_hesapId" AnchorOrigin="Origin.BottomCenter" Required="true"
+                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountBalance">
+                        @foreach (var h in UygunHesaplar)
+                        {
+                            <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @KasaMetinleri.HesapTuru(h.Tur)</MudSelectItem>
+                        }
+                    </MudSelect>
+                    @if (!UygunHesaplar.Any())
+                    {
+                        <div class="ozet-alt mt-1">@ParaBirimleri.Ad(ParaBirimi) cinsinden uygun hesap yok.</div>
+                    }
+                </MudItem>
+            }
+            @if (Girdi == IslemGirdisi.Cari)
+            {
+                <MudItem xs="12">
+                    <MudAutocomplete T="CariSecim" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Ciro edilecek cari" @bind-Value="_cari"
+                                     SearchFunc="CariAraAsync" ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")" DebounceInterval="300"
+                                     ResetValueOnEmptyText="true" Clearable="true" MaxItems="10" Required="true"
+                                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.People" />
+                </MudItem>
+            }
+            @if (Islem == EvrakIslemi.KarsiliksizdanTahsil && Evraklar.Count == 1)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tahsil edilen tutar" @bind-Value="_tutar"
+                                     Format="N2" HideSpinButtons="true" Min="0.01m" Max="Evraklar[0].KalanTutar"
+                                     HelperText="@($"Kalan {Bicim.Tutar(Evraklar[0].KalanTutar, ParaBirimi)}; azı girilirse evrak takipte kalır.")" />
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Açıklama" @bind-Value="_aciklama" MaxLength="500" />
+            </MudItem>
+        </MudGrid>
+        <HataGosterimi Hata="_hata" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@CekSenetMetinleri.IslemIkonu(Islem)"
+                      Color="@(CekSenetMetinleri.TehlikeliMi(Islem) ? Color.Error : Color.Primary)" Disabled="!HazirMi">
+            @CekSenetMetinleri.Islem(Islem)
+        </IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public EvrakIslemi Islem { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<EvrakOzeti> Evraklar { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<HesapOzeti> Hesaplar { get; set; } = [];
+
+    private DateTime? _tarih = DateTime.Today;
+    private Guid? _hesapId;
+    private CariSecim? _cari;
+    private decimal _tutar;
+    private string? _aciklama;
+    private ApiHatasi? _hata;
+
+    private IslemGirdisi Girdi => CekSenetMetinleri.Girdi(Islem);
+
+    private string ParaBirimi => Evraklar[0].ParaBirimi;
+
+    private bool HesapGerekli => Girdi is IslemGirdisi.Banka or IslemGirdisi.KasaVeyaBanka
+                                 || (Girdi == IslemGirdisi.SenetIcinKasaVeyaBanka && Evraklar.Any(e => e.Tur == EvrakTuru.Senet));
+
+    private IEnumerable<HesapOzeti> UygunHesaplar => Hesaplar.Where(h => h.AktifMi && h.ParaBirimi == ParaBirimi
+        && (Girdi == IslemGirdisi.Banka ? h.Tur == HesapTuru.Banka : h.Tur is HesapTuru.Kasa or HesapTuru.Banka));
+
+    private bool HazirMi => _tarih is not null && (!HesapGerekli || _hesapId is not null) && (Girdi != IslemGirdisi.Cari || _cari is not null)
+                            && (Islem != EvrakIslemi.KarsiliksizdanTahsil || Evraklar.Count > 1 || _tutar > 0);
+
+    protected override void OnInitialized()
+    {
+        _tutar = Evraklar.Count == 1 ? Evraklar[0].KalanTutar : 0m;
+        _hesapId = UygunHesaplar.OrderBy(h => h.Tur == HesapTuru.Banka ? 0 : 1).FirstOrDefault()?.Id;
+    }
+
+    private async Task<IEnumerable<CariSecim>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>(
+            $"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        var getirenler = Evraklar.Select(e => e.CariHesapId).ToHashSet();
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar.Where(c => !getirenler.Contains(c.Id)).Select(c => new CariSecim(c.Id, c.Unvan, c.Kod)) : [];
+    }
+
+    private async Task KaydetAsync()
+    {
+        var tutar = Islem == EvrakIslemi.KarsiliksizdanTahsil && Evraklar.Count == 1 && _tutar != Evraklar[0].KalanTutar ? _tutar : (decimal?)null;
+        var istek = new EvrakIslemIstegi(Islem, DateOnly.FromDateTime(_tarih!.Value), Evraklar.Select(e => e.Id).ToList(),
+            HesapGerekli ? _hesapId : null, Girdi == IslemGirdisi.Cari ? _cari?.Id : null, tutar, null, null,
+            string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim());
+        var sonuc = await Api.PostAsync<BordroSonucu>("api/kasabanka/cek-senet/islemler", istek);
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

@@ -67,6 +67,8 @@ public static class KasaMetinleri
         _ => tur.ToString()
     };
 
+    public static bool CekSenetHareketiMi(KasaHareketTuru tur) => tur is KasaHareketTuru.CekSenetTahsil or KasaHareketTuru.CekSenetOdeme;
+
     public static IReadOnlyList<IslemTuru> IslemTurleri { get; } = [IslemTuru.Tahsilat, IslemTuru.Odeme, IslemTuru.Virman, IslemTuru.Gelir, IslemTuru.Gider];
 
     public static string Islem(IslemTuru tur) => tur switch

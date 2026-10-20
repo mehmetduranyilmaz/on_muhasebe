@@ -1,0 +1,166 @@
+@* Keşideci/borçlu kartı: bilgiler, kayıtlı çek hesapları, karşılıksız geçmişi ve kara liste yönetimi. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OnayServisi Onay
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        @if (_detay is not { } d)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="240px" Animation="Animation.Wave" />
+        }
+        else
+        {
+            @if (d.Riskli)
+            {
+                <div class="risk-bandi mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.GppMaybe" />
+                    <div>
+                        <b>@(d.KaraListede ? "Kara listede" : "Karşılıksız geçmişi var")</b>
+                        <div>Bu kişiden yeni evrak girilirken uyarı gösterilir@(d.RiskNotu is null ? "." : $": {d.RiskNotu}")</div>
+                    </div>
+                </div>
+            }
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="7">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Ad / unvan" @bind-Value="_ad" MaxLength="200" ReadOnly="Oturum.SaltOkunurMu" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="VKN / TCKN" @bind-Value="_kimlik" MaxLength="11" ReadOnly="Oturum.SaltOkunurMu" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Telefon" @bind-Value="_telefon" MaxLength="30" ReadOnly="Oturum.SaltOkunurMu" />
+                </MudItem>
+                <MudItem xs="12" sm="7">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Adres" @bind-Value="_adres" MaxLength="500" ReadOnly="Oturum.SaltOkunurMu" />
+                </MudItem>
+            </MudGrid>
+
+            @if (d.Hesaplar.Count > 0)
+            {
+                <div class="ayar-baslik mt-4">Çek hesapları</div>
+                <div class="kayitli-hesaplar">
+                    @foreach (var h in d.Hesaplar)
+                    {
+                        <span class="durum-filtresi" style="--renk:#3B82F6">@h.BankaAdi @h.Sube · @h.HesapNo</span>
+                    }
+                </div>
+            }
+
+            <div class="ayar-baslik mt-4">Karşılıksız geçmişi</div>
+            @if (d.Karsiliksizlar.Count == 0)
+            {
+                <div class="ozet-alt">Karşılıksız evrakı yok.</div>
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Elevation="0">
+                    <tbody>
+                        @foreach (var k in d.Karsiliksizlar)
+                        {
+                            <tr>
+                                <td><a href="@($"cek-senet/{k.EvrakId}")" class="baglanti">@k.PortfoyNo</a></td>
+                                <td>@Bicim.Tarih(k.KarsiliksizTarihi)</td>
+                                <td class="sayi">@Bicim.Tutar(k.Tutar, k.ParaBirimi)</td>
+                                <td><EvrakDurumCipi Durum="k.GuncelDurum" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+
+            @if (!Oturum.SaltOkunurMu)
+            {
+                <div class="kural-hatirla mt-4">
+                    <MudSwitch T="bool" @bind-Value="_karaListe" Color="Color.Error" Label="Kara listeye al" />
+                    @if (!_karaListe && d.Karsiliksizlar.Count > 0)
+                    {
+                        <MudSwitch T="bool" @bind-Value="_uyariKapali" Color="Color.Secondary" Label="Karşılıksız geçmişine rağmen uyarma (borç kapandı)" />
+                    }
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Risk notu" @bind-Value="_riskNotu" MaxLength="500" />
+                </div>
+            }
+            <HataGosterimi Hata="_hata" />
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_detay is { Karsiliksizlar.Count: 0 } && !Oturum.SaltOkunurMu)
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudButton>
+        }
+        <MudSpacer />
+        <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(string.IsNullOrWhiteSpace(_ad))">Kaydet</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid BorcluId { get; set; }
+
+    private BorcluDetayi? _detay;
+    private string? _ad, _kimlik, _telefon, _adres, _riskNotu;
+    private bool _karaListe, _uyariKapali;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<BorcluDetayi>($"api/kasabanka/cek-senet/borclular/{BorcluId}");
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        var d = _detay = sonuc.Deger;
+        (_ad, _kimlik, _telefon, _adres, _riskNotu, _karaListe, _uyariKapali) = (d.Ad, d.KimlikNo, d.Telefon, d.Adres, d.RiskNotu, d.KaraListede, d.UyariKapali);
+    }
+
+    private async Task KaydetAsync()
+    {
+        var d = _detay!;
+        var bilgi = await Api.PutAsync($"api/kasabanka/cek-senet/borclular/{BorcluId}",
+            new BorcluKaydetIstegi(_ad!.Trim(), Bos(_kimlik), Bos(_telefon), Bos(_adres), d.Not, d.Surum));
+        if (!bilgi.BasariliMi)
+        {
+            _hata = bilgi.Hata;
+            return;
+        }
+
+        var risk = await Api.PutAsync($"api/kasabanka/cek-senet/borclular/{BorcluId}/risk", new RiskDurumuIstegi(_karaListe, _uyariKapali, Bos(_riskNotu)));
+        if (!risk.BasariliMi)
+        {
+            _hata = risk.Hata;
+            return;
+        }
+
+        Snackbar.Add("Keşideci/borçlu kaydedildi.", Severity.Success);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Kartı sil", "Keşideci/borçlu kartı silinecek. Evrakı olan kart silinemez.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/kasabanka/cek-senet/borclular/{BorcluId}");
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    private static string? Bos(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
+}

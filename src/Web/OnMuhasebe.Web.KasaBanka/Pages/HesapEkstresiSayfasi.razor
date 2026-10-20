@@ -50,7 +50,7 @@ else if (_ekstre is { } e)
                     <tr>
                         <td>@Bicim.Tarih(s.Tarih)</td>
                         <td>@KasaMetinleri.HareketTuru(s.Tur)</td>
-                        <td><BelgeBaglantisi KaynakBelgeId="s.KaynakBelgeId" FaturaMi="true" Metin="@s.BelgeNo" /></td>
+                        <td><BelgeBaglantisi KaynakBelgeId="s.KaynakBelgeId" FaturaMi="!KasaMetinleri.CekSenetHareketiMi(s.Tur)" CekSenetMi="KasaMetinleri.CekSenetHareketiMi(s.Tur)" Metin="@s.BelgeNo" /></td>
                         <td>@(s.CariUnvan is not null && s.CariUnvan != s.Aciklama ? $"{s.CariUnvan} · {s.Aciklama}" : s.Aciklama)</td>
                         <td class="sayi">@(s.Giris > 0 ? Bicim.Tutar(s.Giris) : "")</td>
                         <td class="sayi">@(s.Cikis > 0 ? Bicim.Tutar(s.Cikis) : "")</td>

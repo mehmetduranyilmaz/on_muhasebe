@@ -55,14 +55,15 @@ internal sealed class CekSenetServisi(
                 return tekrar;
             }
 
-            var riskOnaylandi = false;
+            // Onay yalnızca riskli keşideci/kefile ait evraklara işlenir; riskli olan getiren cariyse bordrodaki hepsine.
+            IReadOnlyList<RiskliBorclu> riskliler = [];
             if (ayar.RiskDavranisi != RiskDavranisi.Kapali)
             {
                 var kimlikler = borclular.Select(b => b.KimlikNo)
                     .Concat(istek.Evraklar.Select(e => Temiz(e.KefilKimlikNo)))
                     .Append(cari.VergiNo)
                     .OfType<string>().Distinct().ToList();
-                var riskliler = await risk.RiskliBorclularAsync(
+                riskliler = await risk.RiskliBorclularAsync(
                     borclular.Select(b => b.Id).ToList(), kimlikler, borclular.Where(b => b.KimlikNo is null).Select(b => b.Ad).ToList(), ct);
                 if (riskliler.Count > 0)
                 {
@@ -76,10 +77,16 @@ internal sealed class CekSenetServisi(
                     {
                         return KasaBankaHatalari.RiskOnayiGerekli(mesaj);
                     }
-
-                    riskOnaylandi = true;
                 }
             }
+
+            var riskliKartlar = riskliler.Select(r => r.BorcluId).ToHashSet();
+            var riskliKimlikler = riskliler.Select(r => r.KimlikNo).OfType<string>().ToHashSet();
+            var riskliAdlar = riskliler.Where(r => r.KimlikNo is null).Select(r => r.Ad.ToUpperInvariant()).ToHashSet();
+            var cariRiskli = cari.VergiNo is { } vergiNo && riskliKimlikler.Contains(vergiNo);
+            bool RiskliMi(EvrakBorclusu b, AlinanEvrakGirdisi g) => cariRiskli || riskliKartlar.Contains(b.Id)
+                || (b.KimlikNo is { } k && riskliKimlikler.Contains(k)) || (b.KimlikNo is null && riskliAdlar.Contains(b.Ad.ToUpperInvariant()))
+                || (Temiz(g.KefilKimlikNo) is { } kefil && riskliKimlikler.Contains(kefil));
 
             var bordro = await BordroAsync(EvrakIslemi.Giris, istek.Tarih, cari.Id, null, istek.Aciklama, ct);
             var idler = new List<Guid>();
@@ -106,7 +113,7 @@ internal sealed class CekSenetServisi(
 
                 var evrak = Evrak.Alinan(await KodAsync("kasabanka.evrak", Evrak.KodOneki(EvrakYonu.Alinan, g.Tur), ct), g, istek.Tarih, cari.Id,
                     kur.Deger, cariTutar.Deger.Tutar, cariTutar.Deger.Kur, borclu, null, null);
-                if (riskOnaylandi)
+                if (riskliler.Count > 0 && RiskliMi(borclu, g))
                 {
                     evrak.RiskOnayla(mevcutKullanici.KullaniciId!.Value, zaman.GetUtcNow().UtcDateTime);
                 }

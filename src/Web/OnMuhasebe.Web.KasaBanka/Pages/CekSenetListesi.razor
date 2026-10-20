@@ -1,0 +1,329 @@
+@page "/cek-senet"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Çek / Senet" Ikon="@Icons.Material.Filled.RequestQuote">
+    <AltIcerik><span>Portföy, ciro ve tahsil takibi</span></AltIcerik>
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CalendarMonth" Href="cek-senet/vade-takvimi">Vade takvimi</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Badge" Href="cek-senet/kesideciler">Keşideciler</MudButton>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Outbox" Href="cek-senet/cikis">Evrak ver</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Inventory" Href="cek-senet/giris">Evrak al</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<MudGrid Spacing="3" Class="mb-3">
+    <MudItem xs="6" md="3">
+        <OzetKarti Baslik="Portföyde" Deger="_ozet?.PortfoyTl ?? 0" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Inventory" Renk="#14B8A6" Sira="1"
+                   AltMetin="@($"{_ozet?.PortfoyAdet ?? 0} evrak · tahsilde ve teminattakiler dahil")" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <OzetKarti Baslik="7 gün içinde tahsil" Deger="_ozet?.YaklasanAlinanTl ?? 0" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.CallReceived" Renk="#16A34A" Sira="2" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <OzetKarti Baslik="7 gün içinde ödeme" Deger="_ozet?.YaklasanVerilenTl ?? 0" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.CallMade" Renk="#F59E0B" Sira="3"
+                   AltMetin="@(_ozet is { VadesiGecmisVerilenAdet: > 0 } o ? $"{o.VadesiGecmisVerilenAdet} evrakın vadesi geçti" : null)" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <OzetKarti Baslik="Karşılıksız (takipte)" Deger="_ozet?.KarsiliksizTl ?? 0" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Report" Renk="#DC2626" Sira="4" />
+    </MudItem>
+</MudGrid>
+
+<div class="d-flex flex-wrap align-center gap-2 mb-2">
+    <div class="tur-sekmeleri mb-0">
+        @foreach (var yon in new[] { EvrakYonu.Alinan, EvrakYonu.Verilen })
+        {
+            <button type="button" class="tur-sekmesi @(_yon == yon ? "secili" : "")" style="--vurgu:@(yon == EvrakYonu.Alinan ? "#14B8A6" : "#F59E0B")"
+                    @onclick="() => YonSecAsync(yon)">
+                <MudIcon Icon="@(yon == EvrakYonu.Alinan ? Icons.Material.Filled.CallReceived : Icons.Material.Filled.CallMade)" Size="Size.Small" />
+                @(yon == EvrakYonu.Alinan ? "Alınan evraklar" : "Verilen evraklar")
+            </button>
+        }
+    </div>
+    <MudSpacer />
+    <MudSelect T="EvrakTuru?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_tur" ValueChanged="TurSecAsync" Style="max-width:150px"
+               Placeholder="Tür" Clearable="true" AnchorOrigin="Origin.BottomCenter">
+        <MudSelectItem T="EvrakTuru?" Value="EvrakTuru.Cek">Çek</MudSelectItem>
+        <MudSelectItem T="EvrakTuru?" Value="EvrakTuru.Senet">Senet</MudSelectItem>
+    </MudSelect>
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" DebounceInterval="350"
+                  Placeholder="Portföy no, seri no, keşideci" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true"
+                  Style="max-width:280px" />
+</div>
+
+<div class="durum-filtreleri mb-3">
+    @foreach (var (ad, durum, acik) in Filtreler)
+    {
+        var secili = _durum == durum && _acik == acik;
+        <button type="button" class="durum-filtresi @(secili ? "secili" : "")" style="--renk:@(durum is { } d ? CekSenetMetinleri.DurumRengi(d) : "#1E3A5F")"
+                @onclick="() => FiltreSecAsync(durum, acik)">
+            @ad
+        </button>
+    }
+    @if (CariId is not null)
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" OnClose="CariFiltresiniKaldir" Icon="@Icons.Material.Filled.People">Cari filtresi</MudChip>
+    }
+</div>
+
+@if (_secili.Count > 0)
+{
+    <div class="toplu-cubuk belirme mb-3">
+        <b>@_secili.Count seçili</b>
+        @if (SecimDovizKarisikMi)
+        {
+            <span class="ozet-alt">Farklı dövizdeki evraklar birlikte işlenemez.</span>
+        }
+        else if (OrtakIslemler.Count == 0)
+        {
+            <span class="ozet-alt">Seçilen evraklara birlikte uygulanabilecek işlem yok.</span>
+        }
+        @foreach (var islem in SecimDovizKarisikMi ? [] : OrtakIslemler)
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@CekSenetMetinleri.IslemIkonu(islem)"
+                       Style="@($"color:{CekSenetMetinleri.IslemRengi(islem)}")" OnClick="() => TopluIslemAsync(islem)">
+                @CekSenetMetinleri.Islem(islem)
+            </MudButton>
+        }
+        <MudSpacer />
+        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => _secili.Clear()">Temizle</MudButton>
+    </div>
+}
+
+<VeriTablosu T="EvrakOzeti" Kayitlar="_sayfa?.Kayitlar" Yukleniyor="_yukleniyor" Dense="true" SatirTiklandi="@(e => Navigasyon.NavigateTo($"cek-senet/{e.Id}"))"
+             Sayfa="_sayfaNo" ToplamSayfa="_sayfa?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
+             BosIkon="@Icons.Material.Outlined.RequestQuote" BosBaslik="@(_yon == EvrakYonu.Alinan ? "Portföyde evrak yok" : "Verilmiş evrak yok")"
+             BosAciklama="@(_yon == EvrakYonu.Alinan ? "Müşteriden aldığınız çek ve senetleri giriş bordrosuyla portföye ekleyin." : "Tedarikçiye verdiğiniz çek ve senetleri çıkış bordrosuyla kaydedin.")">
+    <Basliklar>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudTh Style="width:44px">
+                <MudCheckBox T="bool" Value="SayfaSeciliMi" ValueChanged="SayfayiSec" Size="Size.Small" Color="Color.Secondary" />
+            </MudTh>
+        }
+        <MudTh>Evrak</MudTh>
+        <MudTh>@(_yon == EvrakYonu.Alinan ? "Keşideci / borçlu" : "Hesap")</MudTh>
+        <MudTh>Cari</MudTh>
+        <MudTh>Vade</MudTh>
+        <MudTh Class="sayi">Tutar</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        @{ var e = context; }
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudTd>
+                @if (e.UygunIslemler.Count > 0)
+                {
+                    <span @onclick:stopPropagation="true">
+                        <MudCheckBox T="bool" Value="_secili.ContainsKey(e.Id)" ValueChanged="v => Sec(e, v)" Size="Size.Small" Color="Color.Secondary" />
+                    </span>
+                }
+            </MudTd>
+        }
+        <MudTd DataLabel="Evrak">
+            <div class="d-flex align-center gap-2">
+                <span class="evrak-ikonu" style="--renk:@CekSenetMetinleri.DurumRengi(e.Durum)"><MudIcon Icon="@CekSenetMetinleri.TurIkonu(e.Tur)" Size="Size.Small" /></span>
+                <div>
+                    <b>@e.PortfoyNo</b>
+                    <div class="mobil-alt-bilgi">@CekSenetMetinleri.Tur(e.Tur) · No @e.SeriNo</div>
+                </div>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="@(_yon == EvrakYonu.Alinan ? "Keşideci" : "Hesap")">
+            @(e.BorcluAdi ?? e.BankaAdi ?? "—")
+            @if (e.BorcluAdi is not null && e.BankaAdi is not null)
+            {
+                <div class="mobil-alt-bilgi">@e.BankaAdi</div>
+            }
+        </MudTd>
+        <MudTd DataLabel="Cari">@e.CariUnvan</MudTd>
+        <MudTd DataLabel="Vade">
+            @Bicim.Tarih(e.VadeTarihi)
+            @if (CekSenetMetinleri.VadeTakipliMi(e.Durum))
+            {
+                <div class="vade-kalan @(e.VadeTarihi < _bugun ? "gecti" : e.VadeTarihi.DayNumber - _bugun.DayNumber <= 7 ? "yakin" : "")">@CekSenetMetinleri.Vade(e.VadeTarihi, _bugun)</div>
+            }
+        </MudTd>
+        <MudTd DataLabel="Tutar" Class="sayi">
+            <b>@Bicim.Tutar(e.Tutar, e.ParaBirimi)</b>
+            @if (e.KalanTutar != e.Tutar && e.KalanTutar > 0)
+            {
+                <div class="mobil-alt-bilgi">Kalan @Bicim.Tutar(e.KalanTutar, e.ParaBirimi)</div>
+            }
+        </MudTd>
+        <MudTd DataLabel="Durum">
+            <EvrakDurumCipi Durum="e.Durum" />
+            @if (e.KonumAdi is not null)
+            {
+                <div class="mobil-alt-bilgi">@e.KonumAdi</div>
+            }
+            @if (e.KarsiliksizMi && e.Durum is not (EvrakDurumu.Karsiliksiz or EvrakDurumu.HukukiTakipte))
+            {
+                <div class="mobil-alt-bilgi" style="color:#DC2626">Karşılıksız çıkmıştı</div>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    [SupplyParameterFromQuery(Name = "yon")] public string? YonParametresi { get; set; }
+    [SupplyParameterFromQuery(Name = "cari")] public Guid? CariId { get; set; }
+
+    private EvrakYonu _yon = EvrakYonu.Alinan;
+    private EvrakDurumu? _durum;
+    private bool _acik = true;
+    private EvrakTuru? _tur;
+    private string? _arama;
+    private int _sayfaNo = 1;
+    private bool _yukleniyor;
+    private SayfaliSonuc<EvrakOzeti>? _sayfa;
+    private CekSenetOzeti? _ozet;
+    private List<HesapOzeti> _hesaplar = [];
+    private readonly Dictionary<Guid, EvrakOzeti> _secili = [];
+    private readonly DateOnly _bugun = DateOnly.FromDateTime(DateTime.Today);
+
+    private IEnumerable<(string Ad, EvrakDurumu? Durum, bool Acik)> Filtreler => _yon == EvrakYonu.Alinan
+        ?
+        [
+            ("Açık", null, true), ("Portföyde", EvrakDurumu.Portfoyde, false), ("Tahsilde", EvrakDurumu.Tahsilde, false),
+            ("Teminatta", EvrakDurumu.Teminatta, false), ("Ciro edildi", EvrakDurumu.CiroEdildi, false), ("Karşılıksız", EvrakDurumu.Karsiliksiz, false),
+            ("Hukuki takipte", EvrakDurumu.HukukiTakipte, false), ("Tahsil edildi", EvrakDurumu.TahsilEdildi, false),
+            ("Cirodan kapandı", EvrakDurumu.CirodanKapandi, false), ("İade edildi", EvrakDurumu.IadeEdildi, false), ("Tümü", null, false)
+        ]
+        :
+        [
+            ("Ödenecek", EvrakDurumu.Verildi, false), ("Ödendi", EvrakDurumu.Odendi, false), ("Karşılıksız", EvrakDurumu.Karsiliksiz, false),
+            ("İade alındı", EvrakDurumu.IadeAlindi, false), ("Tümü", null, false)
+        ];
+
+    private bool SecimDovizKarisikMi => _secili.Values.Select(e => e.ParaBirimi).Distinct().Count() > 1;
+
+    private IReadOnlyList<EvrakIslemi> OrtakIslemler => _secili.Values
+        .Select(e => (IEnumerable<EvrakIslemi>)e.UygunIslemler)
+        .Aggregate((a, b) => a.Intersect(b))
+        .ToList();
+
+    private bool SayfaSeciliMi => _sayfa?.Kayitlar.Where(e => e.UygunIslemler.Count > 0).ToList() is { Count: > 0 } s && s.All(e => _secili.ContainsKey(e.Id));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (YonParametresi == "verilen")
+        {
+            (_yon, _durum, _acik) = (EvrakYonu.Verilen, EvrakDurumu.Verildi, false);
+        }
+
+        var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar");
+        _hesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
+        await Task.WhenAll(OzetYukleAsync(), YukleAsync());
+    }
+
+    private async Task OzetYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<CekSenetOzeti>("api/kasabanka/cek-senet/raporlar/ozet");
+        _ozet = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        string?[] p =
+        [
+            $"yon={_yon}", _durum is { } d ? $"durum={d}" : null, _acik ? "acik=true" : null, _tur is { } t ? $"tur={t}" : null,
+            string.IsNullOrWhiteSpace(_arama) ? null : $"arama={Uri.EscapeDataString(_arama)}", CariId is { } c ? $"cariId={c}" : null,
+            $"sayfa={_sayfaNo}", "boyut=25"
+        ];
+        var sonuc = await Api.GetAsync<SayfaliSonuc<EvrakOzeti>>($"api/kasabanka/cek-senet/evraklar?{string.Join("&", p.Where(x => x is not null))}");
+        _sayfa = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<EvrakOzeti>([], 1, 25, 0);
+        _yukleniyor = false;
+    }
+
+    private Task YonSecAsync(EvrakYonu yon)
+    {
+        _yon = yon;
+        (_durum, _acik) = yon == EvrakYonu.Alinan ? ((EvrakDurumu?)null, true) : (EvrakDurumu.Verildi, false);
+        return YenidenAsync();
+    }
+
+    private Task FiltreSecAsync(EvrakDurumu? durum, bool acik)
+    {
+        (_durum, _acik) = (durum, acik);
+        return YenidenAsync();
+    }
+
+    private Task TurSecAsync(EvrakTuru? tur)
+    {
+        _tur = tur;
+        return YenidenAsync();
+    }
+
+    private Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        return YenidenAsync();
+    }
+
+    private Task CariFiltresiniKaldir(MudChip<string> _)
+    {
+        Navigasyon.NavigateTo("cek-senet", replace: true);
+        CariId = null;
+        return YenidenAsync();
+    }
+
+    private Task YenidenAsync()
+    {
+        _sayfaNo = 1;
+        _secili.Clear();
+        return YukleAsync();
+    }
+
+    private Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfaNo = sayfa;
+        return YukleAsync();
+    }
+
+    private void Sec(EvrakOzeti e, bool secili)
+    {
+        if (secili)
+        {
+            _secili[e.Id] = e;
+        }
+        else
+        {
+            _secili.Remove(e.Id);
+        }
+    }
+
+    private void SayfayiSec(bool secili)
+    {
+        foreach (var e in _sayfa?.Kayitlar.Where(x => x.UygunIslemler.Count > 0) ?? [])
+        {
+            Sec(e, secili);
+        }
+    }
+
+    private async Task TopluIslemAsync(EvrakIslemi islem)
+    {
+        var parametreler = new DialogParameters<EvrakIslemDialog>
+        {
+            { d => d.Islem, islem },
+            { d => d.Evraklar, _secili.Values.OrderBy(e => e.PortfoyNo).ToList() },
+            { d => d.Hesaplar, _hesaplar }
+        };
+        var dialog = await DialogService.ShowAsync<EvrakIslemDialog>(CekSenetMetinleri.Islem(islem), parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: BordroSonucu sonuc })
+        {
+            Snackbar.Add($"{sonuc.EvrakIdleri.Count} evrak işlendi · bordro {sonuc.BordroNo}", Severity.Success);
+            _secili.Clear();
+            await Task.WhenAll(OzetYukleAsync(), YukleAsync());
+        }
+    }
+}

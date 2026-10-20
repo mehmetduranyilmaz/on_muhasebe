@@ -113,7 +113,7 @@ internal static class CekSenetSorgulari
         return TypedResults.Ok(new BordroDetayi(b.Id, b.Kod, b.Islem, b.Tarih, b.CariHesapId, unvan, b.HesapId, hesap, b.Aciklama, evraklar));
     }
 
-    private static async Task<IResult> BorclularAsync(string? arama, int? sayfa, int? boyut, KasaBankaDbContext db, CancellationToken ct)
+    private static async Task<IResult> BorclularAsync(string? arama, bool? riskli, int? sayfa, int? boyut, KasaBankaDbContext db, CancellationToken ct)
     {
         var sorgu = db.EvrakBorclulari.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(arama))
@@ -130,6 +130,7 @@ internal static class CekSenetSorgulari
                 EvrakSayisi = evraklar.Count(e => e.BorcluId == b.Id),
                 KarsiliksizSayisi = evraklar.Count(e => e.BorcluId == b.Id && e.KarsiliksizTarihi != null)
             })
+            .Where(b => riskli != true || b.KaraListede || (b.KarsiliksizSayisi > 0 && !b.UyariKapali))
             .Select(b => new BorcluOzeti(b.Id, b.Ad, b.KimlikNo, b.Telefon, b.EvrakSayisi, b.KarsiliksizSayisi, b.KaraListede,
                 b.KaraListede || (b.KarsiliksizSayisi > 0 && !b.UyariKapali)))
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), ct);
@@ -246,7 +247,7 @@ internal static class CekSenetSorgulari
     private static IQueryable<EvrakOzeti> Ozetler(IQueryable<Evrak> sorgu) => sorgu.Select(e => new EvrakOzeti(
         e.Id, e.Kod, e.Tur, e.Yon, e.SeriNo, e.VadeTarihi, e.Tutar, e.ParaBirimi, e.Durum, e.CariHesapId, null, e.BorcluAdi, e.BankaAdi,
         e.KonumHesapId != null ? e.KonumHesapId.ToString() : e.CiroCariId != null ? e.CiroCariId.ToString() : null,
-        e.Tutar - e.TahsilEdilen, e.KarsiliksizTarihi != null));
+        e.Tutar - e.TahsilEdilen, e.KarsiliksizTarihi != null, Array.Empty<EvrakIslemi>()));
 
     // Cari unvanı ve konum (tahsil/teminat bankası ya da ciro edilen cari) adı doldurulur; konum projeksiyonda kimlik olarak gelir.
     private static async Task<List<EvrakOzeti>> AdlariEkleAsync(
@@ -259,6 +260,7 @@ internal static class CekSenetSorgulari
         return ozetler.Select(o => o with
         {
             CariUnvan = unvanlar.GetValueOrDefault(o.CariHesapId),
+            UygunIslemler = o.Durum == EvrakDurumu.Iptal ? [] : EvrakGecisleri.Uygunlar(o.Yon, o.Durum),
             KonumAdi = o.KonumAdi is { } k && Guid.Parse(k) is var id ? hesaplar.GetValueOrDefault(id) ?? unvanlar.GetValueOrDefault(id) : null
         }).ToList();
     }

@@ -128,7 +128,7 @@
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" Class="ml-1">@context.KategoriAdi</MudChip>
                 }
             </MudTd>
-            <MudTd DataLabel="Belge"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="true" Metin="@context.BelgeNo" /></MudTd>
+            <MudTd DataLabel="Belge"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="!KasaMetinleri.CekSenetHareketiMi(context.Tur)" CekSenetMi="KasaMetinleri.CekSenetHareketiMi(context.Tur)" Metin="@context.BelgeNo" /></MudTd>
             <MudTd DataLabel="Giriş" Class="sayi"><span class="bakiye-alacakli">@(context.Giris > 0 ? Bicim.Tutar(context.Giris) : "")</span></MudTd>
             <MudTd DataLabel="Çıkış" Class="sayi"><span class="bakiye-borclu">@(context.Cikis > 0 ? Bicim.Tutar(context.Cikis) : "")</span></MudTd>
             <MudTd Style="text-align:right">

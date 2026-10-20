@@ -1,0 +1,102 @@
+@page "/cek-senet/kesideciler"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+
+<SayfaBasligi Baslik="Keşideci ve borçlular" GeriAdres="cek-senet" Ikon="@Icons.Material.Filled.Badge">
+    <AltIcerik><span>Çek keşidecileri, senet borçluları ve kara liste</span></AltIcerik>
+</SayfaBasligi>
+
+<div class="d-flex flex-wrap align-center gap-2 mb-3">
+    <div class="tur-sekmeleri mb-0">
+        <button type="button" class="tur-sekmesi @(_yalnizRiskli ? "" : "secili")" style="--vurgu:#1E3A5F" @onclick="() => RiskliSecAsync(false)">Tümü</button>
+        <button type="button" class="tur-sekmesi @(_yalnizRiskli ? "secili" : "")" style="--vurgu:#DC2626" @onclick="() => RiskliSecAsync(true)">
+            <MudIcon Icon="@Icons.Material.Filled.GppMaybe" Size="Size.Small" /> Riskliler
+        </button>
+    </div>
+    <MudSpacer />
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" DebounceInterval="350"
+                  Placeholder="Ad ya da VKN/TCKN" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:300px" />
+</div>
+
+<VeriTablosu T="BorcluOzeti" Kayitlar="_sayfa?.Kayitlar" Yukleniyor="_yukleniyor" Dense="true" SatirTiklandi="AcAsync"
+             Sayfa="_sayfaNo" ToplamSayfa="_sayfa?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
+             BosIkon="@Icons.Material.Outlined.Badge" BosBaslik="Keşideci/borçlu yok"
+             BosAciklama="Evrak girerken keşideci yazdığınızda kartı kendiliğinden açılır.">
+    <Basliklar>
+        <MudTh>Ad / unvan</MudTh>
+        <MudTh>VKN / TCKN</MudTh>
+        <MudTh Class="sayi">Evrak</MudTh>
+        <MudTh Class="sayi">Karşılıksız</MudTh>
+        <MudTh>Risk</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Ad"><b>@context.Ad</b>@if (context.Telefon is not null)
+            {
+                <div class="mobil-alt-bilgi">@context.Telefon</div>
+            }</MudTd>
+        <MudTd DataLabel="VKN/TCKN">@(context.KimlikNo ?? "—")</MudTd>
+        <MudTd DataLabel="Evrak" Class="sayi">@context.EvrakSayisi</MudTd>
+        <MudTd DataLabel="Karşılıksız" Class="sayi"><span style="@(context.KarsiliksizSayisi > 0 ? "color:#DC2626;font-weight:700" : "")">@context.KarsiliksizSayisi</span></MudTd>
+        <MudTd DataLabel="Risk">
+            @if (context.KaraListede)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.Block">Kara listede</MudChip>
+            }
+            else if (context.Riskli)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text" Icon="@Icons.Material.Filled.GppMaybe">Riskli</MudChip>
+            }
+            else if (context.KarsiliksizSayisi > 0)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">Uyarı kapalı</MudChip>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<BorcluOzeti>? _sayfa;
+    private string? _arama;
+    private bool _yalnizRiskli;
+    private int _sayfaNo = 1;
+    private bool _yukleniyor;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<BorcluOzeti>>(
+            $"api/kasabanka/cek-senet/borclular?sayfa={_sayfaNo}&boyut=25{(_yalnizRiskli ? "&riskli=true" : "")}&arama={Uri.EscapeDataString(_arama ?? "")}");
+        _sayfa = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<BorcluOzeti>([], 1, 25, 0);
+        _yukleniyor = false;
+    }
+
+    private Task RiskliSecAsync(bool riskli)
+    {
+        _yalnizRiskli = riskli;
+        _sayfaNo = 1;
+        return YukleAsync();
+    }
+
+    private Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        _sayfaNo = 1;
+        return YukleAsync();
+    }
+
+    private Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfaNo = sayfa;
+        return YukleAsync();
+    }
+
+    private async Task AcAsync(BorcluOzeti borclu)
+    {
+        var dialog = await DialogService.ShowAsync<BorcluDialog>(borclu.Ad, new DialogParameters<BorcluDialog> { { d => d.BorcluId, borclu.Id } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        await dialog.Result;
+        await YukleAsync();
+    }
+}

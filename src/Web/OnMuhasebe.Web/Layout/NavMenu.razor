@@ -34,7 +34,7 @@
 
     public void Dispose() => Oturum.Degisti -= OturumDegisti;
 
-    private void ModulleriGuncelle() => _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)).ToList();
+    private void ModulleriGuncelle() => _acikModuller = ModulMenusu.MenuOgeleri.Where(m => Oturum.ModulAcikMi(m.Kod)).ToList();
 
     private void OturumDegisti()
     {

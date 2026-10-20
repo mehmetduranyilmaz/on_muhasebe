@@ -11,7 +11,9 @@
 @if (_cari is { } cari)
 {
     var dovizliMi = cari.ParaBirimi != ParaBirimleri.Tl;
-    var riskOrani = cari.RiskLimiti is > 0 ? (double)(Math.Max(cari.Bakiye, 0) / cari.RiskLimiti.Value) * 100 : 0;
+    var cekRiski = _cekRiskleri.FirstOrDefault(r => r.ParaBirimi == cari.ParaBirimi);
+    var toplamRisk = Math.Max(cari.Bakiye, 0) + (cekRiski is null ? 0 : cekRiski.Portfoyde + cekRiski.CiroRiski);
+    var riskOrani = cari.RiskLimiti is > 0 ? (double)(toplamRisk / cari.RiskLimiti.Value) * 100 : 0;
 
     <SayfaBasligi Baslik="@cari.Unvan" GeriAdres="cari" Ikon="@Icons.Material.Filled.Person">
         <AltIcerik>
@@ -36,6 +38,7 @@
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CallReceived" Href="@KasaIslemAdresi("tahsilat", cari)">Tahsilat</MudButton>
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CallMade" Href="@KasaIslemAdresi("odeme", cari)">Ödeme</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RequestQuote" Href="@($"cek-senet/giris?cari={cari.Id}&donus=cari/{cari.Id}")">Çek/senet al</MudButton>
             }
             @if (!Oturum.SaltOkunurMu)
             {
@@ -84,7 +87,29 @@
                     <MudProgressLinear Value="@Math.Min(riskOrani, 100)" Rounded="true" Size="Size.Medium" Class="mt-3"
                                        Color="@(riskOrani > 100 ? Color.Error : riskOrani > 80 ? Color.Warning : Color.Success)" />
                     <div class="ozet-alt">
-                        @(riskOrani > 100 ? $"Limit {Bicim.Tutar(cari.Bakiye - cari.RiskLimiti!.Value, cari.ParaBirimi)} aşıldı" : $"Limitin %{riskOrani:0} kullanılıyor")
+                        @(riskOrani > 100 ? $"Limit {Bicim.Tutar(toplamRisk - cari.RiskLimiti!.Value, cari.ParaBirimi)} aşıldı" : $"Limitin %{riskOrani:0} kullanılıyor")
+                    </div>
+                }
+                @foreach (var r in _cekRiskleri.Where(r => r.Portfoyde + r.CiroRiski + r.Karsiliksiz + r.VerilenAcik > 0))
+                {
+                    <div class="cek-riski">
+                        <a href="@($"cek-senet?cari={cari.Id}")" class="baglanti"><MudIcon Icon="@Icons.Material.Filled.RequestQuote" Size="Size.Small" /> Çek/senet @r.ParaBirimi</a>
+                        @if (r.Portfoyde > 0)
+                        {
+                            <span>Portföyde <b>@Bicim.Tutar(r.Portfoyde, r.ParaBirimi)</b></span>
+                        }
+                        @if (r.CiroRiski > 0)
+                        {
+                            <span>Ciro riski <b>@Bicim.Tutar(r.CiroRiski, r.ParaBirimi)</b></span>
+                        }
+                        @if (r.Karsiliksiz > 0)
+                        {
+                            <span class="bakiye-borclu">Karşılıksız <b>@Bicim.Tutar(r.Karsiliksiz, r.ParaBirimi)</b></span>
+                        }
+                        @if (r.VerilenAcik > 0)
+                        {
+                            <span>Verilen açık <b>@Bicim.Tutar(r.VerilenAcik, r.ParaBirimi)</b></span>
+                        }
                     </div>
                 }
                 @if (cari.VadeGun is { } vade)
@@ -249,6 +274,7 @@ else if (_hata is null)
     public Guid Id { get; set; }
 
     private CariDetayi? _cari;
+    private List<CekRiski> _cekRiskleri = [];
     private SayfaliSonuc<CariHareketSatiri>? _hareketler;
     private int _sayfa = 1;
     private bool _hareketlerYukleniyor;
@@ -314,6 +340,11 @@ else if (_hata is null)
         var sonuc = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{Id}");
         _hata = sonuc.Hata;
         _cari = sonuc.BasariliMi ? sonuc.Deger : null;
+        if (_cari is not null && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+        {
+            var risk = await Api.GetAsync<List<CekRiski>>($"api/kasabanka/cek-senet/cari-riski/{Id}");
+            _cekRiskleri = risk.BasariliMi ? risk.Deger : [];
+        }
     }
 
     private async Task HareketleriYukleAsync()

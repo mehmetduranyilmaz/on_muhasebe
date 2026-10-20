@@ -1,0 +1,269 @@
+@page "/cek-senet/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_evrak is { } e)
+{
+    var bugun = DateOnly.FromDateTime(DateTime.Today);
+    <SayfaBasligi Baslik="@($"{CekSenetMetinleri.Tur(e.Tur)} {e.PortfoyNo}")" GeriAdres="@(e.Yon == EvrakYonu.Alinan ? "cek-senet" : "cek-senet?yon=verilen")"
+                  Ikon="@CekSenetMetinleri.TurIkonu(e.Tur)">
+        <AltIcerik>
+            <span>@CekSenetMetinleri.Yon(e.Yon) · @(e.CariUnvan)</span>
+        </AltIcerik>
+        <Islemler>
+            @if (e.GeriAlinabilirMi && !Oturum.SaltOkunurMu)
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Undo" OnClick="GeriAlAsync">Son hareketi geri al</MudButton>
+            }
+        </Islemler>
+    </SayfaBasligi>
+
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" md="5">
+            <div class="evrak-gorseli belirme @(e.Tur == EvrakTuru.Cek ? "cek" : "senet") @(e.Durum is EvrakDurumu.Karsiliksiz or EvrakDurumu.HukukiTakipte ? "karsiliksiz" : "") @(e.Durum == EvrakDurumu.Iptal ? "iptal" : "")">
+                <div class="eg-ust">
+                    <span>@(e.Tur == EvrakTuru.Cek ? e.BankaAdi ?? "Çek" : "Bono / Senet")</span>
+                    <span class="eg-no">No @e.SeriNo</span>
+                </div>
+                <div class="eg-tutar">@Bicim.Tutar(e.Tutar, e.ParaBirimi)</div>
+                <div class="eg-alt">
+                    <div>
+                        <small>@(e.Yon == EvrakYonu.Alinan ? e.Tur == EvrakTuru.Cek ? "Keşideci" : "Borçlu" : "Lehtar")</small>
+                        <b>@(e.Yon == EvrakYonu.Alinan ? e.BorcluAdi : e.CariUnvan)</b>
+                    </div>
+                    <div class="text-right">
+                        <small>Vade</small>
+                        <b>@Bicim.Tarih(e.VadeTarihi)</b>
+                    </div>
+                </div>
+                @if (e.Durum is EvrakDurumu.Karsiliksiz or EvrakDurumu.HukukiTakipte)
+                {
+                    <div class="eg-damga">KARŞILIKSIZ</div>
+                }
+                else if (e.Durum == EvrakDurumu.Iptal)
+                {
+                    <div class="eg-damga">İPTAL</div>
+                }
+                <div class="eg-isik"></div>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="7">
+            <div class="panel-kart kart belirme" style="--i:1; height:100%">
+                <div class="d-flex align-center gap-2 mb-3">
+                    <EvrakDurumCipi Durum="e.Durum" />
+                    @if (CekSenetMetinleri.VadeTakipliMi(e.Durum))
+                    {
+                        <span class="vade-kalan @(e.VadeTarihi < bugun ? "gecti" : e.VadeTarihi.DayNumber - bugun.DayNumber <= 7 ? "yakin" : "")">@CekSenetMetinleri.Vade(e.VadeTarihi, bugun)</span>
+                    }
+                    @if (e.RiskOnayTarihi is not null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text" Icon="@Icons.Material.Filled.GppMaybe">Risk onayıyla kabul edildi</MudChip>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-6">
+                    @foreach (var (baslik, deger, adres) in Bilgiler(e))
+                    {
+                        <div>
+                            <div class="ozet-baslik">@baslik</div>
+                            @if (adres is not null)
+                            {
+                                <a href="@adres" class="baglanti"><b>@deger</b></a>
+                            }
+                            else
+                            {
+                                <b>@deger</b>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (e.Aciklama is not null)
+                {
+                    <div class="ozet-alt mt-3">@e.Aciklama</div>
+                }
+                @if (e.UygunIslemler.Count > 0 && !Oturum.SaltOkunurMu)
+                {
+                    <div class="evrak-islemleri mt-4">
+                        @foreach (var islem in e.UygunIslemler)
+                        {
+                            <button type="button" class="evrak-islem-dugmesi" style="--renk:@CekSenetMetinleri.IslemRengi(islem)" @onclick="() => IslemAsync(islem)">
+                                <MudIcon Icon="@CekSenetMetinleri.IslemIkonu(islem)" Size="Size.Small" /> @CekSenetMetinleri.Islem(islem)
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <div class="panel-baslik belirme" style="--i:2"><MudIcon Icon="@Icons.Material.Filled.Timeline" Color="Color.Secondary" /> Hareket geçmişi</div>
+    <div class="evrak-zaman-cizelgesi kart belirme" style="--i:3">
+        @foreach (var (h, i) in e.Hareketler.Select((h, i) => (h, i)).Reverse())
+        {
+            <div class="zc-ogesi @(h.GeriAlindi ? "geri-alindi" : "")" style="--renk:@CekSenetMetinleri.IslemRengi(h.Islem); --i:@i">
+                <div class="zc-nokta"><MudIcon Icon="@CekSenetMetinleri.IslemIkonu(h.Islem)" Size="Size.Small" /></div>
+                <div class="zc-icerik">
+                    <div class="d-flex flex-wrap align-center gap-2">
+                        <b>@CekSenetMetinleri.Islem(h.Islem)</b>
+                        @if (h.GeriAlindi)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">Geri alındı</MudChip>
+                        }
+                        <MudSpacer />
+                        <span class="ozet-alt">@Bicim.Tarih(h.Tarih)</span>
+                    </div>
+                    <div class="ozet-alt">
+                        @if (h.OncekiDurum is { } onceki)
+                        {
+                            <span>@CekSenetMetinleri.Durum(onceki) → </span>
+                        }
+                        <span>@CekSenetMetinleri.Durum(h.YeniDurum)</span>
+                        @if (h.HesapAdi is not null)
+                        {
+                            <span> · @h.HesapAdi</span>
+                        }
+                        @if (h.Islem is EvrakIslemi.Ciro && h.CariUnvan is not null)
+                        {
+                            <span> · @h.CariUnvan</span>
+                        }
+                        @if (h.Islem == EvrakIslemi.KarsiliksizdanTahsil)
+                        {
+                            <span> · @Bicim.Tutar(h.Tutar, e.ParaBirimi)</span>
+                        }
+                        · <a href="@($"cek-senet/bordro/{h.BordroId}")" class="baglanti">@h.BordroNo</a>
+                    </div>
+                    @if (h.Aciklama is not null)
+                    {
+                        <div class="ozet-alt">@h.Aciklama</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private EvrakDetayi? _evrak;
+    private List<HesapOzeti> _hesaplar = [];
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await YukleAsync();
+        if (_hesaplar.Count == 0)
+        {
+            var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar");
+            _hesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
+        }
+    }
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<EvrakDetayi>($"api/kasabanka/cek-senet/evraklar/{Id}");
+        _hata = sonuc.Hata;
+        _evrak = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private IEnumerable<(string Baslik, string Deger, string? Adres)> Bilgiler(EvrakDetayi e)
+    {
+        yield return (e.Yon == EvrakYonu.Alinan ? "Veren cari" : "Verilen cari", e.CariUnvan ?? "—", Oturum.ModulAcikMi(ModulKodlari.Cari) ? $"cari/{e.CariHesapId}" : null);
+        if (e.BorcluAdi is not null)
+        {
+            yield return (e.Tur == EvrakTuru.Cek ? "Keşideci" : "Borçlu", e.BorcluKimlikNo is null ? e.BorcluAdi : $"{e.BorcluAdi} · {e.BorcluKimlikNo}", "cek-senet/kesideciler");
+        }
+
+        if (e.Tur == EvrakTuru.Cek && e.Yon == EvrakYonu.Alinan)
+        {
+            yield return ("Banka / şube", string.Join(" · ", new[] { e.BankaAdi, e.Sube, e.HesapNo }.Where(x => x is not null)), null);
+        }
+
+        if (e.KendiHesapAdi is not null)
+        {
+            yield return ("Ödenecek hesap", e.KendiHesapAdi, $"kasabanka/{e.KendiHesapId}");
+        }
+
+        if (e.KonumHesapAdi is not null)
+        {
+            yield return (e.Durum == EvrakDurumu.Teminatta ? "Teminattaki banka" : "Tahsildeki banka", e.KonumHesapAdi, $"kasabanka/{e.KonumHesapId}");
+        }
+
+        if (e.CiroCariUnvan is not null)
+        {
+            yield return ("Ciro edilen", e.CiroCariUnvan, Oturum.ModulAcikMi(ModulKodlari.Cari) ? $"cari/{e.CiroCariId}" : null);
+        }
+
+        if (e.KefilAdi is not null)
+        {
+            yield return ("Kefil", e.KefilKimlikNo is null ? e.KefilAdi : $"{e.KefilAdi} · {e.KefilKimlikNo}", null);
+        }
+
+        if (e.KesideYeri is not null)
+        {
+            yield return ("Keşide yeri", e.KesideYeri, null);
+        }
+
+        yield return ("Giriş tarihi", Bicim.Tarih(e.GirisTarihi), null);
+        if (e.ParaBirimi != ParaBirimleri.Tl)
+        {
+            yield return ("Giriş kuru", Bicim.Kur(e.Kur), null);
+        }
+
+        if (e.KarsiliksizTarihi is { } kt)
+        {
+            yield return ("Karşılıksız tarihi", Bicim.Tarih(kt), null);
+            yield return ("Tahsil edilen / kalan", $"{Bicim.Tutar(e.TahsilEdilen)} / {Bicim.Tutar(e.Tutar - e.TahsilEdilen, e.ParaBirimi)}", null);
+        }
+    }
+
+    private async Task IslemAsync(EvrakIslemi islem)
+    {
+        var e = _evrak!;
+        var ozet = new EvrakOzeti(e.Id, e.PortfoyNo, e.Tur, e.Yon, e.SeriNo, e.VadeTarihi, e.Tutar, e.ParaBirimi, e.Durum, e.CariHesapId, e.CariUnvan,
+            e.BorcluAdi, e.BankaAdi, e.KonumHesapAdi, e.Tutar - e.TahsilEdilen, e.KarsiliksizTarihi is not null, e.UygunIslemler);
+        var parametreler = new DialogParameters<EvrakIslemDialog>
+        {
+            { d => d.Islem, islem },
+            { d => d.Evraklar, [ozet] },
+            { d => d.Hesaplar, _hesaplar }
+        };
+        var dialog = await DialogService.ShowAsync<EvrakIslemDialog>(CekSenetMetinleri.Islem(islem), parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add($"{CekSenetMetinleri.Islem(islem)} kaydedildi.", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private async Task GeriAlAsync()
+    {
+        var son = _evrak!.Hareketler.LastOrDefault(h => !h.GeriAlindi);
+        var mesaj = son?.Islem is EvrakIslemi.Giris or EvrakIslemi.Cikis
+            ? "Evrakın giriş/çıkış kaydı geri alınırsa evrak iptal edilir ve carideki kaydı ters kayıtla kapatılır."
+            : $"\"{CekSenetMetinleri.Islem(son!.Islem)}\" hareketinin kasa ve cari kayıtları ters kayıtla kapatılır, evrak \"{CekSenetMetinleri.Durum(son.OncekiDurum!.Value)}\" durumuna döner.";
+        if (!await Onay.SorAsync("Son hareketi geri al", mesaj, "Geri al", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync($"api/kasabanka/cek-senet/evraklar/{Id}/geri-al");
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Hareket geri alındı.", Severity.Success);
+        await YukleAsync();
+    }
+}

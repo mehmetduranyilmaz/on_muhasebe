@@ -154,7 +154,8 @@ public sealed record EvrakOzeti(
     string? BankaAdi,
     string? KonumAdi,
     decimal KalanTutar,
-    bool KarsiliksizMi);
+    bool KarsiliksizMi,
+    IReadOnlyList<EvrakIslemi> UygunIslemler);
 
 public sealed record EvrakHareketDetayi(
     Guid Id,

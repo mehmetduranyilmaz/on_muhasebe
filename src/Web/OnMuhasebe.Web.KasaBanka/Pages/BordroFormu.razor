@@ -1,0 +1,221 @@
+@page "/cek-senet/giris"
+@page "/cek-senet/cikis"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="@(Alinan ? "Evrak giriş bordrosu" : "Evrak çıkış bordrosu")" GeriAdres="@(Donus ?? "cek-senet")"
+              Ikon="@(Alinan ? Icons.Material.Filled.Inventory : Icons.Material.Filled.Outbox)">
+    <AltIcerik><span>@(Alinan ? "Müşteriden alınan çek ve senetler portföye girer, müşteri alacaklanır" : "Tedarikçiye verilen çek ve senetler; tedarikçi borçlanır")</span></AltIcerik>
+</SayfaBasligi>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" lg="8">
+        <FormBolumu Baslik="Bordro" Ikon="@Icons.Material.Filled.People" Sira="0">
+            <MudItem xs="12" md="6">
+                <MudAutocomplete T="CariSecim" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(Alinan ? "Evrakı veren cari" : "Evrakın verildiği cari")"
+                                 Value="_cari" ValueChanged="CariSecildiAsync" SearchFunc="CariAraAsync" ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")"
+                                 DebounceInterval="300" ResetValueOnEmptyText="true" Clearable="true" MaxItems="10" Required="true"
+                                 Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.People" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Tarih" @bind-Date="_tarih" DateFormat="dd.MM.yyyy" Required="true" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Açıklama" @bind-Value="_aciklama" MaxLength="500" />
+            </MudItem>
+            @if (_cariRiski is { Riskli: true } cr)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Error" Dense="true" Icon="@Icons.Material.Filled.GppMaybe">Bu cari kara listede/karşılıksız geçmişli: @cr.Mesaj</MudAlert>
+                </MudItem>
+            }
+        </FormBolumu>
+
+        @for (var i = 0; i < _satirlar.Count; i++)
+        {
+            var s = _satirlar[i];
+            var no = i;
+            <div class="evrak-karti kart belirme @(s.Risk is { Riskli: true } ? "riskli" : "")" style="--i:@(i + 1)" @key="s">
+                <div class="evrak-karti-baslik">
+                    <span class="evrak-ikonu" style="--renk:@(s.Tur == EvrakTuru.Cek ? "#3B82F6" : "#8B5CF6")"><MudIcon Icon="@CekSenetMetinleri.TurIkonu(s.Tur)" Size="Size.Small" /></span>
+                    <b>@(no + 1). @CekSenetMetinleri.Tur(s.Tur)</b>
+                    @if (s.Tutar > 0)
+                    {
+                        <span class="ozet-alt">@Bicim.Tutar(s.Tutar, ParaBirimiOf(s))</span>
+                    }
+                    <MudSpacer />
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" aria-label="Kopyala" OnClick="() => Kopyala(s)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="() => _satirlar.Remove(s)" />
+                </div>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6" md="3">
+                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(s.Tur == EvrakTuru.Cek ? "Çek no" : "Senet no")" @bind-Value="s.SeriNo" MaxLength="30" Required="true" />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Vade" @bind-Date="s.Vade" DateFormat="dd.MM.yyyy" Required="true" />
+                    </MudItem>
+                    <MudItem xs="7" md="4">
+                        <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tutar" @bind-Value="s.Tutar" Format="N2" HideSpinButtons="true" Min="0" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="5" md="2">
+                        @if (!Alinan && s.Tur == EvrakTuru.Cek)
+                        {
+                            <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Döviz" Value="@ParaBirimiOf(s)" ReadOnly="true" />
+                        }
+                        else
+                        {
+                            <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Döviz" @bind-Value="s.ParaBirimi" AnchorOrigin="Origin.BottomCenter">
+                                @foreach (var p in ParaBirimleri.Tumu)
+                                {
+                                    <MudSelectItem T="string" Value="p.Kod">@p.Kod</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                    </MudItem>
+
+                    @if (Alinan)
+                    {
+                        @BorcluAlani(s)
+                        @if (s.Tur == EvrakTuru.Cek)
+                        {
+                            @if (s.KayitliHesaplar.Count > 0)
+                            {
+                                <MudItem xs="12">
+                                    <div class="kayitli-hesaplar">
+                                        <span class="ozet-alt">Kayıtlı çek hesapları:</span>
+                                        @foreach (var h in s.KayitliHesaplar)
+                                        {
+                                            var secili = s.BankaAdi == h.BankaAdi && s.Sube == h.Sube && s.HesapNo == h.HesapNo;
+                                            <button type="button" class="durum-filtresi @(secili ? "secili" : "")" style="--renk:#3B82F6"
+                                                    @onclick="() => { s.BankaAdi = h.BankaAdi; s.Sube = h.Sube; s.HesapNo = h.HesapNo; }">
+                                                @h.BankaAdi @h.Sube · @h.HesapNo
+                                            </button>
+                                        }
+                                    </div>
+                                </MudItem>
+                            }
+                            <MudItem xs="12" md="4">
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Banka" @bind-Value="s.BankaAdi" MaxLength="100" Required="true" />
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Şube" @bind-Value="s.Sube" MaxLength="100" />
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Hesap no" @bind-Value="s.HesapNo" MaxLength="50" />
+                            </MudItem>
+                        }
+                        else
+                        {
+                            <MudItem xs="12" md="4">
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Keşide yeri" @bind-Value="s.KesideYeri" MaxLength="100" />
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Kefil" @bind-Value="s.KefilAdi" MaxLength="200" />
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Kefil VKN/TCKN" @bind-Value="s.KefilKimlikNo" MaxLength="11" />
+                            </MudItem>
+                        }
+                    }
+                    else if (s.Tur == EvrakTuru.Cek)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Çekin banka hesabı" @bind-Value="s.KendiHesapId" Required="true"
+                                       AnchorOrigin="Origin.BottomCenter" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountBalance">
+                                @foreach (var h in _hesaplar.Where(h => h.Tur == HesapTuru.Banka && h.AktifMi))
+                                {
+                                    <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @h.ParaBirimi</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    }
+                    <MudItem xs="12" md="@(Alinan || s.Tur == EvrakTuru.Senet ? 12 : 6)">
+                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Not" @bind-Value="s.Aciklama" MaxLength="500" />
+                    </MudItem>
+                </MudGrid>
+            </div>
+        }
+
+        <div class="d-flex flex-wrap gap-2 mt-3 mb-4">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RequestQuote" OnClick="() => Ekle(EvrakTuru.Cek)">Çek ekle</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" OnClick="() => Ekle(EvrakTuru.Senet)">Senet ekle</MudButton>
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" lg="4">
+        <div class="bordro-ozeti kart belirme" style="--i:1">
+            <div class="ozet-baslik">Bordro toplamı</div>
+            @if (_satirlar.Count == 0)
+            {
+                <div class="ozet-alt mt-2">Henüz evrak eklenmedi.</div>
+            }
+            @foreach (var g in _satirlar.Where(s => s.Tutar > 0).GroupBy(ParaBirimiOf))
+            {
+                <div class="bordro-toplam"><SayacDegeri Deger="g.Sum(s => s.Tutar)" Bicimle="@(d => Bicim.Tutar(d, g.Key))" /></div>
+            }
+            <div class="ozet-alt mb-3">
+                @_satirlar.Count(s => s.Tur == EvrakTuru.Cek) çek · @_satirlar.Count(s => s.Tur == EvrakTuru.Senet) senet
+                @if (OrtalamaVade is { } ov)
+                {
+                    <span> · ortalama vade @Bicim.Tarih(ov)</span>
+                }
+            </div>
+            @if (Eksik is { } eksik)
+            {
+                <div class="ekstre-eksik mb-2"><MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" /> @eksik</div>
+            }
+            <HataGosterimi Hata="_hata" />
+            <IslemDugmesi Islem="KaydetAsync" FullWidth="true" StartIcon="@Icons.Material.Filled.Save" Disabled="Eksik is not null">Bordroyu kaydet</IslemDugmesi>
+        </div>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private RenderFragment BorcluAlani(Satir s) => __builder =>
+    {
+        <MudItem xs="12">
+            @if (s.YeniBorclu)
+            {
+                <div class="d-flex flex-wrap gap-2 align-start">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(s.Tur == EvrakTuru.Cek ? "Keşideci adı/unvanı" : "Borçlu adı")"
+                                  @bind-Value="s.BorcluAdi" MaxLength="200" Required="true" Style="flex:2; min-width:200px" />
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="VKN / TCKN" Value="s.KimlikNo" ValueChanged="v => KimlikDegistiAsync(s, v)"
+                                  MaxLength="11" Required="KimlikZorunlu(s)" Style="flex:1; min-width:150px"
+                                  HelperText="@(KimlikZorunlu(s) ? "Zorunlu (Ayarlar'dan değiştirilebilir)" : "Kara liste kontrolü için önerilir")" />
+                    <MudButton Variant="Variant.Text" Size="Size.Small" Class="mt-2" OnClick="() => { s.YeniBorclu = false; s.Risk = null; }">Kayıtlıdan seç</MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-wrap gap-2 align-start">
+                    <MudAutocomplete T="BorcluOzeti" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(s.Tur == EvrakTuru.Cek ? "Keşideci" : "Borçlu")"
+                                     Value="s.Borclu" ValueChanged="b => BorcluSecildiAsync(s, b)" SearchFunc="BorcluAraAsync"
+                                     ToStringFunc="@(b => b is null ? "" : b.KimlikNo is null ? b.Ad : $"{b.Ad} ({b.KimlikNo})")" DebounceInterval="300"
+                                     ResetValueOnEmptyText="true" Clearable="true" MaxItems="10" Style="flex:2; min-width:220px"
+                                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge">
+                        <ItemTemplate Context="b">
+                            <div class="d-flex justify-space-between gap-3" style="width:100%">
+                                <span><b>@b.Ad</b> <small style="opacity:.6">@b.KimlikNo</small></span>
+                                @if (b.Riskli)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">Riskli</MudChip>
+                                }
+                            </div>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="() => YeniBorcluAc(s)">Yeni</MudButton>
+                    @if (_cari is not null)
+                    {
+                        <MudButton Variant="Variant.Text" Size="Size.Small" Class="mt-2" StartIcon="@Icons.Material.Filled.People" OnClick="() => CariyiBorcluYapAsync(s)">Cari kendisi</MudButton>
+                    }
+                </div>
+            }
+            @if (s.Risk is { Riskli: true } r)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Icon="@Icons.Material.Filled.GppMaybe" Class="mt-2 risk-uyarisi">@r.Mesaj</MudAlert>
+            }
+        </MudItem>
+    };
+}

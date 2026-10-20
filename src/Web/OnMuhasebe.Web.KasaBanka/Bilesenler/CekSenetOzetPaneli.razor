@@ -1,0 +1,64 @@
+@* Ana sayfa: vadesi yaklaşan çek/senetler. Firmanın hiç açık evrakı yoksa gösterilmez. *@
+@inject ApiIstemcisi Api
+
+@if (_ozet is { } o && (o.PortfoyAdet > 0 || o.Yaklasanlar.Count > 0 || o.KarsiliksizTl > 0 || o.VadesiGecmisVerilenAdet > 0))
+{
+    var bugun = DateOnly.FromDateTime(DateTime.Today);
+    <div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.RequestQuote" Color="Color.Secondary" /> Çek / senet</div>
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" md="5">
+            <div class="cs-ozet-kartlari">
+                <a class="cs-ozet kart kart-hover belirme" href="cek-senet" style="--i:1; --vurgu:#14B8A6">
+                    <small>Portföyde</small><b><SayacDegeri Deger="o.PortfoyTl" /></b><span>@o.PortfoyAdet evrak</span>
+                </a>
+                <a class="cs-ozet kart kart-hover belirme" href="cek-senet/vade-takvimi" style="--i:2; --vurgu:#16A34A">
+                    <small>7 günde tahsil</small><b><SayacDegeri Deger="o.YaklasanAlinanTl" /></b>
+                </a>
+                <a class="cs-ozet kart kart-hover belirme" href="cek-senet?yon=verilen" style="--i:3; --vurgu:#F59E0B">
+                    <small>7 günde ödeme</small><b><SayacDegeri Deger="o.YaklasanVerilenTl" /></b>
+                    @if (o.VadesiGecmisVerilenAdet > 0)
+                    {
+                        <span class="cs-uyari">@o.VadesiGecmisVerilenAdet evrakın vadesi geçti</span>
+                    }
+                </a>
+                <a class="cs-ozet kart kart-hover belirme" href="cek-senet" style="--i:4; --vurgu:#DC2626">
+                    <small>Karşılıksız takipte</small><b><SayacDegeri Deger="o.KarsiliksizTl" /></b>
+                </a>
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="7">
+            <div class="panel-kart kart belirme" style="--i:5">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Color="Color.Secondary" /> Vadesi yaklaşanlar</div>
+                @if (o.Yaklasanlar.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.EventAvailable" Baslik="Önümüzdeki 7 günde vade yok" />
+                }
+                @for (var i = 0; i < o.Yaklasanlar.Count; i++)
+                {
+                    var e = o.Yaklasanlar[i];
+                    var alinan = e.Yon == EvrakYonu.Alinan;
+                    <a href="@($"cek-senet/{e.Id}")" class="son-hareket satir-belirme" style="--i:@i">
+                        <span class="son-hareket-ikon @(alinan ? "alacak" : "borc")"><MudIcon Icon="@CekSenetMetinleri.TurIkonu(e.Tur)" Size="Size.Small" /></span>
+                        <span style="flex:1; min-width:0">
+                            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">@(e.BorcluAdi ?? e.CariUnvan)</div>
+                            <div style="font-size:.8rem; opacity:.7">@e.PortfoyNo · @CekSenetMetinleri.Durum(e.Durum) · @CekSenetMetinleri.Vade(e.VadeTarihi, bugun)</div>
+                        </span>
+                        <span class="bakiye @(alinan ? "bakiye-alacakli" : "bakiye-borclu")" style="white-space:nowrap">
+                            @(alinan ? "+" : "−")@Bicim.Tutar(e.Tutar, e.ParaBirimi)
+                        </span>
+                    </a>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private CekSenetOzeti? _ozet;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<CekSenetOzeti>("api/kasabanka/cek-senet/raporlar/ozet");
+        _ozet = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+}

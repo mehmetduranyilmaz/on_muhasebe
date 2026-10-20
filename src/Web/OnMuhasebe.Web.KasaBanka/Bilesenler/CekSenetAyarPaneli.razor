@@ -1,0 +1,79 @@
+@* Ayarlar: çek/senet zorunlu alanları ve kara liste davranışı. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<FormBolumu Baslik="Çek / senet" Aciklama="Keşideci kimlik zorunluluğu ve karşılıksız geçmişi olan keşideci/borçludan evrak kabulü"
+            Ikon="@Icons.Material.Filled.RequestQuote" Sira="Sira">
+    @if (_ayar is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="160px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Zorunlu alanlar</div>
+            <MudSwitch T="bool" @bind-Value="_cekKimlik" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu" Label="Çekte keşideci VKN/TCKN zorunlu" />
+            <div class="ayar-aciklama">Karekodlu çeklerin hepsinde yazılıdır; kara liste kontrolü bu numarayla güvenilir yapılır.</div>
+            <MudSwitch T="bool" @bind-Value="_senetKimlik" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu" Label="Senette borçlu VKN/TCKN zorunlu" Class="mt-2" />
+            <div class="ayar-aciklama">Kapalıyken numara girilmezse kontrol yalnızca isimle yapılır.</div>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Riskli keşideci / borçlu</div>
+            <MudRadioGroup T="RiskDavranisi" @bind-Value="_risk">
+                @foreach (var d in Enum.GetValues<RiskDavranisi>())
+                {
+                    <div class="ayar-secenek @(_risk == d ? "secili" : "")">
+                        <MudRadio Value="d" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu">@CekSenetMetinleri.RiskDavranisi(d)</MudRadio>
+                        <div class="ayar-aciklama">@CekSenetMetinleri.RiskDavranisiAciklamasi(d)</div>
+                    </div>
+                }
+            </MudRadioGroup>
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(Oturum.SaltOkunurMu || Yeni == _ayar)">
+                Çek/senet ayarlarını kaydet
+            </IslemDugmesi>
+        </MudItem>
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private CekSenetAyarlari? _ayar;
+    private bool _cekKimlik;
+    private bool _senetKimlik;
+    private RiskDavranisi _risk;
+
+    private CekSenetAyarlari Yeni => new(_cekKimlik, _senetKimlik, _risk);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<CekSenetAyarlari>("api/kasabanka/cek-senet/ayarlar");
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(CekSenetAyarlari a)
+    {
+        _ayar = a;
+        (_cekKimlik, _senetKimlik, _risk) = (a.KesideciKimlikZorunlu, a.SenetBorcluKimlikZorunlu, a.RiskDavranisi);
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<CekSenetAyarlari>("api/kasabanka/cek-senet/ayarlar", Yeni);
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+            Snackbar.Add("Çek/senet ayarları kaydedildi.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

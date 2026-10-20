@@ -57,6 +57,6 @@ public static class ModulPaketleri
     public static ModulMenuOgesi? AdrestekiModul(string adres)
     {
         var ilkParca = adres.TrimStart('/').Split('/', '?', '#')[0];
-        return ModulMenusu.Tumu.FirstOrDefault(m => m.Yol == ilkParca);
+        return ModulMenusu.MenuOgeleri.FirstOrDefault(m => m.Yol == ilkParca);
     }
 }

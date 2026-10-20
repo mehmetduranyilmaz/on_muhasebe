@@ -1,0 +1,8 @@
+@* Evrak durumunun renkli rozeti. *@
+<span class="evrak-durumu" style="--renk:@CekSenetMetinleri.DurumRengi(Durum)">
+    <i></i>@CekSenetMetinleri.Durum(Durum)
+</span>
+
+@code {
+    [Parameter, EditorRequired] public EvrakDurumu Durum { get; set; }
+}

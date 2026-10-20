@@ -1,0 +1,128 @@
+@page "/cek-senet/vade-takvimi"
+@inject ApiIstemcisi Api
+
+<SayfaBasligi Baslik="Vade takvimi" GeriAdres="cek-senet" Ikon="@Icons.Material.Filled.CalendarMonth">
+    <AltIcerik><span>Portföydeki alınan ve ödenecek verilen evrakların vadeleri (TL karşılığı)</span></AltIcerik>
+</SayfaBasligi>
+
+<div class="d-flex flex-wrap align-center gap-2 mb-3">
+    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" Date="_bas" DateChanged="d => TarihAsync(d, null)" DateFormat="dd.MM.yyyy" Style="max-width:170px" />
+    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" Date="_son" DateChanged="d => TarihAsync(null, d)" DateFormat="dd.MM.yyyy" Style="max-width:170px" />
+    <div class="tur-sekmeleri mb-0">
+        @foreach (var g in new[] { VadeGruplama.Hafta, VadeGruplama.Ay })
+        {
+            <button type="button" class="tur-sekmesi @(_gruplama == g ? "secili" : "")" style="--vurgu:#3B82F6" @onclick="() => GruplaAsync(g)">
+                @(g == VadeGruplama.Hafta ? "Haftalık" : "Aylık")
+            </button>
+        }
+    </div>
+</div>
+
+@if (_takvim is { } t)
+{
+    var toplamAlinan = t.Dilimler.Sum(d => d.AlinanTl);
+    var toplamVerilen = t.Dilimler.Sum(d => d.VerilenTl);
+    <MudGrid Spacing="3" Class="mb-3">
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Tahsil edilecek" Deger="toplamAlinan" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.CallReceived" Renk="#16A34A" Sira="1"
+                       AltMetin="@($"{t.Dilimler.Sum(d => d.AlinanAdet)} evrak")" Href="cek-senet" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Ödenecek" Deger="toplamVerilen" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.CallMade" Renk="#F59E0B" Sira="2"
+                       AltMetin="@($"{t.Dilimler.Sum(d => d.VerilenAdet)} evrak")" Href="cek-senet?yon=verilen" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Net nakit akışı" Deger="toplamAlinan - toplamVerilen" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.SwapVert" Renk="#3B82F6" Sira="3" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Vadesi geçmiş" Deger="t.GecikmisAlinanTl + t.GecikmisVerilenTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.EventBusy" Renk="#DC2626" Sira="4"
+                       AltMetin="@($"{t.GecikmisAlinanAdet} alınan · {t.GecikmisVerilenAdet} verilen hâlâ açık")" />
+        </MudItem>
+    </MudGrid>
+
+    @if (t.Dilimler.Any(d => d.AlinanTl > 0 || d.VerilenTl > 0))
+    {
+        <div class="panel-kart kart belirme mb-3" style="--i:5">
+            <SutunGrafigi Gruplar="Gruplar(t)" Seriler="_seriler" />
+        </div>
+    }
+
+    <VeriTablosu T="VadeDilimi" Kayitlar="t.Dilimler.Where(d => d.AlinanAdet + d.VerilenAdet > 0).ToList()" Dense="true" BosBaslik="Bu aralıkta vade yok">
+        <Basliklar>
+            <MudTh>Dönem</MudTh>
+            <MudTh Class="sayi">Alınan</MudTh>
+            <MudTh Class="sayi">Verilen</MudTh>
+            <MudTh Class="sayi">Net</MudTh>
+            <MudTh Class="sayi">Kümülatif</MudTh>
+        </Basliklar>
+        <Satir>
+            <MudTd DataLabel="Dönem">
+                <a class="baglanti" href="@($"cek-senet?yon=alinan")">@Etiket(context)</a>
+            </MudTd>
+            <MudTd DataLabel="Alınan" Class="sayi">
+                <span class="bakiye-alacakli">@(context.AlinanTl > 0 ? Bicim.Tutar(context.AlinanTl) : "")</span>
+                @if (context.AlinanAdet > 0)
+                {
+                    <div class="mobil-alt-bilgi">@context.AlinanAdet evrak</div>
+                }
+            </MudTd>
+            <MudTd DataLabel="Verilen" Class="sayi">
+                <span class="bakiye-borclu">@(context.VerilenTl > 0 ? Bicim.Tutar(context.VerilenTl) : "")</span>
+                @if (context.VerilenAdet > 0)
+                {
+                    <div class="mobil-alt-bilgi">@context.VerilenAdet evrak</div>
+                }
+            </MudTd>
+            <MudTd DataLabel="Net" Class="sayi"><b>@Bicim.Tutar(context.AlinanTl - context.VerilenTl)</b></MudTd>
+            <MudTd DataLabel="Kümülatif" Class="sayi">@Bicim.Tutar(Kumulatif(t, context))</MudTd>
+        </Satir>
+    </VeriTablosu>
+}
+else
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly IReadOnlyList<SutunSerisi> _seriler = [new("Alınan", "#16A34A"), new("Verilen", "#F59E0B")];
+
+    private DateTime? _bas = DateTime.Today;
+    private DateTime? _son = DateTime.Today.AddMonths(3);
+    private VadeGruplama _gruplama = VadeGruplama.Hafta;
+    private VadeTakvimi? _takvim;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<VadeTakvimi>(
+            $"api/kasabanka/cek-senet/raporlar/vade-takvimi?baslangic={Bicim.Iso(DateOnly.FromDateTime(_bas!.Value))}&bitis={Bicim.Iso(DateOnly.FromDateTime(_son!.Value))}&gruplama={_gruplama}");
+        _takvim = sonuc.BasariliMi ? sonuc.Deger : new VadeTakvimi(0, 0, 0, 0, []);
+    }
+
+    private Task TarihAsync(DateTime? bas, DateTime? son)
+    {
+        _bas = bas ?? _bas;
+        _son = son ?? _son;
+        return YukleAsync();
+    }
+
+    private Task GruplaAsync(VadeGruplama g)
+    {
+        _gruplama = g;
+        return YukleAsync();
+    }
+
+    private string Etiket(VadeDilimi d) => _gruplama == VadeGruplama.Ay
+        ? d.Baslangic.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))
+        : $"{Bicim.Tarih(d.Baslangic)} – {Bicim.Tarih(d.Bitis)}";
+
+    private IReadOnlyList<SutunGrubu> Gruplar(VadeTakvimi t) => t.Dilimler
+        .Select(d => new SutunGrubu(_gruplama == VadeGruplama.Ay
+            ? d.Baslangic.ToString("MMM", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))
+            : d.Baslangic.ToString("dd.MM", System.Globalization.CultureInfo.InvariantCulture), [d.AlinanTl, d.VerilenTl]))
+        .ToList();
+
+    private static decimal Kumulatif(VadeTakvimi t, VadeDilimi d) =>
+        t.Dilimler.TakeWhile(x => x.Baslangic <= d.Baslangic).Sum(x => x.AlinanTl - x.VerilenTl);
+}
