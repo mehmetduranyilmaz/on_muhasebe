@@ -1,0 +1,33 @@
+@* "Yeni İşlem" düğmesi: tahsilat, ödeme, virman, gelir, gider. Hesap verilirse işlem formu o hesapla açılır. *@
+@inject NavigationManager Navigasyon
+
+<MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+    @* MudBlazor 9: özel tetikleyicide tıklamayı bileşen kendisi bağlar. *@
+    <ActivatorContent Context="menu">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                   OnClick="menu.ToggleAsync">
+            @Metin
+        </MudButton>
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var tur in Turler)
+        {
+            <MudMenuItem Href="@KasaMetinleri.IslemAdresi(tur, HesapId, donus: Donus ?? Navigasyon.ToBaseRelativePath(Navigasyon.Uri))">
+                <div class="yeni-fatura-secenegi" style="--vurgu:@KasaMetinleri.IslemRengi(tur)">
+                    <span class="ikon"><MudIcon Icon="@KasaMetinleri.IslemIkonu(tur)" Size="Size.Small" /></span>
+                    <span>
+                        <b>@KasaMetinleri.Islem(tur)</b>
+                        <small>@KasaMetinleri.IslemAciklamasi(tur)</small>
+                    </span>
+                </div>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter] public string Metin { get; set; } = "Yeni İşlem";
+    [Parameter] public Guid? HesapId { get; set; }
+    [Parameter] public string? Donus { get; set; }
+    [Parameter] public IReadOnlyList<IslemTuru> Turler { get; set; } = KasaMetinleri.IslemTurleri;
+}

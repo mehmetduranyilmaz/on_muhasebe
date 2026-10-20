@@ -1,0 +1,256 @@
+@page "/kasabanka/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_hesap is { } h)
+{
+    var ozet = new HesapOzeti(h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.BankaAdi, h.Iban, h.Limit, h.AktifMi, h.Bakiye, h.BakiyeTl);
+
+    <SayfaBasligi Baslik="@h.Ad" GeriAdres="kasabanka" Ikon="@KasaMetinleri.HesapIkonu(h.Tur)">
+        <AltIcerik>
+            <span>@h.Kod · @KasaMetinleri.HesapTuru(h.Tur) · @ParaBirimleri.Ad(h.ParaBirimi)</span>
+            @if (!h.AktifMi)
+            {
+                <MudChip T="string" Size="Size.Small" Class="ml-1">Pasif</MudChip>
+            }
+        </AltIcerik>
+        <Islemler>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"kasabanka/{h.Id}/ekstre")">Ekstre</MudButton>
+            @if (!Oturum.SaltOkunurMu)
+            {
+                @if (h.AktifMi)
+                {
+                    <IslemMenusu HesapId="h.Id" Donus="@($"kasabanka/{h.Id}")" Turler="@IslemSecenekleri(h)" />
+                }
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" Href="@($"kasabanka/{h.Id}/duzenle")">Düzenle</MudMenuItem>
+                    @if (h.AktifMi)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.FlagCircle" Href="@KasaMetinleri.IslemAdresi(IslemTuru.Acilis, h.Id, donus: $"kasabanka/{h.Id}")">Açılış bakiyesi</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="() => DurumDegistirAsync(false)">Pasifleştir</MudMenuItem>
+                    }
+                    else
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => DurumDegistirAsync(true)">Aktifleştir</MudMenuItem>
+                    }
+                    @if (!h.HareketVarMi)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudMenuItem>
+                    }
+                </MudMenu>
+            }
+        </Islemler>
+    </SayfaBasligi>
+
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" sm="6" md="4">
+            <HesapKarti Hesap="ozet" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="8">
+            <div class="panel-kart kart belirme" style="--i:1; height:100%">
+                <div class="d-flex flex-wrap gap-6">
+                    @foreach (var (baslik, deger) in Bilgiler(h))
+                    {
+                        <div><div class="ozet-baslik">@baslik</div><b>@deger</b></div>
+                    }
+                </div>
+                @if (h.Aciklama is not null)
+                {
+                    <div class="ozet-alt mt-3">@h.Aciklama</div>
+                }
+                @if (h.Tur == HesapTuru.KrediKarti && h.Bakiye < 0)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                        Kart borcu @Bicim.Tutar(-h.Bakiye, h.ParaBirimi). Ekstre ödemesini banka hesabından bu karta <b>virman</b> ile girin.
+                    </MudAlert>
+                }
+                @if (h.Tur == HesapTuru.Pos && h.Bakiye > 0)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                        POS'ta @Bicim.Tutar(h.Bakiye, h.ParaBirimi) bekliyor. Bankaya geçen tutarı <b>virman</b>, kesilen komisyonu <b>gider</b> olarak girin.
+                    </MudAlert>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <div class="panel-baslik belirme" style="--i:2"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Hareketler</div>
+    <VeriTablosu T="KasaHareketSatiri" Kayitlar="_hareketler?.Kayitlar" Yukleniyor="_hareketlerYukleniyor" Dense="true"
+                 Sayfa="_sayfa" ToplamSayfa="_hareketler?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
+                 BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz hareket yok"
+                 BosAciklama="Hesapta para varsa açılış bakiyesi girerek başlayın.">
+        <Basliklar>
+            <MudTh>Tarih</MudTh>
+            <MudTh>Tür</MudTh>
+            <MudTh>Açıklama</MudTh>
+            <MudTh>Belge</MudTh>
+            <MudTh Class="sayi">Giriş</MudTh>
+            <MudTh Class="sayi">Çıkış</MudTh>
+            <MudTh></MudTh>
+        </Basliklar>
+        <Satir>
+            <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+            <MudTd DataLabel="Tür">
+                @KasaMetinleri.HareketTuru(context.Tur)
+                @if (context.IptalKaydiMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text" Class="ml-1">İptal kaydı</MudChip>
+                }
+                else if (context.IptalEdildiMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ml-1">İptal edildi</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Açıklama">
+                @if (context.CariHesapId is { } cariId && Oturum.ModulAcikMi(ModulKodlari.Cari))
+                {
+                    <a href="@($"cari/{cariId}")" class="baglanti">@(context.CariUnvan ?? "Cari")</a>
+                    @if (context.Aciklama != context.CariUnvan)
+                    {
+                        <span class="mobil-alt-bilgi">@context.Aciklama</span>
+                    }
+                }
+                else
+                {
+                    @context.Aciklama
+                }
+                @if (context.KategoriAdi is not null)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" Class="ml-1">@context.KategoriAdi</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Belge"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="true" Metin="@context.BelgeNo" /></MudTd>
+            <MudTd DataLabel="Giriş" Class="sayi"><span class="bakiye-alacakli">@(context.Giris > 0 ? Bicim.Tutar(context.Giris) : "")</span></MudTd>
+            <MudTd DataLabel="Çıkış" Class="sayi"><span class="bakiye-borclu">@(context.Cikis > 0 ? Bicim.Tutar(context.Cikis) : "")</span></MudTd>
+            <MudTd Style="text-align:right">
+                @if (context.IptalEdilebilirMi && !Oturum.SaltOkunurMu)
+                {
+                    <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => IptalEtAsync(context)">İptal</MudButton>
+                }
+            </MudTd>
+        </Satir>
+    </VeriTablosu>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private HesapDetayi? _hesap;
+    private SayfaliSonuc<KasaHareketSatiri>? _hareketler;
+    private int _sayfa = 1;
+    private bool _hareketlerYukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await HesapYukleAsync();
+        await HareketleriYukleAsync();
+    }
+
+    // Kredi kartına tahsilat, POS'tan ödeme anlamsızdır; menüde gösterilmez.
+    private static IReadOnlyList<IslemTuru> IslemSecenekleri(HesapDetayi h) => h.Tur switch
+    {
+        HesapTuru.KrediKarti => [IslemTuru.Odeme, IslemTuru.Gider, IslemTuru.Virman],
+        HesapTuru.Pos => [IslemTuru.Tahsilat, IslemTuru.Virman, IslemTuru.Gider],
+        _ => KasaMetinleri.IslemTurleri
+    };
+
+    private static IEnumerable<(string Baslik, string Deger)> Bilgiler(HesapDetayi h)
+    {
+        if (h.BankaAdi is not null) yield return ("Banka", h.BankaAdi);
+        if (h.Sube is not null) yield return ("Şube", h.Sube);
+        if (h.HesapNo is not null) yield return (h.Tur == HesapTuru.KrediKarti ? "Kart" : "Hesap no", h.HesapNo);
+        if (h.Iban is not null) yield return ("IBAN", string.Join(" ", h.Iban.Chunk(4).Select(p => new string(p))));
+        if (h.Limit is { } limit) yield return ("Limit", Bicim.Tutar(limit, h.ParaBirimi));
+        yield return ("Bakiye", Bicim.Tutar(h.Bakiye, h.ParaBirimi));
+        if (h.ParaBirimi != ParaBirimleri.Tl) yield return ("Kayıtlı TL karşılığı", Bicim.Tutar(h.BakiyeTl, ParaBirimleri.Tl));
+    }
+
+    private async Task HesapYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<HesapDetayi>($"api/kasabanka/hesaplar/{Id}");
+        _hata = sonuc.Hata;
+        _hesap = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task HareketleriYukleAsync()
+    {
+        _hareketlerYukleniyor = true;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<KasaHareketSatiri>>($"api/kasabanka/hesaplar/{Id}/hareketler?sayfa={_sayfa}");
+        _hareketler = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<KasaHareketSatiri>([], 1, 20, 0);
+        _hareketlerYukleniyor = false;
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await HareketleriYukleAsync();
+    }
+
+    // İşlem tüm bacaklarıyla (virmanda karşı hesap, tahsilatta cari hareketi) birlikte iptal edilir.
+    private async Task IptalEtAsync(KasaHareketSatiri hareket)
+    {
+        var ek = hareket.Tur is KasaHareketTuru.VirmanGiris or KasaHareketTuru.VirmanCikis
+            ? " Virmanın karşı hesaptaki bacağı da iptal edilir."
+            : hareket.CariHesapId is not null ? " Carideki hareketi de ters kayıtla kapatılır." : "";
+        if (!await Onay.SorAsync("İşlemi iptal et",
+                $"{Bicim.Tarih(hareket.Tarih)} tarihli {KasaMetinleri.HareketTuru(hareket.Tur).ToLower(CultureInfo.CurrentCulture)} için ters kayıt atılacak.{ek}",
+                "İptal et", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync($"api/kasabanka/islemler/{hareket.IslemId}/iptal");
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("İşlem iptal edildi.", Severity.Success);
+        _sayfa = 1;
+        await HesapYukleAsync();
+        await HareketleriYukleAsync();
+    }
+
+    private async Task DurumDegistirAsync(bool aktif)
+    {
+        var sonuc = await Api.PostAsync($"api/kasabanka/hesaplar/{Id}/{(aktif ? "aktiflestir" : "pasiflestir")}");
+        if (sonuc.BasariliMi)
+        {
+            await HesapYukleAsync();
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Hesabı sil", "Hareketi olmayan hesap silinecek.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/kasabanka/hesaplar/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Hesap silindi.", Severity.Success);
+            Navigasyon.NavigateTo("kasabanka");
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

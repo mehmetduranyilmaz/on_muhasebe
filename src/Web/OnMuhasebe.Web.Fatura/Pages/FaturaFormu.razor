@@ -266,6 +266,18 @@ else
                     <div class="ozet-alt mt-1" style="text-align:right">≈ @Bicim.Tutar(FaturaHesaplayici.Yuvarla(hesap.GenelToplam * kur), ParaBirimleri.Tl)</div>
                 }
 
+                @if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+                {
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_pesinHesapId" Clearable="true" Class="mt-4"
+                               Label="@(ParaGirisi ? "Peşin tahsil et" : "Peşin öde")" Placeholder="Vadeli (cari hesaba)"
+                               HelperText="@PesinAciklamasi" AdornmentIcon="@Icons.Material.Filled.Payments">
+                        @foreach (var h in UygunPesinHesaplar)
+                        {
+                            <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @Bicim.Tutar(h.Bakiye, h.ParaBirimi)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
                 @if (Oturum.SaltOkunurMu)
                 {
                     <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">Lisans süreniz dolduğu için kayıt yapılamaz.</MudAlert>
@@ -326,6 +338,8 @@ else
     private decimal _genelIskonto;
     private readonly List<FaturaSatirModeli> _satirlar = [];
     private List<Depo> _depolar = [];
+    private List<HesapOzeti> _pesinHesaplar = [];
+    private Guid? _pesinHesapId;
     private int _stokAramaAnahtari;
     private string? _barkod;
     private MudTextField<string> _barkodAlani = null!;
@@ -334,6 +348,15 @@ else
     private ApiHatasi? _hata;
 
     private bool SatisTarafiMi => FaturaTurleri.SatisTarafiMi(_tur);
+    private bool ParaGirisi => FaturaTurleri.ParaGirisiMi(_tur);
+
+    // Peşin hesap faturanın dövizinde olmalı; kredi kartına tahsilat, POS'tan ödeme yapılmaz.
+    private IEnumerable<HesapOzeti> UygunPesinHesaplar => _pesinHesaplar.Where(h => h.ParaBirimi == _paraBirimi
+        && (ParaGirisi ? h.Tur != HesapTuru.KrediKarti : h.Tur != HesapTuru.Pos));
+
+    private string PesinAciklamasi => _pesinHesapId is not null
+        ? $"Fatura kaydedilince seçilen hesaba {(ParaGirisi ? "tahsilat" : "ödeme")} yazılır ve fatura kapanır."
+        : NihaiTuketiciMi ? "Nihai tüketici satışında tahsilat hesabı seçmeniz önerilir." : "Boş bırakılırsa tutar cari hesaba borç/alacak yazılır.";
     private bool GidenMi => FaturaTurleri.GidenMi(_tur);
     private bool StokAcik => Oturum.ModulAcikMi(ModulKodlari.Stok);
     private bool TaslakAkisi => _ayar?.KayitAkisi == KayitAkisi.TaslakOnay;
@@ -360,6 +383,18 @@ else
         {
             var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
             _depolar = depolar.BasariliMi ? depolar.Deger.Where(d => d.AktifMi).ToList() : [];
+        }
+
+        if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+        {
+            var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?aktif=true");
+            _pesinHesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
+        }
+
+        if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+        {
+            var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?aktif=true");
+            _pesinHesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
         }
 
         if (Id is { } id)
@@ -399,6 +434,7 @@ else
         (_tur, _durum, _satisSekli, _numara, _surum) = (f.Tur, f.Durum, f.SatisSekli ?? SatisSekli.Toptan, f.Numara, f.Surum);
         (_tarih, _vade, _paraBirimi, _kur, _kurElleGirildi) = (Bicim.Takvim(f.Tarih), Bicim.Takvim(f.VadeTarihi), f.ParaBirimi, f.Kur, true);
         (_aciklama, _genelIskontoTuru, _genelIskonto) = (f.Aciklama, f.GenelIskontoTuru, f.GenelIskonto);
+        _pesinHesapId = f.PesinHesapId;
         if (f.CariHesapId is { } cariId)
         {
             _cari = new CariOzeti(cariId, f.CariKodu ?? "", f.CariUnvan, CariTuru.Musteri, null, f.ParaBirimi, null, true, 0m, 0m, null);
@@ -681,7 +717,8 @@ else
             _genelIskonto,
             _aciklama,
             _satirlar.Select(s => s.Istek()).ToList(),
-            _surum);
+            _surum,
+            UygunPesinHesaplar.Any(h => h.Id == _pesinHesapId) ? _pesinHesapId : null);
 
         var sonuc = Id is { } id
             ? await Api.PutAsync<FaturaCevabi>($"api/fatura/faturalar/{id}", istek)

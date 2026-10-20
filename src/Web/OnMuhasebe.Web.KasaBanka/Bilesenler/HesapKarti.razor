@@ -1,0 +1,36 @@
+@* Banka kartı görünümlü hesap kartı: türüne göre degrade, bakiye animasyonla sayılır, üzerine gelince kalkar ve parlar. *@
+@{
+    var (bas, son) = KasaMetinleri.HesapRenkleri(Hesap.Tur);
+    var dovizli = Hesap.ParaBirimi != ParaBirimleri.Tl;
+}
+<a href="@($"kasabanka/{Hesap.Id}")" class="hesap-karti belirme @(Hesap.AktifMi ? "" : "pasif")" style="--i:@Sira; --bas:@bas; --son:@son">
+    <div class="hk-ust">
+        <span class="hk-ikon"><MudIcon Icon="@KasaMetinleri.HesapIkonu(Hesap.Tur)" /></span>
+        <span class="hk-tur">@KasaMetinleri.HesapTuru(Hesap.Tur)@(Hesap.AktifMi ? "" : " · pasif")</span>
+        <span class="hk-doviz">@Hesap.ParaBirimi</span>
+    </div>
+    <div class="hk-ad">@Hesap.Ad</div>
+    <div class="hk-alt">@(Hesap.Iban is { } iban ? IbanBicimi(iban) : Hesap.BankaAdi ?? Hesap.Kod)</div>
+    <div class="hk-bakiye">
+        <SayacDegeri Deger="Hesap.Bakiye" Bicimle="@(d => Bicim.Tutar(d, Hesap.ParaBirimi))" />
+    </div>
+    @if (dovizli)
+    {
+        <div class="hk-alt">≈ @Bicim.Tutar(Hesap.BakiyeTl, ParaBirimleri.Tl)</div>
+    }
+    @if (Hesap.Tur == HesapTuru.KrediKarti && Hesap.Limit is > 0 and var limit)
+    {
+        var kullanim = (double)Math.Clamp(-Hesap.Bakiye / limit * 100, 0, 100);
+        <div class="hk-limit"><span style="width:@kullanim.ToString("0.#", CultureInfo.InvariantCulture)%"></span></div>
+        <div class="hk-alt">Limit @Bicim.Tutar(limit) · kullanılabilir @Bicim.Tutar(limit + Math.Min(Hesap.Bakiye, 0))</div>
+    }
+    <span class="hk-isik"></span>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public HesapOzeti Hesap { get; set; } = null!;
+    [Parameter] public int Sira { get; set; }
+
+    // TR33 0006 1005 1978 6457 8413 26
+    private static string IbanBicimi(string iban) => string.Join(" ", iban.Chunk(4).Select(p => new string(p)));
+}

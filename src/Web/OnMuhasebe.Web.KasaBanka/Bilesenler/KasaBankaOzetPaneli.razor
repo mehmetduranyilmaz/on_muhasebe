@@ -1,0 +1,111 @@
+@* Ana sayfadaki Kasa/Banka özet paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject ApiIstemcisi Api
+
+<div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.AccountBalance" Color="Color.Secondary" /> Kasa / Banka özeti</div>
+
+@if (_ozet is null)
+{
+    <MudGrid Spacing="3" Class="mb-4">
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" lg="3"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="128px" Animation="Animation.Wave" Class="rounded-lg" /></MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    var o = _ozet;
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Toplam nakit" Deger="o.ToplamNakitTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Savings"
+                       Renk="#14B8A6" Href="kasabanka" Sira="0" AltMetin="@($"{o.Hesaplar.Count(h => h.Tur != HesapTuru.KrediKarti)} hesap · TL karşılığı")" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Kredi kartı borcu" Deger="o.KrediKartiBorcuTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.CreditCard"
+                       Renk="#8B5CF6" Href="kasabanka" Sira="1" AltMetin="Ödenmemiş kart harcamaları" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Bu ay gelir" Deger="o.BuAyGelirTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.TrendingUp"
+                       Renk="#16A34A" Href="kasabanka/gelir-gider" Sira="2" AltMetin="Satış dışı gelirler" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Bu ay gider" Deger="o.BuAyGiderTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.TrendingDown"
+                       Renk="#EF4444" Href="kasabanka/gelir-gider" Sira="3" AltMetin="Kira, fatura, maaş vb." />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" md="6" lg="4">
+            <div class="panel-kart kart belirme" style="--i:4">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.DonutLarge" Size="Size.Small" Color="Color.Secondary" /> Bu ayın giderleri</div>
+                @if (o.BuAyGiderKategorileri.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.DonutLarge" Baslik="Bu ay gider yok" />
+                }
+                else
+                {
+                    <HalkaGrafik Dilimler="@(o.BuAyGiderKategorileri.Select(k => new GrafikDilimi(k.Ad, k.TutarTl, Bicim.Tutar(k.TutarTl, ParaBirimleri.Tl))).ToList())"
+                                 OrtaBaslik="Gider" OrtaDeger="@KisaTutar(o.BuAyGiderTl)" />
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="6" lg="4">
+            <div class="panel-kart kart belirme" style="--i:5">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Size="Size.Small" Color="Color.Secondary" /> Hesaplar</div>
+                @if (o.Hesaplar.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.AccountBalance" Baslik="Henüz hesap yok">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Href="kasabanka/yeni">Hesap ekle</MudButton>
+                    </BosDurum>
+                }
+                else
+                {
+                    <CubukListesi Ogeler="@(o.Hesaplar.Where(h => h.Tur != HesapTuru.KrediKarti).Select(h => new CubukOgesi(h.Ad, h.BakiyeTl, Bicim.Tutar(h.Bakiye, h.ParaBirimi), $"kasabanka/{h.Id}")).ToList())" />
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <div class="panel-kart kart belirme" style="--i:6">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Secondary" /> Son kasa/banka hareketleri</div>
+                @if (o.SonHareketler.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.ReceiptLong" Baslik="Henüz hareket yok" />
+                }
+                @for (var i = 0; i < o.SonHareketler.Count; i++)
+                {
+                    var h = o.SonHareketler[i];
+                    var girisMi = h.Giris > 0;
+                    <a href="@($"kasabanka/{h.HesapId}")" class="son-hareket satir-belirme" style="--i:@i">
+                        <span class="son-hareket-ikon @(girisMi ? "alacak" : "borc")">
+                            <MudIcon Icon="@(girisMi ? Icons.Material.Filled.ArrowDownward : Icons.Material.Filled.ArrowUpward)" Size="Size.Small" />
+                        </span>
+                        <span style="flex:1; min-width:0">
+                            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">@(h.Aciklama ?? KasaMetinleri.HareketTuru(h.Tur))</div>
+                            <div style="font-size:.8rem; opacity:.7">@Bicim.Tarih(h.Tarih) · @h.HesapAdi · @KasaMetinleri.HareketTuru(h.Tur)</div>
+                        </span>
+                        <span class="bakiye @(girisMi ? "bakiye-alacakli" : "bakiye-borclu")" style="white-space:nowrap">
+                            @(girisMi ? "+" : "−")@Bicim.Tutar(girisMi ? h.Giris : h.Cikis, h.ParaBirimi)
+                        </span>
+                    </a>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private KasaBankaOzetRaporu? _ozet;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<KasaBankaOzetRaporu>("api/kasabanka/raporlar/ozet");
+        _ozet = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private static string KisaTutar(decimal tutar) => Math.Abs(tutar) switch
+    {
+        >= 1_000_000 => $"{tutar / 1_000_000:0.#} Mn TL",
+        >= 1_000 => $"{tutar / 1_000:0.#} B TL",
+        _ => $"{tutar:0} TL"
+    };
+}

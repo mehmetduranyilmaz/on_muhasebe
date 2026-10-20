@@ -22,6 +22,8 @@
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Stok.Contracts.wasm" />
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Web.Fatura.wasm" />
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Fatura.Contracts.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Web.KasaBanka.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.KasaBanka.Contracts.wasm" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +34,7 @@
     <ProjectReference Include="..\OnMuhasebe.Web.Cari\OnMuhasebe.Web.Cari.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Stok\OnMuhasebe.Web.Stok.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Fatura\OnMuhasebe.Web.Fatura.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Web.KasaBanka\OnMuhasebe.Web.KasaBanka.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
   </ItemGroup>
 

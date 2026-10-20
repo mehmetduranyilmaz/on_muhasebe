@@ -112,6 +112,7 @@ public sealed record KasaHareketSatiri(
 public sealed record AcilisIstegi(Guid HesapId, DateOnly Tarih, decimal Tutar, decimal? Kur, string? Aciklama);
 
 // Tutar hesabın dövizindedir. Cari farklı dövizdeyse (cari kartında izin verilmişse) CariKuru ile cari dövizine çevrilir.
+// KapatilacakBelgeId verilirse tahsilat önce o belgenin (ör. fatura) açık kalemini kapatır; kalanı FIFO ile dağıtılır.
 public sealed record TahsilatOdemeIstegi(
     Guid HesapId,
     Guid CariHesapId,
@@ -120,7 +121,8 @@ public sealed record TahsilatOdemeIstegi(
     decimal? Kur,
     decimal? CariKuru,
     string? BelgeNo,
-    string? Aciklama);
+    string? Aciklama,
+    Guid? KapatilacakBelgeId = null);
 
 // Tutar kaynak hesabın dövizindedir; dövizler farklıysa HedefTutar girilebilir (bankanın uyguladığı tutar), girilmezse kurlarla hesaplanır.
 public sealed record VirmanIstegi(

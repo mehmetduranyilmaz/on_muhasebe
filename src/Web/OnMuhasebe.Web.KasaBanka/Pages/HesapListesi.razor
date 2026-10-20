@@ -1,0 +1,114 @@
+@page "/kasabanka"
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Kasa / Banka" AltBaslik="Kasa, banka, kredi kartı ve POS hesaplarınız" Ikon="@Icons.Material.Filled.AccountBalance">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DonutLarge" Href="kasabanka/gelir-gider">Gelir / Gider</MudButton>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AddCard" Href="kasabanka/yeni">Yeni Hesap</MudButton>
+            <IslemMenusu Donus="kasabanka" />
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_ozet is { } o)
+{
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Toplam nakit" Deger="o.ToplamNakitTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Savings"
+                       Renk="#14B8A6" Sira="0" AltMetin="Kasa + banka + POS (TL karşılığı)" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Kredi kartı borcu" Deger="o.KrediKartiBorcuTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.CreditCard"
+                       Renk="#8B5CF6" Sira="1" AltMetin="Ödenmemiş kart harcamaları" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Bu ay gelir" Deger="o.BuAyGelirTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.TrendingUp"
+                       Renk="#16A34A" Href="kasabanka/gelir-gider" Sira="2" AltMetin="Satış dışı gelirler" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Bu ay gider" Deger="o.BuAyGiderTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.TrendingDown"
+                       Renk="#EF4444" Href="kasabanka/gelir-gider" Sira="3" AltMetin="Kira, fatura, maaş vb." />
+        </MudItem>
+    </MudGrid>
+}
+
+<div class="d-flex justify-end mb-2">
+    <MudSwitch T="bool" Value="_pasifleriGoster" ValueChanged="PasifDegistiAsync" Color="Color.Secondary" Label="Pasif hesapları göster" />
+</div>
+
+@if (_hesaplar is null)
+{
+    <MudGrid Spacing="3">
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" lg="4"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="170px" Animation="Animation.Wave" Class="rounded-xl" /></MudItem>
+        }
+    </MudGrid>
+}
+else if (_hesaplar.Count == 0)
+{
+    <BosDurum Ikon="@Icons.Material.Outlined.AccountBalance" Baslik="Henüz hesap yok" Aciklama="Kasanızı ve banka hesaplarınızı ekleyerek başlayın.">
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCard" Href="kasabanka/yeni">İlk hesabınızı ekleyin</MudButton>
+        }
+    </BosDurum>
+}
+else
+{
+    var sira = 0;
+    @foreach (var grup in _hesaplar.GroupBy(h => h.Tur).OrderBy(g => g.Key))
+    {
+        <div class="panel-baslik belirme" style="--i:@sira">
+            <MudIcon Icon="@KasaMetinleri.HesapIkonu(grup.Key)" Color="Color.Secondary" /> @KasaMetinleri.HesapTuru(grup.Key)
+            <span class="grup-toplami">@GrupToplami(grup)</span>
+        </div>
+        <MudGrid Spacing="3" Class="mb-4">
+            @foreach (var hesap in grup)
+            {
+                var kartSirasi = sira++;
+                <MudItem xs="12" sm="6" lg="4">
+                    <HesapKarti Hesap="hesap" Sira="kartSirasi" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+
+@code {
+    private List<HesapOzeti>? _hesaplar;
+    private KasaBankaOzetRaporu? _ozet;
+    private bool _pasifleriGoster;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ozet = await Api.GetAsync<KasaBankaOzetRaporu>("api/kasabanka/raporlar/ozet");
+        _ozet = ozet.BasariliMi ? ozet.Deger : null;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<HesapOzeti>>($"api/kasabanka/hesaplar{(_pasifleriGoster ? "" : "?aktif=true")}");
+        _hata = sonuc.Hata;
+        _hesaplar = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private async Task PasifDegistiAsync(bool goster)
+    {
+        _pasifleriGoster = goster;
+        await YukleAsync();
+    }
+
+    // Grup toplamı TL karşılığıyla; tek dövizli grupta dövizin kendisiyle gösterilir.
+    private static string GrupToplami(IGrouping<HesapTuru, HesapOzeti> grup) =>
+        grup.Select(h => h.ParaBirimi).Distinct().Count() == 1
+            ? Bicim.Tutar(grup.Sum(h => h.Bakiye), grup.First().ParaBirimi)
+            : $"≈ {Bicim.Tutar(grup.Sum(h => h.BakiyeTl), ParaBirimleri.Tl)}";
+}

@@ -1,0 +1,108 @@
+@page "/kasabanka/{Id:guid}/ekstre"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Hesap Ekstresi" AltBaslik="@(_ekstre is { } e0 ? $"{e0.Kod} - {e0.Ad}" : null)" GeriAdres="@($"kasabanka/{Id}")" Ikon="@Icons.Material.Filled.Description">
+    <Islemler>
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_baslangic" Label="Başlangıç" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ekstre is null" OnClick="YazdirAsync">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else if (_ekstre is { } e)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">@e.Kod - @e.Ad</MudText>
+        <MudText Typo="Typo.body2">@Bicim.Tarih(e.Baslangic) – @Bicim.Tarih(e.Bitis) · @ParaBirimleri.Ad(e.ParaBirimi)</MudText>
+    </div>
+
+    <div class="kart belirme pa-2" style="overflow-x:auto">
+        <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+            <thead>
+                <tr>
+                    <th>Tarih</th>
+                    <th>Tür</th>
+                    <th>Belge</th>
+                    <th>Açıklama</th>
+                    <th class="sayi">Giriş</th>
+                    <th class="sayi">Çıkış</th>
+                    <th class="sayi">Bakiye</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6"><i>Devreden bakiye</i></td>
+                    <td class="sayi">@Bicim.Tutar(e.DevirBakiye)</td>
+                </tr>
+                @foreach (var s in e.Satirlar)
+                {
+                    <tr>
+                        <td>@Bicim.Tarih(s.Tarih)</td>
+                        <td>@KasaMetinleri.HareketTuru(s.Tur)</td>
+                        <td><BelgeBaglantisi KaynakBelgeId="s.KaynakBelgeId" FaturaMi="true" Metin="@s.BelgeNo" /></td>
+                        <td>@(s.CariUnvan is not null && s.CariUnvan != s.Aciklama ? $"{s.CariUnvan} · {s.Aciklama}" : s.Aciklama)</td>
+                        <td class="sayi">@(s.Giris > 0 ? Bicim.Tutar(s.Giris) : "")</td>
+                        <td class="sayi">@(s.Cikis > 0 ? Bicim.Tutar(s.Cikis) : "")</td>
+                        <td class="sayi @(s.Bakiye < 0 ? "bakiye-borclu" : "")">@Bicim.Tutar(s.Bakiye)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 600;">
+                    <td colspan="4">Dönem toplamı</td>
+                    <td class="sayi">@Bicim.Tutar(e.ToplamGiris)</td>
+                    <td class="sayi">@Bicim.Tutar(e.ToplamCikis)</td>
+                    <td class="sayi">@Bicim.Tutar(e.SonBakiye, e.ParaBirimi)</td>
+                </tr>
+            </tfoot>
+        </MudSimpleTable>
+    </div>
+
+    @if (e.Satirlar.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Class="mt-2">Bu dönemde hareket yok.</MudText>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private HesapEkstresi? _ekstre;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow().Date;
+        _baslangic = new DateTime(bugun.Year, bugun.Month, 1);
+        _bitis = bugun;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/kasabanka/hesaplar/{Id}/ekstre"
+                    + $"?baslangic={Bicim.Iso(DateOnly.FromDateTime(_baslangic ?? DateTime.Today))}"
+                    + $"&bitis={Bicim.Iso(DateOnly.FromDateTime(_bitis ?? DateTime.Today))}";
+        var sonuc = await Api.GetAsync<HesapEkstresi>(adres);
+        _hata = sonuc.Hata;
+        _ekstre = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+}

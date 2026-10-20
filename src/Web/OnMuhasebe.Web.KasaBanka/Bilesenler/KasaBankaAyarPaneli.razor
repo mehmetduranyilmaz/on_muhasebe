@@ -1,0 +1,114 @@
+@* Ayarlar ekranındaki Kasa/Banka paneli: gelir/gider kategorileri. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<FormBolumu Baslik="Gelir / gider kategorileri" Aciklama="Kasa/banka gelir ve gider kayıtlarında seçilir; raporlar bunlara göre gruplanır"
+            Ikon="@Icons.Material.Filled.Label" Sira="Sira">
+    @if (_kategoriler is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="160px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        @foreach (var tur in new[] { GelirGiderTuru.Gider, GelirGiderTuru.Gelir })
+        {
+            <MudItem xs="12" md="6">
+                <div class="ayar-baslik">@(tur == GelirGiderTuru.Gider ? "Gider kategorileri" : "Gelir kategorileri")</div>
+                <div class="kategori-listesi">
+                    @foreach (var k in _kategoriler.Where(k => k.Tur == tur))
+                    {
+                        <div class="kategori-ogesi @(k.AktifMi ? "" : "pasif")">
+                            @if (_duzenlenen == k.Id)
+                            {
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_duzenlenenAd" MaxLength="100" AutoFocus="true" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" aria-label="Kaydet" OnClick="() => AdKaydetAsync(k)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Vazgeç" OnClick="() => _duzenlenen = null" />
+                            }
+                            else
+                            {
+                                <span class="kategori-adi">@k.Ad</span>
+                                @if (!Oturum.SaltOkunurMu)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Yeniden adlandır"
+                                                   OnClick="() => { _duzenlenen = k.Id; _duzenlenenAd = k.Ad; }" />
+                                    <MudSwitch T="bool" Value="k.AktifMi" ValueChanged="a => AktiflikAsync(k, a)" Color="Color.Secondary" Size="Size.Small" />
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+                @if (!Oturum.SaltOkunurMu)
+                {
+                    <div class="d-flex gap-2 align-center mt-2">
+                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="@Yeni(tur)" ValueChanged="v => _yeniAdlar[tur] = v"
+                                      Placeholder="Yeni kategori" MaxLength="100" />
+                        <IslemDugmesi Islem="() => EkleAsync(tur)" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Disabled="string.IsNullOrWhiteSpace(Yeni(tur))">
+                            Ekle
+                        </IslemDugmesi>
+                    </div>
+                }
+            </MudItem>
+        }
+        <MudItem xs="12">
+            <div class="ayar-aciklama ml-0">Kullanılmış kategori silinmez; pasifleştirilen kategori yeni kayıtlarda listelenmez, eski kayıtlarda ve raporlarda görünmeye devam eder.</div>
+        </MudItem>
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private List<Kategori>? _kategoriler;
+    private readonly Dictionary<GelirGiderTuru, string?> _yeniAdlar = [];
+    private Guid? _duzenlenen;
+    private string _duzenlenenAd = "";
+
+    private string? Yeni(GelirGiderTuru tur) => _yeniAdlar.GetValueOrDefault(tur);
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<Kategori>>("api/kasabanka/kategoriler");
+        _kategoriler = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private async Task EkleAsync(GelirGiderTuru tur)
+    {
+        var sonuc = await Api.PostAsync<Kategori>("api/kasabanka/kategoriler", new KategoriKaydetIstegi(Yeni(tur)!, tur));
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        _yeniAdlar[tur] = null;
+        await YukleAsync();
+    }
+
+    private async Task AdKaydetAsync(Kategori k)
+    {
+        var sonuc = await Api.PutAsync<Kategori>($"api/kasabanka/kategoriler/{k.Id}", new KategoriKaydetIstegi(_duzenlenenAd, k.Tur));
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        _duzenlenen = null;
+        await YukleAsync();
+    }
+
+    private async Task AktiflikAsync(Kategori k, bool aktif)
+    {
+        var sonuc = await Api.PostAsync($"api/kasabanka/kategoriler/{k.Id}/{(aktif ? "aktiflestir" : "pasiflestir")}");
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        await YukleAsync();
+    }
+}

@@ -32,6 +32,11 @@
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ReceiptLong"
                            Href="@($"fatura/yeni/{(cari.Tur == CariTuru.Tedarikci ? "alis" : "satis")}?cari={cari.Id}")">Fatura Kes</MudButton>
             }
+            @if (!Oturum.SaltOkunurMu && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CallReceived" Href="@KasaIslemAdresi("tahsilat", cari)">Tahsilat</MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CallMade" Href="@KasaIslemAdresi("odeme", cari)">Ödeme</MudButton>
+            }
             @if (!Oturum.SaltOkunurMu)
             {
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd"
@@ -106,8 +111,66 @@
         </MudItem>
     </MudGrid>
 
-    <div class="panel-baslik belirme" style="--i:3"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Hareketler</div>
+    <div class="tur-sekmeleri belirme" style="--i:3">
+        <button type="button" class="tur-sekmesi @(_acikKalemGorunumu ? "" : "secili")" style="--vurgu:#3B82F6" @onclick="() => _acikKalemGorunumu = false">
+            <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small" /> Hareketler
+        </button>
+        <button type="button" class="tur-sekmesi @(_acikKalemGorunumu ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="AcikKalemleriGosterAsync">
+            <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Small" /> Açık kalemler@(_acikKalemler is { } ak ? $" ({ak.Count})" : "")
+        </button>
+    </div>
 
+    @if (_acikKalemGorunumu)
+    {
+        var borcKalan = _acikKalemler?.Where(k => k.Yon == HareketYonu.Borc).Sum(k => k.Kalan) ?? 0m;
+        var alacakKalan = _acikKalemler?.Where(k => k.Yon == HareketYonu.Alacak).Sum(k => k.Kalan) ?? 0m;
+        var gecikmis = _acikKalemler?.Where(k => k.Yon == HareketYonu.Borc && k.GecikmeGun > 0).Sum(k => k.Kalan) ?? 0m;
+        <div class="d-flex flex-wrap gap-6 mb-3 belirme">
+            <div><div class="ozet-baslik">Ödenmemiş borç kalemleri</div><b class="bakiye-borclu">@Bicim.Tutar(borcKalan, cari.ParaBirimi)</b></div>
+            <div><div class="ozet-baslik">Bunun vadesi geçen</div><b class="@(gecikmis > 0 ? "bakiye-borclu" : "")">@Bicim.Tutar(gecikmis, cari.ParaBirimi)</b></div>
+            <div><div class="ozet-baslik">Dağıtılmamış alacak (avans / ödenmemiş alış)</div><b class="bakiye-alacakli">@Bicim.Tutar(alacakKalan, cari.ParaBirimi)</b></div>
+        </div>
+        <VeriTablosu T="AcikKalem" Kayitlar="_acikKalemler" Dense="true" BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="Açık kalem yok"
+                     BosAciklama="Tüm faturalar ve tahsilatlar birbirini kapatmış.">
+            <Basliklar>
+                <MudTh>Tarih</MudTh>
+                <MudTh>Kalem</MudTh>
+                <MudTh>Vade</MudTh>
+                <MudTh Class="sayi">Tutar</MudTh>
+                <MudTh Class="sayi">Kapanan</MudTh>
+                <MudTh Class="sayi">Kalan</MudTh>
+                <MudTh></MudTh>
+            </Basliklar>
+            <Satir>
+                <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+                <MudTd DataLabel="Kalem">
+                    @CariMetinleri.HareketTuru(context.Tur)
+                    <span class="mobil-alt-bilgi"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="CariMetinleri.FaturaHareketiMi(context.Tur)" Metin="@context.BelgeNo" /></span>
+                </MudTd>
+                <MudTd DataLabel="Vade">
+                    @Bicim.Tarih(context.VadeTarihi)
+                    @if (context.Yon == HareketYonu.Borc && context.GecikmeGun > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.GecikmeGun > 60 ? Color.Error : Color.Warning)" Class="ml-1">@context.GecikmeGun gün gecikti</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.Tutar)</MudTd>
+                <MudTd DataLabel="Kapanan" Class="sayi">@(context.Kapanan > 0 ? Bicim.Tutar(context.Kapanan) : "")</MudTd>
+                <MudTd DataLabel="Kalan" Class="sayi">
+                    <b class="@(context.Yon == HareketYonu.Borc ? "bakiye-borclu" : "bakiye-alacakli")">@Bicim.Tutar(context.Kalan)</b>
+                    @if (context.ElleKapamaMi)
+                    {
+                        <span class="mobil-alt-bilgi">elle</span>
+                    }
+                </MudTd>
+                <MudTd Style="text-align:right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" aria-label="Kapamalar" OnClick="() => KapamaAcAsync(context)" />
+                </MudTd>
+            </Satir>
+        </VeriTablosu>
+    }
+    else
+    {
     <VeriTablosu T="CariHareketSatiri" Kayitlar="_hareketler?.Kayitlar" Yukleniyor="_hareketlerYukleniyor" Dense="true"
                  Sayfa="_sayfa" ToplamSayfa="_hareketler?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
                  BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz hareket yok"
@@ -151,6 +214,10 @@
                 <MudTd DataLabel="TL" Class="sayi">@Bicim.Tutar(context.BorcTl + context.AlacakTl)</MudTd>
             }
             <MudTd Style="text-align: right;">
+                @if (!context.IptalEdildiMi && !context.IptalKaydiMi)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" aria-label="Kapamalar" OnClick="() => KapamaAcAsync(Kalem(context))" />
+                }
                 @if (context.ElleIptalEdilebilirMi && !Oturum.SaltOkunurMu)
                 {
                     <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => IptalEtAsync(context)">İptal</MudButton>
@@ -164,6 +231,7 @@
             }
         </BosIslemler>
     </VeriTablosu>
+    }
 }
 else if (_hata is null)
 {
@@ -184,7 +252,46 @@ else if (_hata is null)
     private SayfaliSonuc<CariHareketSatiri>? _hareketler;
     private int _sayfa = 1;
     private bool _hareketlerYukleniyor;
+    private bool _acikKalemGorunumu;
+    private List<AcikKalem>? _acikKalemler;
     private ApiHatasi? _hata;
+
+    private static string KasaIslemAdresi(string tur, CariDetayi cari) =>
+        $"kasabanka/islem/{tur}?cari={cari.Id}&donus={Uri.EscapeDataString($"cari/{cari.Id}")}";
+
+    // Hareket satırından kapama diyaloğu için kalem bilgisi (kapanmış kalemlerin de eşleşmeleri görülebilsin).
+    private static AcikKalem Kalem(CariHareketSatiri h) => new(
+        h.Id, h.Tarih, h.VadeTarihi, h.Tur, h.Borc > 0 ? HareketYonu.Borc : HareketYonu.Alacak, h.BelgeNo, h.Aciklama,
+        h.Borc + h.Alacak, 0m, 0m, 0, false, h.KaynakBelgeId);
+
+    private async Task AcikKalemleriGosterAsync()
+    {
+        _acikKalemGorunumu = true;
+        await AcikKalemleriYukleAsync();
+    }
+
+    private async Task AcikKalemleriYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<AcikKalem>>($"api/cari/hesaplar/{Id}/acik-kalemler");
+        _acikKalemler = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private async Task KapamaAcAsync(AcikKalem kalem)
+    {
+        var parametreler = new DialogParameters<KapamaDialog>
+        {
+            { d => d.Kalem, kalem },
+            { d => d.CariId, Id },
+            { d => d.ParaBirimi, _cari!.ParaBirimi }
+        };
+        var dialog = await DialogService.ShowAsync<KapamaDialog>(
+            $"Kapamalar · {CariMetinleri.HareketTuru(kalem.Tur)} {kalem.BelgeNo}", parametreler, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Kapamalar güncellendi.", Severity.Success);
+            await AcikKalemleriYukleAsync();
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -228,6 +335,11 @@ else if (_hata is null)
         _sayfa = 1;
         await CariYukleAsync();
         await HareketleriYukleAsync();
+        _acikKalemler = null;
+        if (_acikKalemGorunumu)
+        {
+            await AcikKalemleriYukleAsync();
+        }
     }
 
     private async Task HareketEkleAsync()

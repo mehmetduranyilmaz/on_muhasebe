@@ -1,0 +1,174 @@
+@page "/kasabanka/yeni"
+@page "/kasabanka/{Id:guid}/duzenle"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="@(Id is null ? "Yeni Hesap" : "Hesabı Düzenle")" GeriAdres="@(Id is null ? "kasabanka" : $"kasabanka/{Id}")"
+             Ikon="@KasaMetinleri.HesapIkonu(_tur)" AltBaslik="@KasaMetinleri.HesapTuruAciklamasi(_tur)" />
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else
+{
+    <MudForm @ref="_form">
+        <FormBolumu Baslik="Hesap türü" Aciklama="@(_hareketVarMi ? "Hareketi olan hesabın türü ve dövizi değiştirilemez" : "Kasa, banka, kredi kartı veya POS")"
+                    Ikon="@Icons.Material.Filled.Category" Sira="0">
+            <MudItem xs="12">
+                <div class="tur-sekmeleri mb-0">
+                    @foreach (var tur in KasaMetinleri.HesapTurleri)
+                    {
+                        <button type="button" class="tur-sekmesi @(_tur == tur ? "secili" : "")" style="--vurgu:@KasaMetinleri.HesapRenkleri(tur).Son"
+                                disabled="@_hareketVarMi" @onclick="() => _tur = tur">
+                            <MudIcon Icon="@KasaMetinleri.HesapIkonu(tur)" Size="Size.Small" /> @KasaMetinleri.HesapTuru(tur)
+                        </button>
+                    }
+                </div>
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="Hesap bilgileri" Aciklama="Ad, kod ve para birimi" Ikon="@Icons.Material.Filled.Badge" Sira="1">
+            <MudItem xs="12" sm="4" md="2">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kod" Label="Kod" MaxLength="20" HelperText="Boşsa otomatik" />
+            </MudItem>
+            <MudItem xs="12" sm="8" md="6">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Hesap adı" Required="true" RequiredError="Ad gerekli."
+                              MaxLength="150" Placeholder="@Ornek" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_paraBirimi" Label="Para birimi" Disabled="_hareketVarMi">
+                    @foreach (var pb in ParaBirimleri.Tumu)
+                    {
+                        <MudSelectItem Value="pb.Kod">@pb.Kod - @pb.Ad</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </FormBolumu>
+
+        @if (_tur != HesapTuru.Kasa)
+        {
+            <FormBolumu Baslik="@(_tur == HesapTuru.Banka ? "Banka bilgileri" : _tur == HesapTuru.KrediKarti ? "Kart bilgileri" : "POS bilgileri")"
+                        Ikon="@Icons.Material.Filled.AccountBalance" Sira="2">
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_bankaAdi" Label="Banka" MaxLength="100" />
+                </MudItem>
+                @if (_tur == HesapTuru.Banka)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sube" Label="Şube" MaxLength="100" />
+                    </MudItem>
+                }
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapNo" MaxLength="50"
+                                  Label="@(_tur == HesapTuru.KrediKarti ? "Kart no (son 4 hane yeterli)" : _tur == HesapTuru.Pos ? "Üye işyeri no" : "Hesap no")" />
+                </MudItem>
+                @if (_tur == HesapTuru.Banka)
+                {
+                    <MudItem xs="12" md="8">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_iban" Label="IBAN" MaxLength="40" Placeholder="TR00 0000 0000 0000 0000 0000 00"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Tag" Immediate="true"
+                                      Error="@(!string.IsNullOrWhiteSpace(_iban) && !IbanBicimiDogruMu(_iban))" ErrorText="TR ile başlayan 26 karakter olmalı" />
+                    </MudItem>
+                }
+                @if (_tur == HesapTuru.KrediKarti)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_limit" Label="Kart limiti" Format="N2" Min="0" HideSpinButtons="true" />
+                    </MudItem>
+                }
+            </FormBolumu>
+        }
+
+        <FormBolumu Baslik="Not" Ikon="@Icons.Material.Filled.Notes" Sira="3">
+            <MudItem xs="12">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+            </MudItem>
+        </FormBolumu>
+    </MudForm>
+
+    <div class="d-flex gap-2 justify-end">
+        <MudButton Href="@(Id is null ? "kasabanka" : $"kasabanka/{Id}")">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private MudForm _form = null!;
+    private HesapTuru _tur = HesapTuru.Kasa;
+    private string? _kod;
+    private string _ad = "";
+    private string _paraBirimi = ParaBirimleri.Tl;
+    private string? _bankaAdi;
+    private string? _sube;
+    private string? _hesapNo;
+    private string? _iban;
+    private decimal? _limit;
+    private string? _aciklama;
+    private uint _surum;
+    private bool _hareketVarMi;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    private string Ornek => _tur switch
+    {
+        HesapTuru.Kasa => "Merkez Kasa",
+        HesapTuru.Banka => "Ziraat Bankası TL",
+        HesapTuru.KrediKarti => "Şirket Kartı",
+        _ => "Mağaza POS"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id is { } id)
+        {
+            var sonuc = await Api.GetAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}");
+            if (!sonuc.BasariliMi)
+            {
+                _hata = sonuc.Hata;
+                _yukleniyor = false;
+                return;
+            }
+
+            var h = sonuc.Deger;
+            (_tur, _kod, _ad, _paraBirimi, _bankaAdi, _sube) = (h.Tur, h.Kod, h.Ad, h.ParaBirimi, h.BankaAdi, h.Sube);
+            (_hesapNo, _iban, _limit, _aciklama, _surum, _hareketVarMi) = (h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.Surum, h.HareketVarMi);
+        }
+
+        _yukleniyor = false;
+    }
+
+    // Kontrol hanesi sunucuda doğrulanır; burada yalnızca biçim uyarısı verilir.
+    private static bool IbanBicimiDogruMu(string iban)
+    {
+        var deger = new string(iban.Where(c => !char.IsWhiteSpace(c)).ToArray()).ToUpperInvariant();
+        return !deger.StartsWith("TR", StringComparison.Ordinal) ? deger.Length is >= 15 and <= 34 : deger.Length == 26;
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var istek = new HesapKaydetIstegi(_kod, _ad, _tur, _paraBirimi, _bankaAdi, _sube, _hesapNo, _iban, _limit, _aciklama, _surum);
+        var sonuc = Id is { } id
+            ? await Api.PutAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}", istek)
+            : await Api.PostAsync<HesapDetayi>("api/kasabanka/hesaplar", istek);
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        Snackbar.Add(Id is null ? $"{sonuc.Deger.Kod} kodlu hesap açıldı." : "Hesap güncellendi.", Severity.Success);
+        Navigasyon.NavigateTo($"kasabanka/{sonuc.Deger.Id}");
+    }
+}

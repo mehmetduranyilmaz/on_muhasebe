@@ -75,6 +75,18 @@
                         <div class="ozet-alt">@Bicim.Tutar(f.GenelToplamTl, ParaBirimleri.Tl) · kur @Bicim.Kur(f.Kur)</div>
                     }
                     <div class="ozet-alt">KDV @Bicim.Tutar(f.KdvToplami, f.ParaBirimi) · matrah @Bicim.Tutar(f.Matrah, f.ParaBirimi)</div>
+                    <div class="d-flex align-center flex-wrap gap-2 mt-2">
+                        <OdemeDurumu Kalan="f.Kalan" Toplam="f.GenelToplam" Vade="f.VadeTarihi" ParaBirimi="@f.ParaBirimi" />
+                        @if (f.Kalan is > 0 && f.CariHesapId is { } odenecekCari && !Oturum.SaltOkunurMu && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Payments"
+                                       Href="@OdemeAdresi(f, odenecekCari)">@(FaturaTurleri.ParaGirisiMi(f.Tur) ? "Tahsilat yap" : "Ödeme yap")</MudButton>
+                        }
+                    </div>
+                    @if (f.PesinHesapId is not null && f.Durum == FaturaDurumu.Onayli)
+                    {
+                        <div class="ozet-alt mt-1">Peşin @(FaturaTurleri.ParaGirisiMi(f.Tur) ? "tahsil edildi" : "ödendi")</div>
+                    }
                     <div class="ozet-isik"></div>
                 </div>
             </MudItem>
@@ -221,6 +233,11 @@ else if (_hata is null)
         var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
         _firma = firma.BasariliMi ? firma.Deger : null;
     }
+
+    // Kasa/banka işlem formu; tahsilat önce bu faturayı kapatır, sonra fatura detayına dönülür.
+    private static string OdemeAdresi(FaturaDetayi f, Guid cariId) =>
+        $"kasabanka/islem/{(FaturaTurleri.ParaGirisiMi(f.Tur) ? "tahsilat" : "odeme")}?cari={cariId}&belge={f.Id}"
+        + $"&tutar={f.Kalan!.Value.ToString(CultureInfo.InvariantCulture)}&donus={Uri.EscapeDataString($"fatura/{f.Id}")}";
 
     private static string AdresSatiri(FaturaDetayi f) =>
         string.Join(" ", new[] { f.Adres, string.Join("/", new[] { f.Ilce, f.Il }.Where(x => x is not null)) }.Where(x => !string.IsNullOrEmpty(x)));

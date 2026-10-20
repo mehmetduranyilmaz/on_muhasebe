@@ -88,7 +88,7 @@ internal sealed class KasaIslemServisi(
                 tahsilatMi ? CariHareketTuru.Tahsilat : CariHareketTuru.Odeme,
                 tahsilatMi ? HareketYonu.Alacak : HareketYonu.Borc,
                 istek.Tarih, null, cari.Deger.Tutar, cari.Deger.Kur, istek.BelgeNo, $"{hesap.Ad}{Ek(istek.Aciklama)}",
-                OncelikliKapamaBelgeId: kaynakBelgeId), ct);
+                OncelikliKapamaBelgeId: kaynakBelgeId ?? istek.KapatilacakBelgeId), ct);
             return cariSonuc.BasariliMi ? islemId : cariSonuc.Hata;
         }, cancellationToken);
 

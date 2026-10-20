@@ -1,0 +1,116 @@
+@page "/cari/vade-analizi"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject NavigationManager Navigasyon
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Vade Analizi" AltBaslik="Açık kalemlerin vadesine göre dağılımı: kim, ne kadar, kaç gündür geç" GeriAdres="cari" Ikon="@Icons.Material.Filled.EventBusy">
+    <Islemler>
+        <MudDatePicker Variant="Variant.Outlined" Date="_tarih" DateChanged="TarihDegistiAsync" Label="Rapor tarihi" Style="max-width: 170px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_analiz is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme yazdirma-gizle">
+    <button type="button" class="tur-sekmesi @(_alacakMi ? "secili" : "")" style="--vurgu:#EF4444" @onclick="() => _alacakMi = true">
+        <MudIcon Icon="@Icons.Material.Filled.CallReceived" Size="Size.Small" /> Alacaklarımız
+    </button>
+    <button type="button" class="tur-sekmesi @(_alacakMi ? "" : "secili")" style="--vurgu:#8B5CF6" @onclick="() => _alacakMi = false">
+        <MudIcon Icon="@Icons.Material.Filled.CallMade" Size="Size.Small" /> Borçlarımız
+    </button>
+</div>
+
+@if (_analiz is { } a)
+{
+    var satirlar = a.Satirlar.Where(s => Dilim(s).Toplam > 0).OrderByDescending(s => Dilim(s).VadesiGecen).ThenByDescending(s => Dilim(s).Toplam).ToList();
+    var tl = satirlar.Where(s => s.ParaBirimi == ParaBirimleri.Tl).Select(Dilim).ToList();
+
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Vade Analizi (@(_alacakMi ? "alacaklar" : "borçlar")) · @Bicim.Tarih(a.Tarih)</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        @foreach (var (baslik, deger, renk, sira) in new[]
+        {
+            ("Vadesi gelmemiş", tl.Sum(d => d.VadesiGelmemis), "#16A34A", 0),
+            ("1-30 gün geçmiş", tl.Sum(d => d.Gun0Ile30), "#F59E0B", 1),
+            ("31-90 gün geçmiş", tl.Sum(d => d.Gun31Ile60 + d.Gun61Ile90), "#F97316", 2),
+            ("90 günden fazla", tl.Sum(d => d.Gun90Ustu), "#DC2626", 3)
+        })
+        {
+            <MudItem xs="6" lg="3">
+                <OzetKarti Baslik="@baslik" Deger="deger" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Schedule" Renk="@renk" Sira="sira"
+                           AltMetin="TL carilerin toplamı" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    <VeriTablosu T="VadeAnaliziSatiri" Kayitlar="satirlar" Dense="true" SatirTiklandi="@(s => Navigasyon.NavigateTo($"cari/{s.CariId}"))"
+                 BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="@(_alacakMi ? "Açık alacak yok" : "Açık borç yok")">
+        <Basliklar>
+            <MudTh>Cari</MudTh>
+            <MudTh Class="sayi">Vadesi gelmemiş</MudTh>
+            <MudTh Class="sayi">1-30 gün</MudTh>
+            <MudTh Class="sayi">31-60 gün</MudTh>
+            <MudTh Class="sayi">61-90 gün</MudTh>
+            <MudTh Class="sayi">90+ gün</MudTh>
+            <MudTh Class="sayi">Toplam</MudTh>
+        </Basliklar>
+        <Satir>
+            @{ var d = Dilim(context); }
+            <MudTd DataLabel="Cari">
+                <b>@context.Unvan</b>
+                <span class="mobil-alt-bilgi">@context.Kod@(context.EnUzunGecikmeGun > 0 ? $" · en eski {context.EnUzunGecikmeGun} gün" : "")</span>
+            </MudTd>
+            <MudTd DataLabel="Vadesi gelmemiş" Class="sayi">@Hucre(d.VadesiGelmemis, context.ParaBirimi)</MudTd>
+            <MudTd DataLabel="1-30 gün" Class="sayi"><span class="vade-hucresi" style="--yogunluk:@Yogunluk(d.Gun0Ile30, d); --renk:#F59E0B">@Hucre(d.Gun0Ile30, context.ParaBirimi)</span></MudTd>
+            <MudTd DataLabel="31-60 gün" Class="sayi"><span class="vade-hucresi" style="--yogunluk:@Yogunluk(d.Gun31Ile60, d); --renk:#F97316">@Hucre(d.Gun31Ile60, context.ParaBirimi)</span></MudTd>
+            <MudTd DataLabel="61-90 gün" Class="sayi"><span class="vade-hucresi" style="--yogunluk:@Yogunluk(d.Gun61Ile90, d); --renk:#EA580C">@Hucre(d.Gun61Ile90, context.ParaBirimi)</span></MudTd>
+            <MudTd DataLabel="90+ gün" Class="sayi"><span class="vade-hucresi" style="--yogunluk:@Yogunluk(d.Gun90Ustu, d); --renk:#DC2626">@Hucre(d.Gun90Ustu, context.ParaBirimi)</span></MudTd>
+            <MudTd DataLabel="Toplam" Class="sayi"><b>@Bicim.Tutar(d.Toplam, context.ParaBirimi)</b></MudTd>
+        </Satir>
+    </VeriTablosu>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private DateTime? _tarih;
+    private VadeAnalizi? _analiz;
+    private bool _alacakMi = true;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tarih = Zaman.GetLocalNow().Date;
+        await YukleAsync();
+    }
+
+    private VadeDilimleri Dilim(VadeAnaliziSatiri s) => _alacakMi ? s.Alacak : s.Borc;
+
+    private static string Hucre(decimal tutar, string paraBirimi) => tutar == 0 ? "—" : Bicim.Tutar(tutar, paraBirimi);
+
+    // Hücre zemini, satır toplamındaki payı oranında koyulaşır.
+    private static string Yogunluk(decimal tutar, VadeDilimleri d) =>
+        (d.Toplam == 0 ? 0 : (int)(tutar / d.Toplam * 45)).ToString(CultureInfo.InvariantCulture) + "%";
+
+    private async Task TarihDegistiAsync(DateTime? tarih)
+    {
+        _tarih = tarih;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _analiz = null;
+        var sonuc = await Api.GetAsync<VadeAnalizi>($"api/cari/raporlar/vade-analizi?tarih={Bicim.Iso(DateOnly.FromDateTime(_tarih ?? DateTime.Today))}");
+        _hata = sonuc.Hata;
+        _analiz = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+}

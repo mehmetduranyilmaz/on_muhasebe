@@ -1,0 +1,155 @@
+@* Bir kalemin (tahsilat, fatura...) hangi karşı kalemlerle kapandığını gösterir ve elle düzeltmeye izin verir.
+   Elle kaydedilen kalem otomatik (FIFO) kapamadan çıkar; "Otomatiğe döndür" ile geri alınır. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        @if (_detay is null)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" Animation="Animation.Wave" />
+        }
+        else
+        {
+            var d = _detay;
+            <div class="d-flex flex-wrap gap-6 mb-3">
+                <div><div class="ozet-baslik">Kalem</div><b>@CariMetinleri.HareketTuru(Kalem.Tur) @Kalem.BelgeNo</b></div>
+                <div><div class="ozet-baslik">Tutar</div><b>@Bicim.Tutar(d.Tutar, ParaBirimi)</b></div>
+                <div><div class="ozet-baslik">Dağıtılan</div><b>@Bicim.Tutar(Dagitilan, ParaBirimi)</b></div>
+                <div><div class="ozet-baslik">Açıkta kalan</div><b class="@(d.Tutar - Dagitilan < 0 ? "bakiye-borclu" : "")">@Bicim.Tutar(d.Tutar - Dagitilan, ParaBirimi)</b></div>
+                @if (d.ElleKapamaMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">Elle kapatıldı</MudChip>
+                }
+            </div>
+
+            @if (_satirlar.Count == 0)
+            {
+                <BosDurum Ikon="@Icons.Material.Outlined.LinkOff" Baslik="Kapatılabilecek karşı kalem yok"
+                          Aciklama="@(d.Yon == HareketYonu.Borc ? "Carinin açık tahsilatı/alacak kalemi yok." : "Carinin açık faturası/borç kalemi yok.")" />
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead>
+                        <tr><th>Tarih</th><th>Kalem</th><th class="sayi">Açık</th><th class="sayi" style="width:170px">Kapatılacak</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in _satirlar)
+                        {
+                            <tr>
+                                <td>@Bicim.Tarih(s.Tarih)@(s.Vade is { } v ? $" · vade {Bicim.Tarih(v)}" : "")</td>
+                                <td>@CariMetinleri.HareketTuru(s.Tur) @s.BelgeNo</td>
+                                <td class="sayi">@Bicim.Tutar(s.Azami)</td>
+                                <td>
+                                    <div class="d-flex align-center gap-1">
+                                        <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Tutar" Min="0" Max="s.Azami" HideSpinButtons="true"
+                                                         Format="N2" Immediate="true" Disabled="Oturum.SaltOkunurMu" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.DoneAll" Size="Size.Small" aria-label="Tamamını kapat" Disabled="Oturum.SaltOkunurMu"
+                                                       OnClick="() => s.Tutar = Math.Min(s.Azami, s.Tutar + d.Tutar - Dagitilan)" />
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            <HataGosterimi Hata="_hata" />
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_detay is { ElleKapamaMi: true } && !Oturum.SaltOkunurMu)
+        {
+            <IslemDugmesi Islem="OtomatigeDonAsync" Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AutoMode">Otomatiğe döndür</IslemDugmesi>
+        }
+        <MudSpacer />
+        <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_detay is null || Dagitilan > _detay.Tutar)">Elle kaydet</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public AcikKalem Kalem { get; set; } = null!;
+    [Parameter, EditorRequired] public Guid CariId { get; set; }
+    [Parameter, EditorRequired] public string ParaBirimi { get; set; } = ParaBirimleri.Tl;
+
+    private sealed class Satir
+    {
+        public Guid Id { get; init; }
+        public DateOnly Tarih { get; init; }
+        public DateOnly? Vade { get; init; }
+        public CariHareketTuru Tur { get; init; }
+        public string? BelgeNo { get; init; }
+        public decimal Azami { get; init; }
+        public decimal Tutar { get; set; }
+    }
+
+    private KapamaDetayi? _detay;
+    private List<Satir> _satirlar = [];
+    private ApiHatasi? _hata;
+
+    private decimal Dagitilan => _satirlar.Sum(s => s.Tutar);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var detay = await Api.GetAsync<KapamaDetayi>($"api/cari/hareketler/{Kalem.HareketId}/kapamalar");
+        var acik = await Api.GetAsync<List<AcikKalem>>($"api/cari/hesaplar/{CariId}/acik-kalemler");
+        if (!detay.BasariliMi)
+        {
+            _hata = detay.Hata;
+            return;
+        }
+
+        _detay = detay.Deger;
+        var karsiYon = _detay.Yon == HareketYonu.Borc ? HareketYonu.Alacak : HareketYonu.Borc;
+        var acikKalemler = (acik.BasariliMi ? acik.Deger : []).Where(k => k.Yon == karsiYon).ToDictionary(k => k.HareketId);
+
+        // Mevcut eşleşmeler (kapanmış karşı kalemler dahil) ve hâlâ açık karşı kalemler birlikte listelenir.
+        var satirlar = _detay.Kapamalar.Select(k => new Satir
+        {
+            Id = k.KarsiHareketId,
+            Tarih = k.Tarih,
+            Tur = k.Tur,
+            BelgeNo = k.BelgeNo,
+            Vade = acikKalemler.GetValueOrDefault(k.KarsiHareketId)?.VadeTarihi,
+            Azami = k.Tutar + (acikKalemler.GetValueOrDefault(k.KarsiHareketId)?.Kalan ?? 0m),
+            Tutar = k.Tutar
+        }).ToList();
+        satirlar.AddRange(acikKalemler.Values
+            .Where(a => satirlar.All(s => s.Id != a.HareketId))
+            .Select(a => new Satir { Id = a.HareketId, Tarih = a.Tarih, Vade = a.VadeTarihi, Tur = a.Tur, BelgeNo = a.BelgeNo, Azami = a.Kalan }));
+        _satirlar = satirlar.OrderBy(s => s.Vade ?? s.Tarih).ThenBy(s => s.Tarih).ToList();
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new ElleKapamaIstegi(_satirlar.Where(s => s.Tutar > 0).Select(s => new ElleKapamaOgesi(s.Id, s.Tutar)).ToList());
+        var sonuc = await Api.PutAsync<KapamaDetayi>($"api/cari/hareketler/{Kalem.HareketId}/kapamalar", istek);
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    private async Task OtomatigeDonAsync()
+    {
+        var sonuc = await Api.DeleteAsync($"api/cari/hareketler/{Kalem.HareketId}/kapamalar");
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

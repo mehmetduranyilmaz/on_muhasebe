@@ -25,6 +25,14 @@ public static class ModulPaketleri
             "OnMuhasebe.Modules.Fatura.Contracts.wasm",
             "OnMuhasebe.Modules.Cari.Contracts.wasm",
             "OnMuhasebe.Modules.Stok.Contracts.wasm",
+            "OnMuhasebe.Modules.Doviz.Contracts.wasm",
+            "OnMuhasebe.Modules.KasaBanka.Contracts.wasm"
+        ],
+        [ModulKodlari.KasaBanka] =
+        [
+            "OnMuhasebe.Web.KasaBanka.wasm",
+            "OnMuhasebe.Modules.KasaBanka.Contracts.wasm",
+            "OnMuhasebe.Modules.Cari.Contracts.wasm",
             "OnMuhasebe.Modules.Doviz.Contracts.wasm"
         ]
     };
@@ -34,13 +42,15 @@ public static class ModulPaketleri
     {
         [ModulKodlari.Cari] = "OnMuhasebe.Web.Cari.Bilesenler.CariOzetPaneli",
         [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokOzetPaneli",
-        [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaOzetPaneli"
+        [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaOzetPaneli",
+        [ModulKodlari.KasaBanka] = "OnMuhasebe.Web.KasaBanka.Bilesenler.KasaBankaOzetPaneli"
     };
 
     public static IReadOnlyDictionary<string, string> AyarPanelleri { get; } = new Dictionary<string, string>
     {
         [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokAyarPaneli",
-        [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaAyarPaneli"
+        [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaAyarPaneli",
+        [ModulKodlari.KasaBanka] = "OnMuhasebe.Web.KasaBanka.Bilesenler.KasaBankaAyarPaneli"
     };
 
     // Adresin ilk parçası modülün yoludur (ör. "cari/123/ekstre" -> cari).

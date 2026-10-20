@@ -79,7 +79,8 @@ internal static class HesapIslemleri
 
     internal static IQueryable<HesapOzeti> Ozetler(KasaBankaDbContext db, IQueryable<KasaHesabi> hesaplar) =>
         hesaplar
-            .OrderBy(h => h.Tur).ThenBy(h => h.Ad)
+            // Tür sütunu metin olarak tutulur; sıralama alfabetik değil tür sırasıyla (kasa, banka, kart, POS) yapılır.
+            .OrderBy(h => h.Tur == HesapTuru.Kasa ? 0 : h.Tur == HesapTuru.Banka ? 1 : h.Tur == HesapTuru.KrediKarti ? 2 : 3).ThenBy(h => h.Ad)
             .Select(h => new HesapOzeti(
                 h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.BankaAdi, h.Iban, h.Limit, h.AktifMi,
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.Giris - x.Cikis),

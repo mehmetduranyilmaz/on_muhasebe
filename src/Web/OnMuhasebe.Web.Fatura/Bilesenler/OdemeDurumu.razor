@@ -1,0 +1,22 @@
+@* Faturanın ödeme durumu: Ödendi / Kısmi (kalan) / Ödenmedi / Vadesi geçti. Kalan yoksa (taslak, iptal, carisiz) hiçbir şey çizilmez. *@
+@inject TimeProvider Zaman
+
+@if (Kalan is { } kalan)
+{
+    var (metin, renk) = kalan <= 0
+        ? ("Ödendi", Color.Success)
+        : VadesiGectiMi ? (kalan < Toplam ? $"Vadesi geçti · kalan {Bicim.Tutar(kalan, ParaBirimi)}" : "Vadesi geçti", Color.Error)
+        : kalan < Toplam ? ($"Kısmi · kalan {Bicim.Tutar(kalan, ParaBirimi)}", Color.Warning)
+        : (OdenmediMetni, Color.Default);
+    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="renk" Icon="@(kalan <= 0 ? Icons.Material.Filled.CheckCircle : null)" Class="odeme-durumu">@metin</MudChip>
+}
+
+@code {
+    [Parameter] public decimal? Kalan { get; set; }
+    [Parameter] public decimal Toplam { get; set; }
+    [Parameter] public DateOnly? Vade { get; set; }
+    [Parameter] public string ParaBirimi { get; set; } = "TRY";
+    [Parameter] public string OdenmediMetni { get; set; } = "Ödenmedi";
+
+    private bool VadesiGectiMi => Vade is { } v && v < DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+}

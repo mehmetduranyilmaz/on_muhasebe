@@ -1,0 +1,92 @@
+@page "/kasabanka/gelir-gider"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Gelir / Gider" AltBaslik="Satış dışı gelirler ve giderler, kategorilere göre (ödenen ve tahakkuk eden)" GeriAdres="kasabanka"
+             Ikon="@Icons.Material.Filled.DonutLarge">
+    <Islemler>
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_baslangic" Label="Başlangıç" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_rapor is { } r)
+{
+    var net = r.ToplamGelirTl - r.ToplamGiderTl;
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Gelir / Gider Raporu · @Bicim.Tarih(r.Baslangic) – @Bicim.Tarih(r.Bitis)</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="12" sm="4">
+            <OzetKarti Baslik="Toplam gelir" Deger="r.ToplamGelirTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.TrendingUp" Renk="#16A34A" Sira="0" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <OzetKarti Baslik="Toplam gider" Deger="r.ToplamGiderTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.TrendingDown" Renk="#EF4444" Sira="1" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <OzetKarti Baslik="Net" Deger="net" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Balance" Renk="#3B82F6" Sira="2"
+                       AltMetin="@(net >= 0 ? "Gelirler giderleri karşılıyor" : "Giderler gelirlerden fazla")" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3">
+        @foreach (var (baslik, liste, renk, sira) in new[] { ("Giderler", r.Giderler, "#EF4444", 3), ("Gelirler", r.Gelirler, "#16A34A", 4) })
+        {
+            <MudItem xs="12" md="6">
+                <div class="panel-kart kart belirme" style="--i:@sira">
+                    <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.PieChart" Size="Size.Small" Style="@($"color:{renk}")" /> @baslik</div>
+                    @if (liste.Count == 0)
+                    {
+                        <BosDurum Ikon="@Icons.Material.Outlined.PieChart" Baslik="Bu dönemde kayıt yok" />
+                    }
+                    else
+                    {
+                        <HalkaGrafik Dilimler="@(liste.Select(k => new GrafikDilimi(k.Ad, k.TutarTl, Bicim.Tutar(k.TutarTl, ParaBirimleri.Tl))).ToList())"
+                                     OrtaBaslik="Toplam" OrtaDeger="@Bicim.Tutar(liste.Sum(k => k.TutarTl))" />
+                        <div class="mt-3">
+                            <CubukListesi Renk="@($"linear-gradient(90deg, {renk}, #F59E0B)")"
+                                          Ogeler="@(liste.Select(k => new CubukOgesi($"{k.Ad} ({k.Adet})", k.TutarTl, Bicim.Tutar(k.TutarTl, ParaBirimleri.Tl))).ToList())" />
+                        </div>
+                    }
+                </div>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private GelirGiderRaporu? _rapor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow().Date;
+        _baslangic = new DateTime(bugun.Year, bugun.Month, 1);
+        _bitis = bugun;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _rapor = null;
+        var adres = $"api/kasabanka/raporlar/gelir-gider?baslangic={Bicim.Iso(DateOnly.FromDateTime(_baslangic ?? DateTime.Today))}"
+                    + $"&bitis={Bicim.Iso(DateOnly.FromDateTime(_bitis ?? DateTime.Today))}";
+        var sonuc = await Api.GetAsync<GelirGiderRaporu>(adres);
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+}
