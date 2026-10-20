@@ -1,5 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\OnMuhasebe.Shared.Domain\OnMuhasebe.Shared.Domain.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Shared.Contracts\OnMuhasebe.Shared.Contracts.csproj" />
   </ItemGroup>
+
 </Project>
