@@ -15,6 +15,8 @@ internal sealed partial class GlobalHataYakalayici(
     {
         var (durum, baslik) = exception switch
         {
+            // Okunamayan istek gövdesi (bozuk JSON, yanlış kodlama) istemci hatasıdır, sunucu hatası değil.
+            BadHttpRequestException hatali => (hatali.StatusCode, "İstek okunamadı. Gönderilen bilgileri kontrol edin."),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict,
                 "Kayıt siz düzenlerken başka bir kullanıcı tarafından değiştirildi. Lütfen yenileyip tekrar deneyin."),
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>
