@@ -1,6 +1,7 @@
 @page "/cek-senet/giris"
 @page "/cek-senet/cikis"
 @inject ApiIstemcisi Api
+@inject ZorunluAlanServisi ZorunluAlanlar
 @inject NavigationManager Navigasyon
 @inject OnayServisi Onay
 @inject ISnackbar Snackbar
@@ -23,7 +24,7 @@
                 <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Tarih" @bind-Date="_tarih" DateFormat="dd.MM.yyyy" Required="true" />
             </MudItem>
             <MudItem xs="6" md="3">
-                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Açıklama" @bind-Value="_aciklama" MaxLength="500" />
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Açıklama" @bind-Value="_aciklama" Required="Z(KasaBankaZorunluAlanlari.BordroAciklama)" RequiredError="Bu alan zorunlu (firma ayarı)." MaxLength="500" />
             </MudItem>
             @if (_cariRiski is { Riskli: true } cr)
             {
@@ -109,10 +110,10 @@
                         else
                         {
                             <MudItem xs="12" md="4">
-                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Keşide yeri" @bind-Value="s.KesideYeri" MaxLength="100" />
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Keşide yeri" @bind-Value="s.KesideYeri" Required="Z(KasaBankaZorunluAlanlari.SenetKesideYeri)" MaxLength="100" />
                             </MudItem>
                             <MudItem xs="6" md="4">
-                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Kefil" @bind-Value="s.KefilAdi" MaxLength="200" />
+                                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Kefil" @bind-Value="s.KefilAdi" Required="Z(KasaBankaZorunluAlanlari.SenetKefil)" MaxLength="200" />
                             </MudItem>
                             <MudItem xs="6" md="4">
                                 <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Kefil VKN/TCKN" @bind-Value="s.KefilKimlikNo" MaxLength="11" />

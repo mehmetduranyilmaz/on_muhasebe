@@ -224,6 +224,54 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                     b.ToTable("firma_lisansi", "yonetim");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaZorunluAlani", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("Kod")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("kod");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_firma_zorunlu_alani");
+
+                    b.HasIndex("FirmaId", "Kod")
+                        .IsUnique()
+                        .HasDatabaseName("ix_firma_zorunlu_alani_firma_id_kod");
+
+                    b.ToTable("firma_zorunlu_alani", "yonetim");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.Kullanici", b =>
                 {
                     b.Property<Guid>("Id")

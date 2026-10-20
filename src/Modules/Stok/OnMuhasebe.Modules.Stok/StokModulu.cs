@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Features;
 using OnMuhasebe.Modules.Stok.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Ayarlar;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Modules;
@@ -17,6 +18,8 @@ namespace OnMuhasebe.Modules.Stok;
 public sealed class StokModulu : IModul
 {
     public string Ad => "Stok";
+
+    public IReadOnlyList<ZorunluAlanTanimi> ZorunluAlanlar => StokZorunluAlanlari.Tumu;
 
     public void ServisleriEkle(IServiceCollection services, IConfiguration configuration)
     {

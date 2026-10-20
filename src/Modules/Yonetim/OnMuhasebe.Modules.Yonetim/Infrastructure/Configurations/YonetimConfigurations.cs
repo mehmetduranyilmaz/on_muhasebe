@@ -81,3 +81,13 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.HasOne<Kullanici>().WithMany().HasForeignKey(x => x.KullaniciId).OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+internal sealed class FirmaZorunluAlaniConfiguration : IEntityTypeConfiguration<FirmaZorunluAlani>
+{
+    public void Configure(EntityTypeBuilder<FirmaZorunluAlani> builder)
+    {
+        builder.ToTable("firma_zorunlu_alani");
+        builder.Property(x => x.Kod).HasMaxLength(80);
+        builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
+    }
+}

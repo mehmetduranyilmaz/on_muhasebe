@@ -1,0 +1,92 @@
+@* Ayarlar > Zorunlu alanlar: lisanslı modüllerin isteğe bağlı alanlarından firmanın zorunlu yaptıkları. *@
+@using OnMuhasebe.Shared.Contracts.Ayarlar
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject ZorunluAlanServisi ZorunluAlanlar
+
+<FormBolumu Baslik="Zorunlu alanlar" Aciklama="Seçilen alanlar boş bırakılarak kayıt yapılamaz; yeni kayıtlarda ve eski kayıtlar düzenlenirken istenir"
+            Ikon="@Icons.Material.Filled.Rule" Sira="Sira">
+    @if (_cevap is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="160px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        @foreach (var form in _cevap.Tanimlar.GroupBy(t => t.Form))
+        {
+            var secilen = form.Count(t => _secili.Contains(t.Kod));
+            <MudItem xs="12" md="6">
+                <div class="ayar-baslik d-flex align-center gap-2">
+                    @form.Key
+                    @if (secilen > 0)
+                    {
+                        <span class="sekme-sayisi">@secilen</span>
+                    }
+                </div>
+                <div class="zorunlu-alanlar">
+                    @foreach (var t in form)
+                    {
+                        var acik = _secili.Contains(t.Kod);
+                        <button type="button" class="zorunlu-alan @(acik ? "secili" : "")" aria-pressed="@(acik ? "true" : "false")" @onclick="() => Degistir(t.Kod)">
+                            <MudIcon Icon="@(acik ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)" Size="Size.Small" /> @t.Ad
+                        </button>
+                    }
+                </div>
+            </MudItem>
+        }
+        <MudItem xs="12">
+            <div class="ayar-aciklama ml-0">
+                Ünvan, tarih, KDV oranı gibi sistemin her zaman istediği alanlar burada yer almaz. Banka ekstresinden aktarılan satırlar elle girilmediği için bu kurala tabi değildir.
+            </div>
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="!DegistiMi">Zorunlu alanları kaydet</IslemDugmesi>
+        </MudItem>
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private ZorunluAlanlarCevabi? _cevap;
+    private HashSet<string> _secili = [];
+
+    private bool DegistiMi => _cevap is not null && !_secili.SetEquals(_cevap.Secili);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<ZorunluAlanlarCevabi>("api/yonetim/zorunlu-alanlar");
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(ZorunluAlanlarCevabi cevap)
+    {
+        _cevap = cevap;
+        _secili = cevap.Secili.ToHashSet();
+    }
+
+    private void Degistir(string kod)
+    {
+        if (!_secili.Remove(kod))
+        {
+            _secili.Add(kod);
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<ZorunluAlanlarCevabi>("api/yonetim/zorunlu-alanlar", new ZorunluAlanlarIstegi(_secili.ToList()));
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        Ayarla(sonuc.Deger);
+        ZorunluAlanlar.Temizle();
+        Snackbar.Add("Zorunlu alanlar kaydedildi.", Severity.Success);
+    }
+}

@@ -1,5 +1,6 @@
 @page "/kasabanka/islem/{TurYolu}"
 @inject ApiIstemcisi Api
+@inject ZorunluAlanServisi ZorunluAlanlar
 @inject NavigationManager Navigasyon
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
@@ -180,11 +181,11 @@ else
                 @if (_tur != IslemTuru.Acilis && !Virman)
                 {
                     <MudItem xs="12" md="3">
-                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeNo" Label="Belge no" MaxLength="50" />
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeNo" Required="Z(KasaBankaZorunluAlanlari.IslemBelgeNo)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Belge no" MaxLength="50" />
                     </MudItem>
                 }
                 <MudItem xs="12" md="@(_tur == IslemTuru.Acilis || Virman ? 12 : 9)">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="400" />
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Required="@(_tur != IslemTuru.Acilis && Z(KasaBankaZorunluAlanlari.IslemAciklama))" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Açıklama" MaxLength="400" />
                 </MudItem>
             </FormBolumu>
         </MudItem>
@@ -329,9 +330,14 @@ else
         _ => false
     };
 
+    private IReadOnlySet<string> _zorunlu = new HashSet<string>();
+
+    private bool Z(string kod) => _zorunlu.Contains(kod);
+
     protected override async Task OnParametersSetAsync()
     {
         _yukleniyor = true;
+        _zorunlu = await ZorunluAlanlar.SeciliAsync();
         _tur = KasaMetinleri.YoldanIslem(TurYolu) ?? IslemTuru.Tahsilat;
         _tarih ??= Zaman.GetLocalNow().Date;
 

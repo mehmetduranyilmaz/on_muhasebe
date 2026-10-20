@@ -46,10 +46,28 @@ internal static class IslemIslemleri
         }
     }
 
+    private static readonly AlanKontrolu<TahsilatOdemeIstegi>[] _tahsilatOdemeZorunlulari =
+    [
+        new(KasaBankaZorunluAlanlari.IslemBelgeNo, nameof(TahsilatOdemeIstegi.BelgeNo), x => ZorunluAlanKurali.Dolu(x.BelgeNo)),
+        new(KasaBankaZorunluAlanlari.IslemAciklama, nameof(TahsilatOdemeIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama))
+    ];
+
+    private static readonly AlanKontrolu<VirmanIstegi>[] _virmanZorunlulari =
+    [
+        new(KasaBankaZorunluAlanlari.IslemAciklama, nameof(VirmanIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama))
+    ];
+
+    private static readonly AlanKontrolu<GelirGiderIstegi>[] _gelirGiderZorunlulari =
+    [
+        new(KasaBankaZorunluAlanlari.IslemBelgeNo, nameof(GelirGiderIstegi.BelgeNo), x => ZorunluAlanKurali.Dolu(x.BelgeNo)),
+        new(KasaBankaZorunluAlanlari.IslemAciklama, nameof(GelirGiderIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama))
+    ];
+
     internal sealed class TahsilatOdemeDogrulayici : AbstractValidator<TahsilatOdemeIstegi>
     {
-        public TahsilatOdemeDogrulayici()
+        public TahsilatOdemeDogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, KasaBankaZorunluAlanlari.Tumu, _tahsilatOdemeZorunlulari);
             RuleFor(x => x.Tutar).GreaterThan(0).LessThan(AzamiTutar);
             RuleFor(x => x.Kur).GreaterThan(0).When(x => x.Kur is not null);
             RuleFor(x => x.CariKuru).GreaterThan(0).When(x => x.CariKuru is not null);
@@ -60,8 +78,9 @@ internal static class IslemIslemleri
 
     internal sealed class VirmanDogrulayici : AbstractValidator<VirmanIstegi>
     {
-        public VirmanDogrulayici()
+        public VirmanDogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, KasaBankaZorunluAlanlari.Tumu, _virmanZorunlulari);
             RuleFor(x => x.Tutar).GreaterThan(0).LessThan(AzamiTutar);
             RuleFor(x => x.HedefTutar).GreaterThan(0).LessThan(AzamiTutar).When(x => x.HedefTutar is not null);
             RuleFor(x => x.HedefHesapId).NotEqual(x => x.KaynakHesapId).WithMessage("Kaynak ve hedef hesap farklı olmalıdır.");
@@ -73,8 +92,9 @@ internal static class IslemIslemleri
 
     internal sealed class GelirGiderDogrulayici : AbstractValidator<GelirGiderIstegi>
     {
-        public GelirGiderDogrulayici()
+        public GelirGiderDogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, KasaBankaZorunluAlanlari.Tumu, _gelirGiderZorunlulari);
             RuleFor(x => x.Tur).IsInEnum();
             RuleFor(x => x.Bicim).IsInEnum();
             RuleFor(x => x.Tutar).GreaterThan(0).LessThan(AzamiTutar);

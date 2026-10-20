@@ -48,6 +48,9 @@ public partial class BordroFormu
     private List<HesapOzeti> _hesaplar = [];
     private CekSenetAyarlari _ayar = new(true, false, RiskDavranisi.UyarVeOnayIste);
     private ApiHatasi? _hata;
+    private IReadOnlySet<string> _zorunlu = new HashSet<string>();
+
+    private bool Z(string kod) => _zorunlu.Contains(kod);
 
     private bool Alinan => Navigasyon.ToBaseRelativePath(Navigasyon.Uri).StartsWith("cek-senet/giris", StringComparison.Ordinal);
 
@@ -86,6 +89,11 @@ public partial class BordroFormu
                 return "En az bir evrak ekleyin.";
             }
 
+            if (Z(KasaBankaZorunluAlanlari.BordroAciklama) && string.IsNullOrWhiteSpace(_aciklama))
+            {
+                return "Bordro açıklaması zorunlu (firma ayarı).";
+            }
+
             foreach (var (s, i) in _satirlar.Select((s, i) => (s, i + 1)))
             {
                 var eksik = string.IsNullOrWhiteSpace(s.SeriNo) ? "evrak no"
@@ -95,6 +103,8 @@ public partial class BordroFormu
                     : Alinan && !s.YeniBorclu && s.Borclu is null ? "keşideci/borçlu"
                     : Alinan && s.YeniBorclu && KimlikZorunlu(s) && string.IsNullOrWhiteSpace(s.KimlikNo) ? "VKN/TCKN"
                     : Alinan && s.Tur == EvrakTuru.Cek && string.IsNullOrWhiteSpace(s.BankaAdi) ? "banka"
+                    : Alinan && s.Tur == EvrakTuru.Senet && Z(KasaBankaZorunluAlanlari.SenetKesideYeri) && string.IsNullOrWhiteSpace(s.KesideYeri) ? "keşide yeri"
+                    : Alinan && s.Tur == EvrakTuru.Senet && Z(KasaBankaZorunluAlanlari.SenetKefil) && string.IsNullOrWhiteSpace(s.KefilAdi) ? "kefil"
                     : !Alinan && s.Tur == EvrakTuru.Cek && s.KendiHesapId is null ? "banka hesabı"
                     : null;
                 if (eksik is not null)
@@ -109,6 +119,7 @@ public partial class BordroFormu
 
     protected override async Task OnInitializedAsync()
     {
+        _zorunlu = await ZorunluAlanlar.SeciliAsync();
         var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar");
         _hesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
         var ayar = await Api.GetAsync<CekSenetAyarlari>("api/kasabanka/cek-senet/ayarlar");

@@ -38,10 +38,25 @@ internal static class CekSenetIslemleri
         CekSenetSorgulari.Map(grup);
     }
 
+    private static readonly AlanKontrolu<AlinanBordroIstegi>[] _alinanZorunlulari =
+    [
+        new(KasaBankaZorunluAlanlari.BordroAciklama, nameof(AlinanBordroIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama)),
+        new(KasaBankaZorunluAlanlari.SenetKesideYeri, nameof(AlinanBordroIstegi.Evraklar),
+            x => x.Evraklar.Where(e => e.Tur == EvrakTuru.Senet).All(e => ZorunluAlanKurali.Dolu(e.KesideYeri))),
+        new(KasaBankaZorunluAlanlari.SenetKefil, nameof(AlinanBordroIstegi.Evraklar),
+            x => x.Evraklar.Where(e => e.Tur == EvrakTuru.Senet).All(e => ZorunluAlanKurali.Dolu(e.KefilAdi)))
+    ];
+
+    private static readonly AlanKontrolu<VerilenBordroIstegi>[] _verilenZorunlulari =
+    [
+        new(KasaBankaZorunluAlanlari.BordroAciklama, nameof(VerilenBordroIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama))
+    ];
+
     internal sealed class AlinanDogrulayici : AbstractValidator<AlinanBordroIstegi>
     {
-        public AlinanDogrulayici()
+        public AlinanDogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, KasaBankaZorunluAlanlari.Tumu, _alinanZorunlulari);
             RuleFor(x => x.Aciklama).MaximumLength(500);
             RuleFor(x => x.Evraklar).NotEmpty().WithMessage("Bordroda en az bir evrak olmalıdır.").Must(e => e.Count <= 100);
             RuleForEach(x => x.Evraklar).ChildRules(e =>
@@ -69,8 +84,9 @@ internal static class CekSenetIslemleri
 
     internal sealed class VerilenDogrulayici : AbstractValidator<VerilenBordroIstegi>
     {
-        public VerilenDogrulayici()
+        public VerilenDogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, KasaBankaZorunluAlanlari.Tumu, _verilenZorunlulari);
             RuleFor(x => x.Aciklama).MaximumLength(500);
             RuleFor(x => x.Evraklar).NotEmpty().WithMessage("Bordroda en az bir evrak olmalıdır.").Must(e => e.Count <= 100);
             RuleForEach(x => x.Evraklar).ChildRules(e =>

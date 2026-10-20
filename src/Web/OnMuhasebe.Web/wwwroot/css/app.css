@@ -2813,3 +2813,38 @@ td.soluk {
         animation: none !important;
     }
 }
+
+/* ---------- Zorunlu alanlar ---------- */
+
+.zorunlu-alanlar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.zorunlu-alan {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: transparent;
+    color: var(--mud-palette-text-secondary);
+    font: inherit;
+    font-size: .86rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .3s var(--om-yay), background-color .25s, color .25s, border-color .25s;
+}
+
+.zorunlu-alan:hover {
+    transform: translateY(-2px);
+    border-color: var(--om-turkuaz);
+}
+
+.zorunlu-alan.secili {
+    color: var(--om-turkuaz);
+    border-color: color-mix(in srgb, var(--om-turkuaz) 60%, transparent);
+    background: color-mix(in srgb, var(--om-turkuaz) 12%, transparent);
+}

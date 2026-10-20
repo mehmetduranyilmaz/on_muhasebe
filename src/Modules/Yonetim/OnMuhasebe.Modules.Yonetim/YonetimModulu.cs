@@ -17,6 +17,7 @@ using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Modules;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
+using OnMuhasebe.Shared.Infrastructure.Validation;
 
 namespace OnMuhasebe.Modules.Yonetim;
 
@@ -71,6 +72,8 @@ public sealed class YonetimModulu : IModul
         services.AddSingleton<TokenServisi>();
         services.AddScoped<OturumServisi>();
         services.AddScoped<ILisansSorgusu, LisansSorgusu>();
+        services.AddScoped<ZorunluAlanSorgusu>();
+        services.AddScoped<IZorunluAlanSorgusu>(sp => sp.GetRequiredService<ZorunluAlanSorgusu>());
         services.AddHostedService<SistemYoneticisiTohumlayici>();
     }
 
@@ -87,6 +90,7 @@ public sealed class YonetimModulu : IModul
         FirmaBilgileriIslemleri.Map(grup);
         KullaniciIslemleri.Map(grup);
         SistemIslemleri.Map(grup);
+        ZorunluAlanIslemleri.Map(grup);
     }
 
     private static RateLimitPartition<string> IpLimiti(HttpContext http, int dakikalikLimit) =>

@@ -34,8 +34,20 @@ internal static class StokKartiIslemleri
 
     internal sealed class Dogrulayici : AbstractValidator<StokKartiKaydetIstegi>
     {
-        public Dogrulayici()
+        private static readonly AlanKontrolu<StokKartiKaydetIstegi>[] _zorunluKontroller =
+        [
+            new(StokZorunluAlanlari.Barkod, nameof(StokKartiKaydetIstegi.Barkod), x => ZorunluAlanKurali.Dolu(x.Barkod)),
+            new(StokZorunluAlanlari.Grup, nameof(StokKartiKaydetIstegi.GrupId), x => x.GrupId is not null),
+            new(StokZorunluAlanlari.AlisFiyati, nameof(StokKartiKaydetIstegi.AlisFiyati), x => x.AlisFiyati is not null),
+            new(StokZorunluAlanlari.SatisFiyati, nameof(StokKartiKaydetIstegi.SatisFiyati), x => x.SatisFiyati is not null),
+            new(StokZorunluAlanlari.PerakendeFiyati, nameof(StokKartiKaydetIstegi.PerakendeFiyati), x => x.PerakendeFiyati is not null),
+            new(StokZorunluAlanlari.KritikSeviye, nameof(StokKartiKaydetIstegi.KritikSeviye), x => x.KritikSeviye is not null),
+            new(StokZorunluAlanlari.Aciklama, nameof(StokKartiKaydetIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama))
+        ];
+
+        public Dogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, StokZorunluAlanlari.Tumu, _zorunluKontroller);
             RuleFor(x => x.Kod).MaximumLength(30).Matches("^[A-Za-z0-9._-]*$")
                 .WithMessage("Stok kodu yalnızca harf, rakam, nokta, tire ve alt çizgi içerebilir.");
             RuleFor(x => x.Ad).NotEmpty().MaximumLength(250);

@@ -1,6 +1,7 @@
 @page "/fatura/yeni/{TurYolu}"
 @page "/fatura/{Id:guid}/duzenle"
 @inject ApiIstemcisi Api
+@inject ZorunluAlanServisi ZorunluAlanlar
 @inject NavigationManager Navigasyon
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
@@ -85,7 +86,7 @@ else
                                    DateFormat="dd.MM.yyyy" Required="true" />
                 </MudItem>
                 <MudItem xs="6" md="3">
-                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Vade" @bind-Date="_vade" DateFormat="dd.MM.yyyy"
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Vade" @bind-Date="_vade" Required="Z(FaturaZorunluAlanlari.VadeTarihi)" RequiredError="Bu alan zorunlu (firma ayarı)." DateFormat="dd.MM.yyyy"
                                    Clearable="true" MinDate="_tarih" />
                 </MudItem>
                 @if (Dovizli)
@@ -97,7 +98,7 @@ else
                     </MudItem>
                 }
                 <MudItem xs="12" md="@(Dovizli ? 4 : 6)">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" />
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Required="Z(FaturaZorunluAlanlari.Aciklama)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Açıklama" MaxLength="1000" />
                 </MudItem>
             </FormBolumu>
 
@@ -375,8 +376,13 @@ else
 
     private string SatirAciklamasi => _satirlar.Count == 0 ? "Ürün, hizmet veya serbest satır" : $"{_satirlar.Count} satır · fiyatlar seçilen birim içindir";
 
+    private IReadOnlySet<string> _zorunlu = new HashSet<string>();
+
+    private bool Z(string kod) => _zorunlu.Contains(kod);
+
     protected override async Task OnInitializedAsync()
     {
+        _zorunlu = await ZorunluAlanlar.SeciliAsync();
         var ayar = await Api.GetAsync<FaturaAyarlari>("api/fatura/ayarlar");
         _ayar = ayar.BasariliMi ? ayar.Deger : null;
         if (StokAcik)

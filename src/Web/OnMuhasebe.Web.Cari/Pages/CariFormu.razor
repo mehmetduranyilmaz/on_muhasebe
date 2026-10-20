@@ -1,6 +1,7 @@
 @page "/cari/yeni"
 @page "/cari/{Id:guid}/duzenle"
 @inject ApiIstemcisi Api
+@inject ZorunluAlanServisi ZorunluAlanlar
 @inject NavigationManager Navigasyon
 @inject ISnackbar Snackbar
 
@@ -40,14 +41,14 @@ else
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiNo" MaxLength="11"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiNo" Required="Z(CariZorunluAlanlari.VergiNo)" RequiredError="Bu alan zorunlu (firma ayarı)." MaxLength="11"
                                   Label="@(_kisiTipi == KisiTipi.Sahis ? "T.C. kimlik no" : "Vergi no / T.C. kimlik no")" />
                 </MudItem>
                 <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiDairesi" Label="Vergi dairesi" MaxLength="100" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiDairesi" Required="Z(CariZorunluAlanlari.VergiDairesi)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Vergi dairesi" MaxLength="100" />
                 </MudItem>
                 <MudItem xs="12" sm="6" md="3">
-                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="Guid?" @bind-Value="_grupId" Label="Grup" Clearable="true">
+                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="Guid?" @bind-Value="_grupId" Required="Z(CariZorunluAlanlari.Grup)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Grup" Clearable="true">
                         @foreach (var grup in _gruplar)
                         {
                             <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
@@ -71,38 +72,38 @@ else
 
         <FormBolumu Baslik="İletişim" Aciklama="Telefon, e-posta, yetkili ve adres" Ikon="@Icons.Material.Filled.ContactPhone" Sira="1">
                 <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_telefon" Label="Telefon" MaxLength="30" InputType="InputType.Telephone" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_telefon" Required="Z(CariZorunluAlanlari.Telefon)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Telefon" MaxLength="30" InputType="InputType.Telephone" />
                 </MudItem>
                 <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Label="E-posta" MaxLength="256" InputType="InputType.Email" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Required="Z(CariZorunluAlanlari.Eposta)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="E-posta" MaxLength="256" InputType="InputType.Email" />
                 </MudItem>
                 <MudItem xs="12" sm="6" md="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_iban" Label="IBAN" MaxLength="40"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_iban" Required="Z(CariZorunluAlanlari.Iban)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="IBAN" MaxLength="40"
                                   HelperText="Banka ekstresi aktarımında carinin otomatik bulunmasını sağlar" />
                 </MudItem>
                 <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yetkiliAd" Label="Yetkili kişi" MaxLength="100" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yetkiliAd" Required="Z(CariZorunluAlanlari.YetkiliAd)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Yetkili kişi" MaxLength="100" />
                 </MudItem>
                 <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yetkiliTelefon" Label="Yetkili telefonu" MaxLength="30" InputType="InputType.Telephone" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yetkiliTelefon" Required="Z(CariZorunluAlanlari.YetkiliTelefon)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Yetkili telefonu" MaxLength="30" InputType="InputType.Telephone" />
                 </MudItem>
                 <MudItem xs="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_il" Label="İl" MaxLength="50" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_il" Required="Z(CariZorunluAlanlari.Il)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="İl" MaxLength="50" />
                 </MudItem>
                 <MudItem xs="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ilce" Label="İlçe" MaxLength="50" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ilce" Required="Z(CariZorunluAlanlari.Ilce)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="İlçe" MaxLength="50" />
                 </MudItem>
                 <MudItem xs="12" md="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_adres" Label="Adres" MaxLength="500" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_adres" Required="Z(CariZorunluAlanlari.Adres)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Adres" MaxLength="500" />
                 </MudItem>
         </FormBolumu>
 
         <FormBolumu Baslik="Ticari koşullar" Aciklama="Vade, risk limiti ve notlar" Ikon="@Icons.Material.Filled.Handshake" Sira="2">
                 <MudItem xs="6" md="3">
-                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="int?" @bind-Value="_vadeGun" Label="Vade (gün)" Min="0" Max="365" HideSpinButtons="true" />
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="int?" @bind-Value="_vadeGun" Required="Z(CariZorunluAlanlari.VadeGun)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Vade (gün)" Min="0" Max="365" HideSpinButtons="true" />
                 </MudItem>
                 <MudItem xs="6" md="3">
-                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_riskLimiti" Label="@($"Risk limiti ({_paraBirimi})")" Min="0" Format="N2"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_riskLimiti" Required="Z(CariZorunluAlanlari.RiskLimiti)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="@($"Risk limiti ({_paraBirimi})")" Min="0" Format="N2"
                                      HideSpinButtons="true" HelperText="Bakiye bu tutarı aşınca uyarı verilir" />
                 </MudItem>
                 <MudItem xs="12" md="6">
@@ -150,8 +151,13 @@ else
     private bool _yukleniyor = true;
     private ApiHatasi? _hata;
 
+    private IReadOnlySet<string> _zorunlu = new HashSet<string>();
+
+    private bool Z(string kod) => _zorunlu.Contains(kod);
+
     protected override async Task OnInitializedAsync()
     {
+        _zorunlu = await ZorunluAlanlar.SeciliAsync();
         var gruplar = await Api.GetAsync<List<GrupOzeti>>("api/cari/gruplar");
         _gruplar = gruplar.BasariliMi ? gruplar.Deger : [];
 

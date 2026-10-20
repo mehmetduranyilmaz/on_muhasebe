@@ -34,8 +34,26 @@ internal static class CariHesapIslemleri
 
     internal sealed class Dogrulayici : AbstractValidator<CariKaydetIstegi>
     {
-        public Dogrulayici()
+        private static readonly AlanKontrolu<CariKaydetIstegi>[] _zorunluKontroller =
+        [
+            new(CariZorunluAlanlari.VergiNo, nameof(CariKaydetIstegi.VergiNo), x => ZorunluAlanKurali.Dolu(x.VergiNo)),
+            new(CariZorunluAlanlari.VergiDairesi, nameof(CariKaydetIstegi.VergiDairesi), x => ZorunluAlanKurali.Dolu(x.VergiDairesi)),
+            new(CariZorunluAlanlari.Il, nameof(CariKaydetIstegi.Il), x => ZorunluAlanKurali.Dolu(x.Il)),
+            new(CariZorunluAlanlari.Ilce, nameof(CariKaydetIstegi.Ilce), x => ZorunluAlanKurali.Dolu(x.Ilce)),
+            new(CariZorunluAlanlari.Adres, nameof(CariKaydetIstegi.Adres), x => ZorunluAlanKurali.Dolu(x.Adres)),
+            new(CariZorunluAlanlari.Telefon, nameof(CariKaydetIstegi.Telefon), x => ZorunluAlanKurali.Dolu(x.Telefon)),
+            new(CariZorunluAlanlari.Eposta, nameof(CariKaydetIstegi.Eposta), x => ZorunluAlanKurali.Dolu(x.Eposta)),
+            new(CariZorunluAlanlari.Iban, nameof(CariKaydetIstegi.Iban), x => ZorunluAlanKurali.Dolu(x.Iban)),
+            new(CariZorunluAlanlari.Grup, nameof(CariKaydetIstegi.GrupId), x => x.GrupId is not null),
+            new(CariZorunluAlanlari.VadeGun, nameof(CariKaydetIstegi.VadeGun), x => x.VadeGun is not null),
+            new(CariZorunluAlanlari.RiskLimiti, nameof(CariKaydetIstegi.RiskLimiti), x => x.RiskLimiti is not null),
+            new(CariZorunluAlanlari.YetkiliAd, nameof(CariKaydetIstegi.YetkiliAd), x => ZorunluAlanKurali.Dolu(x.YetkiliAd)),
+            new(CariZorunluAlanlari.YetkiliTelefon, nameof(CariKaydetIstegi.YetkiliTelefon), x => ZorunluAlanKurali.Dolu(x.YetkiliTelefon))
+        ];
+
+        public Dogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, CariZorunluAlanlari.Tumu, _zorunluKontroller);
             RuleFor(x => x.Kod).MaximumLength(20).Matches("^[A-Za-z0-9._-]*$")
                 .WithMessage("Cari kodu yalnızca harf, rakam, nokta, tire ve alt çizgi içerebilir.");
             RuleFor(x => x.Unvan).NotEmpty().MaximumLength(250);

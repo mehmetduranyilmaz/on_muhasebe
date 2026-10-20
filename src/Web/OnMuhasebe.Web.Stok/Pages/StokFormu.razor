@@ -1,6 +1,7 @@
 @page "/stok/yeni"
 @page "/stok/{Id:guid}/duzenle"
 @inject ApiIstemcisi Api
+@inject ZorunluAlanServisi ZorunluAlanlar
 @inject NavigationManager Navigasyon
 @inject ISnackbar Snackbar
 
@@ -32,7 +33,7 @@ else
                 </MudSelect>
             </MudItem>
             <MudItem xs="6" md="3">
-                <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_grupId" Label="Grup" Clearable="true">
+                <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_grupId" Required="Z(StokZorunluAlanlari.Grup)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Grup" Clearable="true">
                     @foreach (var grup in _gruplar)
                     {
                         <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
@@ -40,11 +41,11 @@ else
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
-                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_barkod" Label="Barkod" MaxLength="50"
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_barkod" Required="Z(StokZorunluAlanlari.Barkod)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Barkod" MaxLength="50"
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.QrCode2" />
             </MudItem>
             <MudItem xs="12" md="8">
-                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" />
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Required="Z(StokZorunluAlanlari.Aciklama)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Açıklama" MaxLength="1000" />
             </MudItem>
         </FormBolumu>
 
@@ -82,13 +83,13 @@ else
 
         <FormBolumu Baslik="Fiyat ve vergi" Aciklama="@($"Fiyatlar 1 {Birimler.Ad(_temelBirim)} içindir")" Ikon="@Icons.Material.Filled.Sell" Sira="2">
             <MudItem xs="12" sm="4">
-                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_alisFiyati" Label="Alış fiyatı" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_alisFiyati" Required="Z(StokZorunluAlanlari.AlisFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Alış fiyatı" Format="N2" Min="0" HideSpinButtons="true" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_satisFiyati" Label="Toptan satış fiyatı" HelperText="KDV hariç" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_satisFiyati" Required="Z(StokZorunluAlanlari.SatisFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Toptan satış fiyatı" HelperText="KDV hariç" Format="N2" Min="0" HideSpinButtons="true" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_perakendeFiyati" Label="Perakende satış fiyatı" HelperText="KDV dahil" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_perakendeFiyati" Required="Z(StokZorunluAlanlari.PerakendeFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Perakende satış fiyatı" HelperText="KDV dahil" Format="N2" Min="0" HideSpinButtons="true" />
             </MudItem>
             <MudItem xs="6">
                 <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_paraBirimi" Label="Para birimi">
@@ -112,7 +113,7 @@ else
         {
             <FormBolumu Baslik="Stok takibi" Aciklama="Miktar bu seviyeye inince uyarı verilir" Ikon="@Icons.Material.Filled.NotificationImportant" Sira="3">
                 <MudItem xs="12" sm="6" md="3">
-                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kritikSeviye"
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kritikSeviye" Required="Z(StokZorunluAlanlari.KritikSeviye)" RequiredError="Bu alan zorunlu (firma ayarı)."
                                      Label="@($"Kritik seviye ({Birimler.Ad(_temelBirim)})")" Min="0" HideSpinButtons="true" />
                 </MudItem>
             </FormBolumu>
@@ -156,8 +157,13 @@ else
     private bool _yukleniyor = true;
     private ApiHatasi? _hata;
 
+    private IReadOnlySet<string> _zorunlu = new HashSet<string>();
+
+    private bool Z(string kod) => _zorunlu.Contains(kod);
+
     protected override async Task OnInitializedAsync()
     {
+        _zorunlu = await ZorunluAlanlar.SeciliAsync();
         var gruplar = await Api.GetAsync<List<GrupOzeti>>("api/stok/gruplar");
         _gruplar = gruplar.BasariliMi ? gruplar.Deger : [];
 

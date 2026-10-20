@@ -35,8 +35,15 @@ internal static class FaturaIslemleri
 
     internal sealed class Dogrulayici : AbstractValidator<FaturaKaydetIstegi>
     {
-        public Dogrulayici()
+        private static readonly AlanKontrolu<FaturaKaydetIstegi>[] _zorunluKontroller =
+        [
+            new(FaturaZorunluAlanlari.VadeTarihi, nameof(FaturaKaydetIstegi.VadeTarihi), x => x.VadeTarihi is not null),
+            new(FaturaZorunluAlanlari.Aciklama, nameof(FaturaKaydetIstegi.Aciklama), x => ZorunluAlanKurali.Dolu(x.Aciklama))
+        ];
+
+        public Dogrulayici(IZorunluAlanSorgusu zorunlu)
         {
+            this.ZorunluAlanlar(zorunlu, FaturaZorunluAlanlari.Tumu, _zorunluKontroller);
             RuleFor(x => x.Tur).IsInEnum();
             RuleFor(x => x.SatisSekli).IsInEnum().When(x => x.SatisSekli is not null);
             RuleFor(x => x.GenelIskontoTuru).IsInEnum();
