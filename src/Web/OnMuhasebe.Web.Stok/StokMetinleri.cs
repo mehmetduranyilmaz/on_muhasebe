@@ -32,6 +32,9 @@ public static class StokMetinleri
         (StokHareketTuru.Sarf, "İşletme içinde kullanılan")
     ];
 
+    public static bool FaturaHareketiMi(StokHareketTuru tur) => tur is StokHareketTuru.SatisFaturasi or StokHareketTuru.AlisFaturasi
+        or StokHareketTuru.SatistanIade or StokHareketTuru.AlistanIade;
+
     public static bool GirisMi(StokHareketTuru tur) =>
         tur is StokHareketTuru.Acilis or StokHareketTuru.SayimFazlasi or StokHareketTuru.TransferGiris or StokHareketTuru.AlisFaturasi
         or StokHareketTuru.SatistanIade;

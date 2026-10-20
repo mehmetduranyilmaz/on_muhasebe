@@ -1,0 +1,155 @@
+@page "/fatura"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Faturalar" AltBaslik="Satış, alış ve iade faturalarınız" Ikon="@Icons.Material.Filled.ReceiptLong">
+    <Islemler>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <YeniFaturaMenusu />
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme yazdirma-gizle">
+    <button class="tur-sekmesi @(_tur is null ? "secili" : "")" style="--vurgu:@UygulamaTemasi.Turkuaz" @onclick="() => TurDegistiAsync(null)">Tümü</button>
+    @foreach (var tur in FaturaMetinleri.Turler)
+    {
+        <button class="tur-sekmesi @(_tur == tur ? "secili" : "")" style="--vurgu:@FaturaMetinleri.Renk(tur)" @onclick="() => TurDegistiAsync(tur)">
+            <MudIcon Icon="@FaturaMetinleri.Ikon(tur)" Size="Size.Small" /> @FaturaMetinleri.KisaTur(tur)
+        </button>
+    }
+</div>
+
+<FiltreCubugu>
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync"
+                      Placeholder="Cari unvanı veya fatura no" DebounceInterval="400" Clearable="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+    <MudItem xs="12" sm="4" md="2">
+        <MudSelect T="FaturaDurumu?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_durum" ValueChanged="DurumDegistiAsync" Label="Durum" Clearable="true">
+            @foreach (var durum in Enum.GetValues<FaturaDurumu>())
+            {
+                <MudSelectItem T="FaturaDurumu?" Value="durum">@FaturaMetinleri.Durum(durum)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6" sm="4" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" Date="_baslangic" DateChanged="BaslangicDegistiAsync"
+                       Clearable="true" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" Date="_bitis" DateChanged="BitisDegistiAsync"
+                       Clearable="true" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+</FiltreCubugu>
+
+<VeriTablosu T="FaturaOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+             SayfaDegisti="SayfaDegistiAsync" SatirTiklandi="@(f => Navigasyon.NavigateTo($"fatura/{f.Id}"))"
+             BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Fatura bulunamadı"
+             BosAciklama="@(FiltreVarMi ? "Filtreleri değiştirmeyi deneyin." : "İlk faturanızı keserek başlayın.")">
+    <Basliklar>
+        <MudTh>Tarih</MudTh>
+        <MudTh>Fatura No</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Cari</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh>Vade</MudTh>
+        <MudTh Class="sayi">Tutar</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+        <MudTd DataLabel="Fatura No">
+            @if (context.Numara is null)
+            {
+                <span style="opacity:.55">Numara onayda verilir</span>
+            }
+            else
+            {
+                <span class="fatura-no">@context.Numara</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Tür">
+            <span class="tur-rozeti" style="--vurgu:@FaturaMetinleri.Renk(context.Tur)">@FaturaMetinleri.KisaTur(context.Tur)</span>
+            @if (context.SatisSekli == SatisSekli.Perakende)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Class="ml-1">Perakende</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Cari"><b>@context.CariUnvan</b></MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="FaturaMetinleri.DurumRengi(context.Durum)">@FaturaMetinleri.Durum(context.Durum)</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Vade">@Bicim.Tarih(context.VadeTarihi)</MudTd>
+        <MudTd DataLabel="Tutar" Class="sayi">
+            <span class="@(context.Durum == FaturaDurumu.Iptal ? "ustu-cizili" : "")" style="font-weight:600">@Bicim.Tutar(context.GenelToplam, context.ParaBirimi)</span>
+            @if (context.ParaBirimi != ParaBirimleri.Tl)
+            {
+                <span class="mobil-alt-bilgi">@Bicim.Tutar(context.GenelToplamTl, ParaBirimleri.Tl)</span>
+            }
+        </MudTd>
+    </Satir>
+    <BosIslemler>
+        @if (!FiltreVarMi && !Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="fatura/yeni/satis">İlk faturanızı kesin</MudButton>
+        }
+    </BosIslemler>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<FaturaOzeti>? _sonuc;
+    private FaturaTuru? _tur;
+    private FaturaDurumu? _durum;
+    private string? _arama;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    private bool FiltreVarMi => _tur is not null || _durum is not null || !string.IsNullOrWhiteSpace(_arama) || _baslangic is not null || _bitis is not null;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/fatura/faturalar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
+                    + (_tur is { } t ? $"&tur={t}" : "")
+                    + (_durum is { } d ? $"&durum={d}" : "")
+                    + (Bicim.Gun(_baslangic) is { } b ? $"&baslangic={Bicim.Iso(b)}" : "")
+                    + (Bicim.Gun(_bitis) is { } s ? $"&bitis={Bicim.Iso(s)}" : "");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<FaturaOzeti>>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<FaturaOzeti>([], 1, 20, 0);
+        _yukleniyor = false;
+    }
+
+    private Task TurDegistiAsync(FaturaTuru? tur) => FiltreAsync(() => _tur = tur);
+
+    private Task DurumDegistiAsync(FaturaDurumu? durum) => FiltreAsync(() => _durum = durum);
+
+    private Task AraAsync(string? arama) => FiltreAsync(() => _arama = arama);
+
+    private Task BaslangicDegistiAsync(DateTime? tarih) => FiltreAsync(() => _baslangic = tarih);
+
+    private Task BitisDegistiAsync(DateTime? tarih) => FiltreAsync(() => _bitis = tarih);
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}

@@ -27,4 +27,10 @@ internal static class FaturaHatalari
     public static readonly Hata YalnizcaTaslakSilinir = Hata.IsKurali("yalnizca_taslak_silinir", "Yalnızca taslak fatura silinebilir; onaylı faturayı iptal edin.");
     public static readonly Hata CariLisansiYok = Hata.Yetki("cari_lisansi_yok", "Cariye fatura kesmek için Cari modülü lisansı gerekir.");
     public static readonly Hata StokLisansiYok = Hata.Yetki("stok_lisansi_yok", "Stok kartlı satır için Stok modülü lisansı gerekir; serbest satır kullanabilirsiniz.");
+    public static readonly Hata NumaraYiliDegistirilemez = Hata.IsKurali("numara_yili", "Numaralanmış faturanın yılı değiştirilemez; numara fatura yılını içerir.");
+
+    // Aynı seride numaralar tarih sırasını izlemelidir (VUK; e-Arşiv/e-Fatura da reddeder).
+    public static Hata TarihSirasi(DateOnly sinir, bool oncekiMi) => Hata.IsKurali("tarih_sirasi", oncekiMi
+        ? $"Bu seride {sinir:dd.MM.yyyy} tarihli daha önce numaralanmış fatura var; fatura tarihi bundan önce olamaz."
+        : $"Bu seride {sinir:dd.MM.yyyy} tarihli sonraki numaralı fatura var; fatura tarihi bundan sonra olamaz.");
 }

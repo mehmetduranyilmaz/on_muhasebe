@@ -1,0 +1,101 @@
+@* Ana sayfadaki Fatura özet paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject ApiIstemcisi Api
+
+<div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Fatura özeti</div>
+
+@if (_ozet is null)
+{
+    <MudGrid Spacing="3" Class="mb-4">
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" lg="3"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="128px" Animation="Animation.Wave" Class="rounded-lg" /></MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    var o = _ozet;
+    var kdvFarki = o.BuAyHesaplananKdv - o.BuAyIndirilecekKdv;
+
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Bu ay satış" Deger="o.BuAySatis" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.PointOfSale"
+                       Renk="#14B8A6" Href="fatura" Sira="0" AltMetin="KDV hariç, iadeler düşülmüş" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Bu ay alış" Deger="o.BuAyAlis" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.ShoppingCart"
+                       Renk="#3B82F6" Href="fatura" Sira="1" AltMetin="KDV hariç, iadeler düşülmüş" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="@(kdvFarki >= 0 ? "Ödenecek KDV" : "Devreden KDV")" Deger="Math.Abs(kdvFarki)" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))"
+                       Ikon="@Icons.Material.Filled.AccountBalance" Renk="#F59E0B" Sira="2"
+                       AltMetin="@($"Hesaplanan {Bicim.Tutar(o.BuAyHesaplananKdv)} − indirilecek {Bicim.Tutar(o.BuAyIndirilecekKdv)}")" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Bu ay kesilen" Deger="o.BuAyFaturaSayisi" Bicimle="@(d => $"{d:0} fatura")" Ikon="@Icons.Material.Filled.Receipt"
+                       Renk="#8B5CF6" Href="fatura" Sira="3" AltMetin="@(o.TaslakSayisi > 0 ? $"{o.TaslakSayisi} taslak onay bekliyor" : "Onay bekleyen taslak yok")" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" lg="7">
+            <div class="panel-kart kart belirme" style="--i:4">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Small" Color="Color.Secondary" /> Son 6 ay satış ve alış</div>
+                @if (o.SonAylar.All(a => a.Satis == 0 && a.Alis == 0))
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.BarChart" Baslik="Henüz onaylı fatura yok" Aciklama="Faturalar kesildikçe aylık grafik burada oluşur." />
+                }
+                else
+                {
+                    <SutunGrafigi Gruplar="_aylar" Seriler="_seriler" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" />
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" lg="5">
+            <div class="panel-kart kart belirme" style="--i:5">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Secondary" /> Son faturalar</div>
+                @if (o.SonFaturalar.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.ReceiptLong" Baslik="Henüz fatura yok">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Href="fatura/yeni/satis">Fatura kes</MudButton>
+                    </BosDurum>
+                }
+                @for (var i = 0; i < o.SonFaturalar.Count; i++)
+                {
+                    var f = o.SonFaturalar[i];
+                    <a href="@($"fatura/{f.Id}")" class="son-hareket satir-belirme" style="--i:@i">
+                        <span class="son-hareket-ikon" style="background:color-mix(in srgb, @FaturaMetinleri.Renk(f.Tur) 16%, transparent); color:@FaturaMetinleri.Renk(f.Tur)">
+                            <MudIcon Icon="@FaturaMetinleri.Ikon(f.Tur)" Size="Size.Small" />
+                        </span>
+                        <span style="flex:1; min-width:0">
+                            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">@f.CariUnvan</div>
+                            <div style="font-size:.8rem; opacity:.7">@Bicim.Tarih(f.Tarih) · @FaturaMetinleri.KisaTur(f.Tur) · @f.Numara</div>
+                        </span>
+                        <span class="@(f.Durum == FaturaDurumu.Iptal ? "ustu-cizili" : "")" style="font-weight:600; white-space:nowrap">@Bicim.Tutar(f.GenelToplam, f.ParaBirimi)</span>
+                    </a>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+    private static readonly IReadOnlyList<SutunSerisi> _seriler =
+        [new("Satış", "linear-gradient(180deg, #2DD4BF, #0F766E)"), new("Alış", "linear-gradient(180deg, #60A5FA, #1D4ED8)")];
+
+    private FaturaOzetRaporu? _ozet;
+    private List<SutunGrubu> _aylar = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<FaturaOzetRaporu>("api/fatura/raporlar/ozet");
+        if (sonuc.BasariliMi)
+        {
+            _ozet = sonuc.Deger;
+            _aylar = _ozet.SonAylar
+                .Select(a => new SutunGrubu(new DateTime(a.Yil, a.Ay, 1).ToString("MMM", _tr), [a.Satis, a.Alis]))
+                .ToList();
+        }
+    }
+}

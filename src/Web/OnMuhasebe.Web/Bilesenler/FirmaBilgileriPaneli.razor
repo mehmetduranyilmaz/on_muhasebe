@@ -1,0 +1,96 @@
+@* Ayarlar ekranının ilk paneli: firmanın unvan, vergi ve iletişim bilgileri. Yazdırılan faturaların üst bilgisinde kullanılır. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<FormBolumu Baslik="Firma bilgileri" Aciklama="Faturaların üst bilgisinde yazdırılır" Ikon="@Icons.Material.Filled.Business" Sira="Sira">
+    @if (_bilgiler is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="140px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_unvan" Label="Unvan" MaxLength="250" Required="true"
+                          RequiredError="Unvan gerekli." Disabled="Oturum.SaltOkunurMu" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_vergiDairesi" Label="Vergi dairesi" MaxLength="100" Disabled="Oturum.SaltOkunurMu" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_vergiNo" Label="VKN / TCKN" MaxLength="11" Disabled="Oturum.SaltOkunurMu" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_adres" Label="Adres" MaxLength="500" Disabled="Oturum.SaltOkunurMu" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ilce" Label="İlçe" MaxLength="50" Disabled="Oturum.SaltOkunurMu" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_il" Label="İl" MaxLength="50" Disabled="Oturum.SaltOkunurMu" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_telefon" Label="Telefon" MaxLength="30" Disabled="Oturum.SaltOkunurMu"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="5">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_eposta" Label="E-posta" MaxLength="256" Disabled="Oturum.SaltOkunurMu"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save"
+                          Disabled="@(Oturum.SaltOkunurMu || Yeni == _bilgiler || string.IsNullOrWhiteSpace(_unvan))">
+                Firma bilgilerini kaydet
+            </IslemDugmesi>
+        </MudItem>
+        @if (_hata is not null)
+        {
+            <MudItem xs="12"><HataGosterimi Hata="_hata" /></MudItem>
+        }
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private FirmaBilgileri? _bilgiler;
+    private string _unvan = "";
+    private string? _vergiNo;
+    private string? _vergiDairesi;
+    private string? _il;
+    private string? _ilce;
+    private string? _adres;
+    private string? _telefon;
+    private string? _eposta;
+    private ApiHatasi? _hata;
+
+    private FirmaBilgileri Yeni => new(_unvan, Bos(_vergiNo), Bos(_vergiDairesi), Bos(_il), Bos(_ilce), Bos(_adres), Bos(_telefon), Bos(_eposta));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(FirmaBilgileri b)
+    {
+        _bilgiler = b;
+        (_unvan, _vergiNo, _vergiDairesi, _il, _ilce, _adres, _telefon, _eposta) = (b.Unvan, b.VergiNo, b.VergiDairesi, b.Il, b.Ilce, b.Adres, b.Telefon, b.Eposta);
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<FirmaBilgileri>("api/yonetim/firma", Yeni);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+            Snackbar.Add("Firma bilgileri kaydedildi.", Severity.Success);
+        }
+    }
+
+    private static string? Bos(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
+}

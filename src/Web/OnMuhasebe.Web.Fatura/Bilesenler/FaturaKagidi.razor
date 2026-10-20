@@ -1,0 +1,140 @@
+@* Faturanın A4 yazdırma görünümü; ekranda gizlidir, yalnızca yazdırırken (veya PDF olarak kaydederken) görünür.
+   Taslak ve iptal faturalarda filigran basılır. *@
+<div class="sadece-yazdir fatura-kagidi">
+    @if (Fatura.Durum != FaturaDurumu.Onayli)
+    {
+        <div class="filigran">@(Fatura.Durum == FaturaDurumu.Taslak ? "TASLAK" : "İPTAL")</div>
+    }
+
+    <header class="fk-ust">
+        <div class="fk-firma">
+            <div class="fk-firma-unvan">@(Firma?.Unvan ?? "")</div>
+            @if (Firma is { } firma)
+            {
+                @if (firma.Adres is not null)
+                {
+                    <div>@firma.Adres</div>
+                }
+                @if (Yer(firma.Ilce, firma.Il) is { Length: > 0 } yer)
+                {
+                    <div>@yer</div>
+                }
+                @if (firma.Telefon is not null || firma.Eposta is not null)
+                {
+                    <div>@string.Join(" · ", new[] { firma.Telefon, firma.Eposta }.Where(x => x is not null))</div>
+                }
+                @if (firma.VergiNo is not null)
+                {
+                    <div>@(firma.VergiDairesi is null ? "" : $"{firma.VergiDairesi} V.D. · ")@(firma.VergiNo.Length == 11 ? "TCKN" : "VKN") @firma.VergiNo</div>
+                }
+            }
+        </div>
+        <div class="fk-baslik">
+            <div class="fk-tur">@FaturaMetinleri.Tur(Fatura.Tur).ToUpper(_tr)</div>
+            <table class="fk-bilgi">
+                <tr><th>Fatura No</th><td>@(Fatura.Numara ?? "—")</td></tr>
+                <tr><th>Tarih</th><td>@Bicim.Tarih(Fatura.Tarih)</td></tr>
+                @if (Fatura.VadeTarihi is { } vade)
+                {
+                    <tr><th>Vade</th><td>@Bicim.Tarih(vade)</td></tr>
+                }
+                @if (Fatura.SatisSekli is { } sekil)
+                {
+                    <tr><th>Satış şekli</th><td>@FaturaMetinleri.SatisSekli(sekil)</td></tr>
+                }
+                @if (Fatura.ParaBirimi != ParaBirimleri.Tl)
+                {
+                    <tr><th>Döviz / Kur</th><td>@Fatura.ParaBirimi · @Bicim.Kur(Fatura.Kur)</td></tr>
+                }
+            </table>
+        </div>
+    </header>
+
+    <section class="fk-alici">
+        <div class="fk-etiket">SAYIN</div>
+        <div class="fk-alici-unvan">@Fatura.CariUnvan</div>
+        @if (Fatura.Adres is not null)
+        {
+            <div>@Fatura.Adres</div>
+        }
+        @if (Yer(Fatura.Ilce, Fatura.Il) is { Length: > 0 } aliciYeri)
+        {
+            <div>@aliciYeri</div>
+        }
+        @if (Fatura.VergiNo is not null)
+        {
+            <div>@(Fatura.VergiDairesi is null ? "" : $"{Fatura.VergiDairesi} V.D. · ")@(Fatura.VergiNo.Length == 11 ? "TCKN" : "VKN") @Fatura.VergiNo</div>
+        }
+    </section>
+
+    <table class="fk-satirlar">
+        <thead>
+            <tr>
+                <th>Sıra</th>
+                <th class="sol">Mal / Hizmet</th>
+                <th>Miktar</th>
+                <th>Birim Fiyat</th>
+                <th>İskonto</th>
+                <th>KDV %</th>
+                <th>KDV Tutarı</th>
+                <th>Mal / Hizmet Tutarı</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Fatura.Satirlar)
+            {
+                <tr>
+                    <td>@s.Sira</td>
+                    <td class="sol">@s.Ad@(s.StokKodu is null ? "" : $" ({s.StokKodu})")</td>
+                    <td>@Bicim.Miktar(s.Miktar, s.Birim)</td>
+                    <td>@Bicim.Tutar(s.BirimFiyat)@(s.KdvDahilMi ? "*" : "")</td>
+                    <td>@(s.IskontoTutari + s.GenelIskontoPayi > 0 ? Bicim.Tutar(s.IskontoTutari + s.GenelIskontoPayi) : "")</td>
+                    <td>%@s.KdvOrani</td>
+                    <td>@Bicim.Tutar(s.KdvTutari)</td>
+                    <td>@Bicim.Tutar(s.Matrah)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Fatura.Satirlar.Any(s => s.KdvDahilMi))
+    {
+        <div class="fk-not">* KDV dahil birim fiyat</div>
+    }
+
+    <div class="fk-alt">
+        <div class="fk-sol">
+            <div class="fk-yaziyla"><b>Yalnız:</b> @FaturaMetinleri.Yaziyla(Fatura.GenelToplam, Fatura.ParaBirimi)</div>
+            @if (Fatura.Aciklama is not null)
+            {
+                <div class="fk-aciklama"><b>Açıklama:</b> @Fatura.Aciklama</div>
+            }
+            <div class="fk-ettn">ETTN: @Fatura.Ettn</div>
+        </div>
+        <table class="fk-toplamlar">
+            <tr><th>Mal / Hizmet Toplamı</th><td>@Bicim.Tutar(Fatura.BrutToplam)</td></tr>
+            @if (Fatura.SatirIskontoToplami + Fatura.GenelIskontoTutari > 0)
+            {
+                <tr><th>Toplam İskonto</th><td>@Bicim.Tutar(Fatura.SatirIskontoToplami + Fatura.GenelIskontoTutari)</td></tr>
+            }
+            <tr><th>KDV Matrahı</th><td>@Bicim.Tutar(Fatura.Matrah)</td></tr>
+            @foreach (var k in Fatura.KdvDagilimi)
+            {
+                <tr><th>Hesaplanan KDV (%@k.Oran)</th><td>@Bicim.Tutar(k.KdvTutari)</td></tr>
+            }
+            <tr class="fk-genel"><th>Ödenecek Tutar</th><td>@Bicim.Tutar(Fatura.GenelToplam, Fatura.ParaBirimi)</td></tr>
+            @if (Fatura.ParaBirimi != ParaBirimleri.Tl)
+            {
+                <tr><th>TL Karşılığı</th><td>@Bicim.Tutar(Fatura.GenelToplamTl, ParaBirimleri.Tl)</td></tr>
+            }
+        </table>
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    [Parameter, EditorRequired] public FaturaDetayi Fatura { get; set; } = null!;
+    [Parameter] public FirmaBilgileri? Firma { get; set; }
+
+    private static string Yer(string? ilce, string? il) => string.Join(" / ", new[] { ilce, il }.Where(x => !string.IsNullOrEmpty(x)));
+}

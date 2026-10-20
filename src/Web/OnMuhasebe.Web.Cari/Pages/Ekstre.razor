@@ -63,7 +63,7 @@ else if (_ekstre is { } e)
                 <tr>
                     <td>@Bicim.Tarih(s.Tarih)</td>
                     <td>@CariMetinleri.HareketTuru(s.Tur)</td>
-                    <td>@s.BelgeNo</td>
+                    <td><BelgeBaglantisi KaynakBelgeId="s.KaynakBelgeId" FaturaMi="CariMetinleri.FaturaHareketiMi(s.Tur)" Metin="@s.BelgeNo" /></td>
                     <td>@s.Aciklama</td>
                     <td>@Bicim.Tarih(s.VadeTarihi)</td>
                     <td class="sayi">@(s.Borc > 0 ? Bicim.Tutar(s.Borc) : "")</td>

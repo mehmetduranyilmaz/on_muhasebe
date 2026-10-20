@@ -147,7 +147,13 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Depo">@context.DepoAdi</MudTd>
-                <MudTd DataLabel="Açıklama">@context.Aciklama</MudTd>
+                <MudTd DataLabel="Açıklama">
+                    @context.Aciklama
+                    @if (StokMetinleri.FaturaHareketiMi(context.Tur))
+                    {
+                        <span class="mobil-alt-bilgi"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="true" Metin="@context.BelgeNo" /></span>
+                    }
+                </MudTd>
                 <MudTd DataLabel="Giriş" Class="sayi">
                     @if (context.Giris > 0)
                     {

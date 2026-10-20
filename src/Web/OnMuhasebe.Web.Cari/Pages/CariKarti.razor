@@ -27,6 +27,11 @@
         </AltIcerik>
         <Islemler>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"cari/{cari.Id}/ekstre")">Ekstre</MudButton>
+            @if (!Oturum.SaltOkunurMu && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.Fatura))
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ReceiptLong"
+                           Href="@($"fatura/yeni/{(cari.Tur == CariTuru.Tedarikci ? "alis" : "satis")}?cari={cari.Id}")">Fatura Kes</MudButton>
+            }
             @if (!Oturum.SaltOkunurMu)
             {
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd"
@@ -135,7 +140,7 @@
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ml-1">İptal edildi</MudChip>
                 }
             </MudTd>
-            <MudTd DataLabel="Belge No">@context.BelgeNo</MudTd>
+            <MudTd DataLabel="Belge No"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="CariMetinleri.FaturaHareketiMi(context.Tur)" Metin="@context.BelgeNo" /></MudTd>
             <MudTd DataLabel="Açıklama">@context.Aciklama</MudTd>
             <MudTd DataLabel="Vade">@Bicim.Tarih(context.VadeTarihi)</MudTd>
             <MudTd DataLabel="Borç" Class="sayi"><span class="bakiye-borclu">@(context.Borc > 0 ? Bicim.Tutar(context.Borc) : "")</span></MudTd>

@@ -69,7 +69,7 @@
                         <td>@Bicim.Tarih(s.Tarih)</td>
                         <td>@StokMetinleri.HareketTuru(s.Tur)</td>
                         <td>@s.DepoAdi</td>
-                        <td>@s.BelgeNo</td>
+                        <td><BelgeBaglantisi KaynakBelgeId="s.KaynakBelgeId" FaturaMi="StokMetinleri.FaturaHareketiMi(s.Tur)" Metin="@s.BelgeNo" /></td>
                         <td>@s.Aciklama</td>
                         <td class="sayi bakiye-alacakli">@(s.Giris > 0 ? Bicim.Miktar(s.Giris) : "")</td>
                         <td class="sayi bakiye-borclu">@(s.Cikis > 0 ? Bicim.Miktar(s.Cikis) : "")</td>

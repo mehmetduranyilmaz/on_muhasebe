@@ -1,0 +1,122 @@
+@* Ayarlar ekranındaki Fatura paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+<FormBolumu Baslik="Fatura" Aciklama="Kayıt akışı, numara serileri ve yeni fatura varsayılanları" Ikon="@Icons.Material.Filled.ReceiptLong" Sira="Sira">
+    @if (_ayar is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="200px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Kayıt akışı</div>
+            <MudRadioGroup T="KayitAkisi" @bind-Value="_akis">
+                @foreach (var akis in Enum.GetValues<KayitAkisi>())
+                {
+                    <div class="ayar-secenek @(_akis == akis ? "secili" : "")">
+                        <MudRadio Value="akis" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu">@FaturaMetinleri.KayitAkisi(akis)</MudRadio>
+                        <div class="ayar-aciklama">@FaturaMetinleri.KayitAkisiAciklamasi(akis)</div>
+                    </div>
+                }
+            </MudRadioGroup>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Numara serileri</div>
+            <div class="ayar-aciklama mb-2">GİB biçiminde 3 karakter; numara seri + yıl + 9 haneli sıradan oluşur. Gelen faturaların numarasını karşı taraf verir.</div>
+            @foreach (var (etiket, deger, ata) in Seriler)
+            {
+                <div class="seri-satiri">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@etiket" Value="deger" ValueChanged="ata"
+                                  MaxLength="3" Immediate="true" Disabled="Oturum.SaltOkunurMu"
+                                  Error="@(!SeriGecerliMi(deger))" ErrorText="3 harf veya rakam" Style="max-width:140px" />
+                    <span class="fatura-no ornek-numara">@($"{deger.ToUpperInvariant()}{Zaman.GetLocalNow().Year}000000001")</span>
+                </div>
+            }
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Yeni fatura varsayılanları</div>
+            <MudSwitch T="bool" @bind-Value="_toptanKdvDahil" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu"
+                       Label="Toptan satış ve alışta fiyatlar KDV dahil girilsin" />
+            <MudSwitch T="bool" @bind-Value="_perakendeKdvDahil" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu"
+                       Label="Perakende satışta fiyatlar KDV dahil girilsin" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_vadeGunu" Label="Varsayılan vade (gün)"
+                             Min="0" Max="365" Disabled="Oturum.SaltOkunurMu" HelperText="Carinin kendi vadesi varsa o kullanılır; 0 = vade yok"
+                             Style="max-width:260px" />
+        </MudItem>
+        @if (_ayar.KayitAkisi == KayitAkisi.TaslakOnay && _akis == KayitAkisi.DogrudanKayit)
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Info" Dense="true">Mevcut taslak faturalar taslak olarak kalır; fatura detayından onaylayabilirsiniz.</MudAlert>
+            </MudItem>
+        }
+        <MudItem xs="12" Class="d-flex justify-end">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(Oturum.SaltOkunurMu || !DegistiMi || !TumSerilerGecerliMi)">
+                Fatura ayarlarını kaydet
+            </IslemDugmesi>
+        </MudItem>
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private FaturaAyarlari? _ayar;
+    private KayitAkisi _akis;
+    private string _toptanSeri = "";
+    private string _perakendeSeri = "";
+    private string _iadeSeri = "";
+    private bool _toptanKdvDahil;
+    private bool _perakendeKdvDahil;
+    private int _vadeGunu;
+
+    private IEnumerable<(string Etiket, string Deger, EventCallback<string> Ata)> Seriler =>
+    [
+        ("Toptan satış", _toptanSeri, EventCallback.Factory.Create<string>(this, s => _toptanSeri = s ?? "")),
+        ("Perakende satış", _perakendeSeri, EventCallback.Factory.Create<string>(this, s => _perakendeSeri = s ?? "")),
+        ("Alıştan iade", _iadeSeri, EventCallback.Factory.Create<string>(this, s => _iadeSeri = s ?? ""))
+    ];
+
+    private FaturaAyarlari Yeni => new(_akis, _toptanSeri.ToUpperInvariant(), _perakendeSeri.ToUpperInvariant(), _iadeSeri.ToUpperInvariant(),
+        _toptanKdvDahil, _perakendeKdvDahil, _vadeGunu);
+
+    private bool DegistiMi => _ayar is not null && Yeni != _ayar;
+
+    private bool TumSerilerGecerliMi => SeriGecerliMi(_toptanSeri) && SeriGecerliMi(_perakendeSeri) && SeriGecerliMi(_iadeSeri);
+
+    private static bool SeriGecerliMi(string seri) => seri.Length == 3 && seri.All(char.IsAsciiLetterOrDigit);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<FaturaAyarlari>("api/fatura/ayarlar");
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(FaturaAyarlari a)
+    {
+        _ayar = a;
+        (_akis, _toptanSeri, _perakendeSeri, _iadeSeri) = (a.KayitAkisi, a.ToptanSeri, a.PerakendeSeri, a.IadeSeri);
+        (_toptanKdvDahil, _perakendeKdvDahil, _vadeGunu) = (a.ToptanKdvDahil, a.PerakendeKdvDahil, a.VarsayilanVadeGunu);
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<FaturaAyarlari>("api/fatura/ayarlar", Yeni);
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+            Snackbar.Add("Fatura ayarları kaydedildi.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

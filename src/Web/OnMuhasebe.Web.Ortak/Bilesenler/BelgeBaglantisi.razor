@@ -1,0 +1,19 @@
+@* Hareketin kaynak belgesine (fatura) bağlantı. Belgenin modülü lisanslı değilse yalnızca metin gösterilir. *@
+@inject OturumYoneticisi Oturum
+
+@if (KaynakBelgeId is { } id && FaturaMi && Oturum.ModulAcikMi(ModulKodlari.Fatura))
+{
+    <a href="@($"fatura/{id}")" class="baglanti belge-baglantisi" @onclick:stopPropagation="true">
+        <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small" /> @(Metin ?? "Faturayı aç")
+    </a>
+}
+else
+{
+    @Metin
+}
+
+@code {
+    [Parameter] public Guid? KaynakBelgeId { get; set; }
+    [Parameter] public bool FaturaMi { get; set; }
+    [Parameter] public string? Metin { get; set; }
+}

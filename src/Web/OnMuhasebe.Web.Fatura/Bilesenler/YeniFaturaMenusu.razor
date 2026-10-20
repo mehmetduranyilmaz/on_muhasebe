@@ -1,0 +1,31 @@
+@* "Yeni Fatura" düğmesi: türü açıklamasıyla seçtirir. Liste, ana sayfa ve cari kartında kullanılır. *@
+<MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+    @* MudBlazor 9: özel tetikleyicide tıklamayı bileşen kendisi bağlar. *@
+    <ActivatorContent Context="menu">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                   OnClick="menu.ToggleAsync">
+            @Metin
+        </MudButton>
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var tur in FaturaMetinleri.Turler)
+        {
+            <MudMenuItem Href="@Adres(tur)">
+                <div class="yeni-fatura-secenegi" style="--vurgu:@FaturaMetinleri.Renk(tur)">
+                    <span class="ikon"><MudIcon Icon="@FaturaMetinleri.Ikon(tur)" Size="Size.Small" /></span>
+                    <span>
+                        <b>@FaturaMetinleri.Tur(tur)</b>
+                        <small>@FaturaMetinleri.TurAciklamasi(tur)</small>
+                    </span>
+                </div>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter] public string Metin { get; set; } = "Yeni Fatura";
+    [Parameter] public Guid? CariId { get; set; }
+
+    private string Adres(FaturaTuru tur) => $"fatura/yeni/{FaturaMetinleri.Yol(tur)}{(CariId is { } id ? $"?cari={id}" : "")}";
+}

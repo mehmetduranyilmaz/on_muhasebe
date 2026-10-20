@@ -26,6 +26,9 @@ public static class CariMetinleri
         _ => tur.ToString()
     };
 
+    public static bool FaturaHareketiMi(CariHareketTuru tur) => tur is CariHareketTuru.SatisFaturasi or CariHareketTuru.AlisFaturasi
+        or CariHareketTuru.SatistanIadeFaturasi or CariHareketTuru.AlistanIadeFaturasi;
+
     public static string BakiyeDurumu(BakiyeDurumu durum) => durum switch
     {
         Modules.Cari.Contracts.BakiyeDurumu.Borclu => "Borçlular",

@@ -1,0 +1,298 @@
+@page "/fatura/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+@inject IJSRuntime Js
+
+<HataGosterimi Hata="_hata" />
+
+@if (_fatura is { } f)
+{
+    var renk = FaturaMetinleri.Renk(f.Tur);
+    var duzenlenebilirMi = !Oturum.SaltOkunurMu && (f.Durum == FaturaDurumu.Taslak
+                                                    || (f.Durum == FaturaDurumu.Onayli && _ayar?.KayitAkisi == KayitAkisi.DogrudanKayit));
+
+    <div class="yazdirma-gizle">
+        <SayfaBasligi Baslik="@($"{FaturaMetinleri.Tur(f.Tur)}{(f.Numara is null ? "" : $" {f.Numara}")}")" GeriAdres="fatura" Ikon="@FaturaMetinleri.Ikon(f.Tur)">
+            <AltIcerik>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="FaturaMetinleri.DurumRengi(f.Durum)">@FaturaMetinleri.Durum(f.Durum)</MudChip>
+                @if (f.SatisSekli is { } sekil)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info">@FaturaMetinleri.SatisSekli(sekil)</MudChip>
+                }
+                <span class="ml-1">@Bicim.Tarih(f.Tarih)@(f.VadeTarihi is { } v ? $" · vade {Bicim.Tarih(v)}" : "")</span>
+            </AltIcerik>
+            <Islemler>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
+                @if (duzenlenebilirMi)
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"fatura/{f.Id}/duzenle")">Düzenle</MudButton>
+                }
+                @if (f.Durum == FaturaDurumu.Taslak && !Oturum.SaltOkunurMu)
+                {
+                    <IslemDugmesi Islem="OnaylaAsync" StartIcon="@Icons.Material.Filled.TaskAlt">Onayla</IslemDugmesi>
+                }
+                @if (!Oturum.SaltOkunurMu && f.Durum != FaturaDurumu.Iptal)
+                {
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        @if (f.Durum == FaturaDurumu.Onayli)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="IptalEtAsync">İptal et</MudMenuItem>
+                        }
+                        else
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Taslağı sil</MudMenuItem>
+                        }
+                    </MudMenu>
+                }
+            </Islemler>
+        </SayfaBasligi>
+
+        @if (f.Durum == FaturaDurumu.Iptal)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.Block">
+                Bu fatura @(f.IptalTarihi is { } it ? it.ToLocalTime().ToString("dd.MM.yyyy HH:mm") : "") tarihinde iptal edildi; cari ve stok hareketleri ters kayıtla kapatıldı.
+            </MudAlert>
+        }
+        else if (f.Durum == FaturaDurumu.Taslak)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.EditNote">
+                Taslak fatura cari ve stoğa işlenmedi. Onaylandığında numara alır ve kesinleşir.
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="12" md="4">
+                <div class="fatura-tutar-karti kart belirme" style="--i:0; --vurgu:@renk">
+                    <div class="ozet-baslik">Genel toplam</div>
+                    <div class="fatura-tutar @(f.Durum == FaturaDurumu.Iptal ? "ustu-cizili" : "")">
+                        <SayacDegeri Deger="f.GenelToplam" Bicimle="@(d => Bicim.Tutar(d, f.ParaBirimi))" />
+                    </div>
+                    @if (f.ParaBirimi != ParaBirimleri.Tl)
+                    {
+                        <div class="ozet-alt">@Bicim.Tutar(f.GenelToplamTl, ParaBirimleri.Tl) · kur @Bicim.Kur(f.Kur)</div>
+                    }
+                    <div class="ozet-alt">KDV @Bicim.Tutar(f.KdvToplami, f.ParaBirimi) · matrah @Bicim.Tutar(f.Matrah, f.ParaBirimi)</div>
+                    <div class="ozet-isik"></div>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart belirme" style="--i:1">
+                    <div class="ozet-baslik mb-1">@(f.CariHesapId is null ? "Nihai tüketici" : FaturaTurleri.SatisTarafiMi(f.Tur) ? "Müşteri" : "Tedarikçi")</div>
+                    @if (f.CariHesapId is { } cariId && Oturum.ModulAcikMi(ModulKodlari.Cari))
+                    {
+                        <a href="@($"cari/{cariId}")" class="baglanti"><b>@f.CariUnvan</b></a>
+                    }
+                    else
+                    {
+                        <b>@f.CariUnvan</b>
+                    }
+                    @if (f.VergiNo is not null)
+                    {
+                        <div class="ozet-alt">@(f.VergiNo.Length == 11 ? "TCKN" : "VKN") @f.VergiNo@(f.VergiDairesi is null ? "" : $" · {f.VergiDairesi} V.D.")</div>
+                    }
+                    @if (AdresSatiri(f) is { Length: > 0 } adres)
+                    {
+                        <div class="ozet-alt">@adres</div>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart belirme" style="--i:2">
+                    <div class="d-flex flex-wrap gap-6">
+                        <div><div class="ozet-baslik">Fatura no</div><b class="fatura-no">@(f.Numara ?? "Onayda verilir")</b></div>
+                        <div><div class="ozet-baslik">Tarih</div><b>@Bicim.Tarih(f.Tarih)</b></div>
+                        <div><div class="ozet-baslik">Vade</div><b>@(f.VadeTarihi is { } vade ? Bicim.Tarih(vade) : "—")</b></div>
+                    </div>
+                    @if (f.Aciklama is not null)
+                    {
+                        <div class="ozet-alt mt-2">@f.Aciklama</div>
+                    }
+                    <div class="ozet-alt mt-2" title="e-Fatura / e-Arşiv evrensel tekil numarası">ETTN @f.Ettn</div>
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        <div class="panel-baslik belirme" style="--i:3"><MudIcon Icon="@Icons.Material.Filled.FormatListNumbered" Color="Color.Secondary" /> Satırlar</div>
+        <VeriTablosu T="FaturaSatiriDetayi" Kayitlar="f.Satirlar" Dense="true">
+            <Basliklar>
+                <MudTh>#</MudTh>
+                <MudTh>Ürün / hizmet</MudTh>
+                <MudTh Class="sayi">Miktar</MudTh>
+                <MudTh Class="sayi">Birim fiyat</MudTh>
+                <MudTh Class="sayi">İskonto</MudTh>
+                <MudTh Class="sayi">KDV</MudTh>
+                <MudTh Class="sayi">Tutar</MudTh>
+            </Basliklar>
+            <Satir>
+                <MudTd DataLabel="#">@context.Sira</MudTd>
+                <MudTd DataLabel="Ürün / hizmet">
+                    @if (context.StokKartiId is { } kartId && Oturum.ModulAcikMi(ModulKodlari.Stok))
+                    {
+                        <a href="@($"stok/{kartId}")" class="baglanti"><b>@context.Ad</b></a>
+                    }
+                    else
+                    {
+                        <b>@context.Ad</b>
+                    }
+                    @if (context.StokKodu is not null)
+                    {
+                        <span class="mobil-alt-bilgi">@context.StokKodu</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Miktar" Class="sayi">@Bicim.Miktar(context.Miktar, context.Birim)</MudTd>
+                <MudTd DataLabel="Birim fiyat" Class="sayi">
+                    @Bicim.Tutar(context.BirimFiyat)
+                    @if (context.KdvDahilMi)
+                    {
+                        <span class="mobil-alt-bilgi">KDV dahil</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="İskonto" Class="sayi">
+                    @if (context.IskontoTutari + context.GenelIskontoPayi > 0)
+                    {
+                        <span class="bakiye-borclu">−@Bicim.Tutar(context.IskontoTutari + context.GenelIskontoPayi)</span>
+                        <span class="mobil-alt-bilgi">@IskontoMetni(context)</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="KDV" Class="sayi">%@context.KdvOrani · @Bicim.Tutar(context.KdvTutari)</MudTd>
+                <MudTd DataLabel="Tutar" Class="sayi"><b>@Bicim.Tutar(context.Toplam)</b></MudTd>
+            </Satir>
+        </VeriTablosu>
+
+        <MudGrid Spacing="3" Class="mt-2">
+            <MudItem xs="12" md="6" lg="7">
+                <div class="panel-kart kart belirme yaziyla" style="--i:4">
+                    <div class="ozet-baslik">Yalnız</div>
+                    <b>@FaturaMetinleri.Yaziyla(f.GenelToplam, f.ParaBirimi)</b>
+                </div>
+            </MudItem>
+            <MudItem xs="12" md="6" lg="5">
+                <div class="fatura-toplam-paneli kart belirme" style="--i:5">
+                    <dl class="toplam-listesi">
+                        <dt>Ara toplam</dt><dd>@Bicim.Tutar(f.BrutToplam)</dd>
+                        @if (f.SatirIskontoToplami > 0)
+                        {
+                            <dt>Satır iskontoları</dt><dd class="bakiye-borclu">−@Bicim.Tutar(f.SatirIskontoToplami)</dd>
+                        }
+                        @if (f.GenelIskontoTutari > 0)
+                        {
+                            <dt>Genel iskonto@(f.GenelIskontoTuru == GenelIskontoTuru.Yuzde ? $" (%{f.GenelIskonto:0.##})" : "")</dt>
+                            <dd class="bakiye-borclu">−@Bicim.Tutar(f.GenelIskontoTutari)</dd>
+                        }
+                        <dt>KDV matrahı</dt><dd>@Bicim.Tutar(f.Matrah)</dd>
+                        @foreach (var k in f.KdvDagilimi)
+                        {
+                            <dt>KDV %@k.Oran <small>(@Bicim.Tutar(k.Matrah))</small></dt><dd>@Bicim.Tutar(k.KdvTutari)</dd>
+                        }
+                    </dl>
+                    <div class="genel-toplam"><span>Genel toplam</span><b>@Bicim.Tutar(f.GenelToplam, f.ParaBirimi)</b></div>
+                </div>
+            </MudItem>
+        </MudGrid>
+    </div>
+
+    <FaturaKagidi Fatura="f" Firma="_firma" />
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private FaturaDetayi? _fatura;
+    private FaturaAyarlari? _ayar;
+    private FirmaBilgileri? _firma;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _fatura = null;
+        var sonuc = await Api.GetAsync<FaturaDetayi>($"api/fatura/faturalar/{Id}");
+        _hata = sonuc.Hata;
+        _fatura = sonuc.BasariliMi ? sonuc.Deger : null;
+
+        var ayar = await Api.GetAsync<FaturaAyarlari>("api/fatura/ayarlar");
+        _ayar = ayar.BasariliMi ? ayar.Deger : null;
+        var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
+        _firma = firma.BasariliMi ? firma.Deger : null;
+    }
+
+    private static string AdresSatiri(FaturaDetayi f) =>
+        string.Join(" ", new[] { f.Adres, string.Join("/", new[] { f.Ilce, f.Il }.Where(x => x is not null)) }.Where(x => !string.IsNullOrEmpty(x)));
+
+    private static string IskontoMetni(FaturaSatiriDetayi s)
+    {
+        var oranlar = new[] { s.Iskonto1, s.Iskonto2, s.Iskonto3 }.Where(i => i > 0).Select(i => $"%{i:0.##}").ToList();
+        if (s.GenelIskontoPayi > 0)
+        {
+            oranlar.Add("genel");
+        }
+
+        return string.Join(" + ", oranlar);
+    }
+
+    private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+
+    private async Task OnaylaAsync()
+    {
+        if (!await Onay.SorAsync("Faturayı onayla",
+                "Fatura numara alacak, cari ve stoğa işlenecek. Onaylı fatura yalnızca iptal edilebilir.", "Onayla"))
+        {
+            return;
+        }
+
+        IslemSonucu(await Api.PostAsync<FaturaCevabi>($"api/fatura/faturalar/{Id}/onayla", new { }), "Fatura onaylandı.");
+    }
+
+    private async Task IptalEtAsync()
+    {
+        if (!await Onay.SorAsync("Faturayı iptal et",
+                "Faturanın cari ve stok hareketleri ters kayıtla kapatılacak. Numara korunur ve bu işlem geri alınamaz.", "İptal et", tehlikeli: true))
+        {
+            return;
+        }
+
+        IslemSonucu(await Api.PostAsync<FaturaCevabi>($"api/fatura/faturalar/{Id}/iptal", new { }), "Fatura iptal edildi.");
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Taslağı sil", "Taslak fatura silinecek.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/fatura/faturalar/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Taslak silindi.", Severity.Success);
+            Navigasyon.NavigateTo("fatura");
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private void IslemSonucu(ApiSonucu<FaturaCevabi> sonuc, string mesaj)
+    {
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        _fatura = sonuc.Deger.Fatura;
+        if (sonuc.Deger.Uyari is { } uyari)
+        {
+            Snackbar.Add(uyari, Severity.Warning);
+        }
+
+        Snackbar.Add(mesaj, Severity.Success);
+    }
+}

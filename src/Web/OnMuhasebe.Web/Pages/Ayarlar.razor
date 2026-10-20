@@ -6,19 +6,17 @@
 <SayfaBasligi Baslik="Ayarlar" AltBaslik="@(Oturum.Bilgi?.AktifFirma?.Unvan is { } unvan ? $"{unvan} için firma ayarları" : null)"
              Ikon="@Icons.Material.Filled.Tune" />
 
+<FirmaBilgileriPaneli Sira="0" />
+
 @if (_yukleniyor)
 {
     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="260px" Animation="Animation.Wave" Class="rounded-lg" />
-}
-else if (_paneller.Count == 0)
-{
-    <BosDurum Ikon="@Icons.Material.Outlined.Tune" Baslik="Ayarlanacak bir şey yok" Aciklama="Lisansınızdaki modüllerin firma ayarı bulunmuyor." />
 }
 else
 {
     @for (var i = 0; i < _paneller.Count; i++)
     {
-        <DynamicComponent Type="_paneller[i]" Parameters="@(new Dictionary<string, object> { ["Sira"] = i })" />
+        <DynamicComponent Type="_paneller[i]" Parameters="@(new Dictionary<string, object> { ["Sira"] = i + 1 })" />
     }
 }
 

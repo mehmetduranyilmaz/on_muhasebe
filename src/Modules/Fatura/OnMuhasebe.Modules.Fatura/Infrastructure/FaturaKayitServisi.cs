@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Fatura.Contracts;
@@ -86,9 +87,9 @@ internal sealed class FaturaKayitServisi(
         // Doğrudan kayıtta onaylı fatura düzenlenebilir: eski hareketler ters kayıtla kapatılıp yenileri yazılır.
         return await islemKapsami.CalistirAsync<FaturaIslemSonucu>(async ct =>
         {
-            if (await NumaraCakisiyorMu(fatura, ct))
+            if (await NumaraKontroluAsync(fatura, ct) is { } hata)
             {
-                return FaturaHatalari.NumaraKullaniliyor;
+                return hata;
             }
 
             await db.SaveChangesAsync(ct);
@@ -155,9 +156,9 @@ internal sealed class FaturaKayitServisi(
             return onay.Hata;
         }
 
-        if (await NumaraCakisiyorMu(fatura, cancellationToken))
+        if (await NumaraKontroluAsync(fatura, cancellationToken) is { } hata)
         {
-            return FaturaHatalari.NumaraKullaniliyor;
+            return hata;
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -166,11 +167,36 @@ internal sealed class FaturaKayitServisi(
     }
 
     // Gelen faturanın numarası karşı tarafındır; aynı carinin aynı türde aynı numaralı ikinci faturası kabul edilmez.
-    private Task<bool> NumaraCakisiyorMu(FaturaBelgesi fatura, CancellationToken cancellationToken) =>
-        fatura.GidenMi || fatura.CariHesapId is null
-            ? Task.FromResult(false)
-            : db.Faturalar.AnyAsync(f => f.Id != fatura.Id && f.Tur == fatura.Tur && f.CariHesapId == fatura.CariHesapId
-                                         && f.Numara == fatura.Numara && f.Durum != FaturaDurumu.Iptal, cancellationToken);
+    // Giden faturada numara seri + yıl + sıradır: yıl fatura yılıyla aynı kalmalı ve aynı seride tarih sırası bozulmamalıdır.
+    // Transaction içinde, sayaç satırı kilitliyken çağrılır; eşzamanlı numaralandırma sırayı bozamaz.
+    private async Task<Hata?> NumaraKontroluAsync(FaturaBelgesi fatura, CancellationToken cancellationToken)
+    {
+        if (!fatura.GidenMi)
+        {
+            var cakisiyor = fatura.CariHesapId is not null && await db.Faturalar.AnyAsync(
+                f => f.Id != fatura.Id && f.Tur == fatura.Tur && f.CariHesapId == fatura.CariHesapId
+                     && f.Numara == fatura.Numara && f.Durum != FaturaDurumu.Iptal, cancellationToken);
+            return cakisiyor ? FaturaHatalari.NumaraKullaniliyor : null;
+        }
+
+        var numara = fatura.Numara!;
+        if (numara.Length < 7 || numara[3..7] != fatura.Tarih.Year.ToString(CultureInfo.InvariantCulture))
+        {
+            return FaturaHatalari.NumaraYiliDegistirilemez;
+        }
+
+        var onek = numara[..7];
+        var ayniSeri = db.Faturalar.Where(f => f.Id != fatura.Id && f.Durum != FaturaDurumu.Taslak
+                                               && f.Numara != null && f.Numara.StartsWith(onek) && f.Numara.Length == numara.Length);
+        var oncekiEnGec = await ayniSeri.Where(f => string.Compare(f.Numara, numara) < 0).MaxAsync(f => (DateOnly?)f.Tarih, cancellationToken);
+        if (oncekiEnGec > fatura.Tarih)
+        {
+            return FaturaHatalari.TarihSirasi(oncekiEnGec.Value, oncekiMi: true);
+        }
+
+        var sonrakiEnErken = await ayniSeri.Where(f => string.Compare(f.Numara, numara) > 0).MinAsync(f => (DateOnly?)f.Tarih, cancellationToken);
+        return sonrakiEnErken < fatura.Tarih ? FaturaHatalari.TarihSirasi(sonrakiEnErken.Value, oncekiMi: false) : null;
+    }
 
     private async Task<Sonuc<string?>> HareketleriYazAsync(FaturaBelgesi f, CancellationToken cancellationToken)
     {

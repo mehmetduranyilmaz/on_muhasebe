@@ -1063,3 +1063,594 @@ h1:focus {
 .ayar-secenek .mud-radio {
     width: 100%;
 }
+
+/* ---------- Fatura ---------- */
+
+.tur-sekmeleri {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.tur-sekmesi {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-secondary);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .3s var(--om-yay), background-color .25s, color .25s, border-color .25s, box-shadow .3s;
+}
+
+.tur-sekmesi:hover {
+    transform: translateY(-2px);
+    border-color: var(--vurgu);
+    color: var(--vurgu);
+}
+
+.tur-sekmesi.secili {
+    color: #fff;
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--vurgu), color-mix(in srgb, var(--vurgu) 55%, #1E3A5F));
+    box-shadow: 0 10px 22px -10px var(--vurgu);
+}
+
+.tur-rozeti {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.tur-rozeti::before {
+    content: "";
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--vurgu);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--vurgu) 22%, transparent);
+}
+
+.fatura-no {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: .88em;
+    letter-spacing: .02em;
+}
+
+.ustu-cizili {
+    text-decoration: line-through;
+    opacity: .6;
+}
+
+.baglanti {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px dashed color-mix(in srgb, var(--om-turkuaz) 60%, transparent);
+    transition: color .2s, border-color .2s;
+}
+
+.baglanti:hover {
+    color: var(--om-turkuaz);
+    border-bottom-color: var(--om-turkuaz);
+}
+
+.belge-baglantisi {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.yeni-fatura-secenegi {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.yeni-fatura-secenegi .ikon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    color: var(--vurgu);
+    background: color-mix(in srgb, var(--vurgu) 15%, transparent);
+    transition: transform .3s var(--om-yay);
+}
+
+.mud-menu-item:hover .yeni-fatura-secenegi .ikon {
+    transform: scale(1.12) rotate(-6deg);
+}
+
+.yeni-fatura-secenegi small {
+    display: block;
+    font-size: .76rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Form: satır ekleme çubuğu ve satır kartları */
+
+.satir-ekleme-cubugu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.satir-ekleme-cubugu .stok-arama {
+    flex: 1 1 280px;
+}
+
+.satir-ekleme-cubugu .barkod-alani {
+    flex: 0 1 200px;
+}
+
+.satir-ekleme-cubugu .mud-input-control {
+    margin: 0 !important;
+}
+
+.fatura-satiri {
+    display: grid;
+    grid-template-columns: 30px repeat(5, minmax(0, 1fr)) 40px;
+    grid-template-areas:
+        "sira ad ad ad ad toplam sil"
+        ". miktar birim fiyat iskonto kdv ."
+        ". depo depo . . . .";
+    align-items: start;
+    gap: 8px;
+    padding: 10px 10px 4px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: color-mix(in srgb, var(--mud-palette-background) 45%, transparent);
+    transition: border-color .25s, box-shadow .3s var(--om-yumusak);
+}
+
+.fatura-satiri:hover,
+.fatura-satiri:focus-within {
+    border-color: color-mix(in srgb, var(--om-turkuaz) 55%, transparent);
+    box-shadow: 0 14px 30px -22px var(--om-turkuaz);
+}
+
+.fatura-satiri .mud-input-control {
+    margin: 0 !important;
+}
+
+.fs-sira {
+    grid-area: sira;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin-top: 8px;
+    border-radius: 50%;
+    font-size: .8rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--om-turkuaz), var(--om-mavi));
+}
+
+.fs-ad { grid-area: ad; min-width: 0; }
+.fs-miktar { grid-area: miktar; }
+.fs-birim { grid-area: birim; }
+.fs-fiyat { grid-area: fiyat; }
+.fs-iskonto { grid-area: iskonto; display: flex; gap: 4px; align-items: start; }
+.fs-iskonto .mud-input-control { min-width: 62px; }
+.fs-kdv { grid-area: kdv; display: flex; flex-direction: column; }
+.fs-depo { grid-area: depo; }
+.fs-sil { grid-area: sil; padding-top: 4px; }
+
+.fs-kart {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+    font-size: .76rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.fs-kart .mud-chip {
+    margin: 0;
+}
+
+.fs-toplam {
+    grid-area: toplam;
+    text-align: right;
+    padding-top: 2px;
+}
+
+.fs-toplam-etiket {
+    font-size: .72rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.fs-toplam-deger {
+    font-weight: 800;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.fs-toplam-alt {
+    font-size: .72rem;
+    color: var(--mud-palette-error);
+}
+
+/* Satır düzeni ekran değil, satırların bulunduğu alanın genişliğine göre değişir (yanında toplam paneli olabilir). */
+.fatura-satirlari {
+    container-type: inline-size;
+}
+
+@container (min-width: 1080px) {
+    .fatura-satiri {
+        grid-template-columns: 30px minmax(0, 2.6fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.1fr) auto minmax(0, 1fr) minmax(0, 1fr) 40px;
+        grid-template-areas: "sira ad miktar birim fiyat iskonto kdv toplam sil" ". depo depo depo . . . . .";
+    }
+}
+
+@container (max-width: 560px) {
+    .fatura-satiri {
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+            "sira sil"
+            "ad ad"
+            "miktar birim"
+            "fiyat fiyat"
+            "iskonto kdv"
+            "depo depo"
+            "toplam toplam";
+    }
+
+    .fs-sil { justify-self: end; }
+}
+
+/* Form ve detay: toplamlar */
+
+.fatura-toplam-paneli {
+    padding: 18px;
+    position: sticky;
+    top: 80px;
+}
+
+.toplam-listesi {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.toplam-listesi dt {
+    color: var(--mud-palette-text-secondary);
+}
+
+.toplam-listesi dt small {
+    opacity: .75;
+}
+
+.toplam-listesi dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 600;
+}
+
+.genel-toplam {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(120deg, #13294A, var(--om-lacivert) 45%, #0F766E);
+    background-size: 220% 220%;
+    animation: om-degrade-kay 14s ease infinite;
+}
+
+.genel-toplam b {
+    font-size: 1.45rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.fatura-tutar-karti {
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+    height: 100%;
+    border-top: 4px solid var(--vurgu);
+}
+
+.fatura-tutar {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: 4px 0 6px;
+    background: linear-gradient(120deg, var(--mud-palette-text-primary), var(--vurgu));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.yaziyla {
+    height: 100%;
+}
+
+.seri-satiri {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+}
+
+.ornek-numara {
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--om-turkuaz) 10%, transparent);
+    color: var(--om-turkuaz);
+}
+
+/* Sütun grafiği */
+
+.sutun-grafigi {
+    padding-top: 8px;
+}
+
+.sutun-alani {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    height: 220px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    background: repeating-linear-gradient(to top, transparent 0 54px, color-mix(in srgb, var(--mud-palette-lines-default) 60%, transparent) 54px 55px);
+}
+
+.sutun-grubu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sutunlar {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+}
+
+.sutun {
+    flex: 0 1 26px;
+    border-radius: 8px 8px 3px 3px;
+    transform-origin: bottom;
+    animation: om-sutun-buyu 1s var(--om-yay) both;
+    animation-delay: calc(var(--i, 0) * 70ms + 250ms);
+    transition: filter .2s;
+}
+
+.sutun:hover {
+    filter: brightness(1.15) saturate(1.2);
+}
+
+.sutun-etiket {
+    margin-top: 6px;
+    text-align: center;
+    font-size: .78rem;
+    color: var(--mud-palette-text-secondary);
+    text-transform: capitalize;
+}
+
+.sutun-aciklamalar {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 12px;
+    font-size: .82rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.sutun-aciklamalar i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border-radius: 3px;
+}
+
+@keyframes om-sutun-buyu {
+    from { transform: scaleY(0); }
+}
+
+/* Faturanın yazdırma görünümü (A4) */
+
+@media print {
+    @page {
+        size: A4;
+        margin: 12mm;
+    }
+
+    html, body, .mud-layout, .mud-main-content {
+        background: #fff !important;
+    }
+
+    .mud-snackbar-provider, #mud-snackbar-container, .mud-overlay {
+        display: none !important;
+    }
+
+    .fatura-kagidi {
+        position: relative;
+        color: #000;
+        font-size: 10.5px;
+        line-height: 1.45;
+    }
+
+    .fatura-kagidi .filigran {
+        position: fixed;
+        top: 40%;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 110px;
+        font-weight: 800;
+        letter-spacing: .1em;
+        color: rgba(220, 38, 38, .12);
+        transform: rotate(-24deg);
+        pointer-events: none;
+    }
+
+    .fk-ust {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #1E3A5F;
+    }
+
+    .fk-firma-unvan {
+        font-size: 15px;
+        font-weight: 800;
+        color: #1E3A5F;
+        margin-bottom: 2px;
+    }
+
+    .fk-baslik {
+        min-width: 230px;
+    }
+
+    .fk-tur {
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-align: right;
+        color: #0F766E;
+        margin-bottom: 6px;
+    }
+
+    .fk-bilgi, .fk-toplamlar {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .fk-bilgi th, .fk-bilgi td,
+    .fk-toplamlar th, .fk-toplamlar td {
+        padding: 3px 6px;
+        border: 1px solid #CBD5E1;
+    }
+
+    .fk-bilgi th, .fk-toplamlar th {
+        text-align: left;
+        font-weight: 600;
+        background: #F1F5F9;
+        white-space: nowrap;
+    }
+
+    .fk-bilgi td, .fk-toplamlar td {
+        text-align: right;
+    }
+
+    .fk-alici {
+        margin: 12px 0;
+        padding: 8px 10px;
+        border: 1px solid #CBD5E1;
+        border-radius: 6px;
+        max-width: 60%;
+    }
+
+    .fk-etiket {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .12em;
+        color: #64748B;
+    }
+
+    .fk-alici-unvan {
+        font-size: 12.5px;
+        font-weight: 700;
+    }
+
+    .fk-satirlar {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .fk-satirlar th {
+        padding: 5px 6px;
+        color: #fff;
+        background: #1E3A5F;
+        font-weight: 600;
+        text-align: right;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .fk-satirlar td {
+        padding: 4px 6px;
+        border-bottom: 1px solid #E2E8F0;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .fk-satirlar .sol {
+        text-align: left;
+    }
+
+    .fk-satirlar tbody tr {
+        break-inside: avoid;
+    }
+
+    .fk-not {
+        margin-top: 4px;
+        font-size: 9px;
+        color: #64748B;
+    }
+
+    .fk-alt {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        margin-top: 12px;
+        break-inside: avoid;
+    }
+
+    .fk-sol {
+        flex: 1;
+    }
+
+    .fk-yaziyla, .fk-aciklama {
+        margin-bottom: 6px;
+    }
+
+    .fk-ettn {
+        margin-top: 10px;
+        font-size: 9px;
+        color: #64748B;
+    }
+
+    .fk-toplamlar {
+        width: 290px;
+    }
+
+    .fk-toplamlar .fk-genel th, .fk-toplamlar .fk-genel td {
+        font-size: 12.5px;
+        font-weight: 800;
+        color: #fff;
+        background: #0F766E;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+.fs-hizmet {
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    color: var(--mud-palette-info);
+    background: color-mix(in srgb, var(--mud-palette-info) 12%, transparent);
+}

@@ -1,0 +1,36 @@
+@using System.Globalization
+@* Gruplu dikey sütun grafiği (ör. aylara göre satış ve alış). Sütunlar alttan sırayla büyür; üzerine gelince değer görünür. *@
+<div class="sutun-grafigi">
+    <div class="sutun-alani">
+        @for (var i = 0; i < Gruplar.Count; i++)
+        {
+            var grup = Gruplar[i];
+            <div class="sutun-grubu">
+                <div class="sutunlar">
+                    @for (var s = 0; s < Seriler.Count; s++)
+                    {
+                        var deger = s < grup.Degerler.Count ? grup.Degerler[s] : 0m;
+                        var oran = EnBuyuk == 0 ? 0 : Math.Max((double)(Math.Max(deger, 0) / EnBuyuk) * 100, deger > 0 ? 2 : 0);
+                        <div class="sutun" title="@($"{grup.Etiket} · {Seriler[s].Ad}: {Bicimle(deger)}")"
+                             style="height:@oran.ToString("0.#", CultureInfo.InvariantCulture)%; background:@Seriler[s].Renk; --i:@(i * Seriler.Count + s)"></div>
+                    }
+                </div>
+                <div class="sutun-etiket">@grup.Etiket</div>
+            </div>
+        }
+    </div>
+    <div class="sutun-aciklamalar">
+        @foreach (var seri in Seriler)
+        {
+            <span><i style="background:@seri.Renk"></i>@seri.Ad</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<SutunGrubu> Gruplar { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<SutunSerisi> Seriler { get; set; } = [];
+    [Parameter] public Func<decimal, string> Bicimle { get; set; } = d => Bicim.Tutar(d);
+
+    private decimal EnBuyuk => Gruplar.Count == 0 ? 0 : Gruplar.SelectMany(g => g.Degerler).DefaultIfEmpty(0).Max();
+}

@@ -18,6 +18,14 @@ public static class ModulPaketleri
         [
             "OnMuhasebe.Web.Stok.wasm",
             "OnMuhasebe.Modules.Stok.Contracts.wasm"
+        ],
+        [ModulKodlari.Fatura] =
+        [
+            "OnMuhasebe.Web.Fatura.wasm",
+            "OnMuhasebe.Modules.Fatura.Contracts.wasm",
+            "OnMuhasebe.Modules.Cari.Contracts.wasm",
+            "OnMuhasebe.Modules.Stok.Contracts.wasm",
+            "OnMuhasebe.Modules.Doviz.Contracts.wasm"
         ]
     };
 
@@ -25,12 +33,14 @@ public static class ModulPaketleri
     public static IReadOnlyDictionary<string, string> OzetPanelleri { get; } = new Dictionary<string, string>
     {
         [ModulKodlari.Cari] = "OnMuhasebe.Web.Cari.Bilesenler.CariOzetPaneli",
-        [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokOzetPaneli"
+        [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokOzetPaneli",
+        [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaOzetPaneli"
     };
 
     public static IReadOnlyDictionary<string, string> AyarPanelleri { get; } = new Dictionary<string, string>
     {
-        [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokAyarPaneli"
+        [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokAyarPaneli",
+        [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaAyarPaneli"
     };
 
     // Adresin ilk parçası modülün yoludur (ör. "cari/123/ekstre" -> cari).
