@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Linq.Expressions;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
 using OnMuhasebe.Modules.Cari.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Doviz;
+using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -62,41 +66,117 @@ internal static class CariKapamaIslemleri
         return sonuc.BasariliMi ? TypedResults.Ok(await kapama.DetayAsync(hareketId, cancellationToken)) : sonuc.HttpSonucu();
     }
 
-    // Alacak: carinin bize borçlu olduğu açık kalemler (satış faturası...); Borc: bizim cariye borcumuz (alış faturası, avans...).
+    // Açık kalemlerin cari bazında gecikme dilimlerine dağılımı. Kapama bir kalemin tutarını aşamadığından dilimdeki açık tutar =
+    // dilimdeki kalemlerin tutarı - o kalemlerin kapamaları; ikisi de kalem başına alt sorgu olmadan gruplanır.
+    // Gecikme = rapor tarihi - vade (vade yoksa işlem tarihi); 0 ve altı vadesi gelmemiş sayılır.
     private static async Task<IResult> VadeAnaliziAsync(
-        DateOnly? tarih, CariDbContext db, CariKapamaServisi kapama, TimeProvider zaman, CancellationToken cancellationToken)
+        DateOnly? tarih, bool? alacaklar, string? arama, int? sayfa, int? boyut, CariDbContext db, TimeProvider zaman,
+        CancellationToken cancellationToken)
     {
-        var raporTarihi = tarih ?? TurkiyeSaati.Bugun(zaman);
-        var kalemler = await kapama.TumAcikKalemlerAsync(raporTarihi, cancellationToken);
-        var cariIdleri = kalemler.Select(k => k.CariId).Distinct().ToList();
-        var cariler = await db.CariHesaplar.AsNoTracking()
-            .Where(c => cariIdleri.Contains(c.Id))
-            .ToDictionaryAsync(c => c.Id, c => new { c.Kod, c.Unvan, c.ParaBirimi }, cancellationToken);
+        var rapor = tarih ?? TurkiyeSaati.Bugun(zaman);
+        var alacakMi = alacaklar ?? true;
+        var (g30, g60, g90) = (rapor.AddDays(-30), rapor.AddDays(-60), rapor.AddDays(-90));
 
-        var satirlar = kalemler
-            .Where(k => cariler.ContainsKey(k.CariId))
-            .GroupBy(k => k.CariId)
-            .Select(g =>
-            {
-                var c = cariler[g.Key];
-                var liste = g.Select(x => x.Kalem).ToList();
-                return new VadeAnaliziSatiri(g.Key, c.Kod, c.Unvan, c.ParaBirimi,
-                    Dilimle(liste.Where(k => k.Yon == HareketYonu.Borc)),
-                    Dilimle(liste.Where(k => k.Yon == HareketYonu.Alacak)),
-                    Math.Max(0, liste.Max(k => k.GecikmeGun)));
-            })
-            .OrderByDescending(s => s.Alacak.VadesiGecen + s.Borc.VadesiGecen)
-            .ThenBy(s => s.Unvan)
+        var cariler = db.CariHesaplar.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(arama))
+        {
+            var desen = $"%{arama.Trim()}%";
+            cariler = cariler.Where(c => EF.Functions.ILike(c.Unvan, desen) || EF.Functions.ILike(c.Kod, desen));
+        }
+
+        // Carinin bize borcu (alacağımız) borç yönlü kalemlerdir; borç kalemi kapamada BorcHareketId olarak yer alır.
+        var kalemler = db.CariHareketler.AsNoTracking()
+            .Where(h => h.IptalHareketId == null && h.IptalEdilenHareketId == null && (alacakMi ? h.Borc > 0 : h.Alacak > 0))
+            .Join(cariler, h => h.CariHesapId, c => c.Id, (h, c) => h);
+        var tutarlar = kalemler.Select(h => new { h.CariHesapId, Vade = h.VadeTarihi ?? h.Tarih, Tutar = h.Borc + h.Alacak });
+        Expression<Func<CariKapama, Guid>> kapamaKalemi = alacakMi ? k => k.BorcHareketId : k => k.AlacakHareketId;
+        var kapananlar = db.CariKapamalari
+            .Join(kalemler, kapamaKalemi, h => h.Id, (k, h) => new { h.CariHesapId, Vade = h.VadeTarihi ?? h.Tarih, k.Tutar });
+
+        var brut = await Dilimle(tutarlar.Select(x => new DilimKalemi { CariHesapId = x.CariHesapId, Vade = x.Vade, Tutar = x.Tutar }));
+        var kapanan = (await Dilimle(kapananlar.Select(x => new DilimKalemi { CariHesapId = x.CariHesapId, Vade = x.Vade, Tutar = x.Tutar })))
+            .ToDictionary(d => d.CariHesapId);
+
+        var acik = brut
+            .Select(b => kapanan.TryGetValue(b.CariHesapId, out var k)
+                ? (b.CariHesapId, Dilimler: new VadeDilimleri(b.Gelmemis - k.Gelmemis, b.Gun30 - k.Gun30, b.Gun60 - k.Gun60, b.Gun90 - k.Gun90, b.Ustu - k.Ustu))
+                : (b.CariHesapId, Dilimler: new VadeDilimleri(b.Gelmemis, b.Gun30, b.Gun60, b.Gun90, b.Ustu)))
+            .Where(x => x.Dilimler.Toplam > 0)
             .ToList();
 
-        return TypedResults.Ok(new VadeAnalizi(raporTarihi, satirlar));
+        var bilgiler = await cariler
+            .Where(c => acik.Select(a => a.CariHesapId).Contains(c.Id))
+            .Select(c => new { c.Id, c.Kod, c.Unvan, c.ParaBirimi })
+            .ToDictionaryAsync(c => c.Id, cancellationToken);
+        var satirlar = acik
+            .Where(a => bilgiler.ContainsKey(a.CariHesapId))
+            .Select(a => (Bilgi: bilgiler[a.CariHesapId], a.Dilimler))
+            .ToList();
+
+        var tlSatirlari = satirlar.Where(s => s.Bilgi.ParaBirimi == ParaBirimleri.Tl).Select(s => s.Dilimler).ToList();
+        var tl = new VadeDilimleri(
+            tlSatirlari.Sum(d => d.VadesiGelmemis), tlSatirlari.Sum(d => d.Gun0Ile30), tlSatirlari.Sum(d => d.Gun31Ile60),
+            tlSatirlari.Sum(d => d.Gun61Ile90), tlSatirlari.Sum(d => d.Gun90Ustu));
+
+        var istek = new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut);
+        var sayfadakiler = satirlar
+            .OrderByDescending(s => s.Dilimler.VadesiGecen)
+            .ThenByDescending(s => s.Dilimler.Toplam)
+            .ThenBy(s => s.Bilgi.Unvan, StringComparer.Create(new CultureInfo("tr-TR"), false))
+            .Skip((istek.GecerliSayfa - 1) * istek.GecerliBoyut)
+            .Take(istek.GecerliBoyut)
+            .ToList();
+
+        // En eski açık kalemin vadesi yalnızca sayfadaki cariler için, kalem başına kapama toplamıyla bulunur.
+        var sayfaIdleri = sayfadakiler.Select(s => s.Bilgi.Id).ToList();
+        var enEskiler = await kalemler
+            .Where(h => sayfaIdleri.Contains(h.CariHesapId)
+                        && h.Borc + h.Alacak > (db.CariKapamalari
+                            .Where(k => k.BorcHareketId == h.Id || k.AlacakHareketId == h.Id)
+                            .Sum(k => (decimal?)k.Tutar) ?? 0m))
+            .GroupBy(h => h.CariHesapId)
+            .Select(g => new { CariHesapId = g.Key, EnEski = g.Min(h => h.VadeTarihi ?? h.Tarih) })
+            .ToDictionaryAsync(x => x.CariHesapId, x => x.EnEski, cancellationToken);
+
+        return TypedResults.Ok(new VadeAnalizi(
+            rapor,
+            alacakMi,
+            tl,
+            new SayfaliSonuc<VadeAnaliziSatiri>(
+                sayfadakiler
+                    .Select(s => new VadeAnaliziSatiri(s.Bilgi.Id, s.Bilgi.Kod, s.Bilgi.Unvan, s.Bilgi.ParaBirimi, s.Dilimler,
+                        enEskiler.TryGetValue(s.Bilgi.Id, out var enEski) ? Math.Max(0, rapor.DayNumber - enEski.DayNumber) : 0))
+                    .ToList(),
+                istek.GecerliSayfa, istek.GecerliBoyut, satirlar.Count)));
+
+        Task<List<DilimToplami>> Dilimle(IQueryable<DilimKalemi> sorgu) => sorgu
+            .GroupBy(x => x.CariHesapId)
+            .Select(g => new DilimToplami
+            {
+                CariHesapId = g.Key,
+                Gelmemis = g.Sum(x => x.Vade >= rapor ? x.Tutar : 0m),
+                Gun30 = g.Sum(x => x.Vade < rapor && x.Vade >= g30 ? x.Tutar : 0m),
+                Gun60 = g.Sum(x => x.Vade < g30 && x.Vade >= g60 ? x.Tutar : 0m),
+                Gun90 = g.Sum(x => x.Vade < g60 && x.Vade >= g90 ? x.Tutar : 0m),
+                Ustu = g.Sum(x => x.Vade < g90 ? x.Tutar : 0m)
+            })
+            .ToListAsync(cancellationToken);
     }
 
-    private static VadeDilimleri Dilimle(IEnumerable<AcikKalem> kalemler)
+    private sealed class DilimKalemi
     {
-        var liste = kalemler.ToList();
-        decimal Topla(Func<int, bool> kosul) => liste.Where(k => kosul(k.GecikmeGun)).Sum(k => k.Kalan);
-        return new VadeDilimleri(
-            Topla(g => g <= 0), Topla(g => g is >= 1 and <= 30), Topla(g => g is >= 31 and <= 60), Topla(g => g is >= 61 and <= 90), Topla(g => g > 90));
+        public Guid CariHesapId { get; init; }
+        public DateOnly Vade { get; init; }
+        public decimal Tutar { get; init; }
+    }
+
+    private sealed class DilimToplami
+    {
+        public Guid CariHesapId { get; init; }
+        public decimal Gelmemis { get; init; }
+        public decimal Gun30 { get; init; }
+        public decimal Gun60 { get; init; }
+        public decimal Gun90 { get; init; }
+        public decimal Ustu { get; init; }
     }
 }

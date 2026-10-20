@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OnMuhasebe.Modules.Yonetim.Domain;
+using OnMuhasebe.Shared.Infrastructure.Persistence;
 
 namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Configurations;
 
@@ -9,6 +10,7 @@ internal sealed class FirmaConfiguration : IEntityTypeConfiguration<Firma>
     public void Configure(EntityTypeBuilder<Firma> builder)
     {
         builder.ToTable("firma");
+        builder.MetinAramaIndeksi(x => x.Unvan);
         builder.Property(x => x.Unvan).HasMaxLength(250);
         builder.Property(x => x.VergiNo).HasMaxLength(11);
         builder.Property(x => x.VergiDairesi).HasMaxLength(100);

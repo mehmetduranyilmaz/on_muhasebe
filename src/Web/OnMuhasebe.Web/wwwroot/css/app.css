@@ -2937,3 +2937,11 @@ td.soluk {
 @media (max-width: 600px) {
     .degisiklik-alanlari th { width: 34%; }
 }
+
+.tur-sekmeleri .vade-arama {
+    margin-left: auto;
+    max-width: 280px;
+    flex: 1 1 200px;
+}
+
+.tur-sekmeleri .vade-arama .mud-input-control-input-container { margin: 0; }

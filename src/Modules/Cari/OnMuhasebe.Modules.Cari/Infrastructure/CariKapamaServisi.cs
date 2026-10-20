@@ -115,12 +115,6 @@ internal sealed class CariKapamaServisi(CariDbContext db, IIslemKapsami islemKap
             .Select(k => AcikKalem(k, tarih))
             .ToList();
 
-    public async Task<List<(Guid CariId, AcikKalem Kalem)>> TumAcikKalemlerAsync(DateOnly tarih, CancellationToken cancellationToken) =>
-        (await KalemlerAsync(null, cancellationToken))
-            .Where(k => k.Kalan > 0)
-            .Select(k => (k.CariHesapId, AcikKalem(k, tarih)))
-            .ToList();
-
     public async Task<KapamaDetayi?> DetayAsync(Guid hareketId, CancellationToken cancellationToken)
     {
         var hareket = await db.CariHareketler.AsNoTracking().SingleOrDefaultAsync(h => h.Id == hareketId, cancellationToken);

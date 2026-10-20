@@ -22,6 +22,7 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.DonemKilidi", b =>
@@ -150,6 +151,12 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_firma");
+
+                    b.HasIndex("Unvan")
+                        .HasDatabaseName("ix_firma_unvan");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Unvan"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Unvan"), new[] { "gin_trgm_ops" });
 
                     b.ToTable("firma", "yonetim");
                 });

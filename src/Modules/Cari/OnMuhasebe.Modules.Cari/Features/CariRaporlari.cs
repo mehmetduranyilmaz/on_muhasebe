@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -30,17 +31,23 @@ internal static class CariRaporlari
         CariDbContext db, IKurSorgusu kurSorgusu, TimeProvider zaman, CancellationToken cancellationToken)
     {
         // Aktif cari sayısı KOBİ ölçeğinde (binler) küçük olduğu için değerleme bellekte yapılır.
-        var cariler = await db.CariHesaplar.AsNoTracking()
-            .Where(c => c.AktifMi)
-            .Select(c => new
-            {
-                c.Id,
-                c.Unvan,
-                c.ParaBirimi,
-                c.RiskLimiti,
-                Bakiye = db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Borc - h.Alacak),
-                BakiyeTl = db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.BorcTl - h.AlacakTl)
-            })
+        // Hareketler bir kez gruplanır; cari başına alt sorgu on binlerce caride yavaşlar.
+        var toplamlar = db.CariHareketler
+            .GroupBy(h => h.CariHesapId)
+            .Select(g => new { CariHesapId = g.Key, Bakiye = g.Sum(h => h.Borc - h.Alacak), BakiyeTl = g.Sum(h => h.BorcTl - h.AlacakTl) });
+        var cariler = await (
+                from c in db.CariHesaplar.AsNoTracking().Where(c => c.AktifMi)
+                join t in toplamlar on c.Id equals t.CariHesapId into tj
+                from t in tj.DefaultIfEmpty()
+                select new
+                {
+                    c.Id,
+                    c.Unvan,
+                    c.ParaBirimi,
+                    c.RiskLimiti,
+                    Bakiye = t == null ? 0m : t.Bakiye,
+                    BakiyeTl = t == null ? 0m : t.BakiyeTl
+                })
             .ToListAsync(cancellationToken);
 
         var bugun = TurkiyeSaati.Bugun(zaman);
@@ -174,20 +181,37 @@ internal static class CariRaporlari
             cariler = cariler.Where(c => c.ParaBirimi == paraBirimi);
         }
 
-        // Her cari için toplamlar (firma_id, cari_hesap_id, tarih) covering index'inden karşılanır.
+        // İki biçim: carinin toplamları alt sorguyla (yalnızca sayfadaki 25 cari için hesaplanır; (firma_id, cari_hesap_id, tarih)
+        // covering index'inden) ya da hareketler bir kez gruplanıp birleştirilerek (tüm cariler gerektiğinde: toplamlar, bakiye filtresi).
         var hareketler = db.CariHareketler.Where(h => h.Tarih <= raporTarihi);
-        var sorgu = cariler.Select(c => new
+        var tekTek = cariler.Select(c => new CariBakiye
         {
-            c.Id,
-            c.Kod,
-            c.Unvan,
-            c.ParaBirimi,
+            Id = c.Id,
+            Kod = c.Kod,
+            Unvan = c.Unvan,
+            ParaBirimi = c.ParaBirimi,
             Borc = hareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Borc),
             Alacak = hareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Alacak),
             BakiyeTl = hareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.BorcTl - h.AlacakTl)
         });
+        var gruplu =
+            from c in cariler
+            join t in hareketler
+                .GroupBy(h => h.CariHesapId)
+                .Select(g => new { CariHesapId = g.Key, Borc = g.Sum(h => h.Borc), Alacak = g.Sum(h => h.Alacak), BakiyeTl = g.Sum(h => h.BorcTl - h.AlacakTl) })
+                on c.Id equals t.CariHesapId
+            select new CariBakiye
+            {
+                Id = c.Id,
+                Kod = c.Kod,
+                Unvan = c.Unvan,
+                ParaBirimi = c.ParaBirimi,
+                Borc = t.Borc,
+                Alacak = t.Alacak,
+                BakiyeTl = t.BakiyeTl
+            };
 
-        sorgu = durum switch
+        IQueryable<CariBakiye> Filtrele(IQueryable<CariBakiye> sorgu) => durum switch
         {
             BakiyeDurumu.Borclu => sorgu.Where(x => x.Borc - x.Alacak > 0),
             BakiyeDurumu.Alacakli => sorgu.Where(x => x.Borc - x.Alacak < 0),
@@ -195,15 +219,35 @@ internal static class CariRaporlari
             _ => sorgu
         };
 
-        var paraBirimiToplamlari = await sorgu
-            .GroupBy(x => x.ParaBirimi)
-            .Select(g => new { ParaBirimi = g.Key, Borc = g.Sum(x => x.Borc), Alacak = g.Sum(x => x.Alacak), BakiyeTl = g.Sum(x => x.BakiyeTl) })
-            .OrderBy(x => x.ParaBirimi)
-            .ToListAsync(cancellationToken);
+        // Gruplu biçim hareketi olmayan carileri içermez; sıfır bakiyeyi dışlayan filtrelerde ve toplamlarda sonuç aynıdır.
+        // Filtresiz: sayfa tek tek, toplamlar gruplu sorgudan. Filtreli: gruplu satırlar bir kez okunur (cari başına küçük bir satır),
+        // toplam ve sayfa bellekte; aynı ağır sorgu sayım, toplam ve sayfa için üç kez çalışmaz. Gruplu biçim hareketi olmayan carileri
+        // içermez; sıfır bakiyeyi dışlayan filtrelerde ve toplamlarda sonuç aynıdır.
+        var istek = new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut);
+        List<ParaBirimiAraToplami> paraBirimiToplamlari;
+        SayfaliSonuc<CariBakiye> sayfaSonucu;
+        if (durum is null or BakiyeDurumu.Tumu)
+        {
+            paraBirimiToplamlari = await gruplu
+                .GroupBy(x => x.ParaBirimi)
+                .Select(g => new ParaBirimiAraToplami(g.Key, g.Sum(x => x.Borc), g.Sum(x => x.Alacak), g.Sum(x => x.BakiyeTl)))
+                .ToListAsync(cancellationToken);
+            sayfaSonucu = await tekTek.OrderBy(x => x.Unvan).SayfalaAsync(istek, cancellationToken);
+        }
+        else
+        {
+            var tumu = await Filtrele(gruplu).ToListAsync(cancellationToken);
+            paraBirimiToplamlari = tumu
+                .GroupBy(x => x.ParaBirimi)
+                .Select(g => new ParaBirimiAraToplami(g.Key, g.Sum(x => x.Borc), g.Sum(x => x.Alacak), g.Sum(x => x.BakiyeTl)))
+                .ToList();
+            sayfaSonucu = new SayfaliSonuc<CariBakiye>(
+                tumu.OrderBy(x => x.Unvan, StringComparer.Create(new CultureInfo("tr-TR"), false))
+                    .Skip((istek.GecerliSayfa - 1) * istek.GecerliBoyut).Take(istek.GecerliBoyut).ToList(),
+                istek.GecerliSayfa, istek.GecerliBoyut, tumu.Count);
+        }
 
-        var sayfaSonucu = await sorgu
-            .OrderBy(x => x.Unvan)
-            .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
+        paraBirimiToplamlari = paraBirimiToplamlari.OrderBy(x => x.ParaBirimi, StringComparer.Ordinal).ToList();
 
         // Kur farkı için rapor tarihinde geçerli kur; her para birimi için tek sorgu.
         var guncelKurlar = new Dictionary<string, decimal>();
@@ -233,6 +277,20 @@ internal static class CariRaporlari
             raporTarihi,
             new SayfaliSonuc<BakiyeSatiri>(satirlar, sayfaSonucu.Sayfa, sayfaSonucu.Boyut, sayfaSonucu.ToplamKayit),
             toplamSatirlari));
+    }
+
+    private sealed record ParaBirimiAraToplami(string ParaBirimi, decimal Borc, decimal Alacak, decimal BakiyeTl);
+
+    // Kayıt (record) yerine sınıf: kurucuyla oluşturulan nesne üzerinden sonradan filtre SQL'e çevrilemiyor.
+    private sealed class CariBakiye
+    {
+        public Guid Id { get; init; }
+        public string Kod { get; init; } = "";
+        public string Unvan { get; init; } = "";
+        public string ParaBirimi { get; init; } = "";
+        public decimal Borc { get; init; }
+        public decimal Alacak { get; init; }
+        public decimal BakiyeTl { get; init; }
     }
 
     private static (decimal? GuncelKur, decimal? GuncelTl, decimal? KurFarki) Degerle(

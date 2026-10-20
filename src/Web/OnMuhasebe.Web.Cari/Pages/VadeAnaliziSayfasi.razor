@@ -15,18 +15,19 @@
 <HataGosterimi Hata="_hata" />
 
 <div class="tur-sekmeleri belirme yazdirma-gizle">
-    <button type="button" class="tur-sekmesi @(_alacakMi ? "secili" : "")" style="--vurgu:#EF4444" @onclick="() => _alacakMi = true">
+    <button type="button" class="tur-sekmesi @(_alacakMi ? "secili" : "")" style="--vurgu:#EF4444" @onclick="() => SekmeAsync(true)">
         <MudIcon Icon="@Icons.Material.Filled.CallReceived" Size="Size.Small" /> Alacaklarımız
     </button>
-    <button type="button" class="tur-sekmesi @(_alacakMi ? "" : "secili")" style="--vurgu:#8B5CF6" @onclick="() => _alacakMi = false">
+    <button type="button" class="tur-sekmesi @(_alacakMi ? "" : "secili")" style="--vurgu:#8B5CF6" @onclick="() => SekmeAsync(false)">
         <MudIcon Icon="@Icons.Material.Filled.CallMade" Size="Size.Small" /> Borçlarımız
     </button>
+    <MudTextField Variant="Variant.Outlined" T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan veya kod" DebounceInterval="400"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Margin="Margin.Dense" Class="vade-arama" />
 </div>
 
 @if (_analiz is { } a)
 {
-    var satirlar = a.Satirlar.Where(s => Dilim(s).Toplam > 0).OrderByDescending(s => Dilim(s).VadesiGecen).ThenByDescending(s => Dilim(s).Toplam).ToList();
-    var tl = satirlar.Where(s => s.ParaBirimi == ParaBirimleri.Tl).Select(Dilim).ToList();
+    var tl = a.TlToplami;
 
     <div class="mb-3 sadece-yazdir">
         <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
@@ -36,10 +37,10 @@
     <MudGrid Spacing="3" Class="mb-2">
         @foreach (var (baslik, deger, renk, sira) in new[]
         {
-            ("Vadesi gelmemiş", tl.Sum(d => d.VadesiGelmemis), "#16A34A", 0),
-            ("1-30 gün geçmiş", tl.Sum(d => d.Gun0Ile30), "#F59E0B", 1),
-            ("31-90 gün geçmiş", tl.Sum(d => d.Gun31Ile60 + d.Gun61Ile90), "#F97316", 2),
-            ("90 günden fazla", tl.Sum(d => d.Gun90Ustu), "#DC2626", 3)
+            ("Vadesi gelmemiş", tl.VadesiGelmemis, "#16A34A", 0),
+            ("1-30 gün geçmiş", tl.Gun0Ile30, "#F59E0B", 1),
+            ("31-90 gün geçmiş", tl.Gun31Ile60 + tl.Gun61Ile90, "#F97316", 2),
+            ("90 günden fazla", tl.Gun90Ustu, "#DC2626", 3)
         })
         {
             <MudItem xs="6" lg="3">
@@ -49,7 +50,7 @@
         }
     </MudGrid>
 
-    <VeriTablosu T="VadeAnaliziSatiri" Kayitlar="satirlar" Dense="true" SatirTiklandi="@(s => Navigasyon.NavigateTo($"cari/{s.CariId}"))"
+    <VeriTablosu T="VadeAnaliziSatiri" Kayitlar="a.Satirlar.Kayitlar" Dense="true" Sayfa="_sayfa" ToplamSayfa="a.Satirlar.ToplamSayfa" SayfaDegisti="SayfaDegistiAsync" Yukleniyor="_yukleniyor" SatirTiklandi="@(s => Navigasyon.NavigateTo($"cari/{s.CariId}"))"
                  BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="@(_alacakMi ? "Açık alacak yok" : "Açık borç yok")">
         <Basliklar>
             <MudTh>Cari</MudTh>
@@ -61,7 +62,7 @@
             <MudTh Class="sayi">Toplam</MudTh>
         </Basliklar>
         <Satir>
-            @{ var d = Dilim(context); }
+            @{ var d = context.Dilimler; }
             <MudTd DataLabel="Cari">
                 <b>@context.Unvan</b>
                 <span class="mobil-alt-bilgi">@context.Kod@(context.EnUzunGecikmeGun > 0 ? $" · en eski {context.EnUzunGecikmeGun} gün" : "")</span>
@@ -84,6 +85,9 @@ else if (_hata is null)
     private DateTime? _tarih;
     private VadeAnalizi? _analiz;
     private bool _alacakMi = true;
+    private string? _arama;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
     private ApiHatasi? _hata;
 
     protected override async Task OnInitializedAsync()
@@ -91,8 +95,6 @@ else if (_hata is null)
         _tarih = Zaman.GetLocalNow().Date;
         await YukleAsync();
     }
-
-    private VadeDilimleri Dilim(VadeAnaliziSatiri s) => _alacakMi ? s.Alacak : s.Borc;
 
     private static string Hucre(decimal tutar, string paraBirimi) => tutar == 0 ? "—" : Bicim.Tutar(tutar, paraBirimi);
 
@@ -103,14 +105,42 @@ else if (_hata is null)
     private async Task TarihDegistiAsync(DateTime? tarih)
     {
         _tarih = tarih;
+        _sayfa = 1;
         await YukleAsync();
     }
 
     private async Task YukleAsync()
     {
-        _analiz = null;
-        var sonuc = await Api.GetAsync<VadeAnalizi>($"api/cari/raporlar/vade-analizi?tarih={Bicim.Iso(DateOnly.FromDateTime(_tarih ?? DateTime.Today))}");
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<VadeAnalizi>($"api/cari/raporlar/vade-analizi?tarih={Bicim.Iso(DateOnly.FromDateTime(_tarih ?? DateTime.Today))}&alacaklar={(_alacakMi ? "true" : "false")}&sayfa={_sayfa}&boyut=50"
+            + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}"));
         _hata = sonuc.Hata;
         _analiz = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task SekmeAsync(bool alacakMi)
+    {
+        if (_alacakMi == alacakMi)
+        {
+            return;
+        }
+
+        _alacakMi = alacakMi;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
     }
 }
