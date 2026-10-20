@@ -1,0 +1,28 @@
+@* Panel kartı: renkli ikon, başlık ve animasyonla sayılan değer. Href verilirse tıklanabilir. *@
+<a class="ozet-karti kart kart-hover belirme @(Href is null ? "tiklanamaz" : "")" href="@Href"
+   style="--i:@Sira; --vurgu:@Renk;">
+    <div class="ozet-ust">
+        <div class="ozet-ikon"><MudIcon Icon="@Ikon" /></div>
+        <div class="ozet-baslik">@Baslik</div>
+    </div>
+    <div class="ozet-deger">
+        <SayacDegeri Deger="Deger" Bicimle="@(Bicimle ?? (d => Bicim.Tutar(d)))" />
+    </div>
+    @if (AltMetin is not null)
+    {
+        <div class="ozet-alt">@AltMetin</div>
+    }
+    <div class="ozet-isik"></div>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public string Baslik { get; set; } = "";
+    [Parameter] public decimal Deger { get; set; }
+    [Parameter] public Func<decimal, string>? Bicimle { get; set; }
+    [Parameter] public string Ikon { get; set; } = Icons.Material.Filled.Insights;
+    [Parameter] public string Renk { get; set; } = UygulamaTemasi.Turkuaz;
+    [Parameter] public string? AltMetin { get; set; }
+    [Parameter] public string? Href { get; set; }
+    // Kademeli belirme sırası.
+    [Parameter] public int Sira { get; set; }
+}

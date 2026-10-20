@@ -21,6 +21,73 @@ internal static class CariRaporlari
     {
         grup.MapGet("/hesaplar/{cariId:guid}/ekstre", EkstreAsync);
         grup.MapGet("/raporlar/bakiye-listesi", BakiyeListesiAsync);
+        grup.MapGet("/raporlar/ozet", OzetAsync);
+    }
+
+    private const int OzetListeBoyutu = 5;
+
+    private static async Task<IResult> OzetAsync(
+        CariDbContext db, IKurSorgusu kurSorgusu, TimeProvider zaman, CancellationToken cancellationToken)
+    {
+        // Aktif cari sayısı KOBİ ölçeğinde (binler) küçük olduğu için değerleme bellekte yapılır.
+        var cariler = await db.CariHesaplar.AsNoTracking()
+            .Where(c => c.AktifMi)
+            .Select(c => new
+            {
+                c.Id,
+                c.Unvan,
+                c.ParaBirimi,
+                c.RiskLimiti,
+                Bakiye = db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Borc - h.Alacak),
+                BakiyeTl = db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.BorcTl - h.AlacakTl)
+            })
+            .ToListAsync(cancellationToken);
+
+        var bugun = TurkiyeSaati.Bugun(zaman);
+        var kurlar = new Dictionary<string, decimal>();
+        foreach (var pb in cariler.Select(c => c.ParaBirimi).Distinct().Where(pb => pb != ParaBirimleri.Tl))
+        {
+            if (await kurSorgusu.IslemKuruAsync(pb, bugun, cancellationToken) is { } kur)
+            {
+                kurlar[pb] = kur.DovizAlis;
+            }
+        }
+
+        var degerli = cariler.Select(c => new
+        {
+            c.Id,
+            c.Unvan,
+            c.ParaBirimi,
+            c.Bakiye,
+            RiskAsildi = c.RiskLimiti is { } limit && c.Bakiye > limit,
+            GuncelTl = c.ParaBirimi == ParaBirimleri.Tl ? c.Bakiye
+                : kurlar.TryGetValue(c.ParaBirimi, out var kur) ? Para.TlKarsiligi(c.Bakiye, kur) : c.BakiyeTl
+        }).ToList();
+
+        var sonHareketler = await (
+                from h in db.CariHareketler.AsNoTracking()
+                join c in db.CariHesaplar on h.CariHesapId equals c.Id
+                orderby h.Id descending
+                select new SonCariHareketi(c.Id, c.Unvan, h.Tarih, h.Tur, h.ParaBirimi, h.Borc, h.Alacak, h.Aciklama))
+            .Take(OzetListeBoyutu)
+            .ToListAsync(cancellationToken);
+
+        return TypedResults.Ok(new CariOzetRaporu(
+            degerli.Count,
+            degerli.Count(c => c.RiskAsildi),
+            degerli.Where(c => c.GuncelTl > 0).Sum(c => c.GuncelTl),
+            -degerli.Where(c => c.GuncelTl < 0).Sum(c => c.GuncelTl),
+            degerli.Where(c => c.ParaBirimi != ParaBirimleri.Tl)
+                .GroupBy(c => c.ParaBirimi)
+                .Select(g => new DovizPozisyonu(g.Key, g.Sum(c => c.Bakiye), g.Sum(c => c.GuncelTl)))
+                .OrderByDescending(p => Math.Abs(p.GuncelTl))
+                .ToList(),
+            degerli.Where(c => c.GuncelTl > 0)
+                .OrderByDescending(c => c.GuncelTl)
+                .Take(OzetListeBoyutu)
+                .Select(c => new OzetCari(c.Id, c.Unvan, c.ParaBirimi, c.Bakiye, c.GuncelTl))
+                .ToList(),
+            sonHareketler));
     }
 
     private static async Task<IResult> EkstreAsync(

@@ -1,0 +1,16 @@
+@* Liste filtreleri. Mobilde "Filtreler" düğmesiyle açılıp kapanır, geniş ekranda hep açıktır. *@
+<div class="filtre-cubugu kart belirme yazdirma-gizle">
+    <MudButton Class="filtre-ac d-md-none" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.FilterList" FullWidth="true"
+               EndIcon="@(_acik ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" OnClick="() => _acik = !_acik">
+        Filtreler
+    </MudButton>
+    <div class="filtre-icerik @(_acik ? "acik" : "")">
+        <MudGrid Spacing="2">@ChildContent</MudGrid>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _acik;
+}

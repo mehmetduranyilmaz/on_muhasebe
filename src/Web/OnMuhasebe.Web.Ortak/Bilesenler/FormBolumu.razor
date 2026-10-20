@@ -1,0 +1,25 @@
+@* Formları anlamlı bölümlere ayıran başlıklı kart. *@
+<section class="form-bolumu kart belirme" style="--i:@Sira">
+    <header class="form-bolumu-baslik">
+        @if (Ikon is not null)
+        {
+            <span class="form-bolumu-ikon"><MudIcon Icon="@Ikon" Size="Size.Small" /></span>
+        }
+        <div>
+            <div class="form-bolumu-metin">@Baslik</div>
+            @if (Aciklama is not null)
+            {
+                <div class="form-bolumu-aciklama">@Aciklama</div>
+            }
+        </div>
+    </header>
+    <MudGrid Spacing="2">@ChildContent</MudGrid>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Baslik { get; set; } = "";
+    [Parameter] public string? Aciklama { get; set; }
+    [Parameter] public string? Ikon { get; set; }
+    [Parameter] public int Sira { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

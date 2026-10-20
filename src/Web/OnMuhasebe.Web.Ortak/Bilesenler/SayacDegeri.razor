@@ -1,0 +1,67 @@
+@* Sayıyı 0'dan hedef değere yavaşlayarak sayar. Kullanıcı "hareketi azalt" ayarını açtıysa doğrudan gösterir. *@
+@implements IDisposable
+@inject IJSRuntime Js
+
+<span class="sayac">@Bicimle(_gosterilen)</span>
+
+@code {
+    private const int KareSayisi = 45;
+
+    [Parameter] public decimal Deger { get; set; }
+    [Parameter] public Func<decimal, string> Bicimle { get; set; } = d => Bicim.Tutar(d);
+    [Parameter] public int SureMs { get; set; } = 1100;
+
+    private static bool? _hareketAzaltildi;
+    private decimal _gosterilen;
+    private decimal? _hedef;
+    private CancellationTokenSource? _iptal;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_hedef == Deger)
+        {
+            return;
+        }
+
+        var baslangic = _gosterilen;
+        _hedef = Deger;
+        _iptal?.Cancel();
+        _iptal = new CancellationTokenSource();
+        var token = _iptal.Token;
+
+        _hareketAzaltildi ??= await HareketAzaltildiMiAsync();
+        if (_hareketAzaltildi == true)
+        {
+            _gosterilen = Deger;
+            return;
+        }
+
+        for (var kare = 1; kare <= KareSayisi && !token.IsCancellationRequested; kare++)
+        {
+            var t = (double)kare / KareSayisi;
+            var yumusak = 1 - Math.Pow(1 - t, 3);
+            _gosterilen = baslangic + (Deger - baslangic) * (decimal)yumusak;
+            StateHasChanged();
+            await Task.Delay(SureMs / KareSayisi);
+        }
+
+        if (!token.IsCancellationRequested)
+        {
+            _gosterilen = Deger;
+        }
+    }
+
+    private async Task<bool> HareketAzaltildiMiAsync()
+    {
+        try
+        {
+            return await Js.InvokeAsync<bool>("omHareketAzaltildiMi");
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
+
+    public void Dispose() => _iptal?.Cancel();
+}

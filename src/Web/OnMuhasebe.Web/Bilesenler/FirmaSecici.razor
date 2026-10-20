@@ -9,8 +9,8 @@
 
     @if (bilgi.Firmalar.Count > 1)
     {
-        <MudMenu Label="@aktifUnvan" EndIcon="@Icons.Material.Filled.ArrowDropDown" Color="Color.Inherit"
-                 Variant="Variant.Text" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Class="mr-2">
+        <MudMenu Label="@aktifUnvan" EndIcon="@Icons.Material.Filled.ArrowDropDown" Color="Color.Inherit" Class="firma-secici mr-2"
+                 Variant="Variant.Text" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             @foreach (var firma in bilgi.Firmalar)
             {
                 <MudMenuItem OnClick="() => DegistirAsync(firma)" Disabled="@(firma.Id == bilgi.AktifFirma?.Id)">
@@ -21,7 +21,7 @@
     }
     else
     {
-        <MudText Typo="Typo.body1" Class="mr-2">@aktifUnvan</MudText>
+        <MudText Typo="Typo.body1" Class="firma-secici mr-2">@aktifUnvan</MudText>
     }
 }
 

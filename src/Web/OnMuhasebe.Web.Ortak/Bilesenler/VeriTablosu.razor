@@ -1,0 +1,63 @@
+@* Liste ekranlarının ortak tablosu: yüklenirken iskelet, boşken BosDurum, satırlar kademeli belirir, sayfalama dahil.
+   Mobilde satırlar kart görünümüne geçer (MudTd DataLabel ile). *@
+@typeparam T
+
+<div class="veri-tablosu kart belirme">
+    @if (Kayitlar is null)
+    {
+        <div class="pa-4">
+            @for (var i = 0; i < IskeletSatirSayisi; i++)
+            {
+                <MudSkeleton Animation="Animation.Wave" Height="36px" Class="mb-2" />
+            }
+        </div>
+    }
+    else if (Kayitlar.Count == 0)
+    {
+        <BosDurum Ikon="@BosIkon" Baslik="@BosBaslik" Aciklama="@BosAciklama">@BosIslemler</BosDurum>
+    }
+    else
+    {
+        <MudTable T="T" Items="Kayitlar" Loading="Yukleniyor" Hover="true" Dense="Dense" Breakpoint="Breakpoint.Sm" Elevation="0"
+                  RowClass="@(SatirTiklandi.HasDelegate ? "satir-belirme cursor-pointer" : "satir-belirme")"
+                  RowStyleFunc="@((_, i) => $"--i:{i}")" OnRowClick="TiklaAsync" LoadingProgressColor="Color.Secondary">
+            <HeaderContent>@Basliklar</HeaderContent>
+            <RowTemplate>@Satir(context)</RowTemplate>
+            <FooterContent>@AltBilgi</FooterContent>
+        </MudTable>
+    }
+</div>
+
+@if (ToplamSayfa > 1)
+{
+    <div class="d-flex justify-center mt-4 yazdirma-gizle">
+        <MudPagination Count="ToplamSayfa" Selected="Sayfa" SelectedChanged="SayfaDegisti" Color="Color.Primary" />
+    </div>
+}
+
+@code {
+    // null: henüz yüklenmedi (iskelet gösterilir).
+    [Parameter] public IReadOnlyList<T>? Kayitlar { get; set; }
+    [Parameter] public bool Yukleniyor { get; set; }
+    [Parameter] public bool Dense { get; set; }
+    [Parameter] public RenderFragment? Basliklar { get; set; }
+    [Parameter, EditorRequired] public RenderFragment<T> Satir { get; set; } = null!;
+    [Parameter] public RenderFragment? AltBilgi { get; set; }
+    [Parameter] public EventCallback<T> SatirTiklandi { get; set; }
+    [Parameter] public string BosIkon { get; set; } = Icons.Material.Outlined.Inbox;
+    [Parameter] public string BosBaslik { get; set; } = "Kayıt bulunamadı";
+    [Parameter] public string? BosAciklama { get; set; }
+    [Parameter] public RenderFragment? BosIslemler { get; set; }
+    [Parameter] public int Sayfa { get; set; } = 1;
+    [Parameter] public int ToplamSayfa { get; set; }
+    [Parameter] public EventCallback<int> SayfaDegisti { get; set; }
+    [Parameter] public int IskeletSatirSayisi { get; set; } = 6;
+
+    private async Task TiklaAsync(TableRowClickEventArgs<T> e)
+    {
+        if (SatirTiklandi.HasDelegate && e.Item is not null)
+        {
+            await SatirTiklandi.InvokeAsync(e.Item);
+        }
+    }
+}

@@ -1,0 +1,20 @@
+@* Kayıt olmadığında boş tablo yerine gösterilir; kullanıcıyı ilk adıma yönlendirir. *@
+<div class="bos-durum belirme">
+    <div class="bos-durum-ikonu"><MudIcon Icon="@Ikon" Size="Size.Large" /></div>
+    <div class="bos-durum-baslik">@Baslik</div>
+    @if (Aciklama is not null)
+    {
+        <div class="bos-durum-aciklama">@Aciklama</div>
+    }
+    @if (ChildContent is not null)
+    {
+        <div class="mt-4 d-flex gap-2 justify-center flex-wrap">@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Ikon { get; set; } = Icons.Material.Outlined.Inbox;
+    [Parameter] public string Baslik { get; set; } = "Kayıt yok";
+    [Parameter] public string? Aciklama { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

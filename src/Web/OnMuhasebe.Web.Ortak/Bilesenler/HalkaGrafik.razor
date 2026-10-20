@@ -1,0 +1,51 @@
+@* Halka (donut) grafik: dilimler sırayla çizilerek açılır. Değerlerin mutlak büyüklüğü oranlanır. *@
+<div class="halka-grafik">
+    <svg viewBox="0 0 160 160" class="halka-svg" role="img" aria-label="@OrtaBaslik">
+        <circle cx="80" cy="80" r="@Yaricap" class="halka-zemin" />
+        @{
+            var birikim = 0d;
+            var sira = 0;
+        }
+        @foreach (var dilim in _dilimler)
+        {
+            var uzunluk = Toplam == 0 ? 0 : (double)(Math.Abs(dilim.Deger) / Toplam) * Cevre;
+            <circle cx="80" cy="80" r="@Yaricap" class="halka-dilim"
+                    stroke="@Renk(sira)"
+                    style="stroke-dasharray: @Sayi(uzunluk) @Sayi(Cevre - uzunluk); stroke-dashoffset: @Sayi(-birikim); --cevre: @Sayi(Cevre); --i: @sira;" />
+            birikim += uzunluk;
+            sira++;
+        }
+        <text x="80" y="76" class="halka-orta-baslik">@OrtaBaslik</text>
+        <text x="80" y="96" class="halka-orta-deger">@OrtaDeger</text>
+    </svg>
+    <ul class="halka-aciklama">
+        @for (var i = 0; i < _dilimler.Count; i++)
+        {
+            var dilim = _dilimler[i];
+            <li class="satir-belirme" style="--i:@i">
+                <span class="nokta" style="background:@Renk(i)"></span>
+                <span class="etiket">@dilim.Etiket</span>
+                <span class="deger">@dilim.DegerMetni</span>
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    private const double Yaricap = 62;
+    private static readonly double Cevre = 2 * Math.PI * Yaricap;
+
+    [Parameter, EditorRequired] public IReadOnlyList<GrafikDilimi> Dilimler { get; set; } = [];
+    [Parameter] public string? OrtaBaslik { get; set; }
+    [Parameter] public string? OrtaDeger { get; set; }
+
+    private List<GrafikDilimi> _dilimler = [];
+
+    private decimal Toplam => _dilimler.Sum(d => Math.Abs(d.Deger));
+
+    protected override void OnParametersSet() => _dilimler = Dilimler.Where(d => d.Deger != 0).ToList();
+
+    private static string Renk(int sira) => UygulamaTemasi.GrafikRenkleri[sira % UygulamaTemasi.GrafikRenkleri.Count];
+
+    private static string Sayi(double deger) => deger.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}

@@ -4,35 +4,33 @@
 @inject TimeProvider Zaman
 @inject OturumYoneticisi Oturum
 
-<PageTitle>Cari Ekstre - Ön Muhasebe</PageTitle>
-
-<div class="d-flex align-center flex-wrap gap-2 mb-3 yazdirma-gizle">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="@($"cari/{Id}")" aria-label="Geri" />
-    <MudText Typo="Typo.h4">Cari Ekstre</MudText>
-    <MudSpacer />
-    <MudDatePicker @bind-Date="_baslangic" Label="Başlangıç" Style="max-width: 160px;" Margin="Margin.Dense" />
-    <MudDatePicker @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" />
+<SayfaBasligi Baslik="Cari Ekstre" AltBaslik="@(_ekstre is { } e0 ? $"{e0.Kod} - {e0.Unvan}" : null)" GeriAdres="@($"cari/{Id}")" Ikon="@Icons.Material.Filled.Description">
+    <Islemler>
+    <MudDatePicker Variant="Variant.Outlined" @bind-Date="_baslangic" Label="Başlangıç" Style="max-width: 160px;" Margin="Margin.Dense" />
+    <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ekstre is null" OnClick="YazdirAsync">Yazdır</MudButton>
-</div>
+    </Islemler>
+</SayfaBasligi>
 
 <HataGosterimi Hata="_hata" />
 
 @if (_yukleniyor)
 {
-    <MudProgressLinear Indeterminate="true" />
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
 }
 else if (_ekstre is { } e)
 {
     var dovizliMi = e.ParaBirimi != ParaBirimleri.Tl;
 
-    <div class="mb-3">
+    <div class="mb-3 sadece-yazdir">
         <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
         <MudText Typo="Typo.h6">@e.Kod - @e.Unvan</MudText>
         <MudText Typo="Typo.body2">@Bicim.Tarih(e.Baslangic) – @Bicim.Tarih(e.Bitis) · @ParaBirimleri.Ad(e.ParaBirimi)</MudText>
     </div>
 
-    <MudSimpleTable Dense="true" Hover="true" Bordered="true" Style="overflow-x: auto;">
+    <div class="kart belirme pa-2" style="overflow-x:auto">
+    <MudSimpleTable Dense="true" Hover="true" Elevation="0">
         <thead>
             <tr>
                 <th>Tarih</th>
@@ -93,6 +91,7 @@ else if (_ekstre is { } e)
             </tr>
         </tfoot>
     </MudSimpleTable>
+    </div>
 
     @if (e.Satirlar.Count == 0)
     {

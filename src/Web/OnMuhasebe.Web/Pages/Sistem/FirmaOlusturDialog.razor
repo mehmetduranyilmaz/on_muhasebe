@@ -6,35 +6,35 @@
         <HataGosterimi Hata="_hata" />
         <MudForm @ref="_form">
             <MudText Typo="Typo.subtitle2" Class="mb-1">Firma</MudText>
-            <MudTextField @bind-Value="_unvan" Label="Ünvan" Required="true" RequiredError="Ünvan gerekli." />
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_unvan" Label="Ünvan" Required="true" RequiredError="Ünvan gerekli." />
             <MudGrid Spacing="2">
                 <MudItem xs="6">
-                    <MudTextField @bind-Value="_vergiNo" Label="Vergi / T.C. kimlik no" MaxLength="11" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiNo" Label="Vergi / T.C. kimlik no" MaxLength="11" />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudTextField @bind-Value="_vergiDairesi" Label="Vergi dairesi" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiDairesi" Label="Vergi dairesi" />
                 </MudItem>
             </MudGrid>
 
             <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Firma yöneticisi</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="6">
-                    <MudTextField @bind-Value="_yoneticiAd" Label="Ad" Required="true" RequiredError="Ad gerekli." />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiAd" Label="Ad" Required="true" RequiredError="Ad gerekli." />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudTextField @bind-Value="_yoneticiSoyad" Label="Soyad" Required="true" RequiredError="Soyad gerekli." />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiSoyad" Label="Soyad" Required="true" RequiredError="Soyad gerekli." />
                 </MudItem>
             </MudGrid>
-            <MudTextField @bind-Value="_yoneticiEposta" Label="E-posta" InputType="InputType.Email"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiEposta" Label="E-posta" InputType="InputType.Email"
                           Required="true" RequiredError="E-posta gerekli." />
-            <MudTextField @bind-Value="_yoneticiSifre" Label="Şifre" InputType="InputType.Password"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiSifre" Label="Şifre" InputType="InputType.Password"
                           Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
                           HelperText="Kişi sistemde zaten kayıtlıysa boş bırakın." />
 
             <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Lisans</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="6">
-                    <MudSelect @bind-Value="_paketKodu" Label="Paket" Required="true" RequiredError="Paket seçin.">
+                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_paketKodu" Label="Paket" Required="true" RequiredError="Paket seçin.">
                         @foreach (var paket in Paketler)
                         {
                             <MudSelectItem Value="@paket.Kod">@paket.Ad</MudSelectItem>
@@ -42,7 +42,7 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="6">
-                    <MudDatePicker @bind-Date="_bitis" Label="Bitiş tarihi (dahil)" Required="true" RequiredError="Tarih seçin." />
+                    <MudDatePicker Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş tarihi (dahil)" Required="true" RequiredError="Tarih seçin." />
                 </MudItem>
             </MudGrid>
         </MudForm>

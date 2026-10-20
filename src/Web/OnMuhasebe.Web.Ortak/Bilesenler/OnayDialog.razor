@@ -1,0 +1,23 @@
+<MudDialog Class="onay-dialog">
+    <DialogContent>
+        <div class="d-flex gap-3 align-start">
+            <div class="onay-ikonu @(Tehlikeli ? "tehlikeli" : "")">
+                <MudIcon Icon="@(Tehlikeli ? Icons.Material.Filled.WarningAmber : Icons.Material.Filled.HelpOutline)" />
+            </div>
+            <MudText Class="mt-1">@Mesaj</MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@(Tehlikeli ? Color.Error : Color.Primary)" OnClick="() => MudDialog.Close(DialogResult.Ok(true))">
+            @OnayMetni
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string Mesaj { get; set; } = "";
+    [Parameter] public string OnayMetni { get; set; } = "Onayla";
+    [Parameter] public bool Tehlikeli { get; set; }
+}

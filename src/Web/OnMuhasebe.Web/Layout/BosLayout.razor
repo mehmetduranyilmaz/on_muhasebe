@@ -1,10 +1,51 @@
 @inherits LayoutComponentBase
+@inject TemaYoneticisi Tema
+@implements IDisposable
 
-<MudLayout>
-    <MudMainContent Class="pt-0">
-        <MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="d-flex flex-column justify-center" Style="min-height: 100vh;">
-            <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Primary" Class="mb-6">Ön Muhasebe</MudText>
+@* Giriş ve kayıt sahnesi: solda canlı degrade tanıtım alanı, sağda form. Mobilde tanıtım üste küçülür. *@
+<div class="giris-sahne @(Tema.KoyuMu ? "koyu-tema" : null)">
+    <aside class="giris-hero">
+        <span class="blob" style="width:340px;height:340px;background:#14B8A6;top:-80px;left:-60px;"></span>
+        <span class="blob" style="width:300px;height:300px;background:#3B82F6;bottom:-60px;right:-40px;animation-delay:-5s;"></span>
+        <span class="blob" style="width:200px;height:200px;background:#8B5CF6;top:45%;left:55%;animation-delay:-9s;opacity:.35;"></span>
+
+        <div class="giris-hero-icerik">
+            <Logo Boyut="42" />
+            <h1>İşletmenizin finansı <span>tek ekranda.</span></h1>
+            <div style="opacity:.85; font-size:1.05rem;">Cari, stok, fatura ve kasa/banka işlemlerinizi her yerden, her cihazdan yönetin.</div>
+            <ul class="giris-ozellikler">
+                @for (var i = 0; i < _ozellikler.Length; i++)
+                {
+                    var (ikon, metin) = _ozellikler[i];
+                    <li class="belirme" style="--i:@(i + 2)">
+                        <span class="ikon"><MudIcon Icon="@ikon" Size="Size.Small" /></span>
+                        @metin
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="giris-hero-alt" style="position:relative; opacity:.6; font-size:.85rem;">© @DateTime.Now.Year Ön Muhasebe</div>
+    </aside>
+
+    <main class="giris-form-alani">
+        <div class="giris-kart kart">
             @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+        </div>
+    </main>
+</div>
+
+@code {
+    private readonly (string Ikon, string Metin)[] _ozellikler =
+    [
+        (Icons.Material.Filled.CurrencyExchange, "Dövizli cari ve TCMB kurları otomatik"),
+        (Icons.Material.Filled.PhoneIphone, "Telefona uygulama gibi kurulur"),
+        (Icons.Material.Filled.Groups, "Birden fazla firma, ekip ve yetki"),
+        (Icons.Material.Filled.Shield, "Verileriniz şifreli ve firmanıza özel")
+    ];
+
+    protected override void OnInitialized() => Tema.Degisti += YenidenCiz;
+
+    public void Dispose() => Tema.Degisti -= YenidenCiz;
+
+    private void YenidenCiz() => InvokeAsync(StateHasChanged);
+}

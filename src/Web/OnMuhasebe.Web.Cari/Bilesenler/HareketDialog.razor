@@ -7,31 +7,31 @@
         <MudForm @ref="_form">
             <MudGrid Spacing="2">
                 <MudItem xs="6">
-                    <MudSelect @bind-Value="_tur" Label="Hareket türü">
+                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_tur" Label="Hareket türü">
                         <MudSelectItem Value="CariHareketTuru.Dekont">Dekont</MudSelectItem>
                         <MudSelectItem Value="CariHareketTuru.Acilis">Açılış bakiyesi</MudSelectItem>
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="6">
-                    <MudSelect @bind-Value="_yon" Label="Yön">
+                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yon" Label="Yön">
                         <MudSelectItem Value="HareketYonu.Borc">Borç (cari bize borçlanır)</MudSelectItem>
                         <MudSelectItem Value="HareketYonu.Alacak">Alacak (cari alacaklanır)</MudSelectItem>
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="6">
-                    <MudDatePicker Date="_tarih" DateChanged="TarihDegistiAsync" Label="Tarih" Required="true" RequiredError="Tarih gerekli." />
+                    <MudDatePicker Margin="Margin.Dense" Variant="Variant.Outlined" Date="_tarih" DateChanged="TarihDegistiAsync" Label="Tarih" Required="true" RequiredError="Tarih gerekli." />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudDatePicker @bind-Date="_vade" Label="Vade tarihi" Clearable="true" />
+                    <MudDatePicker Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Date="_vade" Label="Vade tarihi" Clearable="true" />
                 </MudItem>
                 <MudItem xs="@(DovizliMi ? 6 : 12)">
-                    <MudNumericField T="decimal?" @bind-Value="_tutar" Label="@($"Tutar ({Cari.ParaBirimi})")" Format="N2" Min="0"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_tutar" Label="@($"Tutar ({Cari.ParaBirimi})")" Format="N2" Min="0"
                                      HideSpinButtons="true" Required="true" RequiredError="Tutar gerekli." />
                 </MudItem>
                 @if (DovizliMi)
                 {
                     <MudItem xs="6">
-                        <MudNumericField T="decimal?" @bind-Value="_kur" Label="Kur (TL)" Format="0.######" Min="0" HideSpinButtons="true"
+                        <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_kur" Label="Kur (TL)" Format="0.######" Min="0" HideSpinButtons="true"
                                          Required="true" RequiredError="Kur gerekli." HelperText="@_kurAciklamasi" />
                     </MudItem>
                     @if (_tutar is > 0 && _kur is > 0)
@@ -42,10 +42,10 @@
                     }
                 }
                 <MudItem xs="4">
-                    <MudTextField @bind-Value="_belgeNo" Label="Belge no" MaxLength="50" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_belgeNo" Label="Belge no" MaxLength="50" />
                 </MudItem>
                 <MudItem xs="8">
-                    <MudTextField @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
                 </MudItem>
             </MudGrid>
         </MudForm>

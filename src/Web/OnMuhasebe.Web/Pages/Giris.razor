@@ -6,29 +6,31 @@
 
 <PageTitle>Giriş - Ön Muhasebe</PageTitle>
 
-<MudCard Elevation="3">
-    <form @onsubmit="GirisYapAsync" @onsubmit:preventDefault="true">
-        <MudCardContent>
-            <MudText Typo="Typo.h5" Class="mb-4">Giriş Yap</MudText>
-            <HataGosterimi Hata="_hata" />
-            <MudTextField T="string" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email"
-                          Variant="Variant.Outlined" Class="mb-3" autocomplete="username" />
-            <MudTextField T="string" @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password"
-                          Variant="Variant.Outlined" autocomplete="current-password" />
-        </MudCardContent>
-        <MudCardActions Class="d-flex flex-column gap-2 pa-4">
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
-                       Disabled="_islemde">
-                @if (_islemde)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                }
-                Giriş
-            </MudButton>
-            <MudButton Href="kayit" Variant="Variant.Text" FullWidth="true">Hesabınız yok mu? 14 gün ücretsiz deneyin</MudButton>
-        </MudCardActions>
-    </form>
-</MudCard>
+<h2>Tekrar hoş geldiniz</h2>
+<div class="alt">Devam etmek için hesabınıza giriş yapın.</div>
+
+<form @onsubmit="GirisYapAsync" @onsubmit:preventDefault="true">
+    <HataGosterimi Hata="_hata" />
+    <MudTextField T="string" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Variant="Variant.Outlined"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Email" Class="mb-4" autocomplete="username" />
+    <MudTextField T="string" @bind-Value="_sifre" Label="Şifre" InputType="@(_sifreGorunur ? InputType.Text : InputType.Password)"
+                  Variant="Variant.Outlined" Adornment="Adornment.End"
+                  AdornmentIcon="@(_sifreGorunur ? Icons.Material.Outlined.VisibilityOff : Icons.Material.Outlined.Visibility)"
+                  OnAdornmentClick="() => _sifreGorunur = !_sifreGorunur" AdornmentAriaLabel="Şifreyi göster" autocomplete="current-password" />
+    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+               Disabled="_islemde" Class="mt-6">
+        @if (_islemde)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" Style="width:18px;height:18px;" />
+        }
+        Giriş Yap
+    </MudButton>
+</form>
+
+<MudDivider Class="my-6" />
+<MudButton Href="kayit" Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true" StartIcon="@Icons.Material.Filled.RocketLaunch">
+    Hesabınız yok mu? 14 gün ücretsiz deneyin
+</MudButton>
 
 @code {
     [SupplyParameterFromQuery(Name = "donus")]
@@ -36,6 +38,7 @@
 
     private string _eposta = "";
     private string _sifre = "";
+    private bool _sifreGorunur;
     private bool _islemde;
     private ApiHatasi? _hata;
 

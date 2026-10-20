@@ -2,37 +2,41 @@
 @attribute [Authorize(Roles = Roller.Yonetici)]
 @inject ApiIstemcisi Api
 @inject IDialogService DialogService
+@inject OnayServisi Onay
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
 
-<PageTitle>Kullanıcılar - Ön Muhasebe</PageTitle>
-
-<div class="d-flex align-center flex-wrap gap-2 mb-4">
-    <MudText Typo="Typo.h4">Kullanıcılar</MudText>
-    <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="EkleAsync">
-        Kullanıcı Ekle
-    </MudButton>
-</div>
+<SayfaBasligi Baslik="Kullanıcılar" AltBaslik="Firmanıza erişebilen kişiler ve rolleri" Ikon="@Icons.Material.Filled.ManageAccounts">
+    <Islemler>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="EkleAsync">Kullanıcı Ekle</MudButton>
+    </Islemler>
+</SayfaBasligi>
 
 <HataGosterimi Hata="_hata" />
 
-<MudTable Items="_kullanicilar" Loading="_yukleniyor" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
-    <HeaderContent>
+<VeriTablosu T="FirmaKullanicisiCevabi" Kayitlar="_kullanicilar" BosBaslik="Kayıtlı kullanıcı yok" BosIkon="@Icons.Material.Outlined.Group">
+    <Basliklar>
         <MudTh>Ad Soyad</MudTh>
         <MudTh>E-posta</MudTh>
         <MudTh>Rol</MudTh>
         <MudTh>Durum</MudTh>
         <MudTh></MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="Ad Soyad">@context.Ad @context.Soyad</MudTd>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Ad Soyad">
+            <div class="d-flex align-center gap-2">
+                <MudAvatar Size="Size.Small" Class="kullanici-avatar">@($"{context.Ad.FirstOrDefault()}{context.Soyad.FirstOrDefault()}")</MudAvatar>
+                @context.Ad @context.Soyad
+            </div>
+        </MudTd>
         <MudTd DataLabel="E-posta">@context.Eposta</MudTd>
-        <MudTd DataLabel="Rol">@RolAdi(context.Rol)</MudTd>
-        <MudTd DataLabel="Durum">
-            <MudChip T="string" Size="Size.Small" Color="@(context.AktifMi ? Color.Success : Color.Default)">
-                @(context.AktifMi ? "Aktif" : "Pasif")
+        <MudTd DataLabel="Rol">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.Rol == Roller.Yonetici ? Color.Secondary : Color.Default)">
+                @(context.Rol == Roller.Yonetici ? "Yönetici" : "Kullanıcı")
             </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Color="@(context.AktifMi ? Color.Success : Color.Default)">@(context.AktifMi ? "Aktif" : "Pasif")</MudChip>
         </MudTd>
         <MudTd Style="text-align: right;">
             @if (context.AktifMi && context.KullaniciId != Oturum.Bilgi?.Id)
@@ -40,26 +44,20 @@
                 <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => PasiflestirAsync(context)">Pasifleştir</MudButton>
             }
         </MudTd>
-    </RowTemplate>
-    <NoRecordsContent>
-        <MudText>Kayıtlı kullanıcı yok.</MudText>
-    </NoRecordsContent>
-</MudTable>
+    </Satir>
+</VeriTablosu>
 
 @code {
-    private List<FirmaKullanicisiCevabi> _kullanicilar = [];
-    private bool _yukleniyor = true;
+    private List<FirmaKullanicisiCevabi>? _kullanicilar;
     private ApiHatasi? _hata;
 
     protected override Task OnInitializedAsync() => YukleAsync();
 
     private async Task YukleAsync()
     {
-        _yukleniyor = true;
         var sonuc = await Api.GetAsync<List<FirmaKullanicisiCevabi>>("api/yonetim/kullanicilar");
         _hata = sonuc.Hata;
         _kullanicilar = sonuc.BasariliMi ? sonuc.Deger : [];
-        _yukleniyor = false;
     }
 
     private async Task EkleAsync()
@@ -74,11 +72,8 @@
 
     private async Task PasiflestirAsync(FirmaKullanicisiCevabi kullanici)
     {
-        var onay = await DialogService.ShowMessageBoxAsync(
-            "Kullanıcıyı pasifleştir",
-            $"{kullanici.Ad} {kullanici.Soyad} bu firmaya artık erişemeyecek. Devam edilsin mi?",
-            yesText: "Pasifleştir", cancelText: "Vazgeç");
-        if (onay != true)
+        if (!await Onay.SorAsync("Kullanıcıyı pasifleştir",
+                $"{kullanici.Ad} {kullanici.Soyad} bu firmaya artık erişemeyecek. Devam edilsin mi?", "Pasifleştir", tehlikeli: true))
         {
             return;
         }
@@ -94,6 +89,4 @@
             Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
         }
     }
-
-    private static string RolAdi(string rol) => rol == Roller.Yonetici ? "Yönetici" : "Kullanıcı";
 }

@@ -1,43 +1,71 @@
 @page "/"
 @inject OturumYoneticisi Oturum
+@inject ModulYukleyici Yukleyici
+@inject TimeProvider Zaman
 
 <PageTitle>Ana Sayfa - Ön Muhasebe</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-1">Hoş geldiniz, @Oturum.Bilgi?.Ad</MudText>
-<MudText Typo="Typo.subtitle1" Class="mb-6">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+<section class="panel-karsilama">
+    <span class="blob" style="width:260px;height:260px;background:#14B8A6;top:-90px;right:8%;"></span>
+    <span class="blob" style="width:200px;height:200px;background:#3B82F6;bottom:-90px;right:30%;animation-delay:-6s;"></span>
+    <h1>Hoş geldiniz, @Oturum.Bilgi?.Ad</h1>
+    <p>@(Oturum.Bilgi?.AktifFirma?.Unvan ?? (Oturum.Bilgi?.SistemYoneticisiMi == true ? "Sistem yönetimi" : "")) · @Zaman.GetLocalNow().ToString("d MMMM yyyy, dddd")</p>
+</section>
 
 @if (_acikModuller.Count == 0)
 {
-    <MudAlert Severity="Severity.Info">
-        @(Oturum.Bilgi?.SistemYoneticisiMi == true
-            ? "Sistem yöneticisi olarak firmaları ve lisansları soldaki menüden yönetebilirsiniz."
-            : "Firmanızın lisansında açık modül bulunmuyor.")
-    </MudAlert>
+    <BosDurum Ikon="@Icons.Material.Outlined.AdminPanelSettings"
+              Baslik="@(Oturum.Bilgi?.SistemYoneticisiMi == true ? "Sistem yöneticisi" : "Açık modül yok")"
+              Aciklama="@(Oturum.Bilgi?.SistemYoneticisiMi == true
+                  ? "Firmaları ve lisansları soldaki menüden yönetebilirsiniz."
+                  : "Firmanızın lisansında açık modül bulunmuyor.")">
+        @if (Oturum.Bilgi?.SistemYoneticisiMi == true)
+        {
+            <MudButton Href="sistem/firmalar" Variant="Variant.Filled" Color="Color.Primary">Firmalar ve Lisanslar</MudButton>
+        }
+    </BosDurum>
 }
 else
 {
-    <MudGrid>
-        @foreach (var modul in _acikModuller)
+    <MudGrid Spacing="3" Class="mb-6">
+        @for (var i = 0; i < _acikModuller.Count; i++)
         {
-            <MudItem xs="12" sm="6" md="3">
-                <MudCard Elevation="1" Style="height: 100%;">
-                    <MudCardContent>
-                        <MudIcon Icon="@modul.Ikon" Color="Color.Primary" Size="Size.Large" Class="mb-2" />
-                        <MudText Typo="Typo.h6">@modul.Ad</MudText>
-                        <MudText Typo="Typo.body2">@modul.Aciklama</MudText>
-                    </MudCardContent>
-                    <MudCardActions>
-                        <MudButton Href="@modul.Yol" Color="Color.Primary">Aç</MudButton>
-                    </MudCardActions>
-                </MudCard>
+            // Döngü değişkeni MudItem içeriğinde kullanılmadan önce kopyalanır: içerik döngü bittikten sonra çizilir.
+            var sira = i;
+            var modul = _acikModuller[i];
+            <MudItem xs="6" lg="3">
+                <a href="@modul.Yol" class="ozet-karti modul-karti kart kart-hover belirme" style="--i:@sira; --vurgu:@UygulamaTemasi.GrafikRenkleri[sira % UygulamaTemasi.GrafikRenkleri.Count]">
+                    <div class="ozet-ust">
+                        <div class="ozet-ikon"><MudIcon Icon="@modul.Ikon" /></div>
+                        <div class="ozet-deger" style="font-size:1.1rem">@modul.Ad</div>
+                    </div>
+                    <div class="ozet-alt">@modul.Aciklama</div>
+                    <div class="ozet-isik"></div>
+                </a>
             </MudItem>
         }
     </MudGrid>
+
+    @foreach (var panel in _paneller)
+    {
+        <DynamicComponent Type="panel" />
+    }
 }
 
 @code {
     private List<ModulMenuOgesi> _acikModuller = [];
+    private readonly List<Type> _paneller = [];
 
-    protected override void OnParametersSet() =>
+    // Her lisanslı modülün kendi özet paneli, modülün lazy paketinden yüklenip gösterilir.
+    protected override async Task OnInitializedAsync()
+    {
         _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)).ToList();
+        foreach (var modul in _acikModuller)
+        {
+            if (await Yukleyici.OzetPaneliAsync(modul.Kod) is { } panel)
+            {
+                _paneller.Add(panel);
+            }
+        }
+    }
 }

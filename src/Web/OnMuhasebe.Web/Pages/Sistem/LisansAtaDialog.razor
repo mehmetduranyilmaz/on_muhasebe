@@ -5,20 +5,20 @@
     <DialogContent>
         <HataGosterimi Hata="_hata" />
         <MudForm @ref="_form">
-            <MudSelect @bind-Value="_paketKodu" Label="Paket" Required="true" RequiredError="Paket seçin." Class="mb-3">
+            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_paketKodu" Label="Paket" Required="true" RequiredError="Paket seçin." Class="mb-3">
                 @foreach (var paket in Paketler)
                 {
                     <MudSelectItem Value="@paket.Kod">@paket.Ad</MudSelectItem>
                 }
             </MudSelect>
-            <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_ekModuller" Label="Ek modüller" Class="mb-3"
+            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="string" MultiSelection="true" @bind-SelectedValues="_ekModuller" Label="Ek modüller" Class="mb-3"
                        HelperText="Paketin dışında açılacak modüller">
                 @foreach (var modul in ModulMenusu.Tumu)
                 {
                     <MudSelectItem Value="@modul.Kod">@modul.Ad</MudSelectItem>
                 }
             </MudSelect>
-            <MudDatePicker @bind-Date="_bitis" Label="Bitiş tarihi (dahil)" Required="true" RequiredError="Tarih seçin." />
+            <MudDatePicker Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş tarihi (dahil)" Required="true" RequiredError="Tarih seçin." />
         </MudForm>
     </DialogContent>
     <DialogActions>

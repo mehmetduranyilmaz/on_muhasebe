@@ -5,24 +5,25 @@
 @inject ISnackbar Snackbar
 @inject TimeProvider Zaman
 
-<PageTitle>Firmalar ve Lisanslar - Ön Muhasebe</PageTitle>
-
-<div class="d-flex align-center flex-wrap gap-2 mb-4">
-    <MudText Typo="Typo.h4">Firmalar ve Lisanslar</MudText>
-    <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddBusiness" OnClick="FirmaAcAsync">
-        Firma Aç
-    </MudButton>
-</div>
+<SayfaBasligi Baslik="Firmalar ve Lisanslar" AltBaslik="Müşteri firmalar, paketleri ve lisans süreleri" Ikon="@Icons.Material.Filled.AdminPanelSettings">
+    <Islemler>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddBusiness" OnClick="FirmaAcAsync">Firma Aç</MudButton>
+    </Islemler>
+</SayfaBasligi>
 
 <HataGosterimi Hata="_hata" />
 
-<MudTextField T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan veya vergi no ile ara"
-              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" DebounceInterval="400"
-              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" Clearable="true" />
+<FiltreCubugu>
+    <MudItem xs="12" md="6">
+        <MudTextField Variant="Variant.Outlined" T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan veya vergi no ile ara"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" DebounceInterval="400"
+                      Margin="Margin.Dense" Clearable="true" />
+    </MudItem>
+</FiltreCubugu>
 
-<MudTable Items="_sonuc?.Kayitlar" Loading="_yukleniyor" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="1">
-    <HeaderContent>
+<VeriTablosu T="SistemFirmaOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+             SayfaDegisti="SayfaDegistirAsync" BosBaslik="Firma bulunamadı" BosIkon="@Icons.Material.Outlined.Business">
+    <Basliklar>
         <MudTh>Ünvan</MudTh>
         <MudTh>Vergi No</MudTh>
         <MudTh>Paket</MudTh>
@@ -30,43 +31,36 @@
         <MudTh>Lisans Bitişi</MudTh>
         <MudTh>Kullanıcı</MudTh>
         <MudTh></MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="Ünvan">@context.Unvan</MudTd>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Ünvan"><b>@context.Unvan</b></MudTd>
         <MudTd DataLabel="Vergi No">@context.VergiNo</MudTd>
-        <MudTd DataLabel="Paket">@(PaketAdi(context.PaketKodu) ?? "—")</MudTd>
+        <MudTd DataLabel="Paket">
+            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">@(PaketAdi(context.PaketKodu) ?? "—")</MudChip>
+        </MudTd>
         <MudTd DataLabel="Ek Modüller">@string.Join(", ", context.EkModuller.Select(ModulMenusu.Ad))</MudTd>
         <MudTd DataLabel="Lisans Bitişi">
             @if (context.LisansBitisTarihi is { } bitis)
             {
-                <MudText Typo="Typo.body2" Color="@(bitis <= Zaman.GetUtcNow().UtcDateTime ? Color.Error : Color.Default)">
-                    @bitis.AddDays(-1).ToString("d")
-                </MudText>
+                var dolduMu = bitis <= Zaman.GetUtcNow().UtcDateTime;
+                <MudChip T="string" Size="Size.Small" Color="@(dolduMu ? Color.Error : Color.Success)" Variant="Variant.Text">
+                    @bitis.AddDays(-1).ToString("d")@(dolduMu ? " · doldu" : "")
+                </MudChip>
             }
         </MudTd>
         <MudTd DataLabel="Kullanıcı">@context.KullaniciSayisi</MudTd>
         <MudTd Style="text-align: right;">
-            <MudButton Size="Size.Small" Color="Color.Primary" OnClick="() => LisansAtaAsync(context)">Lisans</MudButton>
+            <MudButton Size="Size.Small" Color="Color.Primary" StartIcon="@Icons.Material.Filled.WorkspacePremium" OnClick="() => LisansAtaAsync(context)">Lisans</MudButton>
         </MudTd>
-    </RowTemplate>
-    <NoRecordsContent>
-        <MudText>Firma bulunamadı.</MudText>
-    </NoRecordsContent>
-</MudTable>
-
-@if (_sonuc is { ToplamSayfa: > 1 })
-{
-    <div class="d-flex justify-center mt-4">
-        <MudPagination Count="_sonuc.ToplamSayfa" Selected="_sayfa" SelectedChanged="SayfaDegistirAsync" />
-    </div>
-}
+    </Satir>
+</VeriTablosu>
 
 @code {
     private SayfaliSonuc<SistemFirmaOzeti>? _sonuc;
     private List<PaketOzeti> _paketler = [];
     private string? _arama;
     private int _sayfa = 1;
-    private bool _yukleniyor = true;
+    private bool _yukleniyor;
     private ApiHatasi? _hata;
 
     protected override async Task OnInitializedAsync()
@@ -79,10 +73,10 @@
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var adres = $"api/yonetim/sistem/firmalar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}";
-        var sonuc = await Api.GetAsync<SayfaliSonuc<SistemFirmaOzeti>>(adres);
+        var sonuc = await Api.GetAsync<SayfaliSonuc<SistemFirmaOzeti>>(
+            $"api/yonetim/sistem/firmalar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}");
         _hata = sonuc.Hata;
-        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<SistemFirmaOzeti>([], 1, 20, 0);
         _yukleniyor = false;
     }
 

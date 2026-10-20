@@ -25,6 +25,7 @@ builder.Services.AddMudServices(options =>
     options.SnackbarConfiguration.VisibleStateDuration = 4000;
 });
 builder.Services.AddOrtakServisler(apiAdresi);
+builder.Services.AddSingleton<ModulYukleyici>();
 
 var host = builder.Build();
 

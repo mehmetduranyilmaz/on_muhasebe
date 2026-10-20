@@ -1,0 +1,38 @@
+@* Her sayfanın üst kısmı: başlık, alt başlık, geri düğmesi ve sağda işlem düğmeleri. Tarayıcı sekme başlığını da ayarlar. *@
+<PageTitle>@Baslik - Ön Muhasebe</PageTitle>
+
+<div class="sayfa-basligi @Class">
+    @if (GeriAdres is not null)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="@GeriAdres" aria-label="Geri" Class="geri-dugmesi yazdirma-gizle" />
+    }
+    @if (Ikon is not null)
+    {
+        <div class="baslik-ikonu"><MudIcon Icon="@Ikon" /></div>
+    }
+    <div class="baslik-metinleri">
+        <h1 class="baslik-metin">@Baslik</h1>
+        @if (AltIcerik is not null)
+        {
+            <div class="baslik-alt">@AltIcerik</div>
+        }
+        else if (AltBaslik is not null)
+        {
+            <div class="baslik-alt">@AltBaslik</div>
+        }
+    </div>
+    @if (Islemler is not null)
+    {
+        <div class="baslik-islemleri yazdirma-gizle">@Islemler</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Baslik { get; set; } = "";
+    [Parameter] public string? AltBaslik { get; set; }
+    [Parameter] public RenderFragment? AltIcerik { get; set; }
+    [Parameter] public string? Ikon { get; set; }
+    [Parameter] public string? GeriAdres { get; set; }
+    [Parameter] public RenderFragment? Islemler { get; set; }
+    [Parameter] public string? Class { get; set; }
+}

@@ -8,7 +8,7 @@
         @if (!Oturum.SaltOkunurMu)
         {
             <div class="d-flex gap-2 align-center mb-3">
-                <MudTextField @bind-Value="_yeniAd" Label="Yeni grup adı" MaxLength="100" Margin="Margin.Dense" />
+                <MudTextField Variant="Variant.Outlined" @bind-Value="_yeniAd" Label="Yeni grup adı" MaxLength="100" Margin="Margin.Dense" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="string.IsNullOrWhiteSpace(_yeniAd)" OnClick="EkleAsync">Ekle</MudButton>
             </div>
         }

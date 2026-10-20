@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using OnMuhasebe.Web.Api;
+using OnMuhasebe.Web.Bilesenler;
 using OnMuhasebe.Web.Kimlik;
+using OnMuhasebe.Web.Tema;
 
 namespace OnMuhasebe.Web;
 
@@ -21,6 +23,8 @@ public static class OrtakServisler
         // Handler'lar ayrı DI kapsamında oluşturulduğu için oturum singleton olmalı; aksi halde farklı örnekler görürler.
         services.AddSingleton<OturumYoneticisi>();
         services.AddScoped<ApiIstemcisi>();
+        services.AddScoped<OnayServisi>();
+        services.AddSingleton<TemaYoneticisi>();
         services.AddAuthorizationCore();
         services.AddCascadingAuthenticationState();
         services.AddScoped<AuthenticationStateProvider, OturumAuthStateProvider>();

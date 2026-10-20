@@ -1,0 +1,19 @@
+@* Cari bakiyesi: borçlu kırmızı (B), alacaklı yeşil (A). Buyuk modunda sayı animasyonla sayılır. *@
+<span class="bakiye @Sinif @(Buyuk ? "bakiye-buyuk" : "")">
+    @if (Buyuk)
+    {
+        <SayacDegeri Deger="Math.Abs(Bakiye)" Bicimle="@(d => Bicim.Bakiye(Bakiye < 0 ? -d : d, ParaBirimi))" />
+    }
+    else
+    {
+        @Bicim.Bakiye(Bakiye, ParaBirimi)
+    }
+</span>
+
+@code {
+    [Parameter] public decimal Bakiye { get; set; }
+    [Parameter] public string ParaBirimi { get; set; } = ParaBirimleri.Tl;
+    [Parameter] public bool Buyuk { get; set; }
+
+    private string Sinif => Bakiye switch { > 0 => "bakiye-borclu", < 0 => "bakiye-alacakli", _ => "bakiye-sifir" };
+}

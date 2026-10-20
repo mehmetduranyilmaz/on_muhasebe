@@ -72,3 +72,21 @@ public sealed record BakiyeListesiCevabi(
     DateOnly Tarih,
     SayfaliSonuc<BakiyeSatiri> Satirlar,
     IReadOnlyList<ParaBirimiToplami> Toplamlar);
+
+// Ana sayfa özet paneli. Tutarlar TL; döviz bakiyeler bugünkü kurla değerlenir (kur yoksa kayıtlı TL).
+// Alacaklarımız: bize borçlu carilerin toplamı. Borçlarımız: alacaklı carilere borcumuz.
+public sealed record CariOzetRaporu(
+    int AktifCariSayisi,
+    int RiskAsanCariSayisi,
+    decimal AlacaklarimizTl,
+    decimal BorclarimizTl,
+    IReadOnlyList<DovizPozisyonu> DovizPozisyonlari,
+    IReadOnlyList<OzetCari> EnCokBorcluCariler,
+    IReadOnlyList<SonCariHareketi> SonHareketler);
+
+public sealed record DovizPozisyonu(string ParaBirimi, decimal Bakiye, decimal GuncelTl);
+
+public sealed record OzetCari(Guid Id, string Unvan, string ParaBirimi, decimal Bakiye, decimal GuncelTl);
+
+public sealed record SonCariHareketi(
+    Guid CariId, string CariUnvan, DateOnly Tarih, CariHareketTuru Tur, string ParaBirimi, decimal Borc, decimal Alacak, string? Aciklama);

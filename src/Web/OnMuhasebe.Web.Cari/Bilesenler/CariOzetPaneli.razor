@@ -1,0 +1,126 @@
+@* Ana sayfadaki Cari özet paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject ApiIstemcisi Api
+
+<div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Secondary" /> Cari özeti</div>
+
+@if (_ozet is null)
+{
+    <MudGrid Spacing="3" Class="mb-4">
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" lg="3"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="128px" Animation="Animation.Wave" Class="rounded-lg" /></MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    var o = _ozet;
+    var net = o.AlacaklarimizTl - o.BorclarimizTl;
+
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Alacaklarımız" Deger="o.AlacaklarimizTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))"
+                       Ikon="@Icons.Material.Filled.TrendingUp" Renk="#14B8A6" Href="cari/bakiye-listesi" Sira="0"
+                       AltMetin="Bize borçlu carilerin toplamı" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Borçlarımız" Deger="o.BorclarimizTl" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))"
+                       Ikon="@Icons.Material.Filled.TrendingDown" Renk="#EF4444" Href="cari/bakiye-listesi" Sira="1"
+                       AltMetin="Tedarikçilere olan borcumuz" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Net pozisyon" Deger="net" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))"
+                       Ikon="@Icons.Material.Filled.AccountBalanceWallet" Renk="#3B82F6" Sira="2"
+                       AltMetin="@(net >= 0 ? "Alacaklarımız borçlarımızdan fazla" : "Borçlarımız alacaklarımızdan fazla")" />
+        </MudItem>
+        <MudItem xs="12" sm="6" lg="3">
+            <OzetKarti Baslik="Risk limiti aşan" Deger="o.RiskAsanCariSayisi" Bicimle="@(d => $"{d:0} / {o.AktifCariSayisi} cari")"
+                       Ikon="@Icons.Material.Filled.WarningAmber" Renk="#F59E0B" Href="cari" Sira="3"
+                       AltMetin="Bakiyesi risk limitini geçen aktif cariler" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" md="6" lg="4">
+            <div class="panel-kart kart belirme" style="--i:4">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.CurrencyExchange" Size="Size.Small" Color="Color.Secondary" /> Döviz pozisyonu</div>
+                @if (o.DovizPozisyonlari.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.CurrencyExchange" Baslik="Dövizli cari yok" Aciklama="EUR, USD gibi dövizli cari açtığınızda burada görünür." />
+                }
+                else
+                {
+                    <HalkaGrafik Dilimler="_dovizDilimleri" OrtaBaslik="Net (TL)" OrtaDeger="@KisaTutar(o.DovizPozisyonlari.Sum(p => p.GuncelTl))" />
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="6" lg="4">
+            <div class="panel-kart kart belirme" style="--i:5">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Leaderboard" Size="Size.Small" Color="Color.Secondary" /> En çok borçlu cariler</div>
+                @if (_borclular.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.Celebration" Baslik="Borçlu cari yok" Aciklama="Tüm alacaklarınız tahsil edilmiş görünüyor." />
+                }
+                else
+                {
+                    <CubukListesi Ogeler="_borclular" />
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <div class="panel-kart kart belirme" style="--i:6">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Secondary" /> Son hareketler</div>
+                @if (o.SonHareketler.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.ReceiptLong" Baslik="Henüz hareket yok" />
+                }
+                @for (var i = 0; i < o.SonHareketler.Count; i++)
+                {
+                    var h = o.SonHareketler[i];
+                    var borcMu = h.Borc > 0;
+                    <a href="@($"cari/{h.CariId}")" class="son-hareket satir-belirme" style="--i:@i">
+                        <span class="son-hareket-ikon @(borcMu ? "borc" : "alacak")">
+                            <MudIcon Icon="@(borcMu ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward)" Size="Size.Small" />
+                        </span>
+                        <span style="flex:1; min-width:0">
+                            <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">@h.CariUnvan</div>
+                            <div style="font-size:.8rem; opacity:.7">@Bicim.Tarih(h.Tarih) · @CariMetinleri.HareketTuru(h.Tur)</div>
+                        </span>
+                        <span class="bakiye @(borcMu ? "bakiye-borclu" : "bakiye-alacakli")">@Bicim.Tutar(borcMu ? h.Borc : h.Alacak, h.ParaBirimi)</span>
+                    </a>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private CariOzetRaporu? _ozet;
+    private List<GrafikDilimi> _dovizDilimleri = [];
+    private List<CubukOgesi> _borclular = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<CariOzetRaporu>("api/cari/raporlar/ozet");
+        if (!sonuc.BasariliMi)
+        {
+            return;
+        }
+
+        _ozet = sonuc.Deger;
+        _dovizDilimleri = _ozet.DovizPozisyonlari
+            .Select(p => new GrafikDilimi(p.ParaBirimi, p.GuncelTl, $"{Bicim.Bakiye(p.Bakiye, p.ParaBirimi)} · {KisaTutar(p.GuncelTl)}"))
+            .ToList();
+        _borclular = _ozet.EnCokBorcluCariler
+            .Select(c => new CubukOgesi(c.Unvan, c.GuncelTl, Bicim.Tutar(c.GuncelTl, ParaBirimleri.Tl), $"cari/{c.Id}"))
+            .ToList();
+    }
+
+    // Grafik ortası için kısaltılmış TL: 1,2 Mn ₺ / 845 B ₺
+    private static string KisaTutar(decimal tutar) => Math.Abs(tutar) switch
+    {
+        >= 1_000_000 => $"{tutar / 1_000_000:0.#} Mn TL",
+        >= 1_000 => $"{tutar / 1_000:0.#} B TL",
+        _ => $"{tutar:0} TL"
+    };
+}

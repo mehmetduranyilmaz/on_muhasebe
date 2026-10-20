@@ -6,18 +6,18 @@
         <MudForm @ref="_form">
             <MudGrid Spacing="2">
                 <MudItem xs="6">
-                    <MudTextField @bind-Value="_ad" Label="Ad" Required="true" RequiredError="Ad gerekli." />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ad" Label="Ad" Required="true" RequiredError="Ad gerekli." />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudTextField @bind-Value="_soyad" Label="Soyad" Required="true" RequiredError="Soyad gerekli." />
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_soyad" Label="Soyad" Required="true" RequiredError="Soyad gerekli." />
                 </MudItem>
             </MudGrid>
-            <MudTextField @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Class="mt-3"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Class="mt-3"
                           Required="true" RequiredError="E-posta gerekli." />
-            <MudTextField @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password" Class="mt-3"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password" Class="mt-3"
                           Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
                           HelperText="Kullanıcı sistemde zaten kayıtlıysa boş bırakın; mevcut hesabı firmanıza bağlanır." />
-            <MudSelect @bind-Value="_rol" Label="Rol" Class="mt-3">
+            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_rol" Label="Rol" Class="mt-3">
                 <MudSelectItem Value="@Roller.Kullanici">Kullanıcı</MudSelectItem>
                 <MudSelectItem Value="@Roller.Yonetici">Yönetici</MudSelectItem>
             </MudSelect>

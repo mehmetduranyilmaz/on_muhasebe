@@ -4,23 +4,19 @@
 @inject IJSRuntime Js
 @inject TimeProvider Zaman
 
-<PageTitle>Cari Bakiye Listesi - Ön Muhasebe</PageTitle>
-
-<div class="d-flex align-center flex-wrap gap-2 mb-3">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="cari" aria-label="Geri" Class="yazdirma-gizle" />
-    <MudText Typo="Typo.h4">Cari Bakiye Listesi</MudText>
-    <MudSpacer />
+<SayfaBasligi Baslik="Cari Bakiye Listesi" AltBaslik="Bakiyeler, döviz değerlemesi ve kur farkı" GeriAdres="cari" Ikon="@Icons.Material.Filled.Assessment">
+    <Islemler>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Class="yazdirma-gizle" Disabled="_sonuc is null"
                OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
-</div>
+    </Islemler>
+</SayfaBasligi>
 
-<MudPaper Class="pa-3 mb-3 yazdirma-gizle" Elevation="1">
-    <MudGrid Spacing="2">
+<FiltreCubugu>
         <MudItem xs="6" md="2">
-            <MudDatePicker Date="_tarih" DateChanged="TarihDegistiAsync" Label="Bakiye tarihi" Margin="Margin.Dense" />
+            <MudDatePicker Variant="Variant.Outlined" Date="_tarih" DateChanged="TarihDegistiAsync" Label="Bakiye tarihi" Margin="Margin.Dense" />
         </MudItem>
         <MudItem xs="6" md="2">
-            <MudSelect T="BakiyeDurumu" Value="_durum" ValueChanged="DurumDegistiAsync" Label="Durum" Margin="Margin.Dense">
+            <MudSelect Variant="Variant.Outlined" T="BakiyeDurumu" Value="_durum" ValueChanged="DurumDegistiAsync" Label="Durum" Margin="Margin.Dense">
                 @foreach (var durum in Enum.GetValues<BakiyeDurumu>())
                 {
                     <MudSelectItem Value="durum">@CariMetinleri.BakiyeDurumu(durum)</MudSelectItem>
@@ -28,13 +24,13 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="6" md="2">
-            <MudSelect T="CariTuru?" Value="_tur" ValueChanged="TurDegistiAsync" Label="Tür" Clearable="true" Margin="Margin.Dense">
+            <MudSelect Variant="Variant.Outlined" T="CariTuru?" Value="_tur" ValueChanged="TurDegistiAsync" Label="Tür" Clearable="true" Margin="Margin.Dense">
                 <MudSelectItem T="CariTuru?" Value="CariTuru.Musteri">Müşteri</MudSelectItem>
                 <MudSelectItem T="CariTuru?" Value="CariTuru.Tedarikci">Tedarikçi</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="6" md="2">
-            <MudSelect T="string" Value="_paraBirimi" ValueChanged="ParaBirimiDegistiAsync" Label="Para birimi" Clearable="true" Margin="Margin.Dense">
+            <MudSelect Variant="Variant.Outlined" T="string" Value="_paraBirimi" ValueChanged="ParaBirimiDegistiAsync" Label="Para birimi" Clearable="true" Margin="Margin.Dense">
                 @foreach (var pb in ParaBirimleri.Tumu)
                 {
                     <MudSelectItem Value="pb.Kod">@pb.Kod</MudSelectItem>
@@ -42,17 +38,16 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
-            <MudTextField T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan veya kod" DebounceInterval="400"
+            <MudTextField Variant="Variant.Outlined" T="string" Value="_arama" ValueChanged="AraAsync" Placeholder="Ünvan veya kod" DebounceInterval="400"
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Margin="Margin.Dense" />
         </MudItem>
-    </MudGrid>
-</MudPaper>
+</FiltreCubugu>
 
 <HataGosterimi Hata="_hata" />
 
 @if (_yukleniyor)
 {
-    <MudProgressLinear Indeterminate="true" />
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
 }
 
 @if (_sonuc is { } s)
@@ -61,11 +56,12 @@
 
     <MudText Typo="Typo.body2" Class="mb-2">@Bicim.Tarih(s.Tarih) itibarıyla · @s.Satirlar.ToplamKayit cari</MudText>
 
-    <MudSimpleTable Dense="true" Hover="true" Bordered="true" Style="overflow-x: auto;">
+    <div class="kart belirme pa-2" style="overflow-x:auto">
+    <MudSimpleTable Dense="true" Hover="true" Elevation="0">
         <thead>
             <tr>
                 <th>Kod</th>
-                <th>Ünvan</th>
+                <th style="min-width: 220px;">Ünvan</th>
                 <th class="sayi">Borç</th>
                 <th class="sayi">Alacak</th>
                 <th class="sayi">Bakiye</th>
@@ -81,7 +77,7 @@
         <tbody>
             @foreach (var satir in s.Satirlar.Kayitlar)
             {
-                <tr class="cursor-pointer" @onclick="@(() => Navigasyon.NavigateTo($"cari/{satir.CariId}"))">
+                <tr class="cursor-pointer satir-belirme" @onclick="@(() => Navigasyon.NavigateTo($"cari/{satir.CariId}"))">
                     <td>@satir.Kod</td>
                     <td>@satir.Unvan</td>
                     <td class="sayi">@Bicim.Tutar(satir.Borc)</td>
@@ -98,6 +94,7 @@
             }
         </tbody>
     </MudSimpleTable>
+    </div>
 
     @if (s.Satirlar.ToplamSayfa > 1)
     {
@@ -107,7 +104,8 @@
     }
 
     <MudText Typo="Typo.h6" Class="mt-4 mb-2">Para birimine göre toplamlar</MudText>
-    <MudSimpleTable Dense="true" Bordered="true" Style="overflow-x: auto;">
+    <div class="kart belirme pa-2" style="overflow-x:auto; --i:1">
+    <MudSimpleTable Dense="true" Elevation="0">
         <thead>
             <tr>
                 <th>Para birimi</th>
@@ -134,6 +132,7 @@
             }
         </tbody>
     </MudSimpleTable>
+    </div>
 
     <MudText Typo="Typo.caption" Class="mt-2 d-block">
         Güncel TL: döviz bakiyenin rapor tarihi için geçerli TCMB döviz alış kuruyla değeri. Kur farkı: güncel TL ile işlem kurlarıyla

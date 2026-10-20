@@ -1,0 +1,26 @@
+@* Marka işareti: "ÖM" monogramı, lacivert-turkuaz degrade. *@
+<span class="logo @Class" style="--boyut: @(Boyut)px">
+    <svg viewBox="0 0 40 40" width="@Boyut" height="@Boyut" aria-hidden="true">
+        <defs>
+            <linearGradient id="logo-degrade" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#2DD4BF" />
+                <stop offset="100%" stop-color="#3B82F6" />
+            </linearGradient>
+        </defs>
+        <rect x="1" y="1" width="38" height="38" rx="11" fill="url(#logo-degrade)" />
+        <circle cx="14.5" cy="22" r="5" stroke="#fff" stroke-width="2.6" fill="none" />
+        <circle cx="12.3" cy="13.6" r="1.5" fill="#fff" />
+        <circle cx="16.7" cy="13.6" r="1.5" fill="#fff" />
+        <path d="M23 27 V16.5 L27.5 22.5 L32 16.5 V27" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    @if (MetinGoster)
+    {
+        <span class="logo-metin">Ön Muhasebe</span>
+    }
+</span>
+
+@code {
+    [Parameter] public int Boyut { get; set; } = 34;
+    [Parameter] public bool MetinGoster { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+}

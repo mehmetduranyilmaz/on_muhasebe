@@ -1,29 +1,46 @@
 @implements IDisposable
 @inject OturumYoneticisi Oturum
 
-<MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Ana Sayfa</MudNavLink>
+<MudNavMenu Class="pt-2">
+    <div class="menu-bolum-basligi">Genel</div>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.SpaceDashboard">Ana Sayfa</MudNavLink>
 
-    @foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)))
+    @if (_acikModuller.Count > 0)
     {
-        <MudNavLink Href="@modul.Yol" Icon="@modul.Ikon">@modul.Ad</MudNavLink>
+        <div class="menu-bolum-basligi">Modüller</div>
+        @foreach (var modul in _acikModuller)
+        {
+            <MudNavLink Href="@modul.Yol" Icon="@modul.Ikon">@modul.Ad</MudNavLink>
+        }
     }
 
+    <AuthorizeView Roles="@($"{Roller.Yonetici},{Roller.SistemYoneticisi}")">
+        <div class="menu-bolum-basligi">Yönetim</div>
+    </AuthorizeView>
     <AuthorizeView Roles="@Roller.Yonetici">
-        <MudDivider Class="my-2" />
         <MudNavLink Href="kullanicilar" Icon="@Icons.Material.Filled.ManageAccounts">Kullanıcılar</MudNavLink>
     </AuthorizeView>
-
     <AuthorizeView Roles="@Roller.SistemYoneticisi">
-        <MudDivider Class="my-2" />
         <MudNavLink Href="sistem/firmalar" Icon="@Icons.Material.Filled.AdminPanelSettings">Firmalar ve Lisanslar</MudNavLink>
     </AuthorizeView>
 </MudNavMenu>
 
 @code {
-    protected override void OnInitialized() => Oturum.Degisti += YenidenCiz;
+    private List<ModulMenuOgesi> _acikModuller = [];
 
-    public void Dispose() => Oturum.Degisti -= YenidenCiz;
+    protected override void OnInitialized()
+    {
+        Oturum.Degisti += OturumDegisti;
+        ModulleriGuncelle();
+    }
 
-    private void YenidenCiz() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Oturum.Degisti -= OturumDegisti;
+
+    private void ModulleriGuncelle() => _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)).ToList();
+
+    private void OturumDegisti()
+    {
+        ModulleriGuncelle();
+        InvokeAsync(StateHasChanged);
+    }
 }
