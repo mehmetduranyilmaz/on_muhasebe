@@ -84,6 +84,7 @@ public sealed class YonetimModulu : IModul
         Cikis.Map(grup);
         FirmaDegistir.Map(grup);
         Ben.Map(grup);
+        FirmaBilgileriIslemleri.Map(grup);
         KullaniciIslemleri.Map(grup);
         SistemIslemleri.Map(grup);
     }

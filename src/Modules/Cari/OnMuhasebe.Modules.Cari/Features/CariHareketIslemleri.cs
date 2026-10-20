@@ -56,7 +56,8 @@ internal static class CariHareketIslemleri
                 h.IptalHareketId != null,
                 h.IptalEdilenHareketId != null,
                 (h.Tur == CariHareketTuru.Acilis || h.Tur == CariHareketTuru.Dekont)
-                    && h.IptalHareketId == null && h.IptalEdilenHareketId == null))
+                    && h.IptalHareketId == null && h.IptalEdilenHareketId == null,
+                h.KaynakBelgeId))
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
 
         return TypedResults.Ok(sonuc);
@@ -136,7 +137,7 @@ internal static class CariHareketIslemleri
     private static CariHareketSatiri Satir(CariHareket h) => new(
         h.Id, h.Tarih, h.VadeTarihi, h.Tur, h.BelgeNo, h.Aciklama, h.Borc, h.Alacak, h.Kur, h.BorcTl, h.AlacakTl,
         h.IptalEdildiMi, h.IptalKaydiMi,
-        CariHareket.ElleGirilebilirMi(h.Tur) && !h.IptalEdildiMi && !h.IptalKaydiMi);
+        CariHareket.ElleGirilebilirMi(h.Tur) && !h.IptalEdildiMi && !h.IptalKaydiMi, h.KaynakBelgeId);
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

@@ -17,6 +17,8 @@ public static class StokMetinleri
         StokHareketTuru.TransferCikis => "Transfer çıkışı",
         StokHareketTuru.AlisFaturasi => "Alış faturası",
         StokHareketTuru.SatisFaturasi => "Satış faturası",
+        StokHareketTuru.SatistanIade => "Satıştan iade",
+        StokHareketTuru.AlistanIade => "Alıştan iade",
         _ => tur.ToString()
     };
 
@@ -31,7 +33,8 @@ public static class StokMetinleri
     ];
 
     public static bool GirisMi(StokHareketTuru tur) =>
-        tur is StokHareketTuru.Acilis or StokHareketTuru.SayimFazlasi or StokHareketTuru.TransferGiris or StokHareketTuru.AlisFaturasi;
+        tur is StokHareketTuru.Acilis or StokHareketTuru.SayimFazlasi or StokHareketTuru.TransferGiris or StokHareketTuru.AlisFaturasi
+        or StokHareketTuru.SatistanIade;
 
     public static string MaliyetYontemi(MaliyetYontemi yontem) => yontem switch
     {

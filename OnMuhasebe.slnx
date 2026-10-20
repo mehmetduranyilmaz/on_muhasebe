@@ -12,6 +12,10 @@
     <Project Path="src/Modules/Doviz/OnMuhasebe.Modules.Doviz.Contracts/OnMuhasebe.Modules.Doviz.Contracts.csproj" />
     <Project Path="src/Modules/Doviz/OnMuhasebe.Modules.Doviz/OnMuhasebe.Modules.Doviz.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Fatura/">
+    <Project Path="src/Modules/Fatura/OnMuhasebe.Modules.Fatura.Contracts/OnMuhasebe.Modules.Fatura.Contracts.csproj" />
+    <Project Path="src/Modules/Fatura/OnMuhasebe.Modules.Fatura/OnMuhasebe.Modules.Fatura.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Stok/">
     <Project Path="src/Modules/Stok/OnMuhasebe.Modules.Stok.Contracts/OnMuhasebe.Modules.Stok.Contracts.csproj" />
     <Project Path="src/Modules/Stok/OnMuhasebe.Modules.Stok/OnMuhasebe.Modules.Stok.csproj" />

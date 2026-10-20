@@ -81,13 +81,16 @@ else
         </FormBolumu>
 
         <FormBolumu Baslik="Fiyat ve vergi" Aciklama="@($"Fiyatlar 1 {Birimler.Ad(_temelBirim)} içindir")" Ikon="@Icons.Material.Filled.Sell" Sira="2">
-            <MudItem xs="6" md="3">
+            <MudItem xs="12" sm="4">
                 <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_alisFiyati" Label="Alış fiyatı" Format="N2" Min="0" HideSpinButtons="true" />
             </MudItem>
-            <MudItem xs="6" md="3">
-                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_satisFiyati" Label="Satış fiyatı" Format="N2" Min="0" HideSpinButtons="true" />
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_satisFiyati" Label="Toptan satış fiyatı" HelperText="KDV hariç" Format="N2" Min="0" HideSpinButtons="true" />
             </MudItem>
-            <MudItem xs="6" md="3">
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_perakendeFiyati" Label="Perakende satış fiyatı" HelperText="KDV dahil" Format="N2" Min="0" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6">
                 <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_paraBirimi" Label="Para birimi">
                     @foreach (var pb in ParaBirimleri.Tumu)
                     {
@@ -95,7 +98,7 @@ else
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="6" md="3">
+            <MudItem xs="6">
                 <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kdvOrani" Label="KDV oranı">
                     @foreach (var oran in KdvOranlari.Tumu)
                     {
@@ -143,6 +146,7 @@ else
     private int _kdvOrani = KdvOranlari.Genel;
     private decimal? _alisFiyati;
     private decimal? _satisFiyati;
+    private decimal? _perakendeFiyati;
     private string _paraBirimi = ParaBirimleri.Tl;
     private Guid? _grupId;
     private decimal? _kritikSeviye;
@@ -169,7 +173,7 @@ else
 
             var k = sonuc.Deger;
             (_kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani) = (k.Kod, k.Ad, k.Tur, k.TemelBirim, k.Barkod, k.KdvOrani);
-            (_alisFiyati, _satisFiyati, _paraBirimi, _grupId, _kritikSeviye) = (k.AlisFiyati, k.SatisFiyati, k.ParaBirimi, k.GrupId, k.KritikSeviye);
+            (_alisFiyati, _satisFiyati, _perakendeFiyati, _paraBirimi, _grupId, _kritikSeviye) = (k.AlisFiyati, k.SatisFiyati, k.PerakendeFiyati, k.ParaBirimi, k.GrupId, k.KritikSeviye);
             (_aciklama, _surum, _hareketVarMi) = (k.Aciklama, k.Surum, k.HareketVarMi);
             _ekBirimler.AddRange(k.EkBirimler.Select(b => new EkBirimSatiri { BirimKodu = b.BirimKodu, Katsayi = b.Katsayi, Barkod = b.Barkod }));
         }
@@ -195,7 +199,7 @@ else
         }
 
         var istek = new StokKartiKaydetIstegi(
-            _kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani, _alisFiyati, _satisFiyati, _paraBirimi, _grupId,
+            _kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani, _alisFiyati, _satisFiyati, _perakendeFiyati, _paraBirimi, _grupId,
             _tur == StokTuru.Urun ? _kritikSeviye : null, _aciklama,
             _ekBirimler.Select(e => new EkBirim(e.BirimKodu, e.Katsayi, e.Barkod)).ToList(), _surum);
         var sonuc = Id is { } id

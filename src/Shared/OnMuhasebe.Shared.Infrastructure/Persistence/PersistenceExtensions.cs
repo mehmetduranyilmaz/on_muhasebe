@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Npgsql;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 
 namespace OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -15,10 +17,15 @@ public static class PersistenceExtensions
         var baglanti = configuration.GetConnectionString(BaglantiAdi)
             ?? throw new InvalidOperationException($"'{BaglantiAdi}' bağlantı dizesi tanımlı değil.");
 
+        // Bir istekteki tüm modül context'leri aynı bağlantıyı paylaşır; böylece modüller arası işlemler
+        // (fatura → cari + stok) tek veritabanı transaction'ında yürür (bkz. IslemKapsami).
+        services.TryAddSingleton(_ => NpgsqlDataSource.Create(baglanti));
+        services.TryAddScoped(sp => sp.GetRequiredService<NpgsqlDataSource>().CreateConnection());
+
         services.AddDbContext<TContext>((sp, options) => options
-            .UseNpgsql(baglanti)
+            .UseNpgsql(sp.GetRequiredService<NpgsqlConnection>())
             .UseSnakeCaseNamingConvention()
-            .AddInterceptors(sp.GetRequiredService<DenetimInterceptor>()));
+            .AddInterceptors(sp.GetRequiredService<DenetimInterceptor>(), sp.GetRequiredService<IslemKatilimInterceptor>()));
 
         services.AddSingleton(new ModulDbContextKaydi(typeof(TContext)));
         return services;

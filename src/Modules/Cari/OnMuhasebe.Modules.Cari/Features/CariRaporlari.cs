@@ -126,7 +126,7 @@ internal static class CariRaporlari
             .Where(h => h.Tarih >= bas && h.Tarih <= son)
             .OrderBy(h => h.Tarih).ThenBy(h => h.Id)
             .Select(h => new EkstreSatiri(
-                h.Id, h.Tarih, h.VadeTarihi, h.Tur, h.BelgeNo, h.Aciklama, h.Borc, h.Alacak, 0m, h.Kur, h.BorcTl, h.AlacakTl, 0m))
+                h.Id, h.Tarih, h.VadeTarihi, h.Tur, h.BelgeNo, h.Aciklama, h.Borc, h.Alacak, 0m, h.Kur, h.BorcTl, h.AlacakTl, 0m, h.KaynakBelgeId))
             .ToListAsync(cancellationToken);
 
         var hesap = CariHesaplamalari.Ekstre(devir?.Bakiye ?? 0m, devir?.BakiyeTl ?? 0m, satirlar);

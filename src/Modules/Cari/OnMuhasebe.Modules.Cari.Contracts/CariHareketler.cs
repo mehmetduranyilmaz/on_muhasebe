@@ -9,6 +9,8 @@ public enum CariHareketTuru
     Dekont,
     SatisFaturasi,
     AlisFaturasi,
+    SatistanIadeFaturasi,
+    AlistanIadeFaturasi,
     Tahsilat,
     Odeme
 }
@@ -45,4 +47,5 @@ public sealed record CariHareketSatiri(
     decimal AlacakTl,
     bool IptalEdildiMi,
     bool IptalKaydiMi,
-    bool ElleIptalEdilebilirMi);
+    bool ElleIptalEdilebilirMi,
+    Guid? KaynakBelgeId);

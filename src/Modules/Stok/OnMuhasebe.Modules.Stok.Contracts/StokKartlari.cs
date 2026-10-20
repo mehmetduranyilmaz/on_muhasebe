@@ -23,6 +23,7 @@ public sealed record StokKartiKaydetIstegi(
     int KdvOrani,
     decimal? AlisFiyati,
     decimal? SatisFiyati,
+    decimal? PerakendeFiyati,
     string ParaBirimi,
     Guid? GrupId,
     decimal? KritikSeviye,
@@ -41,6 +42,7 @@ public sealed record StokKartiOzeti(
     decimal Miktar,
     decimal? KritikSeviye,
     decimal? SatisFiyati,
+    decimal? PerakendeFiyati,
     string ParaBirimi,
     bool AktifMi)
 {
@@ -60,6 +62,7 @@ public sealed record StokKartiDetayi(
     int KdvOrani,
     decimal? AlisFiyati,
     decimal? SatisFiyati,
+    decimal? PerakendeFiyati,
     string ParaBirimi,
     Guid? GrupId,
     string? GrupAdi,

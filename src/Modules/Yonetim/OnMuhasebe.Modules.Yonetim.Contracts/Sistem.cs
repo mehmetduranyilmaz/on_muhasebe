@@ -32,3 +32,14 @@ public sealed record SistemFirmaOzeti(
     int KullaniciSayisi);
 
 public sealed record PaketOzeti(string Kod, string Ad, bool TumModullerMi, IReadOnlyList<string> Moduller);
+
+// Firmanın kendi bilgileri; yazdırılan belgelerin (fatura) üst bilgisinde kullanılır.
+public sealed record FirmaBilgileri(
+    string Unvan,
+    string? VergiNo,
+    string? VergiDairesi,
+    string? Il,
+    string? Ilce,
+    string? Adres,
+    string? Telefon,
+    string? Eposta);

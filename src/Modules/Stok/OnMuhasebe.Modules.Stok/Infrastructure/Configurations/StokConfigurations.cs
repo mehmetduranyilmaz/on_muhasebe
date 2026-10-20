@@ -16,6 +16,7 @@ internal sealed class StokKartiConfiguration : IEntityTypeConfiguration<StokKart
         builder.Property(x => x.Barkod).HasMaxLength(50);
         builder.Property(x => x.AlisFiyati).HasPrecision(18, 4);
         builder.Property(x => x.SatisFiyati).HasPrecision(18, 4);
+        builder.Property(x => x.PerakendeFiyati).HasPrecision(18, 4);
         builder.Property(x => x.ParaBirimi).HasMaxLength(3);
         builder.Property(x => x.KritikSeviye).HasPrecision(18, StokHareket.MiktarOndalik);
         builder.Property(x => x.Aciklama).HasMaxLength(1000);

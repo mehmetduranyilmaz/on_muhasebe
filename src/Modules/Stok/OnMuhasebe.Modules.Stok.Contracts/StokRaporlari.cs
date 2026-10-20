@@ -33,7 +33,8 @@ public sealed record StokEkstreSatiri(
     decimal Cikis,
     decimal Bakiye,
     decimal BirimMaliyet,
-    decimal Tutar);
+    decimal Tutar,
+    Guid? KaynakBelgeId);
 
 public sealed record StokEkstresi(
     Guid StokKartiId,

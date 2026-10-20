@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Features;
 using OnMuhasebe.Modules.Cari.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Moduller;
@@ -22,6 +23,8 @@ public sealed class CariModulu : IModul
         services.AddModulDbContext<CariDbContext>(configuration);
         services.AddValidatorsFromAssemblyContaining<CariModulu>(includeInternalTypes: true);
         services.AddScoped<CariKodUretici>();
+        services.AddScoped<ICariSorgusu, CariSorgusu>();
+        services.AddScoped<ICariHareketYazici, CariHareketYazici>();
     }
 
     public void EndpointleriEkle(IEndpointRouteBuilder endpoints)

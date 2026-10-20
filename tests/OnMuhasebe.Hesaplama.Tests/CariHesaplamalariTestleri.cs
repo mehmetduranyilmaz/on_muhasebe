@@ -7,7 +7,7 @@ public class CariHesaplamalariTestleri
 {
     private static EkstreSatiri Satir(decimal borc, decimal alacak, decimal kur = 1m) => new(
         Guid.NewGuid(), new DateOnly(2026, 10, 1), null, CariHareketTuru.Dekont, null, null,
-        borc, alacak, 0m, kur, Math.Round(borc * kur, 2), Math.Round(alacak * kur, 2), 0m);
+        borc, alacak, 0m, kur, Math.Round(borc * kur, 2), Math.Round(alacak * kur, 2), 0m, null);
 
     [Fact]
     public void Ekstre_devirden_baslayip_yuruyen_bakiye_hesaplar()

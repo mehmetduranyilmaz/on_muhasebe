@@ -9,7 +9,7 @@ public class StokHareketTestleri
     private static readonly Guid _depo = Guid.NewGuid();
 
     private static StokKartiBilgileri Bilgiler(StokTuru tur = StokTuru.Urun, string temelBirim = "ADET") =>
-        new("Su 0,5 L", tur, temelBirim, null, 20, null, null, "TRY", null, null, null);
+        new("Su 0,5 L", tur, temelBirim, null, 20, null, null, null, "TRY", null, null, null);
 
     private static StokKarti Kart(StokTuru tur = StokTuru.Urun) =>
         StokKarti.Olustur("S00001", Bilgiler(tur), [new EkBirim("KOLI", 12m, "8690000000012")]).Deger;

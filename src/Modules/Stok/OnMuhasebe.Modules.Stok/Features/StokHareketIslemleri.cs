@@ -67,7 +67,8 @@ internal static class StokHareketIslemleri
                     h.IptalHareketId == null && h.IptalEdilenHareketId == null
                     && (h.Tur == StokHareketTuru.Acilis || h.Tur == StokHareketTuru.SayimFazlasi || h.Tur == StokHareketTuru.SayimEksigi
                         || h.Tur == StokHareketTuru.Fire || h.Tur == StokHareketTuru.Sarf
-                        || h.Tur == StokHareketTuru.TransferGiris || h.Tur == StokHareketTuru.TransferCikis)))
+                        || h.Tur == StokHareketTuru.TransferGiris || h.Tur == StokHareketTuru.TransferCikis),
+                    h.KaynakBelgeId))
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
 
         return TypedResults.Ok(sonuc);
@@ -201,7 +202,7 @@ internal static class StokHareketIslemleri
                 where idler.Contains(h.Id)
                 select new StokHareketSatiri(
                     h.Id, h.Tarih, h.Tur, d.Ad, h.GirisMiktari, h.CikisMiktari, h.GirilenBirim, h.GirilenMiktar, h.BirimFiyat,
-                    h.BelgeNo, h.Aciklama, h.IptalHareketId != null, h.IptalEdilenHareketId != null, false))
+                    h.BelgeNo, h.Aciklama, h.IptalHareketId != null, h.IptalEdilenHareketId != null, false, h.KaynakBelgeId))
             .ToListAsync(cancellationToken);
 
         return satirlar.OrderBy(s => idler.IndexOf(s.Id)).ToList();

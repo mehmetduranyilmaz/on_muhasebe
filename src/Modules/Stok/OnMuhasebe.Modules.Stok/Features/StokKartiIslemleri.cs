@@ -45,6 +45,7 @@ internal static class StokKartiIslemleri
             RuleFor(x => x.KdvOrani).Must(KdvOranlari.GecerliMi).WithMessage("KDV oranı %0, %1, %10 veya %20 olmalıdır.");
             RuleFor(x => x.AlisFiyati).GreaterThanOrEqualTo(0);
             RuleFor(x => x.SatisFiyati).GreaterThanOrEqualTo(0);
+            RuleFor(x => x.PerakendeFiyati).GreaterThanOrEqualTo(0);
             RuleFor(x => x.ParaBirimi).Must(ParaBirimleri.GecerliMi).WithMessage("Geçersiz para birimi.");
             RuleFor(x => x.KritikSeviye).GreaterThanOrEqualTo(0);
             RuleFor(x => x.Aciklama).MaximumLength(1000);
@@ -90,7 +91,7 @@ internal static class StokKartiIslemleri
             .Select(k => new StokKartiOzeti(
                 k.Id, k.Kod, k.Ad, k.Tur, k.TemelBirim, k.Barkod, k.Grup != null ? k.Grup.Ad : null,
                 db.StokHareketleri.Where(h => h.StokKartiId == k.Id).Sum(h => h.GirisMiktari - h.CikisMiktari),
-                k.KritikSeviye, k.SatisFiyati, k.ParaBirimi, k.AktifMi))
+                k.KritikSeviye, k.SatisFiyati, k.PerakendeFiyati, k.ParaBirimi, k.AktifMi))
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
 
         return TypedResults.Ok(sonuc);
@@ -225,7 +226,7 @@ internal static class StokKartiIslemleri
         var depolar = await db.Depolar.AsNoTracking().ToDictionaryAsync(d => d.Id, d => d.Ad, cancellationToken);
 
         return new StokKartiDetayi(
-            kart.Id, kart.Kod, kart.Ad, kart.Tur, kart.TemelBirim, kart.Barkod, kart.KdvOrani, kart.AlisFiyati, kart.SatisFiyati,
+            kart.Id, kart.Kod, kart.Ad, kart.Tur, kart.TemelBirim, kart.Barkod, kart.KdvOrani, kart.AlisFiyati, kart.SatisFiyati, kart.PerakendeFiyati,
             kart.ParaBirimi, kart.GrupId, kart.Grup?.Ad, kart.KritikSeviye, kart.Aciklama, kart.AktifMi,
             kart.Birimler.OrderBy(b => b.Katsayi).Select(b => new EkBirim(b.BirimKodu, b.Katsayi, b.Barkod)).ToList(),
             hesap?.DepoMiktarlari.Select(d => new DepoMiktari(d.Key, depolar.GetValueOrDefault(d.Key, "?"), d.Value))

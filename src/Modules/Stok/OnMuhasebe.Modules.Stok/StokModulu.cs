@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Features;
 using OnMuhasebe.Modules.Stok.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Moduller;
@@ -26,6 +27,8 @@ public sealed class StokModulu : IModul
         services.AddScoped<StokAyarServisi>();
         services.AddScoped<StokHesaplayici>();
         services.AddScoped<StokCikisKontrolu>();
+        services.AddScoped<IStokSorgusu, StokSorgusu>();
+        services.AddScoped<IStokHareketYazici, StokHareketYazici>();
     }
 
     public void EndpointleriEkle(IEndpointRouteBuilder endpoints)

@@ -16,6 +16,7 @@
     <ProjectReference Include="..\..\Modules\Doviz\OnMuhasebe.Modules.Doviz\OnMuhasebe.Modules.Doviz.csproj" />
     <ProjectReference Include="..\..\Modules\Cari\OnMuhasebe.Modules.Cari\OnMuhasebe.Modules.Cari.csproj" />
     <ProjectReference Include="..\..\Modules\Stok\OnMuhasebe.Modules.Stok\OnMuhasebe.Modules.Stok.csproj" />
+    <ProjectReference Include="..\..\Modules\Fatura\OnMuhasebe.Modules.Fatura\OnMuhasebe.Modules.Fatura.csproj" />
   </ItemGroup>
 
 </Project>

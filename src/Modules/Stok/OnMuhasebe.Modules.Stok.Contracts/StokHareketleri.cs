@@ -13,7 +13,9 @@ public enum StokHareketTuru
     TransferGiris,
     TransferCikis,
     AlisFaturasi,
-    SatisFaturasi
+    SatisFaturasi,
+    SatistanIade,
+    AlistanIade
 }
 
 // Elle girilen hareket. Miktar ve birim fiyat, seçilen birim (temel ya da ek birim) üzerindendir.
@@ -51,7 +53,8 @@ public sealed record StokHareketSatiri(
     string? Aciklama,
     bool IptalEdildiMi,
     bool IptalKaydiMi,
-    bool ElleIptalEdilebilirMi);
+    bool ElleIptalEdilebilirMi,
+    Guid? KaynakBelgeId);
 
 // Eksi stok ayarı "Uyar" ise kayıt yapılır ve uyarı döner.
 public sealed record StokHareketCevabi(IReadOnlyList<StokHareketSatiri> Hareketler, string? Uyari);

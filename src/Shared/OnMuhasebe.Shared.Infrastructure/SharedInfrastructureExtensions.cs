@@ -17,6 +17,9 @@ public static class SharedInfrastructureExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<IMevcutKullanici, HttpMevcutKullanici>();
         services.AddScoped<DenetimInterceptor>();
+        services.AddScoped<IslemKapsami>();
+        services.AddScoped<IIslemKapsami>(sp => sp.GetRequiredService<IslemKapsami>());
+        services.AddScoped<IslemKatilimInterceptor>();
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
         {

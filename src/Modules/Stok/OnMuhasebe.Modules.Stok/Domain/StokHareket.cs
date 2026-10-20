@@ -33,7 +33,7 @@ internal sealed class StokHareket : FirmaEntity
     public bool IptalKaydiMi => IptalEdilenHareketId is not null;
 
     public static bool GirisMi(StokHareketTuru tur) => tur is StokHareketTuru.Acilis or StokHareketTuru.SayimFazlasi
-        or StokHareketTuru.TransferGiris or StokHareketTuru.AlisFaturasi;
+        or StokHareketTuru.TransferGiris or StokHareketTuru.AlisFaturasi or StokHareketTuru.SatistanIade;
 
     public static bool ElleGirilebilirMi(StokHareketTuru tur) => tur is StokHareketTuru.Acilis or StokHareketTuru.SayimFazlasi
         or StokHareketTuru.SayimEksigi or StokHareketTuru.Fire or StokHareketTuru.Sarf;

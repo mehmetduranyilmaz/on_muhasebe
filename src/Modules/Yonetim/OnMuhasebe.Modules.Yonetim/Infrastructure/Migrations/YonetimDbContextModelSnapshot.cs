@@ -30,9 +30,19 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Adres")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("adres");
+
                     b.Property<bool>("AktifMi")
                         .HasColumnType("boolean")
                         .HasColumnName("aktif_mi");
+
+                    b.Property<string>("Eposta")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("eposta");
 
                     b.Property<DateTime?>("GuncellemeTarihi")
                         .HasColumnType("timestamp with time zone")
@@ -41,6 +51,16 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                     b.Property<Guid?>("GuncelleyenId")
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("Il")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("il");
+
+                    b.Property<string>("Ilce")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ilce");
 
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
@@ -55,6 +75,11 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
+
+                    b.Property<string>("Telefon")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("telefon");
 
                     b.Property<string>("Unvan")
                         .IsRequired()

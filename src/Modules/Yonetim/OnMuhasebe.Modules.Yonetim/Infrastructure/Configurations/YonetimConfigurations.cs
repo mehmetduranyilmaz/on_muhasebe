@@ -12,6 +12,11 @@ internal sealed class FirmaConfiguration : IEntityTypeConfiguration<Firma>
         builder.Property(x => x.Unvan).HasMaxLength(250);
         builder.Property(x => x.VergiNo).HasMaxLength(11);
         builder.Property(x => x.VergiDairesi).HasMaxLength(100);
+        builder.Property(x => x.Il).HasMaxLength(50);
+        builder.Property(x => x.Ilce).HasMaxLength(50);
+        builder.Property(x => x.Adres).HasMaxLength(500);
+        builder.Property(x => x.Telefon).HasMaxLength(30);
+        builder.Property(x => x.Eposta).HasMaxLength(256);
     }
 }
 

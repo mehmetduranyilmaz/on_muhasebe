@@ -19,6 +19,8 @@ public static class CariMetinleri
         CariHareketTuru.Dekont => "Dekont",
         CariHareketTuru.SatisFaturasi => "Satış Faturası",
         CariHareketTuru.AlisFaturasi => "Alış Faturası",
+        CariHareketTuru.SatistanIadeFaturasi => "Satıştan İade Faturası",
+        CariHareketTuru.AlistanIadeFaturasi => "Alıştan İade Faturası",
         CariHareketTuru.Tahsilat => "Tahsilat",
         CariHareketTuru.Odeme => "Ödeme",
         _ => tur.ToString()

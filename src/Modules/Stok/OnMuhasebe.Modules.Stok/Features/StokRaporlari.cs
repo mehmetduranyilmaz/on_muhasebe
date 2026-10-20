@@ -104,7 +104,7 @@ internal static class StokRaporlari
                 orderby h.Tarih, h.Id
                 select new
                 {
-                    h.Id, h.Tarih, h.Tur, h.DepoId, DepoAdi = d.Ad, h.BelgeNo, h.Aciklama, h.GirisMiktari, h.CikisMiktari, h.BirimFiyat,
+                    h.Id, h.Tarih, h.Tur, h.DepoId, DepoAdi = d.Ad, h.BelgeNo, h.Aciklama, h.GirisMiktari, h.CikisMiktari, h.BirimFiyat, h.KaynakBelgeId,
                     IptalliMi = h.IptalHareketId != null || h.IptalEdilenHareketId != null
                 })
             .ToListAsync(cancellationToken);
@@ -122,7 +122,7 @@ internal static class StokRaporlari
             bakiye += h.GirisMiktari - h.CikisMiktari;
             var birimMaliyet = h.CikisMiktari > 0 ? maliyet.CikisBirimMaliyetleri.GetValueOrDefault(h.Id, h.BirimFiyat ?? 0m) : h.BirimFiyat ?? 0m;
             satirlar.Add(new StokEkstreSatiri(h.Id, h.Tarih, h.Tur, h.DepoAdi, h.BelgeNo, h.Aciklama, h.GirisMiktari, h.CikisMiktari,
-                bakiye, Math.Round(birimMaliyet, 4), Para.Yuvarla((h.GirisMiktari + h.CikisMiktari) * birimMaliyet)));
+                bakiye, Math.Round(birimMaliyet, 4), Para.Yuvarla((h.GirisMiktari + h.CikisMiktari) * birimMaliyet), h.KaynakBelgeId));
         }
 
         return TypedResults.Ok(new StokEkstresi(

@@ -16,7 +16,8 @@ public sealed record EkstreSatiri(
     decimal Kur,
     decimal BorcTl,
     decimal AlacakTl,
-    decimal BakiyeTl);
+    decimal BakiyeTl,
+    Guid? KaynakBelgeId);
 
 // Bakiye pozitifse cari borçlu (bize borçlu), negatifse alacaklıdır.
 public sealed record EkstreCevabi(

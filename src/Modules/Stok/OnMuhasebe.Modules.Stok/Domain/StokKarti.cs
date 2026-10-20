@@ -20,6 +20,9 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
     public int KdvOrani { get; private set; }
     public decimal? AlisFiyati { get; private set; }
     public decimal? SatisFiyati { get; private set; }
+
+    // Perakende satış fiyatı KDV dahildir; SatisFiyati toptan (KDV hariç) fiyattır.
+    public decimal? PerakendeFiyati { get; private set; }
     public string ParaBirimi { get; private set; } = null!;
     public Guid? GrupId { get; private set; }
     public decimal? KritikSeviye { get; private set; }
@@ -95,6 +98,7 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
         KdvOrani = b.KdvOrani;
         AlisFiyati = b.AlisFiyati;
         SatisFiyati = b.SatisFiyati;
+        PerakendeFiyati = b.PerakendeFiyati;
         ParaBirimi = b.ParaBirimi;
         GrupId = b.GrupId;
         KritikSeviye = b.Tur == StokTuru.Hizmet ? null : b.KritikSeviye;
@@ -110,13 +114,14 @@ internal sealed record StokKartiBilgileri(
     int KdvOrani,
     decimal? AlisFiyati,
     decimal? SatisFiyati,
+    decimal? PerakendeFiyati,
     string ParaBirimi,
     Guid? GrupId,
     decimal? KritikSeviye,
     string? Aciklama)
 {
     public static StokKartiBilgileri Istekten(StokKartiKaydetIstegi i) => new(
-        i.Ad.Trim(), i.Tur, i.TemelBirim, Temiz(i.Barkod), i.KdvOrani, i.AlisFiyati, i.SatisFiyati, i.ParaBirimi,
+        i.Ad.Trim(), i.Tur, i.TemelBirim, Temiz(i.Barkod), i.KdvOrani, i.AlisFiyati, i.SatisFiyati, i.PerakendeFiyati, i.ParaBirimi,
         i.GrupId, i.KritikSeviye, Temiz(i.Aciklama));
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();

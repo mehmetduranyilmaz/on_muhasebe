@@ -385,6 +385,11 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("para_birimi");
 
+                    b.Property<decimal?>("PerakendeFiyati")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("perakende_fiyati");
+
                     b.Property<decimal?>("SatisFiyati")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)")

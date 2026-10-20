@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OnMuhasebe.Hesaplama.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\OnMuhasebe.Shared.Infrastructure\OnMuhasebe.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Cari\OnMuhasebe.Modules.Cari.Contracts\OnMuhasebe.Modules.Cari.Contracts.csproj" />
+    <ProjectReference Include="..\..\Doviz\OnMuhasebe.Modules.Doviz.Contracts\OnMuhasebe.Modules.Doviz.Contracts.csproj" />
+    <ProjectReference Include="..\..\Stok\OnMuhasebe.Modules.Stok.Contracts\OnMuhasebe.Modules.Stok.Contracts.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Modules.Fatura.Contracts\OnMuhasebe.Modules.Fatura.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
