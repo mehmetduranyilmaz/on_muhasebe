@@ -25,4 +25,20 @@ internal static class KasaBankaHatalari
     public static readonly Hata KaynakBelgedenIptal = Hata.IsKurali("kaynak_belgeden_iptal", "Bu işlem faturaya bağlı; faturadan iptal edilmelidir.");
     public static readonly Hata ZatenIptalEdilmis = Hata.IsKurali("zaten_iptal", "Bu işlem zaten iptal edilmiş.");
     public static readonly Hata CariLisansiYok = Hata.Yetki("cari_lisansi_yok", "Cari işlemi için Cari modülü lisansı gerekir.");
+    public static readonly Hata KasayaEkstreYok = Hata.IsKurali("kasaya_ekstre_yok", "Ekstre yalnızca banka, kredi kartı ve POS hesaplarına aktarılır.");
+    public static readonly Hata DosyaOkunamadi = Hata.Dogrulama("dosya_okunamadi", "Dosya okunamadı. CSV, Excel (.xlsx/.xls) veya MT940 biçiminde bir ekstre yükleyin.");
+    public static readonly Hata DosyaCokBuyuk = Hata.Dogrulama("dosya_cok_buyuk", "Ekstre dosyası en fazla 5 MB olabilir.");
+    public static readonly Hata EkstreBos = Hata.Dogrulama("ekstre_bos", "Dosyada aktarılacak hareket bulunamadı.");
+    public static readonly Hata AktarimBulunamadi = Hata.Bulunamadi("aktarim_bulunamadi", "Ekstre aktarımı veya satırı bulunamadı.");
+    public static readonly Hata EslemeDegistirilemez = Hata.IsKurali("esleme_degistirilemez", "Satırları aktarılmış ya da MT940 biçimindeki aktarımın kolon eşlemesi değiştirilemez.");
+    public static readonly Hata EslemeSatirVermedi = Hata.Dogrulama("esleme_satir_vermedi", "Bu kolon eşlemesiyle hiçbir satır okunamadı; tarih ve tutar kolonlarını kontrol edin.");
+    public static readonly Hata SatirDegistirilemez = Hata.IsKurali("satir_degistirilemez", "Aktarılmış ya da atlanmış satır değiştirilemez.");
+    public static readonly Hata AktarimHazirDegil = Hata.IsKurali("aktarim_hazir_degil", "Önce kolon eşlemesini tamamlayın; tamamlanmış aktarım tekrar aktarılamaz.");
+    public static readonly Hata AktarimSilinemez = Hata.IsKurali("aktarim_silinemez", "Satırı aktarılmış aktarım silinemez.");
+    public static readonly Hata SatirCariGerekli = Hata.Dogrulama("satir_cari_gerekli", "Tahsilat/ödeme için cari seçilmeli.");
+    public static readonly Hata SatirKategoriGerekli = Hata.Dogrulama("satir_kategori_gerekli", "Gelir/gider için kategori seçilmeli.");
+    public static readonly Hata SatirKarsiHesapGerekli = Hata.Dogrulama("satir_karsi_hesap_gerekli", "Virman için karşı hesap seçilmeli.");
+    public static readonly Hata SatirYonuUyusmuyor = Hata.Dogrulama("satir_yonu", "İşlem türü satırın yönüyle uyuşmuyor (giriş: tahsilat/gelir/virman, çıkış: ödeme/gider/virman).");
+    public static readonly Hata SatirVirmanDovizi = Hata.IsKurali("satir_virman_dovizi", "Ekstreden virman yalnızca aynı dövizdeki hesaplar arasında yapılır; farklı dövizli virmanı elle girin.");
+    public static readonly Hata KuralBulunamadi = Hata.Bulunamadi("kural_bulunamadi", "Kural bulunamadı.");
 }

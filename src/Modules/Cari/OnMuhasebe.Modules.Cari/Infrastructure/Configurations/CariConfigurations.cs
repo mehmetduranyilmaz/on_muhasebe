@@ -20,6 +20,7 @@ internal sealed class CariHesapConfiguration : IEntityTypeConfiguration<CariHesa
         builder.Property(x => x.Adres).HasMaxLength(500);
         builder.Property(x => x.Telefon).HasMaxLength(30);
         builder.Property(x => x.Eposta).HasMaxLength(256);
+        builder.Property(x => x.Iban).HasMaxLength(34);
         builder.Property(x => x.ParaBirimi).HasMaxLength(3);
         builder.Property(x => x.YetkiliAd).HasMaxLength(100);
         builder.Property(x => x.YetkiliTelefon).HasMaxLength(30);

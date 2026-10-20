@@ -24,6 +24,12 @@ internal sealed class CariSorgusu(CariDbContext db, CariKapamaServisi kapama) : 
             .IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi])
             .Where(c => cariIdleri.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => c.Unvan, cancellationToken);
+
+    public async Task<IReadOnlyList<CariEslestirmeAdayi>> EslestirmeAdaylariAsync(CancellationToken cancellationToken = default) =>
+        await db.CariHesaplar.AsNoTracking()
+            .Where(c => c.AktifMi)
+            .Select(c => new CariEslestirmeAdayi(c.Id, c.Unvan, c.VergiNo, c.Iban, c.ParaBirimi))
+            .ToListAsync(cancellationToken);
 }
 
 // Yazılan her kalem açık kalemlerle eşleştirilir; iptalde kapamalar çözülür ve karşı kalemler yeniden eşleştirilir.

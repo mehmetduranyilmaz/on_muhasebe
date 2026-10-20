@@ -50,6 +50,8 @@ internal static class CariHesapIslemleri
                 .When(x => x.KisiTipi == KisiTipi.Sahis && !string.IsNullOrWhiteSpace(x.VergiNo))
                 .WithMessage("Şahıs carilerde T.C. kimlik numarası (11 hane) girilmelidir.");
             RuleFor(x => x.VergiDairesi).MaximumLength(100);
+            RuleFor(x => x.Iban).Must(Iban.GecerliMi).When(x => !string.IsNullOrWhiteSpace(x.Iban))
+                .WithMessage("Geçerli bir IBAN girin (TR ile başlayan 26 karakter).");
             RuleFor(x => x.Il).MaximumLength(50);
             RuleFor(x => x.Ilce).MaximumLength(50);
             RuleFor(x => x.Adres).MaximumLength(500);
@@ -210,7 +212,7 @@ internal static class CariHesapIslemleri
             .Select(c => new CariDetayi(
                 c.Id, c.Kod, c.Unvan, c.Tur, c.KisiTipi, c.VergiNo, c.VergiDairesi, c.Il, c.Ilce, c.Adres, c.Telefon,
                 c.Eposta, c.ParaBirimi, c.VadeGun, c.RiskLimiti, c.GrupId, c.Grup != null ? c.Grup.Ad : null,
-                c.YetkiliAd, c.YetkiliTelefon, c.Not, c.AktifMi, c.FarkliDovizdeIslem,
+                c.YetkiliAd, c.YetkiliTelefon, c.Not, c.AktifMi, c.FarkliDovizdeIslem, c.Iban,
                 db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Borc - h.Alacak),
                 db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.BorcTl - h.AlacakTl),
                 db.CariHareketler.Any(h => h.CariHesapId == c.Id),

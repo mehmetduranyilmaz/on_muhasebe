@@ -40,6 +40,7 @@ internal sealed class KasaHareketiConfiguration : IEntityTypeConfiguration<KasaH
             .IncludeProperties(x => new { x.Giris, x.Cikis, x.GirisTl, x.CikisTl });
         builder.HasIndex(x => x.IslemId);
         builder.HasIndex(x => x.KaynakBelgeId);
+        builder.HasIndex(x => x.EkstreSatiriId).IsUnique().HasFilter("ekstre_satiri_id IS NOT NULL");
         builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.HesapId).OnDelete(DeleteBehavior.Restrict);
     }
 }

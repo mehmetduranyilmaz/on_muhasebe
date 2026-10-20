@@ -1,4 +1,7 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -16,4 +19,19 @@ internal sealed class KasaBankaDbContext(DbContextOptions<KasaBankaDbContext> op
     public DbSet<KasaHareketi> KasaHareketleri => Set<KasaHareketi>();
     public DbSet<GelirGiderKaydi> GelirGiderKayitlari => Set<GelirGiderKaydi>();
     public DbSet<GelirGiderKategorisi> Kategoriler => Set<GelirGiderKategorisi>();
+    public DbSet<EkstreAktarimi> EkstreAktarimlari => Set<EkstreAktarimi>();
+    public DbSet<EkstreSatiri> EkstreSatirlari => Set<EkstreSatiri>();
+    public DbSet<EkstreSablonu> EkstreSablonlari => Set<EkstreSablonu>();
+    public DbSet<EkstreKurali> EkstreKurallari => Set<EkstreKurali>();
+
+    // Kolon eşlemesi JSON olarak tek kolonda tutulur; konvansiyonla tanımlanınca EF onu ilişkili entity sanmaz.
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+        configurationBuilder.Properties<KolonEslemesi>().HaveConversion<KolonEslemesiDonusturucu>().HaveColumnType("jsonb");
+    }
+
+    private sealed class KolonEslemesiDonusturucu() : ValueConverter<KolonEslemesi, string>(
+        v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
+        v => JsonSerializer.Deserialize<KolonEslemesi>(v, JsonSerializerOptions.Default)!);
 }

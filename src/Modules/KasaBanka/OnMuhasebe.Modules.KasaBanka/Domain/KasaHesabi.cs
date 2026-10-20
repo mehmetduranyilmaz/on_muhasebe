@@ -118,11 +118,13 @@ internal sealed class KasaHareketi : FirmaEntity
     public Guid? IptalEdilenHareketId { get; private set; }
     public Guid? IptalHareketId { get; private set; }
 
+    // Banka ekstresinde karşılığı olan satır (mutabakat). Bir hareket yalnızca bir ekstre satırıyla eşleşir.
+    public Guid? EkstreSatiriId { get; private set; }
+
     public bool IptalEdildiMi => IptalHareketId is not null;
     public bool IptalKaydiMi => IptalEdilenHareketId is not null;
 
-    public static bool GirisMi(KasaHareketTuru tur) =>
-        tur is KasaHareketTuru.Tahsilat or KasaHareketTuru.VirmanGiris or KasaHareketTuru.Gelir;
+    public void EkstreyleEslestir(Guid ekstreSatiriId) => EkstreSatiriId = ekstreSatiriId;
 
     public static Sonuc<KasaHareketi> Olustur(
         KasaHesabi hesap, Guid islemId, KasaHareketTuru tur, bool girisMi, DateOnly tarih, decimal tutar, decimal kur,

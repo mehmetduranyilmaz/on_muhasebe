@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Features;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Modules;
@@ -26,6 +27,7 @@ public sealed class KasaBankaModulu : IModul
         services.AddScoped<KasaKodUretici>();
         services.AddScoped<KategoriServisi>();
         services.AddScoped<KasaIslemServisi>();
+        services.AddScoped<EkstreServisi>();
         services.AddScoped<IKasaBankaSorgusu, KasaBankaSorgusu>();
         services.AddScoped<IKasaBankaYazici, KasaBankaYazici>();
     }
@@ -38,5 +40,6 @@ public sealed class KasaBankaModulu : IModul
         IslemIslemleri.Map(grup);
         KategoriIslemleri.Map(grup);
         KasaBankaRaporlari.Map(grup);
+        EkstreIslemleri.Map(grup);
     }
 }

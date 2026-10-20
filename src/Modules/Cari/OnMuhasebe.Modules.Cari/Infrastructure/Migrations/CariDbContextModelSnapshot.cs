@@ -235,6 +235,11 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
 
+                    b.Property<string>("Iban")
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)")
+                        .HasColumnName("iban");
+
                     b.Property<string>("Il")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")

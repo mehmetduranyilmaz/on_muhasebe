@@ -20,6 +20,7 @@ internal sealed class CariHesap : FirmaEntity, ISilinebilir
     public string? Adres { get; private set; }
     public string? Telefon { get; private set; }
     public string? Eposta { get; private set; }
+    public string? Iban { get; private set; }
     public string ParaBirimi { get; private set; } = null!;
     public int? VadeGun { get; private set; }
     public decimal? RiskLimiti { get; private set; }
@@ -75,6 +76,7 @@ internal sealed class CariHesap : FirmaEntity, ISilinebilir
         Adres = b.Adres;
         Telefon = b.Telefon;
         Eposta = b.Eposta;
+        Iban = b.Iban;
         VadeGun = b.VadeGun;
         RiskLimiti = b.RiskLimiti;
         GrupId = b.GrupId;
@@ -103,12 +105,14 @@ internal sealed record CariBilgileri(
     string? YetkiliAd,
     string? YetkiliTelefon,
     string? Not,
-    bool FarkliDovizdeIslem)
+    bool FarkliDovizdeIslem,
+    string? Iban)
 {
     public static CariBilgileri Istekten(CariKaydetIstegi i) => new(
         i.Unvan.Trim(), i.Tur, i.KisiTipi, Temiz(i.VergiNo), Temiz(i.VergiDairesi), Temiz(i.Il), Temiz(i.Ilce),
         Temiz(i.Adres), Temiz(i.Telefon), Temiz(i.Eposta)?.ToLowerInvariant(), i.ParaBirimi, i.VadeGun, i.RiskLimiti,
-        i.GrupId, Temiz(i.YetkiliAd), Temiz(i.YetkiliTelefon), Temiz(i.Not), i.FarkliDovizdeIslem);
+        i.GrupId, Temiz(i.YetkiliAd), Temiz(i.YetkiliTelefon), Temiz(i.Not), i.FarkliDovizdeIslem,
+        Temiz(i.Iban) is { } iban ? Shared.Domain.Dogrulama.Iban.Normalize(iban) : null);
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

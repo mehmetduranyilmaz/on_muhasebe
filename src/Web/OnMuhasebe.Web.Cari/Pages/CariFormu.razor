@@ -76,6 +76,10 @@ else
                 <MudItem xs="12" sm="6" md="3">
                     <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Label="E-posta" MaxLength="256" InputType="InputType.Email" />
                 </MudItem>
+                <MudItem xs="12" sm="6" md="6">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_iban" Label="IBAN" MaxLength="40"
+                                  HelperText="Banka ekstresi aktarımında carinin otomatik bulunmasını sağlar" />
+                </MudItem>
                 <MudItem xs="12" sm="6" md="3">
                     <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yetkiliAd" Label="Yetkili kişi" MaxLength="100" />
                 </MudItem>
@@ -132,6 +136,7 @@ else
     private string? _adres;
     private string? _telefon;
     private string? _eposta;
+    private string? _iban;
     private string _paraBirimi = ParaBirimleri.Tl;
     private int? _vadeGun;
     private decimal? _riskLimiti;
@@ -166,6 +171,7 @@ else
             (_paraBirimi, _vadeGun, _riskLimiti, _grupId) = (c.ParaBirimi, c.VadeGun, c.RiskLimiti, c.GrupId);
             (_yetkiliAd, _yetkiliTelefon, _not, _surum, _hareketVarMi) = (c.YetkiliAd, c.YetkiliTelefon, c.Not, c.Surum, c.HareketVarMi);
             _farkliDovizdeIslem = c.FarkliDovizdeIslem;
+            _iban = c.Iban;
         }
 
         _yukleniyor = false;
@@ -181,7 +187,7 @@ else
 
         var istek = new CariKaydetIstegi(
             _kod, _unvan, _tur, _kisiTipi, _vergiNo, _vergiDairesi, _il, _ilce, _adres, _telefon, _eposta,
-            _paraBirimi, _vadeGun, _riskLimiti, _grupId, _yetkiliAd, _yetkiliTelefon, _not, _farkliDovizdeIslem, _surum);
+            _paraBirimi, _vadeGun, _riskLimiti, _grupId, _yetkiliAd, _yetkiliTelefon, _not, _farkliDovizdeIslem, _surum, _iban);
         var sonuc = Id is { } id
             ? await Api.PutAsync<CariDetayi>($"api/cari/hesaplar/{id}", istek)
             : await Api.PostAsync<CariDetayi>("api/cari/hesaplar", istek);

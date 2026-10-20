@@ -38,7 +38,8 @@ public sealed record CariKaydetIstegi(
     string? YetkiliTelefon,
     string? Not,
     bool FarkliDovizdeIslem = false,
-    uint Surum = 0);
+    uint Surum = 0,
+    string? Iban = null);
 
 public sealed record CariOzeti(
     Guid Id,
@@ -79,6 +80,7 @@ public sealed record CariDetayi(
     string? Not,
     bool AktifMi,
     bool FarkliDovizdeIslem,
+    string? Iban,
     decimal Bakiye,
     decimal BakiyeTl,
     bool HareketVarMi,

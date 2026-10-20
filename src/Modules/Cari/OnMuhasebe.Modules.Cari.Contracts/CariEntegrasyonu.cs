@@ -17,6 +17,8 @@ public sealed record CariBilgisi(
     bool AktifMi,
     bool FarkliDovizdeIslem);
 
+public sealed record CariEslestirmeAdayi(Guid Id, string Unvan, string? VergiNo, string? Iban, string ParaBirimi);
+
 public interface ICariSorgusu
 {
     Task<CariBilgisi?> GetirAsync(Guid cariId, CancellationToken cancellationToken = default);
@@ -25,6 +27,9 @@ public interface ICariSorgusu
     Task<IReadOnlyDictionary<Guid, decimal>> BelgeKalanlariAsync(IReadOnlyCollection<Guid> belgeIdleri, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyDictionary<Guid, string>> UnvanlarAsync(IReadOnlyCollection<Guid> cariIdleri, CancellationToken cancellationToken = default);
+
+    // Banka ekstresi önerileri için firmanın aktif carileri (açıklamada VKN, IBAN veya unvan aranır).
+    Task<IReadOnlyList<CariEslestirmeAdayi>> EslestirmeAdaylariAsync(CancellationToken cancellationToken = default);
 }
 
 // Tutar carinin para birimindedir; TL carilerde kur 1'dir.
