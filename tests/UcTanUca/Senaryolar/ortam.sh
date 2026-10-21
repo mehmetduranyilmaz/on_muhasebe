@@ -69,3 +69,9 @@ smtp_ayarla() {
     -H "Authorization: Bearer $token" \
     --data-binary '{"aktifMi":true,"sunucu":"'"$SMTP_SUNUCU"'","port":'"$SMTP_PORT"',"guvenlik":"Yok","kullaniciAdi":null,"gonderenAdres":"bildirim@onmuhasebe.local","gonderenAd":"On Muhasebe","sifreKayitliMi":false}'
 }
+
+# Uygulamanın kısıtlı rolüyle (RLS'e tabi) SQL. OM_UYGULAMA_PSQL verilmezse geliştirme konteyneri ve geliştirme şifresi.
+uygulama_sql() {
+  if [ -n "${OM_UYGULAMA_PSQL:-}" ]; then $OM_UYGULAMA_PSQL -Atc "$1"
+  else MSYS_NO_PATHCONV=1 docker exec -e PGPASSWORD=onmuhasebe_uygulama_dev onmuhasebe-postgres psql -h localhost -U onmuhasebe_uygulama -d onmuhasebe -Atc "$1"; fi
+}

@@ -66,6 +66,9 @@ yedek açılır ama oturum anahtarları ve SMTP şifresi kaybolur.
 - API açılışta veritabanına bağlandığı rolü denetler; rol satır güvenliğini atlayabiliyorsa (süper kullanıcı, BYPASSRLS,
   tablo sahibi) hiç açılmaz.
 - PostgreSQL dışarıya açılmaz; yalnızca kapsayıcı ağında erişilir.
+- Fatura satırı, stok birimi gibi `firma_id` sütunu olmayan alt tablolar da RLS ile korunur: satır, ancak bağlı olduğu üst
+  kayıt firmaya görünüyorsa görünür. Politikalar dış anahtarlardan otomatik türetilir; `rls_senaryo` korumasız tablo kalırsa kalır.
+- İmajlar özetle (digest), GitHub Actions adımları commit SHA'sıyla sabitlidir; güncellemeleri Dependabot haftalık PR olarak önerir.
 - Kapsayıcılar: API ve Web tüm Linux yetkileri bırakılmış (`cap_drop: ALL`), yetki yükseltme kapalı; API salt okunur dosya
   sisteminde ve root olmayan kullanıcıyla çalışır. Günlükler döndürülür (10 MB × 5).
 - Hatalı şifre denemeleri e-posta + IP çiftine sayılır (15 dakikada 5); başkası kendi IP'sinden bir kullanıcıyı

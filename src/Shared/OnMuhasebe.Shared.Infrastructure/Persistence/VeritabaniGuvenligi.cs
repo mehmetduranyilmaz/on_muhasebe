@@ -6,7 +6,8 @@ namespace OnMuhasebe.Shared.Infrastructure.Persistence;
 // PostgreSQL satır düzeyi güvenliği (RLS): uygulama, tablo sahibi olmayan ve RLS'yi atlayamayan bir rolle bağlanır; iş verisi
 // tablolarında (firma_id kolonu olan) yalnızca oturuma yazılan firmanın satırları görünür ve yazılabilir. Uygulama kodundaki firma
 // filtresinin ikinci savunma hattıdır: bir sorguda filtre unutulsa bile veritabanı başka firmanın satırını vermez.
-// Yönetim şeması (kullanıcı, firma üyeliği, lisans) giriş gibi işlemlerde tasarım gereği firmalar arası okunduğundan kapsam dışıdır.
+// firma_id kolonu olmayan alt tablolar üst kayıt üzerinden korunur. Yönetim şeması (kullanıcı, firma üyeliği, lisans) giriş gibi
+// işlemlerde tasarım gereği firmalar arası okunduğundan kapsam dışıdır.
 // Kurulum idempotenttir; her migration'dan sonra tablo sahibi bağlantısıyla çalıştırılır (yeni tablolar da kapsanır).
 public static partial class VeritabaniGuvenligi
 {
@@ -61,7 +62,7 @@ public static partial class VeritabaniGuvenligi
         var kapsamDisi = string.Join(", ", _kapsamDisiSemalar.Select(s => $"'{s}'"));
         return $$"""
             DO $$
-            DECLARE s record; t record;
+            DECLARE s record; t record; a record;
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{{rol}}') THEN
                     CREATE ROLE {{rol}} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {{sifreLiteral}};
@@ -89,6 +90,27 @@ public static partial class VeritabaniGuvenligi
                             || 'WITH CHECK (firma_id = NULLIF(current_setting(''{{FirmaAyari}}'', true), '''')::uuid)',
                             t.table_schema, t.table_name);
                     END IF;
+                END LOOP;
+
+                -- firma_id'si olmayan alt tablolar (fatura satırı, stok birimi, ekstre satırı...) üst kayda bakar: satır, ancak
+                -- dış anahtarla bağlı olduğu üst kayıt bu firmaya görünüyorsa görünür/yazılır (üst tablonun RLS'i alt sorguda da
+                -- geçerlidir). Politika dış anahtarlardan türetilir; yeni alt tablolar da kendiliğinden kapsanır.
+                FOR a IN SELECT n.nspname AS sema, c.relname AS tablo,
+                                string_agg(format('EXISTS (SELECT 1 FROM %I.%I u WHERE u.%I = %I.%I.%I)',
+                                                  un.nspname, uc.relname, ua.attname, n.nspname, c.relname, ca.attname), ' AND ') AS kosul
+                         FROM pg_constraint k
+                         JOIN pg_class c ON c.oid = k.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+                         JOIN pg_class uc ON uc.oid = k.confrelid JOIN pg_namespace un ON un.oid = uc.relnamespace
+                         JOIN pg_attribute ca ON ca.attrelid = k.conrelid AND ca.attnum = k.conkey[1]
+                         JOIN pg_attribute ua ON ua.attrelid = k.confrelid AND ua.attnum = k.confkey[1]
+                         WHERE k.contype = 'f' AND array_length(k.conkey, 1) = 1 AND c.relkind = 'r'
+                           AND n.nspname NOT IN ({{kapsamDisi}}) AND n.nspname NOT LIKE 'pg\_%'
+                           AND NOT EXISTS (SELECT 1 FROM pg_attribute x WHERE x.attrelid = c.oid AND x.attname = 'firma_id' AND NOT x.attisdropped)
+                           AND EXISTS (SELECT 1 FROM pg_attribute x WHERE x.attrelid = uc.oid AND x.attname = 'firma_id' AND NOT x.attisdropped)
+                         GROUP BY n.nspname, c.relname LOOP
+                    EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', a.sema, a.tablo);
+                    EXECUTE format('DROP POLICY IF EXISTS ust_kayit_izolasyonu ON %I.%I', a.sema, a.tablo);
+                    EXECUTE format('CREATE POLICY ust_kayit_izolasyonu ON %I.%I USING (%s) WITH CHECK (%s)', a.sema, a.tablo, a.kosul, a.kosul);
                 END LOOP;
             END $$;
             """;

@@ -32,8 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
       - name: Derleme
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: API imajı
         run: docker build -f deploy/api.Dockerfile -t onmuhasebe-api .
       - name: Web imajı
@@ -65,7 +65,10 @@ jobs:
       Guvenlik__OturumsuzDakikalikIstek: "100000"
       OM_HIZ_BEKLE: "0"
       OM_PSQL: psql postgresql://onmuhasebe:onmuhasebe_dev@localhost:5432/onmuhasebe
+      OM_UYGULAMA_PSQL: psql postgresql://onmuhasebe_uygulama:onmuhasebe_uygulama_dev@localhost:5432/onmuhasebe
       OM_BEKLEME_CARPANI: "2"
+    # Test servisleri bilinçli olarak etiketle çekilir (aynı ana sürümün en güncel yaması); canlı imajlar deploy/ altında
+    # özetle (digest) sabitlenir ve Dependabot ile güncellenir.
     services:
       postgres:
         image: postgres:18-alpine
@@ -80,8 +83,8 @@ jobs:
         image: axllent/mailpit:v1.27
         ports: ["1025:1025", "8025:8025"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
       - name: Derleme
@@ -117,7 +120,7 @@ jobs:
           bash tests/UcTanUca/calistir.sh tarayici
       - name: Test çıktıları
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: uctanuca-cikti
           path: tests/UcTanUca/cikti/

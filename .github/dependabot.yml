@@ -1,0 +1,45 @@
+# Bağımlılık güncellemeleri: her pazartesi sabah PR olarak açılır, CI'dan geçmeden birleştirilmez.
+# Docker imajları ve GitHub Actions özet/SHA ile sabitlidir; Dependabot yeni sürümün özetini önerir.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 10
+    groups:
+      # .NET ve EF Core paketleri birlikte güncellenir (aynı sürüm ailesi).
+      dotnet:
+        patterns: ["Microsoft.*", "System.*", "Npgsql*", "EFCore.*"]
+      test:
+        patterns: ["xunit*", "coverlet*", "Microsoft.NET.Test.Sdk"]
+
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Istanbul
+
+  - package-ecosystem: docker-compose
+    directories: ["/", "/deploy"]
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Istanbul
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Istanbul
+    groups:
+      actions:
+        patterns: ["*"]
