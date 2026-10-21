@@ -163,20 +163,61 @@ public partial class BordroFormu
     // Aynı keşidecinin ardışık çekleri için: bilgiler kopyalanır, çek no bir artırılır.
     private async Task KopyalaAsync(Satir s)
     {
-        var yeni = new Satir
-        {
-            Tur = s.Tur, Vade = s.Vade?.AddMonths(1), Tutar = s.Tutar, ParaBirimi = s.ParaBirimi, Borclu = s.Borclu, YeniBorclu = s.YeniBorclu,
-            BorcluAdi = s.BorcluAdi, KimlikNo = s.KimlikNo, KayitliHesaplar = s.KayitliHesaplar, BankaAdi = s.BankaAdi, Sube = s.Sube,
-            HesapNo = s.HesapNo, KesideYeri = s.KesideYeri, KefilAdi = s.KefilAdi, KefilKimlikNo = s.KefilKimlikNo, KendiHesapId = s.KendiHesapId,
-            Risk = s.Risk, KarneId = s.KarneId,
-            SeriNo = EvrakSeriNo.Ardisik(s.SeriNo ?? "", 2) is { } ardisik ? ardisik[1] : null
-        };
+        var yeni = Klon(s, EvrakSeriNo.Ardisik(s.SeriNo ?? "", 2) is { } ardisik ? ardisik[1] : null, s.Vade?.AddMonths(1), s.Tutar);
         _satirlar.Insert(_satirlar.IndexOf(s) + 1, yeni);
         if (yeni.KarneId is not null)
         {
             await SiradakiYaprakAsync(yeni);
         }
     }
+
+    // Seri giriş: satır planın ilk evrakı olur, kalanlar aynı bilgilerle arkasına eklenir. Karnede numaralar sırayla karneden gelir.
+    private async Task SeriEkleAsync(Satir s)
+    {
+        var parametreler = new DialogParameters<SeriGirisDialog>
+        {
+            { x => x.Tur, s.Tur },
+            { x => x.IlkSeri, s.SeriNo },
+            { x => x.IlkVade, s.Vade },
+            { x => x.Tutar, s.Tutar },
+            { x => x.ParaBirimi, ParaBirimiOf(s) },
+            { x => x.Karneli, !Alinan && s.KarneId is not null }
+        };
+        var dialog = await DialogService.ShowAsync<SeriGirisDialog>($"Seri {CekSenetMetinleri.Tur(s.Tur).ToLower(Bicim.Kultur)} girişi", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is not { Canceled: false, Data: IReadOnlyList<SeriGirisDialog.SeriSatiri> plan })
+        {
+            return;
+        }
+
+        var ilk = plan[0];
+        (s.Vade, s.Tutar) = (ilk.Vade.ToDateTime(TimeOnly.MinValue), ilk.Tutar);
+        if (ilk.Seri is not null)
+        {
+            s.SeriNo = ilk.Seri;
+        }
+
+        var sira = _satirlar.IndexOf(s);
+        foreach (var p in plan.Skip(1))
+        {
+            var yeni = Klon(s, p.Seri, p.Vade.ToDateTime(TimeOnly.MinValue), p.Tutar);
+            _satirlar.Insert(++sira, yeni);
+            if (yeni.KarneId is not null)
+            {
+                await SiradakiYaprakAsync(yeni);
+            }
+        }
+
+        Snackbar.Add($"{plan.Count} evrak hazırlandı; kaydetmeden önce kontrol edin.", Severity.Info);
+    }
+
+    private static Satir Klon(Satir s, string? seriNo, DateTime? vade, decimal tutar) => new()
+    {
+        Tur = s.Tur, Vade = vade, Tutar = tutar, ParaBirimi = s.ParaBirimi, Borclu = s.Borclu, YeniBorclu = s.YeniBorclu,
+        BorcluAdi = s.BorcluAdi, KimlikNo = s.KimlikNo, KayitliHesaplar = s.KayitliHesaplar, BankaAdi = s.BankaAdi, Sube = s.Sube,
+        HesapNo = s.HesapNo, KesideYeri = s.KesideYeri, KefilAdi = s.KefilAdi, KefilKimlikNo = s.KefilKimlikNo, KendiHesapId = s.KendiHesapId,
+        Risk = s.Risk, KarneId = s.KarneId, SeriNo = seriNo
+    };
 
     // Bu bordrodaki satırlar da düşüldükten sonra karnede kalacak boş yaprak eşiğin altındaysa seri alanının altında uyarı.
     private string? KarneIpucu(Satir s)

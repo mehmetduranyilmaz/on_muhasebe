@@ -1,0 +1,123 @@
+@* Ardışık numaralı çek/senet: bir evraktan başlayarak adet, vade aralığı ve tutara göre seri üretir (ör. 12 aylık taksit senedi).
+   Karneli verilen evrakta numaralar karneden sırayla alındığından yalnızca vade ve tutar planlanır. *@
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            @if (Karneli)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" Icon="@Icons.Material.Filled.MenuBook">
+                        Numaralar karneden sırayla (iptal edilen yapraklar atlanarak) alınır.
+                    </MudAlert>
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="7">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ilkSeri" Label="İlk evrakın no" MaxLength="30" Immediate="true"
+                                  HelperText="Sayı ile bitmeli; sonrakiler bir artırılır" />
+                </MudItem>
+            }
+            <MudItem xs="@(Karneli ? 6 : 5)">
+                <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_adet" Label="Adet" Min="2" Max="SeriGiris.AzamiAdet" Immediate="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" @bind-Date="_ilkVade" Label="İlk vade" DateFormat="dd.MM.yyyy" />
+            </MudItem>
+            <MudItem xs="@(Karneli ? 12 : 6)">
+                <MudSelect T="VadeAraligi" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aralik" Label="Vade aralığı" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem T="VadeAraligi" Value="VadeAraligi.Aylik">Her ay</MudSelectItem>
+                    <MudSelectItem T="VadeAraligi" Value="VadeAraligi.IkiHaftalik">İki haftada bir</MudSelectItem>
+                    <MudSelectItem T="VadeAraligi" Value="VadeAraligi.Haftalik">Her hafta</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="@(_toplamiBol ? $"Toplam tutar ({ParaBirimi})" : $"Evrak başına tutar ({ParaBirimi})")"
+                                 Format="N2" Min="0" HideSpinButtons="true" Immediate="true" />
+            </MudItem>
+            <MudItem xs="6" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_toplamiBol" Color="Color.Primary" Label="Toplamı eşit böl" />
+            </MudItem>
+            @if (Plan is { } plan)
+            {
+                <MudItem xs="12">
+                    <div class="seri-onizleme">
+                        <table>
+                            <thead><tr><th>#</th><th>No</th><th>Vade</th><th class="sayi">Tutar</th></tr></thead>
+                            <tbody>
+                                @foreach (var (p, i) in plan.Select((p, i) => (p, i)))
+                                {
+                                    <tr>
+                                        <td>@(i + 1)</td>
+                                        <td class="seri">@(p.Seri ?? "karneden")</td>
+                                        <td>@Bicim.Tarih(p.Vade)</td>
+                                        <td class="sayi">@Bicim.Tutar(p.Tutar)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot><tr><td colspan="3">Toplam</td><td class="sayi">@Bicim.Tutar(plan.Sum(p => p.Tutar), ParaBirimi)</td></tr></tfoot>
+                        </table>
+                    </div>
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="12"><MudText Typo="Typo.caption">@Eksik</MudText></MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlaylistAdd" Disabled="Plan is null"
+                   OnClick="() => MudDialog.Close(DialogResult.Ok(Plan))">@(_adet) evrak oluştur</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public sealed record SeriSatiri(string? Seri, DateOnly Vade, decimal Tutar);
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public EvrakTuru Tur { get; set; }
+    [Parameter] public string? IlkSeri { get; set; }
+    [Parameter] public DateTime? IlkVade { get; set; }
+    [Parameter] public decimal Tutar { get; set; }
+    [Parameter] public string ParaBirimi { get; set; } = "TRY";
+    [Parameter] public bool Karneli { get; set; }
+
+    private string? _ilkSeri;
+    private int _adet;
+    private DateTime? _ilkVade;
+    private VadeAraligi _aralik = VadeAraligi.Aylik;
+    private decimal _tutar;
+    private bool _toplamiBol;
+
+    protected override void OnInitialized()
+    {
+        (_ilkSeri, _ilkVade, _tutar) = (IlkSeri, IlkVade, Tutar);
+        _adet = Tur == EvrakTuru.Senet ? 12 : 3;
+    }
+
+    private string? Eksik =>
+        _adet is < 2 or > SeriGiris.AzamiAdet ? $"Adet 2 ile {SeriGiris.AzamiAdet} arasında olmalı."
+        : _ilkVade is null ? "İlk vadeyi girin."
+        : _tutar <= 0 ? "Tutarı girin."
+        : !Karneli && EvrakSeriNo.Ardisik(_ilkSeri ?? "", _adet) is null ? "İlk evrak no sayı ile bitmeli."
+        : null;
+
+    private IReadOnlyList<SeriSatiri>? Plan
+    {
+        get
+        {
+            if (Eksik is not null)
+            {
+                return null;
+            }
+
+            var seriler = Karneli ? null : EvrakSeriNo.Ardisik(_ilkSeri!, _adet);
+            return SeriGiris.Plan(DateOnly.FromDateTime(_ilkVade!.Value), _adet, _aralik, _tutar, _toplamiBol)
+                .Select((p, i) => new SeriSatiri(seriler?[i], p.Vade, p.Tutar))
+                .ToList();
+        }
+    }
+}

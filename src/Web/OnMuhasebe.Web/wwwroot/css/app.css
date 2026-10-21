@@ -3169,3 +3169,17 @@ td.soluk {
     background: color-mix(in srgb, var(--om-mavi) 8%, transparent);
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
+
+.seri-onizleme {
+    max-height: 280px;
+    overflow: auto;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 10px;
+}
+
+.seri-onizleme table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.seri-onizleme th { position: sticky; top: 0; background: var(--mud-palette-surface); text-align: left; padding: 6px 10px; color: var(--mud-palette-text-secondary); font-weight: 600; }
+.seri-onizleme td { padding: 4px 10px; border-top: 1px solid var(--mud-palette-lines-default); }
+.seri-onizleme td.seri { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.seri-onizleme .sayi { text-align: right; }
+.seri-onizleme tfoot td { font-weight: 700; position: sticky; bottom: 0; background: var(--mud-palette-surface); }

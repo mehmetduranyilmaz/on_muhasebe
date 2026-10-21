@@ -4,6 +4,7 @@
 @inject ZorunluAlanServisi ZorunluAlanlar
 @inject NavigationManager Navigasyon
 @inject OnayServisi Onay
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
 <SayfaBasligi Baslik="@(Alinan ? "Evrak giriş bordrosu" : "Evrak çıkış bordrosu")" GeriAdres="@(Donus ?? "cek-senet")"
@@ -47,6 +48,9 @@
                         <span class="ozet-alt">@Bicim.Tutar(s.Tutar, ParaBirimiOf(s))</span>
                     }
                     <MudSpacer />
+                    <MudTooltip Text="Seri ekle: ardışık numaralı evrakları vade planıyla oluştur">
+                        <MudIconButton Icon="@Icons.Material.Filled.PlaylistAdd" Size="Size.Small" aria-label="Seri ekle" OnClick="() => SeriEkleAsync(s)" />
+                    </MudTooltip>
                     <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" aria-label="Kopyala" OnClick="() => KopyalaAsync(s)" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="() => _satirlar.Remove(s)" />
                 </div>
