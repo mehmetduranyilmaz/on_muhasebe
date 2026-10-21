@@ -10,6 +10,11 @@ KALAN=0
 SENARYOLAR="guvenlik senaryo cari stok fatura kasabanka ekstre cek_senet zorunlu tekrar denetim vade abonelik karne karekod bildirim sifre davet"
 
 ara() { [ "$BEKLE" -gt 0 ] && sleep "$BEKLE"; return 0; }
+# GitHub Actions'ta kalan kontroller hata notu (annotation) olarak da yazılır: özet sayfasında görünür.
+ozet() { # GRUP GUNLUK
+  grep -E "^KALDI|^SONUC|^ATLANDI" "$2"
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then grep -E "^KALDI" "$2" | head -20 | while read -r satir; do echo "::error title=$1::${satir:0:500}"; done; fi
+}
 
 senaryolar() {
   local liste="${*:-$SENARYOLAR}" ilk=1
@@ -18,14 +23,14 @@ senaryolar() {
     local dosya="$KOK/Senaryolar/${s}_senaryo.sh"; [ "$s" = senaryo ] && dosya="$KOK/Senaryolar/senaryo.sh"
     echo "== $s"
     bash "$dosya" > "$KOK/cikti/$s.log" 2>&1 || KALAN=$((KALAN+1))
-    grep -E "^KALDI|^SONUC" "$KOK/cikti/$s.log"
+    ozet "$s" "$KOK/cikti/$s.log"
   done
 }
 
 izolasyon() {
   echo "== izolasyon"
   dotnet run --project "$KOK/OnMuhasebe.Izolasyon" -c Release > "$KOK/cikti/izolasyon.log" 2>&1 || KALAN=$((KALAN+1))
-  grep -E "^KALDI|^UYARI|^SONUC" "$KOK/cikti/izolasyon.log"
+  ozet izolasyon "$KOK/cikti/izolasyon.log"
 }
 
 tarayici() {
@@ -38,13 +43,18 @@ tarayici() {
   for t in $liste; do
     [ $ilk = 1 ] || ara; ilk=0
     dotnet run --project "$KOK/OnMuhasebe.Tarayici" -c Release --no-build -- "$t" > "$KOK/cikti/tarayici-$t.log" 2>&1 || KALAN=$((KALAN+1))
-    grep -E "^==|^KALDI|^ATLANDI|^SONUC" "$KOK/cikti/tarayici-$t.log"
+    ozet "tarayici $t" "$KOK/cikti/tarayici-$t.log"
   done
 }
 
 mkdir -p "$KOK/cikti"
 # Kayıtlar e-posta doğrulamasıyla açılır: SMTP (Mailpit) testlerden önce ayarlanır.
-[ "$(KOK="${OM_API:-http://localhost:5128}" bash -c '. "$0"; smtp_ayarla' "$KOK/Senaryolar/ortam.sh")" = 200 ] || { echo "SMTP ayarlanamadi (API ve sistem yoneticisi sifresi?)"; exit 1; }
+SMTP_SONUC=$(KOK="${OM_API:-http://localhost:5128}" bash -c '. "$0"; smtp_ayarla; echo " $GOVDE"' "$KOK/Senaryolar/ortam.sh" 2>&1)
+if [ "${SMTP_SONUC:0:3}" != 200 ]; then
+  echo "SMTP ayarlanamadi: ${SMTP_SONUC:0:300}"
+  [ -n "${GITHUB_ACTIONS:-}" ] && echo "::error title=SMTP ayarlanamadi::${SMTP_SONUC:0:300}"
+  exit 1
+fi
 case "$NE" in
   senaryolar) senaryolar "$@" ;;
   izolasyon) izolasyon ;;
