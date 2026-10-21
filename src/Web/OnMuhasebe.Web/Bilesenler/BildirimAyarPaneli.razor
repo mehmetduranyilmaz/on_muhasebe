@@ -1,0 +1,83 @@
+@* Ayarlar > Bildirimler: vade kaç gün önce hatırlatılsın ve firmada hiç üretilmeyecek türler. Kişisel tercihler Bildirimler sayfasındadır. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<FormBolumu Baslik="Bildirimler" Aciklama="Firmada üretilecek bildirimler; kişisel tercihler zildeki Bildirimler sayfasından" Ikon="@Icons.Material.Filled.NotificationsActive" Sira="Sira">
+    @if (_ayar is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="90px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" md="3">
+            <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_gun" Label="Vade kaç gün önce hatırlatılsın" Min="0" Max="60"
+                             Disabled="Oturum.SaltOkunurMu" HelperText="0: yalnız vade günü" />
+        </MudItem>
+        <MudItem xs="12" md="9">
+            <div class="ayar-baslik">Firmada üretilecek türler</div>
+            <div class="zorunlu-alanlar">
+                @foreach (var tur in Enum.GetValues<BildirimTuru>())
+                {
+                    var acik = !_kapali.Contains(tur);
+                    <button type="button" class="zorunlu-alan @(acik ? "secili" : "")" aria-pressed="@(acik ? "true" : "false")" disabled="@Oturum.SaltOkunurMu"
+                            @onclick="() => Degistir(tur)">
+                        <MudIcon Icon="@BildirimMetinleri.Ikon(tur)" Size="Size.Small" /> @BildirimTurleri.Ad(tur)
+                    </button>
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(Oturum.SaltOkunurMu || Degismedi)">Bildirim ayarlarını kaydet</IslemDugmesi>
+        </MudItem>
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private BildirimAyarlari? _ayar;
+    private int _gun;
+    private HashSet<BildirimTuru> _kapali = [];
+
+    private BildirimAyarlari Yeni => new(_gun, Enum.GetValues<BildirimTuru>().Where(_kapali.Contains).ToList());
+
+    private bool Degismedi => _ayar is { } a && a.VadeOncesiGun == _gun && a.KapaliTurler.ToHashSet().SetEquals(_kapali);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<BildirimAyarlari>("api/bildirim/ayarlar");
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(BildirimAyarlari a)
+    {
+        _ayar = a;
+        (_gun, _kapali) = (a.VadeOncesiGun, a.KapaliTurler.ToHashSet());
+    }
+
+    private void Degistir(BildirimTuru tur)
+    {
+        if (!_kapali.Remove(tur))
+        {
+            _kapali.Add(tur);
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<BildirimAyarlari>("api/bildirim/ayarlar", Yeni);
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+            Snackbar.Add("Bildirim ayarları kaydedildi.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

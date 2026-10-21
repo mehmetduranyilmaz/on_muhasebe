@@ -10,7 +10,8 @@ using OnMuhasebe.Shared.Infrastructure.Kimlik;
 namespace OnMuhasebe.Modules.Bildirim.Infrastructure;
 
 // Her firmayı kendi kapsamında (sorgu filtresi + satır güvenliği o firmaya göre) çalıştırır; bir firmadaki hata diğerlerini durdurmaz.
-internal sealed partial class BildirimCalistirici(IServiceScopeFactory scopeFactory, FirmaKapsami firmaKapsami, ILogger<BildirimCalistirici> logger)
+internal sealed partial class BildirimCalistirici(
+    IServiceScopeFactory scopeFactory, FirmaKapsami firmaKapsami, IConfiguration configuration, ILogger<BildirimCalistirici> logger)
     : IBildirimTetikleyici
 {
     public async Task<BildirimCalismaSonucu> HepsiAsync(CancellationToken cancellationToken)
@@ -21,12 +22,19 @@ internal sealed partial class BildirimCalistirici(IServiceScopeFactory scopeFact
             firmalar = await scope.ServiceProvider.GetRequiredService<IFirmaRehberi>().AktifFirmalarAsync(cancellationToken);
         }
 
+        // Her firma kendi kapsamında ve bağlantısında çalıştığından firmalar sınırlı paralellikle işlenir.
         var (uretilen, eposta) = (0, 0);
-        foreach (var firmaId in firmalar)
+        var secenekler = new ParallelOptions
         {
-            var sonuc = await FirmaAsync(firmaId, cancellationToken);
-            (uretilen, eposta) = (uretilen + sonuc.Uretilen, eposta + sonuc.Eposta);
-        }
+            MaxDegreeOfParallelism = configuration.GetValue("Bildirim:EsZamanliFirma", 4),
+            CancellationToken = cancellationToken
+        };
+        await Parallel.ForEachAsync(firmalar, secenekler, async (firmaId, ct) =>
+        {
+            var sonuc = await FirmaAsync(firmaId, ct);
+            Interlocked.Add(ref uretilen, sonuc.Uretilen);
+            Interlocked.Add(ref eposta, sonuc.Eposta);
+        });
 
         return new BildirimCalismaSonucu(firmalar.Count, uretilen, eposta);
     }

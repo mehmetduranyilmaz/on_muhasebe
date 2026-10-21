@@ -1,0 +1,128 @@
+@* Üst çubuktaki zil: okunmamış sayısı dakikada bir yenilenir; açılınca son bildirimler gelir, tıklanan okunur ve ilgili sayfa açılır. *@
+@implements IDisposable
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+@inject BildirimDurumu Durum
+@inject NavigationManager Navigasyon
+@inject TimeProvider Zaman
+
+@if (Oturum.Bilgi?.AktifFirma is not null)
+{
+    <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Class="ml-1" PopoverClass="bildirim-menusu">
+        <ActivatorContent Context="menu">
+            <button type="button" class="zil-dugmesi @(Durum.Okunmamis > 0 ? "var" : "")" aria-label="Bildirimler"
+                    @onclick="async () => { await AcAsync(); await menu.ToggleAsync(); }">
+                <MudIcon Icon="@(Durum.Okunmamis > 0 ? Icons.Material.Filled.NotificationsActive : Icons.Material.Filled.Notifications)" />
+                @if (Durum.Okunmamis > 0)
+                {
+                    <span class="zil-sayisi" @key="Durum.Okunmamis">@(Durum.Okunmamis > 99 ? "99+" : Durum.Okunmamis)</span>
+                }
+            </button>
+        </ActivatorContent>
+        <ChildContent>
+            <div class="bildirim-menusu-baslik">
+                <b>Bildirimler</b>
+                @if (Durum.Okunmamis > 0)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="TumuOkunduAsync">Tümünü okundu say</MudButton>
+                }
+            </div>
+            @if (_son is null)
+            {
+                <div class="pa-4"><MudProgressLinear Indeterminate="true" Color="Color.Primary" /></div>
+            }
+            else if (_son.Count == 0)
+            {
+                <div class="bildirim-bos">
+                    <MudIcon Icon="@Icons.Material.Outlined.NotificationsNone" Size="Size.Large" />
+                    <span>Yeni bildirim yok</span>
+                </div>
+            }
+            else
+            {
+                @foreach (var (b, i) in _son.Select((b, i) => (b, i)))
+                {
+                    <BildirimSatiri Bildirim="b" Sira="i" Simdi="_simdi" Tiklandi="AcBildirimAsync" />
+                }
+            }
+            <MudDivider />
+            <MudMenuItem Href="bildirimler" Icon="@Icons.Material.Filled.ListAlt">Tümünü gör ve tercihler</MudMenuItem>
+        </ChildContent>
+    </MudMenu>
+}
+
+@code {
+    private const int Adet = 8;
+    private List<BildirimOzeti>? _son;
+    private DateTime _simdi;
+    private CancellationTokenSource? _iptal;
+
+    protected override void OnInitialized()
+    {
+        Durum.Degisti += YenidenCiz;
+        Oturum.Degisti += OturumDegisti;
+        _iptal = new CancellationTokenSource();
+        _ = YoklaAsync(_iptal.Token);
+    }
+
+    // Dakikada bir sayıyı yeniler; sayfa açık kaldıkça yeni bildirimler zilde görünür.
+    private async Task YoklaAsync(CancellationToken iptal)
+    {
+        using var zamanlayici = new PeriodicTimer(TimeSpan.FromMinutes(1));
+        try
+        {
+            do
+            {
+                if (Oturum.Bilgi?.AktifFirma is not null)
+                {
+                    await Durum.YenileAsync();
+                }
+            }
+            while (await zamanlayici.WaitForNextTickAsync(iptal));
+        }
+        catch (OperationCanceledException)
+        {
+            // Bileşen kapandı.
+        }
+    }
+
+    private async Task AcAsync()
+    {
+        _simdi = Zaman.GetUtcNow().UtcDateTime;
+        _son = null;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<BildirimOzeti>>($"api/bildirim?boyut={Adet}");
+        _son = sonuc.BasariliMi ? sonuc.Deger.Kayitlar.ToList() : [];
+        await Durum.YenileAsync();
+    }
+
+    private async Task AcBildirimAsync(BildirimOzeti b)
+    {
+        await Durum.OkunduAsync(b);
+        if (b.Baglanti is not null)
+        {
+            Navigasyon.NavigateTo(b.Baglanti);
+        }
+    }
+
+    private async Task TumuOkunduAsync()
+    {
+        await Durum.TumuOkunduAsync();
+        await AcAsync();
+    }
+
+    private void YenidenCiz() => InvokeAsync(StateHasChanged);
+
+    private void OturumDegisti()
+    {
+        _ = Durum.YenileAsync();
+        YenidenCiz();
+    }
+
+    public void Dispose()
+    {
+        Durum.Degisti -= YenidenCiz;
+        Oturum.Degisti -= OturumDegisti;
+        _iptal?.Cancel();
+        _iptal?.Dispose();
+    }
+}

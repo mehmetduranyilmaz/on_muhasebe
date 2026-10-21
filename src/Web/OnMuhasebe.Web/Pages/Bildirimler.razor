@@ -1,0 +1,202 @@
+@page "/bildirimler"
+@implements IDisposable
+@inject ApiIstemcisi Api
+@inject BildirimDurumu Durum
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="Bildirimler" AltBaslik="Vadesi yaklaşan evraklar, risk ve abonelik uyarıları" Ikon="@Icons.Material.Filled.Notifications">
+    <Islemler>
+        @if (Durum.Okunmamis > 0)
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DoneAll" OnClick="TumuOkunduAsync">Tümünü okundu say</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<div class="tur-sekmeleri belirme">
+    <button type="button" class="tur-sekmesi @(_tercihler ? "" : "secili")" style="--vurgu:#3B82F6" @onclick="() => _tercihler = false">
+        <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" /> Bildirimlerim
+        @if (Durum.Okunmamis > 0)
+        {
+            <span class="sekme-sayisi">@Durum.Okunmamis</span>
+        }
+    </button>
+    <button type="button" class="tur-sekmesi @(_tercihler ? "secili" : "")" style="--vurgu:#14B8A6" @onclick="() => _tercihler = true">
+        <MudIcon Icon="@Icons.Material.Filled.Tune" Size="Size.Small" /> Tercihlerim
+    </button>
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+@if (!_tercihler)
+{
+    <div class="d-flex align-center mb-2">
+        <MudSwitch T="bool" Value="_okunmamis" ValueChanged="OkunmamisAsync" Color="Color.Primary" Label="Yalnızca okunmamışlar" />
+    </div>
+    @if (_sonuc is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Animation="Animation.Wave" Class="rounded-lg" />
+    }
+    else if (_sonuc.Kayitlar.Count == 0)
+    {
+        <BosDurum Ikon="@Icons.Material.Outlined.NotificationsNone" Baslik="@(_okunmamis ? "Okunmamış bildirim yok" : "Henüz bildirim yok")"
+                  Aciklama="Vadesi yaklaşan çek/senetler, risk limiti aşımları ve abonelik uyarıları burada görünür." />
+    }
+    else
+    {
+        <div class="kart bildirim-listesi">
+            @foreach (var (b, i) in _sonuc.Kayitlar.Select((b, i) => (b, i)))
+            {
+                <BildirimSatiri Bildirim="b" Sira="i" Simdi="_simdi" Tiklandi="AcAsync" />
+            }
+        </div>
+        @if (_sonuc.ToplamSayfa > 1)
+        {
+            <div class="d-flex justify-center mt-3">
+                <MudPagination Count="_sonuc.ToplamSayfa" Selected="_sayfa" SelectedChanged="SayfaAsync" />
+            </div>
+        }
+    }
+}
+else if (_tercih is { } t)
+{
+    <FormBolumu Baslik="Bildirim tercihlerim" Aciklama="Bu firmada hangi bildirimleri almak istediğiniz ve e-posta sıklığı" Ikon="@Icons.Material.Filled.Tune" Sira="0">
+        <MudItem xs="12">
+            <MudSwitch T="bool" @bind-Value="_alir" Color="Color.Primary" Label="Bildirim almak istiyorum" />
+        </MudItem>
+        <MudItem xs="12" md="7">
+            <div class="ayar-baslik">Türler</div>
+            <div class="zorunlu-alanlar">
+                @foreach (var tur in Enum.GetValues<BildirimTuru>())
+                {
+                    var acik = !_kapali.Contains(tur);
+                    <button type="button" class="zorunlu-alan @(acik ? "secili" : "")" disabled="@(!_alir)" aria-pressed="@(acik ? "true" : "false")"
+                            @onclick="() => Degistir(tur)">
+                        <MudIcon Icon="@BildirimMetinleri.Ikon(tur)" Size="Size.Small" /> @BildirimTurleri.Ad(tur)
+                    </button>
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <div class="ayar-baslik">E-posta</div>
+            <MudRadioGroup T="EpostaSikligi" @bind-Value="_eposta">
+                @foreach (var (s, ad, aciklama) in _epostaSecenekleri)
+                {
+                    <div class="ayar-secenek @(_eposta == s ? "secili" : "")">
+                        <MudRadio Value="s" Color="Color.Primary" Disabled="@(!_alir)">@ad</MudRadio>
+                        <div class="ayar-aciklama">@aciklama</div>
+                    </div>
+                }
+            </MudRadioGroup>
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end">
+            <IslemDugmesi Islem="TercihKaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@Degismedi">Tercihlerimi kaydet</IslemDugmesi>
+        </MudItem>
+    </FormBolumu>
+}
+
+@code {
+    private static readonly (EpostaSikligi, string, string)[] _epostaSecenekleri =
+    [
+        (EpostaSikligi.GunlukOzet, "Günlük özet", "Her sabah 08.00'den sonra tek e-posta."),
+        (EpostaSikligi.Aninda, "Anında", "Bildirim oluştuğunda (saatte bir kontrol edilir)."),
+        (EpostaSikligi.Kapali, "E-posta gönderme", "Yalnızca uygulama içinde göster.")
+    ];
+
+    private SayfaliSonuc<BildirimOzeti>? _sonuc;
+    private bool _okunmamis;
+    private int _sayfa = 1;
+    private DateTime _simdi;
+    private bool _tercihler;
+    private BildirimTercihleri? _tercih;
+    private bool _alir;
+    private HashSet<BildirimTuru> _kapali = [];
+    private EpostaSikligi _eposta;
+    private ApiHatasi? _hata;
+
+    private BildirimTercihleri Yeni => new(_alir, Enum.GetValues<BildirimTuru>().Where(_kapali.Contains).ToList(), _eposta);
+
+    private bool Degismedi => _tercih is { } t && t.BildirimAlir == _alir && t.Eposta == _eposta && t.KapaliTurler.ToHashSet().SetEquals(_kapali);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Durum.Degisti += YenidenCiz;
+        await YukleAsync();
+        var tercih = await Api.GetAsync<BildirimTercihleri>("api/bildirim/tercihler");
+        if (tercih.BasariliMi)
+        {
+            TercihAyarla(tercih.Deger);
+        }
+    }
+
+    private async Task YukleAsync()
+    {
+        _simdi = Zaman.GetUtcNow().UtcDateTime;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<BildirimOzeti>>($"api/bildirim?sayfa={_sayfa}&boyut=20&sadeceOkunmamis={(_okunmamis ? "true" : "false")}");
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        await Durum.YenileAsync();
+    }
+
+    private async Task OkunmamisAsync(bool deger)
+    {
+        (_okunmamis, _sayfa) = (deger, 1);
+        await YukleAsync();
+    }
+
+    private async Task SayfaAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task AcAsync(BildirimOzeti b)
+    {
+        await Durum.OkunduAsync(b);
+        if (b.Baglanti is not null)
+        {
+            Navigasyon.NavigateTo(b.Baglanti);
+        }
+        else
+        {
+            await YukleAsync();
+        }
+    }
+
+    private async Task TumuOkunduAsync()
+    {
+        await Durum.TumuOkunduAsync();
+        await YukleAsync();
+    }
+
+    private void YenidenCiz() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Durum.Degisti -= YenidenCiz;
+
+    private void TercihAyarla(BildirimTercihleri t)
+    {
+        _tercih = t;
+        (_alir, _kapali, _eposta) = (t.BildirimAlir, t.KapaliTurler.ToHashSet(), t.Eposta);
+    }
+
+    private void Degistir(BildirimTuru tur)
+    {
+        if (!_kapali.Remove(tur))
+        {
+            _kapali.Add(tur);
+        }
+    }
+
+    private async Task TercihKaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<BildirimTercihleri>("api/bildirim/tercihler", Yeni);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            TercihAyarla(sonuc.Deger);
+            Snackbar.Add("Tercihleriniz kaydedildi.", Severity.Success);
+        }
+    }
+}

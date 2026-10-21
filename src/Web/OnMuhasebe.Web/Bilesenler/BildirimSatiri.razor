@@ -1,0 +1,21 @@
+@* Tek bildirim: öneme göre renkli ikon, başlık, metin ve ne zaman geldiği; okunmamışsa vurgulu. *@
+<button type="button" class="bildirim-satiri @(Bildirim.OkunduMu ? "" : "okunmamis")" style="--renk:@BildirimMetinleri.Renk(Bildirim.Onem); --i:@Sira"
+        @onclick="() => Tiklandi.InvokeAsync(Bildirim)">
+    <span class="bildirim-ikonu"><MudIcon Icon="@BildirimMetinleri.Ikon(Bildirim.Tur)" Size="Size.Small" /></span>
+    <span class="bildirim-govdesi">
+        <span class="bildirim-baslik">@Bildirim.Baslik</span>
+        <span class="bildirim-metin">@Bildirim.Metin</span>
+        <span class="bildirim-zaman">@BildirimMetinleri.Gecen(Bildirim.Tarih, Simdi)</span>
+    </span>
+    @if (!Bildirim.OkunduMu)
+    {
+        <span class="bildirim-noktasi" aria-label="Okunmadı"></span>
+    }
+</button>
+
+@code {
+    [Parameter, EditorRequired] public BildirimOzeti Bildirim { get; set; } = null!;
+    [Parameter] public int Sira { get; set; }
+    [Parameter] public DateTime Simdi { get; set; }
+    [Parameter] public EventCallback<BildirimOzeti> Tiklandi { get; set; }
+}

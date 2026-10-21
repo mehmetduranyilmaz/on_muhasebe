@@ -1,0 +1,127 @@
+@page "/sistem/eposta"
+@attribute [Authorize(Roles = Roller.SistemYoneticisi)]
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="E-posta ve Bildirimler" AltBaslik="Bildirim e-postalarının gönderileceği SMTP sunucusu" Ikon="@Icons.Material.Filled.MarkEmailRead">
+    <Islemler>
+        <IslemDugmesi Islem="CalistirAsync" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PlayArrow">Bildirimleri şimdi üret</IslemDugmesi>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_ayar is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="260px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else
+{
+    <FormBolumu Baslik="SMTP sunucusu" Aciklama="Gmail, Yandex, kurumsal posta ya da SendGrid gibi bir SMTP hizmeti" Ikon="@Icons.Material.Filled.Dns" Sira="0">
+        <MudItem xs="12">
+            <MudSwitch T="bool" @bind-Value="_aktif" Color="Color.Success" Label="E-posta gönderimi açık" />
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sunucu" Label="Sunucu" Placeholder="smtp.ornek.com" MaxLength="200" />
+        </MudItem>
+        <MudItem xs="6" md="2">
+            <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_port" Label="Port" Min="1" Max="65535" HideSpinButtons="true" />
+        </MudItem>
+        <MudItem xs="6" md="5">
+            <MudSelect T="SmtpGuvenligi" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_guvenlik" Label="Güvenlik" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem T="SmtpGuvenligi" Value="SmtpGuvenligi.StartTls">STARTTLS (genelde 587)</MudSelectItem>
+                <MudSelectItem T="SmtpGuvenligi" Value="SmtpGuvenligi.Ssl">SSL/TLS (genelde 465)</MudSelectItem>
+                <MudSelectItem T="SmtpGuvenligi" Value="SmtpGuvenligi.Yok">Yok (yalnız test)</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kullanici" Label="Kullanıcı adı" MaxLength="200" HelperText="Kimlik doğrulama yoksa boş bırakın" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password" MaxLength="200"
+                          HelperText="@(_ayar.SifreKayitliMi ? "Kayıtlı şifre korunur; değiştirmek için yazın" : "Şifreli saklanır")" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_gonderen" Label="Gönderen adresi" Placeholder="bildirim@ornek.com" MaxLength="256" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_gonderenAd" Label="Gönderen adı" Placeholder="Ön Muhasebe" MaxLength="100" />
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end">
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+        </MudItem>
+    </FormBolumu>
+
+    <div class="mt-4"></div>
+    <FormBolumu Baslik="Test e-postası" Aciklama="Kayıtlı ayarlarla bir deneme e-postası gönderir" Ikon="@Icons.Material.Filled.Send" Sira="1">
+        <MudItem xs="12" md="8">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_testAlici" Label="Alıcı" Placeholder="siz@ornek.com" MaxLength="256" />
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex align-center justify-end">
+            <IslemDugmesi Islem="TestAsync" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Send" Disabled="@string.IsNullOrWhiteSpace(_testAlici)">Test gönder</IslemDugmesi>
+        </MudItem>
+    </FormBolumu>
+}
+
+@code {
+    private EpostaAyarlari? _ayar;
+    private bool _aktif;
+    private string? _sunucu;
+    private int _port;
+    private SmtpGuvenligi _guvenlik;
+    private string? _kullanici;
+    private string? _sifre;
+    private string? _gonderen;
+    private string? _gonderenAd;
+    private string? _testAlici;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<EpostaAyarlari>("api/bildirim/sistem/eposta");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+        }
+    }
+
+    private void Ayarla(EpostaAyarlari a)
+    {
+        _ayar = a;
+        (_aktif, _sunucu, _port, _guvenlik, _kullanici, _gonderen, _gonderenAd, _sifre) =
+            (a.AktifMi, a.Sunucu, a.Port, a.Guvenlik, a.KullaniciAdi, a.GonderenAdres, a.GonderenAd, null);
+    }
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<EpostaAyarlari>("api/bildirim/sistem/eposta",
+            new EpostaAyarlari(_aktif, _sunucu, _port, _guvenlik, _kullanici, string.IsNullOrEmpty(_sifre) ? null : _sifre, false, _gonderen, _gonderenAd));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Ayarla(sonuc.Deger);
+            Snackbar.Add("E-posta ayarları kaydedildi.", Severity.Success);
+        }
+    }
+
+    private async Task TestAsync()
+    {
+        var sonuc = await Api.PostAsync("api/bildirim/sistem/eposta/test", new EpostaTestIstegi(_testAlici!.Trim()));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add($"Test e-postası {_testAlici} adresine gönderildi.", Severity.Success);
+        }
+    }
+
+    private async Task CalistirAsync()
+    {
+        var sonuc = await Api.PostAsync<BildirimCalismaSonucu>("api/bildirim/sistem/calistir", new { });
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add($"{sonuc.Deger.Firma} firma tarandı: {sonuc.Deger.Uretilen} bildirim üretildi, {sonuc.Deger.Eposta} e-posta gönderildi.", Severity.Info);
+        }
+    }
+}

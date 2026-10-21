@@ -30,6 +30,7 @@ builder.Services.AddMudServices(options =>
 });
 builder.Services.AddOrtakServisler(apiAdresi);
 builder.Services.AddSingleton<ModulYukleyici>();
+builder.Services.AddScoped<BildirimDurumu>();
 
 var host = builder.Build();
 

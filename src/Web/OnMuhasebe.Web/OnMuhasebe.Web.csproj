@@ -36,6 +36,7 @@
     <ProjectReference Include="..\OnMuhasebe.Web.Fatura\OnMuhasebe.Web.Fatura.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.KasaBanka\OnMuhasebe.Web.KasaBanka.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
+    <ProjectReference Include="..\..\Modules\Bildirim\OnMuhasebe.Modules.Bildirim.Contracts\OnMuhasebe.Modules.Bildirim.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
