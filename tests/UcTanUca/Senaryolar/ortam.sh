@@ -7,6 +7,8 @@ SMTP_SUNUCU="${OM_SMTP_SUNUCU:-localhost}"
 SMTP_PORT="${OM_SMTP_PORT:-1025}"
 DOS="${OM_DOSYALAR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../Dosyalar" && pwd)}"
 GECICI="${OM_GECICI:-${TMPDIR:-/tmp}}"
+# Kendi imzalı sertifikalı ortam (ör. deploy ile localhost): OM_GUVENSIZ_SERTIFIKA=1 sertifika doğrulamasını kapatır.
+CURL_EK=(); [ "${OM_GUVENSIZ_SERTIFIKA:-0}" = 1 ] && CURL_EK=(-k)
 
 # Veritabanına doğrudan sorgu (yönetici rolüyle). OM_PSQL verilmezse geliştirme konteyneri kullanılır.
 sql() {
@@ -33,7 +35,7 @@ mailpit_kodu() {
 }
 
 _hesap_istek() { # YOL GOVDE [TOKEN] [CEREZ] -> KOD, GOVDE
-  local args=(-s -o "$GECICI/om_hesap_govde" -w "%{http_code}" -X POST "$OM_KOK$1" -H "Content-Type: application/json" --data-binary "$2")
+  local args=("${CURL_EK[@]}" -s -o "$GECICI/om_hesap_govde" -w "%{http_code}" -X POST "$OM_KOK$1" -H "Content-Type: application/json" --data-binary "$2")
   [ -n "$3" ] && args+=(-H "Authorization: Bearer $3")
   [ -n "$4" ] && args+=(-b "$4" -c "$4")
   KOD=$(curl "${args[@]}"); GOVDE=$(cat "$GECICI/om_hesap_govde")
@@ -65,7 +67,7 @@ davet_kabul() {
 smtp_ayarla() {
   _hesap_istek /api/yonetim/giris "$SISTEM_GIRIS"
   local token; token=$(echo "$GOVDE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
-  curl -s -o /dev/null -w "%{http_code}" -X PUT "$OM_KOK/api/bildirim/sistem/eposta" -H "Content-Type: application/json" \
+  curl "${CURL_EK[@]}" -s -o /dev/null -w "%{http_code}" -X PUT "$OM_KOK/api/bildirim/sistem/eposta" -H "Content-Type: application/json" \
     -H "Authorization: Bearer $token" \
     --data-binary '{"aktifMi":true,"sunucu":"'"$SMTP_SUNUCU"'","port":'"$SMTP_PORT"',"guvenlik":"Yok","kullaniciAdi":null,"gonderenAdres":"bildirim@onmuhasebe.local","gonderenAd":"On Muhasebe","sifreKayitliMi":false}'
 }
