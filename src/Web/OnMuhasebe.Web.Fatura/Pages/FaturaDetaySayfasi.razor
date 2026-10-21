@@ -27,6 +27,10 @@
             <Islemler>
                 <DegisiklikGecmisiDugmesi Modul="fatura" KayitId="Id" />
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
+                @if (f.Durum == FaturaDurumu.Onayli)
+                {
+                    <WhatsAppDugmesi Telefon="@_telefon" Metin="@WhatsAppMetni(f)" />
+                }
                 @if (duzenlenebilirMi)
                 {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"fatura/{f.Id}/duzenle")">Düzenle</MudButton>
@@ -220,6 +224,7 @@ else if (_hata is null)
     private FaturaDetayi? _fatura;
     private FaturaAyarlari? _ayar;
     private FirmaBilgileri? _firma;
+    private string? _telefon;
     private ApiHatasi? _hata;
 
     protected override async Task OnParametersSetAsync()
@@ -233,6 +238,14 @@ else if (_hata is null)
         _ayar = ayar.BasariliMi ? ayar.Deger : null;
         var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
         _firma = firma.BasariliMi ? firma.Deger : null;
+
+        // Carinin telefonu yalnızca WhatsApp paylaşımı için; Cari modülü kapalıysa paylaşımda kişi seçilir.
+        _telefon = null;
+        if (_fatura?.CariHesapId is { } cariId && Oturum.ModulAcikMi(ModulKodlari.Cari)
+            && await Api.GetAsync<CariIletisimi>($"api/cari/hesaplar/{cariId}") is { BasariliMi: true } cari)
+        {
+            _telefon = cari.Deger.Telefon ?? cari.Deger.YetkiliTelefon;
+        }
     }
 
     // Kasa/banka işlem formu; tahsilat önce bu faturayı kapatır, sonra fatura detayına dönülür.
@@ -255,6 +268,15 @@ else if (_hata is null)
     }
 
     private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+
+    private string WhatsAppMetni(FaturaDetayi f) =>
+        $"Sayın {f.CariUnvan},\n{Bicim.Tarih(f.Tarih)} tarihli{(f.Numara is null ? "" : $" {f.Numara} numaralı")} {FaturaMetinleri.Tur(f.Tur).ToLower(Bicim.Kultur)}:\n"
+        + $"Genel toplam: {Bicim.Tutar(f.GenelToplam, f.ParaBirimi)}"
+        + (f.VadeTarihi is { } v ? $"\nVade: {Bicim.Tarih(v)}" : "")
+        + (f.Kalan is { } k && k > 0 && k != f.GenelToplam ? $"\nKalan: {Bicim.Tutar(k, f.ParaBirimi)}" : "")
+        + $"\n\n{_firma?.Unvan ?? Oturum.Bilgi?.AktifFirma?.Unvan}";
+
+    private sealed record CariIletisimi(string? Telefon, string? YetkiliTelefon);
 
     private async Task OnaylaAsync()
     {

@@ -10,6 +10,10 @@
     <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ekstre is null" OnClick="YazdirAsync">Yazdır</MudButton>
+    @if (_ekstre is { } paylasilan)
+    {
+        <WhatsAppDugmesi Telefon="@_telefon" Metin="@WhatsAppMetni(paylasilan)" />
+    }
     </Islemler>
 </SayfaBasligi>
 
@@ -108,6 +112,7 @@ else if (_ekstre is { } e)
     private DateTime? _baslangic;
     private DateTime? _bitis;
     private EkstreCevabi? _ekstre;
+    private string? _telefon;
     private bool _yukleniyor;
     private ApiHatasi? _hata;
 
@@ -117,6 +122,8 @@ else if (_ekstre is { } e)
         _baslangic = new DateTime(bugun.Year, 1, 1);
         _bitis = bugun;
         await YukleAsync();
+        var cari = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{Id}");
+        _telefon = cari.BasariliMi ? cari.Deger.Telefon ?? cari.Deger.YetkiliTelefon : null;
     }
 
     private async Task YukleAsync()
@@ -132,4 +139,18 @@ else if (_ekstre is { } e)
     }
 
     private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+
+    // Ekstrenin özeti; ayrıntılı döküm için yazdırılan ekstre (PDF) ayrıca gönderilebilir.
+    private string WhatsAppMetni(EkstreCevabi e)
+    {
+        var bakiye = e.SonBakiye switch
+        {
+            > 0 => $"Borç bakiyeniz: {Bicim.Tutar(e.SonBakiye, e.ParaBirimi)}",
+            < 0 => $"Alacak bakiyeniz: {Bicim.Tutar(-e.SonBakiye, e.ParaBirimi)}",
+            _ => "Hesabınız kapalıdır (bakiye yok)."
+        };
+        return $"Sayın {e.Unvan},\n{Bicim.Tarih(e.Baslangic)} - {Bicim.Tarih(e.Bitis)} dönemi hesap özetiniz:\n"
+               + $"Devir: {Bicim.Tutar(e.DevirBakiye, e.ParaBirimi)}\nBorç: {Bicim.Tutar(e.ToplamBorc, e.ParaBirimi)}\n"
+               + $"Alacak: {Bicim.Tutar(e.ToplamAlacak, e.ParaBirimi)}\n{bakiye}\n\n{Oturum.Bilgi?.AktifFirma?.Unvan}";
+    }
 }

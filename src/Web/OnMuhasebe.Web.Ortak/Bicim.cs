@@ -9,6 +9,8 @@ public static class Bicim
 {
     private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
 
+    public static CultureInfo Kultur => _tr;
+
     public static string Tutar(decimal tutar) => tutar.ToString("N2", _tr);
 
     public static string Tutar(decimal tutar, string paraBirimi) =>
