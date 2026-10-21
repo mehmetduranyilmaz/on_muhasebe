@@ -194,8 +194,13 @@ internal static class EkstreIslemleri
             k.KullanimSayisi)).ToList());
     }
 
-    private static async Task<IResult> KuralEkleAsync(KuralKaydetIstegi istek, KasaBankaDbContext db, CancellationToken ct)
+    private static async Task<IResult> KuralEkleAsync(KuralKaydetIstegi istek, KasaBankaDbContext db, EkstreServisi servis, CancellationToken ct)
     {
+        if (await servis.KimlikleriDogrulaAsync(istek.CariHesapId, istek.KategoriId, istek.KarsiHesapId, ct) is { } hata)
+        {
+            return hata.Problem();
+        }
+
         var kural = EkstreKurali.Olustur(istek.AnahtarKelime, istek.Yon);
         kural.Ayarla(istek.IslemTuru, istek.CariHesapId, istek.KategoriId, istek.KarsiHesapId);
         db.EkstreKurallari.Add(kural);
@@ -203,8 +208,13 @@ internal static class EkstreIslemleri
         return TypedResults.Created($"/api/kasabanka/ekstre-kurallari/{kural.Id}", new { kural.Id });
     }
 
-    private static async Task<IResult> KuralGuncelleAsync(Guid id, KuralKaydetIstegi istek, KasaBankaDbContext db, CancellationToken ct)
+    private static async Task<IResult> KuralGuncelleAsync(Guid id, KuralKaydetIstegi istek, KasaBankaDbContext db, EkstreServisi servis, CancellationToken ct)
     {
+        if (await servis.KimlikleriDogrulaAsync(istek.CariHesapId, istek.KategoriId, istek.KarsiHesapId, ct) is { } hata)
+        {
+            return hata.Problem();
+        }
+
         var kural = await db.EkstreKurallari.SingleOrDefaultAsync(k => k.Id == id, ct);
         if (kural is null)
         {

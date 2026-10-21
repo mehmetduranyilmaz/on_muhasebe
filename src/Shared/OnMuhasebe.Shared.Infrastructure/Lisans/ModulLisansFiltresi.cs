@@ -30,7 +30,7 @@ internal sealed class ModulLisansFiltresi(string modulKodu) : IEndpointFilter
         var simdi = http.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
         if (lisans.SuresiDolduMu(simdi) && !HttpMethods.IsGet(http.Request.Method) && !HttpMethods.IsHead(http.Request.Method))
         {
-            return Hata.Yetki("lisans_suresi_doldu", "Lisans süreniz doldu; kayıtlarınız salt okunur.").Problem();
+            return LisansHatalari.SuresiDoldu.Problem();
         }
 
         return await next(context);

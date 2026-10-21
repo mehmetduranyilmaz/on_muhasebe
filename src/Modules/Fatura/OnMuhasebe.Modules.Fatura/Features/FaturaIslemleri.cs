@@ -68,6 +68,9 @@ internal static class FaturaIslemleri
                 s.RuleFor(x => x.Birim).Must(Birimler.GecerliMi).WithMessage("Geçersiz birim.");
                 s.RuleFor(x => x.Miktar).GreaterThan(0).LessThan(1_000_000_000m);
                 s.RuleFor(x => x.BirimFiyat).GreaterThanOrEqualTo(0).LessThan(1_000_000_000_000m);
+                // Çarpım da sınırlı: ayrı ayrı geçerli miktar ve fiyat, tutar sütununu (numeric 18,2) taşırmasın.
+                s.RuleFor(x => x.Miktar * x.BirimFiyat).LessThan(1_000_000_000_000m).OverridePropertyName("Tutar")
+                    .WithMessage("Satır tutarı (miktar × birim fiyat) çok büyük.");
                 s.RuleFor(x => x.KdvOrani).Must(KdvOranlari.GecerliMi).WithMessage("Geçersiz KDV oranı.");
                 s.RuleFor(x => x.Iskonto1).InclusiveBetween(0, 100);
                 s.RuleFor(x => x.Iskonto2).InclusiveBetween(0, 100);
@@ -108,7 +111,7 @@ internal static class FaturaIslemleri
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             sorgu = sorgu.Where(f => EF.Functions.ILike(f.CariUnvan, desen) || (f.Numara != null && EF.Functions.ILike(f.Numara, desen)));
         }
 

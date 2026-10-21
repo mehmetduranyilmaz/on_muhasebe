@@ -36,7 +36,7 @@ internal static class SistemIslemleri
         var sorgu = db.Firmalar.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             sorgu = sorgu.Where(f => EF.Functions.ILike(f.Unvan, desen) || f.VergiNo == arama.Trim());
         }
 

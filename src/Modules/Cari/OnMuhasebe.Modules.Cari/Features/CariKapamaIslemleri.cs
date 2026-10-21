@@ -11,6 +11,7 @@ using OnMuhasebe.Modules.Cari.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
+using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
@@ -80,7 +81,7 @@ internal static class CariKapamaIslemleri
         var cariler = db.CariHesaplar.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             cariler = cariler.Where(c => EF.Functions.ILike(c.Unvan, desen) || EF.Functions.ILike(c.Kod, desen));
         }
 

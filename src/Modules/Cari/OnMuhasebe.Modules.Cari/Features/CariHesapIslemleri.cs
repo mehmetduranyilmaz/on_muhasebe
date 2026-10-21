@@ -98,7 +98,7 @@ internal static class CariHesapIslemleri
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             sorgu = sorgu.Where(c => EF.Functions.ILike(c.Unvan, desen) || EF.Functions.ILike(c.Kod, desen) || c.VergiNo == arama.Trim());
         }
 

@@ -84,6 +84,8 @@ istek POST /api/fatura/faturalar "$T" "$(fatura Satis "" "$(satir "$SU" ADET 1 4
 kontrol 400 "Toptan satista cari zorunlu" cari_gerekli
 istek POST /api/fatura/faturalar "$T" "$(fatura Satis "" "$(satir "$SU" ADET 1 450 10)" '"satisSekli":"Perakende","nihaiTuketici":{"tckn":"12345678901"}')"
 kontrol 400 "Gecersiz TCKN reddedildi" "kimlik"
+istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "$(satir "" ADET 999999999 999999999999 20)")"
+kontrol 400 "Miktar x fiyat tasan satir reddedildi (500 degil)" "Tutar"
 istek GET "/api/stok/kartlar/$SU" "$T"
 kontrol 200 "Satislardan sonra stok 120 - 60 - 1 - 1 = 58 (iptal edilen perakende geri girdi)" '"miktar":58'
 istek GET "/api/cari/hesaplar/$TL_CARI" "$T"

@@ -9,6 +9,7 @@ using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
@@ -70,10 +71,16 @@ internal static class KullaniciIslemleri
         IMevcutKullanici mevcutKullanici,
         YonetimDbContext db,
         KimlikPostasi posta,
+        ILisansSorgusu lisansSorgusu,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
         var simdi = zaman.GetUtcNow().UtcDateTime;
+        if (await SaltOkunurMuAsync(lisansSorgusu, mevcutKullanici, simdi, cancellationToken))
+        {
+            return LisansHatalari.SuresiDoldu.Problem();
+        }
+
         var eposta = Kullanici.EpostaNormalize(istek.Eposta);
         if (await db.FirmaKullanicilari.AnyAsync(u => u.Kullanici.Eposta == eposta && u.AktifMi, cancellationToken))
         {
@@ -110,10 +117,16 @@ internal static class KullaniciIslemleri
         IMevcutKullanici mevcutKullanici,
         YonetimDbContext db,
         KimlikPostasi posta,
+        ILisansSorgusu lisansSorgusu,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
         var simdi = zaman.GetUtcNow().UtcDateTime;
+        if (await SaltOkunurMuAsync(lisansSorgusu, mevcutKullanici, simdi, cancellationToken))
+        {
+            return LisansHatalari.SuresiDoldu.Problem();
+        }
+
         var davet = await db.FirmaDavetleri.SingleOrDefaultAsync(d => d.Id == id && d.KabulTarihi == null && d.IptalTarihi == null, cancellationToken);
         if (davet is null)
         {
@@ -144,6 +157,11 @@ internal static class KullaniciIslemleri
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
     }
+
+    // Lisansı dolan firmada kayıtlar salt okunur; yeni kullanıcı daveti de yazma sayılır.
+    private static async Task<bool> SaltOkunurMuAsync(
+        ILisansSorgusu lisansSorgusu, IMevcutKullanici mevcutKullanici, DateTime simdi, CancellationToken cancellationToken) =>
+        await lisansSorgusu.GetirAsync(mevcutKullanici.FirmaId!.Value, cancellationToken) is { } lisans && lisans.SuresiDolduMu(simdi);
 
     private static async Task DavetGonderAsync(
         YonetimDbContext db, KimlikPostasi posta, IMevcutKullanici mevcutKullanici, FirmaDaveti davet, string kod, CancellationToken cancellationToken)

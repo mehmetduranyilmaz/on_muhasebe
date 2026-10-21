@@ -89,6 +89,5 @@
     }
 
     // Açık yönlendirme (open redirect) saldırısına karşı yalnızca uygulama içi göreli adreslere dönülür.
-    private string GuvenliDonusAdresi() =>
-        Donus is { Length: > 1 } d && d.StartsWith('/') && !d.StartsWith("//") && !d.StartsWith("/\\") ? d.TrimStart('/') : "";
+    private string GuvenliDonusAdresi() => GuvenliAdres.UygulamaIci(Donus) ?? "";
 }

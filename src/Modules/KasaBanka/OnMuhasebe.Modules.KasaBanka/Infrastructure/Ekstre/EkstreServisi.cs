@@ -136,6 +136,11 @@ internal sealed class EkstreServisi(
             return KasaBankaHatalari.SatirDegistirilemez;
         }
 
+        if (await KimlikleriDogrulaAsync(istek.CariHesapId, istek.KategoriId, istek.KarsiHesapId, ct) is { } hata)
+        {
+            return hata;
+        }
+
         satir.Duzenle(istek.IslemTuru, istek.CariHesapId, istek.KategoriId, istek.KarsiHesapId, istek.EslesmeyiKaldir);
 
         if (!string.IsNullOrWhiteSpace(istek.HatirlanacakKelime) && istek.IslemTuru != EkstreIslemTuru.Atla)
@@ -367,6 +372,22 @@ internal sealed class EkstreServisi(
         {
             return KasaBankaHatalari.DosyaOkunamadi;
         }
+    }
+
+    // Satır ve kurallardaki cari, kategori ve karşı hesap bu firmaya ait olmalı; filtreli sorgular başka firmanınkini bulmaz.
+    public async Task<Hata?> KimlikleriDogrulaAsync(Guid? cariId, Guid? kategoriId, Guid? karsiHesapId, CancellationToken ct)
+    {
+        if (cariId is { } c && await cariSorgusu.GetirAsync(c, ct) is null)
+        {
+            return KasaBankaHatalari.CariBulunamadi;
+        }
+
+        if (kategoriId is { } k && !await db.Kategoriler.AnyAsync(x => x.Id == k, ct))
+        {
+            return KasaBankaHatalari.KategoriBulunamadi;
+        }
+
+        return karsiHesapId is { } h && !await db.Hesaplar.AnyAsync(x => x.Id == h, ct) ? KasaBankaHatalari.HesapBulunamadi : null;
     }
 
     public static KolonEslemesi? Tahmin(EkstreAktarimi aktarim) => Tablo(aktarim) is { } tablo ? KolonTahmincisi.Tahmin(tablo) : null;

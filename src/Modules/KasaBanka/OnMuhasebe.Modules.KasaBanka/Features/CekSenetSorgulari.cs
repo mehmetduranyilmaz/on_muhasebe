@@ -56,7 +56,7 @@ internal static class CekSenetSorgulari
         sorgu = vadeBitis is { } vs ? sorgu.Where(e => e.VadeTarihi <= vs) : sorgu;
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             sorgu = sorgu.Where(e => EF.Functions.ILike(e.Kod, desen) || EF.Functions.ILike(e.SeriNo, desen)
                                      || (e.BorcluAdi != null && EF.Functions.ILike(e.BorcluAdi, desen)));
         }
@@ -118,7 +118,7 @@ internal static class CekSenetSorgulari
         var sorgu = db.EvrakBorclulari.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             sorgu = sorgu.Where(b => EF.Functions.ILike(b.Ad, desen) || (b.KimlikNo != null && EF.Functions.ILike(b.KimlikNo, desen)));
         }
 

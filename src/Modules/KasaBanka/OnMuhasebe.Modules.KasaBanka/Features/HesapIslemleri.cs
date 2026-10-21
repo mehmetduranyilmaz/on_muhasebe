@@ -70,7 +70,7 @@ internal static class HesapIslemleri
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             sorgu = sorgu.Where(h => EF.Functions.ILike(h.Ad, desen) || EF.Functions.ILike(h.Kod, desen) || (h.Iban != null && EF.Functions.ILike(h.Iban, desen)));
         }
 

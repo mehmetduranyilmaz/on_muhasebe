@@ -9,6 +9,7 @@ using OnMuhasebe.Modules.Stok.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 
 namespace OnMuhasebe.Modules.Stok.Features;
@@ -41,7 +42,7 @@ internal static class StokRaporlari
 
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             kartlar = kartlar.Where(k => EF.Functions.ILike(k.Ad, desen) || EF.Functions.ILike(k.Kod, desen));
         }
 

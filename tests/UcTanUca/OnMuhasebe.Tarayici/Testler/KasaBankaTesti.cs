@@ -143,5 +143,11 @@ internal sealed class KasaBankaTesti : TarayiciTesti
 
         await Git("/ayarlar");
         Kontrol(await Bekle($"{Govde("Gelir / gider kategorileri")} && {Govde("Faiz geliri")}"), "Ayarlarda gelir/gider kategorileri paneli");
+
+        // Açık yönlendirme: adres çubuğundaki dış dönüş adresi kullanılmaz.
+        await Git("/kasabanka/islem/tahsilat?donus=https%3A%2F%2Fkotu.site%2Fgiris");
+        Kontrol(await Bekle("[...document.querySelectorAll('a')].some(a => a.textContent.trim() === 'Vazgeç')", 15)
+            && await Js("[...document.querySelectorAll('a')].every(a => !a.href.includes('kotu.site'))") == "true",
+            "Dis siteye donus adresi reddedildi (acik yonlendirme yok)");
     }
 }

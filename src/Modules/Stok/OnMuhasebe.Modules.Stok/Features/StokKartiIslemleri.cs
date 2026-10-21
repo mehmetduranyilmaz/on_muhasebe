@@ -78,7 +78,7 @@ internal static class StokKartiIslemleri
         if (!string.IsNullOrWhiteSpace(arama))
         {
             var metin = arama.Trim();
-            var desen = $"%{metin}%";
+            var desen = AramaDeseni.Icerir(metin);
             sorgu = sorgu.Where(k => EF.Functions.ILike(k.Ad, desen) || EF.Functions.ILike(k.Kod, desen)
                                      || k.Barkod == metin || k.Birimler.Any(b => b.Barkod == metin));
         }

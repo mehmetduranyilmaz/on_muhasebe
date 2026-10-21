@@ -123,6 +123,8 @@ FIRMA=$(echo "$T2" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | grep -
 istek PUT "/api/yonetim/sistem/firmalar/$FIRMA/lisans" "$SYS" '{"paketKodu":"basic","bitisTarihi":"2020-01-01","ekModuller":[]}'
 istek POST /api/cari/hesaplar "$T2" '{"unvan":"X","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'
 kontrol 403 "Suresi dolan firma kayit giremez" lisans_suresi_doldu
+istek POST /api/yonetim/kullanicilar "$T2" '{"eposta":"saltokunur'"$U"'@ornek.com","rol":"Kullanici"}'
+kontrol 403 "Suresi dolan firma kullanici davet edemez" lisans_suresi_doldu
 istek GET /api/yonetim/abonelik "$T2"
 kontrol 200 "Abonelik ekrani salt okunur durumu gosterir" '"paketKodu":"basic".*"kalanGun":0,"saltOkunur":true'
 istek POST /api/yonetim/abonelik/odeme-bildirimleri "$T2" "$(bildir basic 1 500)"

@@ -24,7 +24,7 @@ else
                     @foreach (var t in KasaMetinleri.IslemTurleri.Where(t => t != IslemTuru.Virman))
                     {
                         <a class="tur-sekmesi @(_tur == t ? "secili" : "")" style="--vurgu:@KasaMetinleri.IslemRengi(t)"
-                           href="@KasaMetinleri.IslemAdresi(t, _hesapId, _cari?.Id, donus: Donus)">
+                           href="@KasaMetinleri.IslemAdresi(t, _hesapId, _cari?.Id, donus: GuvenliAdres.UygulamaIci(Donus))">
                             <MudIcon Icon="@KasaMetinleri.IslemIkonu(t)" Size="Size.Small" /> @KasaMetinleri.Islem(t)
                         </a>
                     }
@@ -293,7 +293,7 @@ else
         && (!Virman || (_hedefHesapId is not null && _hedefHesapId != _hesapId))
         && (!GelirGiderMi || _kategoriId is not null);
 
-    private string DonusAdresi => Donus ?? (_hesapId is { } h ? $"kasabanka/{h}" : "kasabanka");
+    private string DonusAdresi => GuvenliAdres.UygulamaIci(Donus) ?? (_hesapId is { } h ? $"kasabanka/{h}" : "kasabanka");
 
     private IEnumerable<(string Etiket, string Deger)> OzetSatirlari
     {

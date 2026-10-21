@@ -1,3 +1,5 @@
+using OnMuhasebe.Shared.Domain.Results;
+
 namespace OnMuhasebe.Shared.Infrastructure.Lisans;
 
 public interface ILisansSorgusu
@@ -10,4 +12,9 @@ public interface ILisansSorgusu
 public sealed record LisansDurumu(IReadOnlyList<string> Moduller, DateTime BitisTarihi)
 {
     public bool SuresiDolduMu(DateTime simdi) => simdi >= BitisTarihi;
+}
+
+public static class LisansHatalari
+{
+    public static readonly Hata SuresiDoldu = Hata.Yetki("lisans_suresi_doldu", "Lisans süreniz doldu; kayıtlarınız salt okunur.");
 }

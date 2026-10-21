@@ -162,7 +162,7 @@ internal static class CariRaporlari
         var cariler = db.CariHesaplar.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(arama))
         {
-            var desen = $"%{arama.Trim()}%";
+            var desen = AramaDeseni.Icerir(arama);
             cariler = cariler.Where(c => EF.Functions.ILike(c.Unvan, desen) || EF.Functions.ILike(c.Kod, desen));
         }
 

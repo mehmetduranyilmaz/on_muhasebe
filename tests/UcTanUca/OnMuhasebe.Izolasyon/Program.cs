@@ -257,6 +257,12 @@ var kullanicilar = await a.GetStringAsync("api/yonetim/kullanicilar");
 Kontrol(kullanicilar.Contains(kullaniciEposta, StringComparison.Ordinal) && !kullanicilar.Contains("\"aktifMi\":false", StringComparison.Ordinal), "A kullanıcısı pasifleştirilmedi");
 Kontrol(JsonNode.Parse(await a.GetStringAsync("api/yonetim/kullanicilar/davetler"))!.AsArray().Any(d => d!["id"]!.GetValue<string>() == id["davet"]), "A'nın bekleyen daveti iptal edilmedi");
 
+Console.WriteLine("--- Gövdede başka firmanın kimlikleri");
+Kontrol((await b.PostAsJsonAsync("api/kasabanka/ekstre-kurallari", new { anahtarKelime = "SIZINTI", yon = "Giris", islemTuru = "Tahsilat", cariHesapId = id["cari"] })).StatusCode == HttpStatusCode.NotFound,
+    "B, A'nın carisini ekstre kuralına yazamaz (404)");
+Kontrol((await b.PostAsJsonAsync("api/kasabanka/ekstre-kurallari", new { anahtarKelime = "SIZINTI", yon = "Cikis", islemTuru = "Virman", karsiHesapId = id["kasaHesap"] })).StatusCode == HttpStatusCode.NotFound,
+    "B, A'nın kasa hesabını ekstre kuralına yazamaz (404)");
+
 Console.WriteLine("--- Rol kontrolleri");
 var kGiris = await Post(Istemci(null), "api/yonetim/giris", new { eposta = kullaniciEposta, sifre = "Sifre1234" });
 var k = Istemci(kGiris["accessToken"]!.GetValue<string>());
