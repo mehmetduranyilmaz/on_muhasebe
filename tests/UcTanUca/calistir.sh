@@ -43,6 +43,8 @@ tarayici() {
 }
 
 mkdir -p "$KOK/cikti"
+# Kayıtlar e-posta doğrulamasıyla açılır: SMTP (Mailpit) testlerden önce ayarlanır.
+[ "$(KOK="${OM_API:-http://localhost:5128}" bash -c '. "$0"; smtp_ayarla' "$KOK/Senaryolar/ortam.sh")" = 200 ] || { echo "SMTP ayarlanamadi (API ve sistem yoneticisi sifresi?)"; exit 1; }
 case "$NE" in
   senaryolar) senaryolar "$@" ;;
   izolasyon) izolasyon ;;

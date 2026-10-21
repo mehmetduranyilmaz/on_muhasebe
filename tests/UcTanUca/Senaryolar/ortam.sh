@@ -60,3 +60,12 @@ davet_kabul() {
   kod=$(mailpit_kodu "$eposta" davet) || { KOD=000; GOVDE="davet e-postasi gelmedi: $eposta"; return 1; }
   _hesap_istek /api/yonetim/davet-kabul '{"kod":"'"$kod"'","ad":"'"$(alan_ ad "$2")"'","soyad":"'"$(alan_ soyad "$2")"'","sifre":"'"$(alan_ sifre "$2")"'"}'
 }
+
+# Kayıt, davet ve şifre e-postaları için SMTP'yi Mailpit'e ayarlar (boş veritabanında testlerden önce bir kez).
+smtp_ayarla() {
+  _hesap_istek /api/yonetim/giris "$SISTEM_GIRIS"
+  local token; token=$(echo "$GOVDE" | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
+  curl -s -o /dev/null -w "%{http_code}" -X PUT "$OM_KOK/api/bildirim/sistem/eposta" -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $token" \
+    --data-binary '{"aktifMi":true,"sunucu":"'"$SMTP_SUNUCU"'","port":'"$SMTP_PORT"',"guvenlik":"Yok","kullaniciAdi":null,"gonderenAdres":"bildirim@onmuhasebe.local","gonderenAd":"On Muhasebe","sifreKayitliMi":false}'
+}
