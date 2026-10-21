@@ -31,17 +31,19 @@ internal sealed class EkstreServisi(
         }
 
         var bicim = Mt940Okuyucu.Mt940Mu(icerik) ? EkstreBicimi.Mt940 : ExcelOkuyucu.ExcelMi(icerik) ? EkstreBicimi.Excel : EkstreBicimi.Csv;
-        var aktarim = EkstreAktarimi.Olustur(hesapId, Path.GetFileName(dosyaAdi), bicim, icerik);
+        var ad = Path.GetFileName(dosyaAdi);
+        var aktarim = EkstreAktarimi.Olustur(hesapId, ad.Length > 255 ? ad[..255] : ad, bicim, icerik);
         db.EkstreAktarimlari.Add(aktarim);
 
         if (bicim == EkstreBicimi.Mt940)
         {
-            var mt940 = OkumayiDene(() => Mt940Okuyucu.Oku(icerik));
-            if (mt940 is null)
+            var okunan = OkumayiDene(() => Mt940Okuyucu.Oku(icerik));
+            if (!okunan.BasariliMi)
             {
-                return KasaBankaHatalari.DosyaOkunamadi;
+                return okunan.Hata!;
             }
 
+            var mt940 = okunan.Deger;
             if (mt940.Satirlar.Count == 0)
             {
                 return KasaBankaHatalari.EkstreBos;
@@ -51,15 +53,21 @@ internal sealed class EkstreServisi(
         }
         else
         {
-            var tablo = OkumayiDene(() => Tablo(aktarim));
-            if (tablo is null || tablo.Count == 0)
+            var okunan = OkumayiDene(() => Tablo(aktarim));
+            if (!okunan.BasariliMi)
+            {
+                return okunan.Hata!;
+            }
+
+            var tablo = okunan.Deger;
+            if (tablo.Count == 0)
             {
                 return KasaBankaHatalari.DosyaOkunamadi;
             }
 
             // Kayıtlı şablon (yoksa başlıklardan tahmin) satır veriyorsa eşleme ekranı atlanır.
             var sablon = await db.EkstreSablonlari.AsNoTracking().SingleOrDefaultAsync(s => s.HesapId == hesapId, ct);
-            if (sablon is not null && SatirCozucu.Coz(tablo, sablon.Esleme) is { Satirlar.Count: > 0 } cozum)
+            if (sablon is not null && OkumayiDene(() => SatirCozucu.Coz(tablo, sablon.Esleme)) is { BasariliMi: true, Deger: { Satirlar.Count: > 0 } cozum })
             {
                 await HazirlaAsync(aktarim, hesap, sablon.Esleme, cozum.Satirlar, BakiyeKontrolu.Kontrol(cozum.Satirlar), ct);
             }
@@ -83,8 +91,13 @@ internal sealed class EkstreServisi(
             return KasaBankaHatalari.EslemeDegistirilemez;
         }
 
-        var tablo = Tablo(aktarim)!;
-        var cozum = SatirCozucu.Coz(tablo, istek.Esleme);
+        var okunan = OkumayiDene(() => SatirCozucu.Coz(Tablo(aktarim)!, istek.Esleme));
+        if (!okunan.BasariliMi)
+        {
+            return okunan.Hata!;
+        }
+
+        var cozum = okunan.Deger;
         if (cozum.Satirlar.Count == 0)
         {
             return KasaBankaHatalari.EslemeSatirVermedi;
@@ -337,17 +350,22 @@ internal sealed class EkstreServisi(
         : aktarim.Bicim == EkstreBicimi.Csv ? CsvOkuyucu.Oku(icerik)
         : null;
 
-    // Bozuk ya da desteklenmeyen dosya 500 değil anlaşılır doğrulama hatası olarak döner.
-    private static T? OkumayiDene<T>(Func<T?> oku) where T : class
+    // Bozuk ya da desteklenmeyen dosya 500 değil anlaşılır doğrulama hatası olarak döner; sınırı aşan dosya ayrıca söylenir.
+    private static Sonuc<T> OkumayiDene<T>(Func<T?> oku) where T : class
     {
         try
         {
-            return oku();
+            return oku() is { } sonuc ? sonuc : KasaBankaHatalari.DosyaOkunamadi;
+        }
+        catch (EkstreSiniriAsildiException hata)
+        {
+            return KasaBankaHatalari.EkstreCokBuyuk(hata.Message);
         }
         catch (Exception hata) when (hata is FormatException or InvalidDataException or IndexOutOfRangeException or ArgumentException
-                                       or ExcelDataReader.Exceptions.ExcelReaderException or OverflowException)
+                                       or ExcelDataReader.Exceptions.ExcelReaderException or OverflowException or System.Xml.XmlException
+                                       or NotSupportedException or IOException or InvalidOperationException)
         {
-            return null;
+            return KasaBankaHatalari.DosyaOkunamadi;
         }
     }
 

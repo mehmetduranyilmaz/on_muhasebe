@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Text;
 using ExcelDataReader;
+using OnMuhasebe.Modules.KasaBanka.Domain.Ekstre;
 
 namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
 
@@ -14,6 +16,11 @@ internal static class ExcelOkuyucu
 
     public static List<string[]> Oku(byte[] icerik)
     {
+        if (icerik[0] == 'P')
+        {
+            ZipBombasiDenetle(icerik);
+        }
+
         // .xls dosyaları Windows kod sayfalarıyla (1254) kodlanmış olabilir.
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         using var akis = new MemoryStream(icerik);
@@ -21,8 +28,8 @@ internal static class ExcelOkuyucu
         var satirlar = new List<string[]>();
         while (okuyucu.Read())
         {
-            var hucreler = new string[okuyucu.FieldCount];
-            for (var i = 0; i < okuyucu.FieldCount; i++)
+            var hucreler = new string[Math.Min(okuyucu.FieldCount, EkstreSinirlari.AzamiSutun)];
+            for (var i = 0; i < hucreler.Length; i++)
             {
                 hucreler[i] = okuyucu.GetValue(i) switch
                 {
@@ -36,9 +43,36 @@ internal static class ExcelOkuyucu
             if (hucreler.Any(h => h.Length > 0))
             {
                 satirlar.Add(hucreler);
+                EkstreSinirlari.SatirSayisiniDenetle(satirlar.Count);
             }
         }
 
         return satirlar;
+    }
+
+    // .xlsx bir zip arşividir. Girdiler gerçekten açılarak sayılır: başlıktaki boyut bilgisi sahte yazılabilir.
+    private static void ZipBombasiDenetle(byte[] icerik)
+    {
+        using var zip = new ZipArchive(new MemoryStream(icerik), ZipArchiveMode.Read);
+        if (zip.Entries.Count > EkstreSinirlari.AzamiZipGirdisi)
+        {
+            throw new EkstreSiniriAsildiException("Excel dosyasının yapısı beklenenden büyük; dosya okunamadı.");
+        }
+
+        var tampon = new byte[81_920];
+        long toplam = 0;
+        foreach (var girdi in zip.Entries)
+        {
+            using var girdiAkisi = girdi.Open();
+            int okunan;
+            while ((okunan = girdiAkisi.Read(tampon)) > 0)
+            {
+                toplam += okunan;
+                if (toplam > EkstreSinirlari.AzamiAcikBoyut)
+                {
+                    throw new EkstreSiniriAsildiException("Excel dosyasının açılmış içeriği çok büyük (en fazla 50 MB); dosya okunamadı.");
+                }
+            }
+        }
     }
 }

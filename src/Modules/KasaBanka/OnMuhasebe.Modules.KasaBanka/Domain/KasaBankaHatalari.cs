@@ -28,6 +28,7 @@ internal static class KasaBankaHatalari
     public static readonly Hata KasayaEkstreYok = Hata.IsKurali("kasaya_ekstre_yok", "Ekstre yalnızca banka, kredi kartı ve POS hesaplarına aktarılır.");
     public static readonly Hata DosyaOkunamadi = Hata.Dogrulama("dosya_okunamadi", "Dosya okunamadı. CSV, Excel (.xlsx/.xls) veya MT940 biçiminde bir ekstre yükleyin.");
     public static readonly Hata DosyaCokBuyuk = Hata.Dogrulama("dosya_cok_buyuk", "Ekstre dosyası en fazla 5 MB olabilir.");
+    public static Hata EkstreCokBuyuk(string mesaj) => Hata.Dogrulama("ekstre_cok_buyuk", mesaj);
     public static readonly Hata EkstreBos = Hata.Dogrulama("ekstre_bos", "Dosyada aktarılacak hareket bulunamadı.");
     public static readonly Hata AktarimBulunamadi = Hata.Bulunamadi("aktarim_bulunamadi", "Ekstre aktarımı veya satırı bulunamadı.");
     public static readonly Hata EslemeDegistirilemez = Hata.IsKurali("esleme_degistirilemez", "Satırları aktarılmış ya da MT940 biçimindeki aktarımın kolon eşlemesi değiştirilemez.");

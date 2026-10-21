@@ -33,9 +33,18 @@ internal static class CsvOkuyucu
 
     public static List<string[]> Oku(byte[] icerik)
     {
-        var satirlar = Metin(icerik).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n')
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .ToList();
+        // Satır satır okunur; sınır aşılınca hemen durulur (milyonlarca satırlık dosya belleği doldurmasın).
+        var satirlar = new List<string>();
+        using var okuyucu = new StringReader(Metin(icerik));
+        while (okuyucu.ReadLine() is { } satir)
+        {
+            if (!string.IsNullOrWhiteSpace(satir))
+            {
+                satirlar.Add(satir);
+                EkstreSinirlari.SatirSayisiniDenetle(satirlar.Count);
+            }
+        }
+
         var ayrac = AyracBul(satirlar.Take(20).ToList());
         return satirlar.Select(s => Bol(s, ayrac)).ToList();
     }
@@ -83,7 +92,7 @@ internal static class CsvOkuyucu
         }
 
         alanlar.Add(alan.ToString().Trim());
-        return alanlar.ToArray();
+        return alanlar.Take(EkstreSinirlari.AzamiSutun).ToArray();
     }
 }
 
@@ -117,6 +126,7 @@ internal static partial class Mt940Okuyucu
                     if (Hareket(deger, aciklama) is { } hareket)
                     {
                         satirlar.Add(hareket);
+                        EkstreSinirlari.SatirSayisiniDenetle(satirlar.Count);
                     }
 
                     break;

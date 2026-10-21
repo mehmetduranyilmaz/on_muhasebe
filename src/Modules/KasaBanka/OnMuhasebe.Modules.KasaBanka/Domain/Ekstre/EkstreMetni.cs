@@ -80,7 +80,18 @@ internal static class EkstreMetni
             return null;
         }
 
+        // 16 haneden uzun tam kısım hatalı veridir (decimal taşmasın, makul tutar sınırının çok üstü).
+        if (tam.Length > 16)
+        {
+            return null;
+        }
+
         var deger = decimal.Parse($"{(tam.Length == 0 ? "0" : tam)}.{(kesir.Length == 0 ? "0" : kesir)}", CultureInfo.InvariantCulture);
+        if (deger >= EkstreSinirlari.AzamiTutar)
+        {
+            return null;
+        }
+
         return eksi ? -deger : deger;
     }
 

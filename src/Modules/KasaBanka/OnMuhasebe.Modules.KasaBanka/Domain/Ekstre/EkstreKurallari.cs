@@ -51,7 +51,7 @@ internal static class SatirCozucu
         var atlanan = 0;
         foreach (var hucreler in tablo.Skip(e.BaslikSatiri + 1))
         {
-            string? Hucre(int? kolon) => kolon is { } k && k < hucreler.Length ? hucreler[k] : null;
+            string? Hucre(int? kolon) => kolon is { } k && k >= 0 && k < hucreler.Length ? hucreler[k] : null;
 
             var tarih = EkstreMetni.Tarih(Hucre(e.TarihKolonu));
             decimal? tutar = e.TutarKolonu is not null

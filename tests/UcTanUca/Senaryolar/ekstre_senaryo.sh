@@ -82,6 +82,8 @@ istek POST "/api/kasabanka/ekstre-aktarimlari/$A1/aktar" "$T"
 kontrol 422 "Esleme yapilmadan aktarilamaz" aktarim_hazir_degil
 istek PUT "/api/kasabanka/ekstre-aktarimlari/$A1/esleme" "$T" '{"esleme":{"baslikSatiri":2,"tarihKolonu":0,"aciklamaKolonu":1,"tutarKolonu":null,"alacakKolonu":3,"borcKolonu":null,"bakiyeKolonu":null,"referansKolonu":null,"tutarTersMi":false},"sablonuKaydet":false}'
 kontrol 400 "Tutar ya da borc+alacak kolonu zorunlu" "Tutar kolonu"
+istek PUT "/api/kasabanka/ekstre-aktarimlari/$A1/esleme" "$T" '{"esleme":{"baslikSatiri":2,"tarihKolonu":0,"aciklamaKolonu":1,"tutarKolonu":2,"alacakKolonu":null,"borcKolonu":null,"bakiyeKolonu":-1,"referansKolonu":500,"tutarTersMi":false},"sablonuKaydet":true}'
+kontrol 400 "Gecersiz kolon numarasi (negatif/sinir disi) sablona kaydedilmez" "BakiyeKolonu|ReferansKolonu"
 istek PUT "/api/kasabanka/ekstre-aktarimlari/$A1/esleme" "$T" '{"esleme":{"baslikSatiri":2,"tarihKolonu":1,"aciklamaKolonu":0,"tutarKolonu":4,"alacakKolonu":null,"borcKolonu":null,"bakiyeKolonu":null,"referansKolonu":null,"tutarTersMi":false},"sablonuKaydet":false}'
 kontrol 400 "Satir vermeyen esleme reddedildi" esleme_satir_vermedi
 istek PUT "/api/kasabanka/ekstre-aktarimlari/$A1/esleme" "$T" '{"esleme":{"baslikSatiri":2,"tarihKolonu":0,"aciklamaKolonu":1,"tutarKolonu":null,"alacakKolonu":3,"borcKolonu":2,"bakiyeKolonu":4,"referansKolonu":null,"tutarTersMi":false},"sablonuKaydet":true}'

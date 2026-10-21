@@ -7,6 +7,7 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Modules.KasaBanka.Domain.Ekstre;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
 using OnMuhasebe.Shared.Infrastructure.Guvenlik;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -42,9 +43,15 @@ internal static class EkstreIslemleri
             RuleFor(x => x.Esleme).NotNull().WithMessage("Kolon eşlemesi gönderilmelidir.");
             When(x => x.Esleme is not null, () =>
             {
-                RuleFor(x => x.Esleme.BaslikSatiri).GreaterThanOrEqualTo(-1);
-                RuleFor(x => x.Esleme.TarihKolonu).GreaterThanOrEqualTo(0);
-                RuleFor(x => x.Esleme.AciklamaKolonu).GreaterThanOrEqualTo(0);
+                // Geçersiz kolon numarası şablona kaydedilirse sonraki her yükleme bozulurdu; tüm kolonlar dosya sınırları içinde olmalı.
+                RuleFor(x => x.Esleme.BaslikSatiri).InclusiveBetween(-1, EkstreSinirlari.AzamiSatir);
+                RuleFor(x => x.Esleme.TarihKolonu).InclusiveBetween(0, EkstreSinirlari.AzamiSutun - 1);
+                RuleFor(x => x.Esleme.AciklamaKolonu).InclusiveBetween(0, EkstreSinirlari.AzamiSutun - 1);
+                RuleFor(x => x.Esleme.TutarKolonu).InclusiveBetween(0, EkstreSinirlari.AzamiSutun - 1);
+                RuleFor(x => x.Esleme.AlacakKolonu).InclusiveBetween(0, EkstreSinirlari.AzamiSutun - 1);
+                RuleFor(x => x.Esleme.BorcKolonu).InclusiveBetween(0, EkstreSinirlari.AzamiSutun - 1);
+                RuleFor(x => x.Esleme.BakiyeKolonu).InclusiveBetween(0, EkstreSinirlari.AzamiSutun - 1);
+                RuleFor(x => x.Esleme.ReferansKolonu).InclusiveBetween(0, EkstreSinirlari.AzamiSutun - 1);
             });
             RuleFor(x => x.Esleme).Must(e => e.TutarKolonu is not null || (e.AlacakKolonu is not null && e.BorcKolonu is not null))
                 .WithMessage("Tutar kolonu ya da giriş (alacak) ve çıkış (borç) kolonları seçilmelidir.").When(x => x.Esleme is not null);
