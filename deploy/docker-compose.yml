@@ -36,11 +36,31 @@ services:
       postgres:
         condition: service_healthy
 
+  # Gece yedeği (deploy/yedekler). Elle: docker compose ... run --rm yedek simdi
+  yedek:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/yedek.sh"]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: onmuhasebe
+      PGUSER: onmuhasebe
+      PGPASSWORD: ${POSTGRES_SIFRESI:?}
+      YEDEK_SAATI_UTC: ${YEDEK_SAATI_UTC:-0}
+      YEDEK_GUN: ${YEDEK_GUN:-14}
+    volumes:
+      - ./yedek.sh:/yedek.sh:ro
+      - ./yedekler:/yedekler
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     image: onmuhasebe-api
     restart: unless-stopped
     environment:
       <<: *api-ortami
+      Guvenlik__VekilArkasinda: "true"
       Jwt__Anahtar: ${JWT_ANAHTARI:?}
       Bildirim__SifrelemeAnahtari: ${BILDIRIM_SIFRELEME_ANAHTARI:?}
       SistemYoneticisi__Eposta: ${SISTEM_YONETICISI_EPOSTA:?}

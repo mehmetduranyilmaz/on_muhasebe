@@ -10,12 +10,19 @@ internal sealed class VadeTesti : TarayiciTesti
 {
     public override string Ad => "vade";
 
+    // 20 bin carili performans firması gerekir (OM_PERF_EPOSTA, şifre Sifre1234); yoksa test atlanır.
     protected override async Task CalistirAsync()
     {
+        if (Environment.GetEnvironmentVariable("OM_PERF_EPOSTA") is not { Length: > 0 } perfEposta)
+        {
+            Console.WriteLine("ATLANDI  OM_PERF_EPOSTA tanimli degil (20 bin carili performans firmasi gerekli)");
+            return;
+        }
+
         await Komut("Page.enable");
         await Git("/giris");
         await Bekle("document.querySelectorAll('input').length >= 2");
-        await Doldur("E-posta", "perfb1792539588@ornek.com");
+        await Doldur("E-posta", perfEposta);
         await Doldur("Şifre", "Sifre1234");
         await Tikla("Giriş Yap");
         await Bekle(Govde("Hoş"), 15);

@@ -29,7 +29,7 @@ internal sealed class BildirimTesti : TarayiciTesti
                 new { tur = "Cek", seriNo = "7002", vadeTarihi = bugun.AddDays(2).ToString("yyyy-MM-dd"), tutar = 1500, paraBirimi = "TRY", borclu = new { ad = "Kesideci", kimlikNo = "9876543217" }, bankaAdi = "Akbank" }
             }
         });
-        var sistem = new HttpClient();
+        var sistem = YeniIstemci();
         var sistemToken = (await (await sistem.PostAsJsonAsync(Api + "api/yonetim/giris", new { eposta = SistemEposta, sifre = SistemSifre })).Content.ReadFromJsonAsync<JsonObject>())!["accessToken"]!.GetValue<string>();
         sistem.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", sistemToken);
         (await sistem.PostAsJsonAsync(Api + "api/bildirim/sistem/calistir", new { })).EnsureSuccessStatusCode();

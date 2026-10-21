@@ -13,6 +13,7 @@ internal static class Ortam
     public static string Dosyalar { get; } = Deger("OM_DOSYALAR", Path.Combine(Kok, "Dosyalar"));
     public static string Cikti { get; } = Deger("OM_CIKTI", Path.Combine(Kok, "cikti"));
     public static string Chrome { get; } = Deger("OM_CHROME", ChromeBul());
+    public static bool GuvensizSertifika { get; } = Deger("OM_GUVENSIZ_SERTIFIKA", "0") == "1";
     public static double BeklemeCarpani { get; } = double.Parse(Deger("OM_BEKLEME_CARPANI", "1"), System.Globalization.CultureInfo.InvariantCulture);
 
     // tests/UcTanUca klasörü: çalışan derlemenin üst klasörlerinde Dosyalar klasörünü içeren ilk yer.

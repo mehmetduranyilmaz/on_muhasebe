@@ -35,18 +35,8 @@
 
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
-    <script>
-        // Tema tercihi ve hareket ayarı. Tarayıcı depolaması kapalıysa sessizce sistem ayarına düşülür.
-        window.omTema = {
-            oku: () => { try { return localStorage.getItem("om-tema"); } catch { return null; } },
-            yaz: deger => { try { localStorage.setItem("om-tema", deger); } catch { } }
-        };
-        window.omHareketAzaltildiMi = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    </script>
-    <script>
-        // PWA: yeni sürüm arka planda iner, uygulama bir sonraki açılışta sessizce güncellenir.
-        if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" });
-    </script>
+    <!-- importmap dışında satır içi script yok: canlıdaki CSP dosya scriptlerine ve importmap özetine izin verir (deploy/csp.cs). -->
+    <script src="js/baslangic.js"></script>
 </body>
 
 </html>

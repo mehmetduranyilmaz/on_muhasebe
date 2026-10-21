@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
@@ -52,6 +53,19 @@ public static class GuvenlikExtensions
                         _ => new FixedWindowRateLimiterOptions { PermitLimit = ipLimiti, Window = TimeSpan.FromMinutes(1) });
             });
         });
+
+        // Ters vekil (Caddy) arkasında istemci IP'si (hız sınırı) ve https bilgisi X-Forwarded-* başlıklarından okunur.
+        // Yalnızca API'ye vekil dışında erişilemiyorsa açılmalı (deploy/docker-compose.yml'de API portu dışarı açılmaz).
+        if (configuration.GetValue("Guvenlik:VekilArkasinda", false))
+        {
+            services.Configure<ForwardedHeadersOptions>(o =>
+            {
+                o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                o.ForwardLimit = 1;
+                o.KnownIPNetworks.Clear();
+                o.KnownProxies.Clear();
+            });
+        }
 
         services.Configure<KestrelServerOptions>(o => o.Limits.MaxRequestBodySize = azamiGovde);
         services.Configure<FormOptions>(o => o.MultipartBodyLengthLimit = AzamiYuklemeBoyutu);

@@ -7,6 +7,12 @@
 {$ALAN_ADI} {
 	encode zstd gzip
 
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# API kendi güvenlik başlıklarını (katı CSP, no-store) verir; gerçek istemci IP'si X-Forwarded-For ile iletilir.
 	@api path /api/* /health
 	handle @api {
 		reverse_proxy api:8080
@@ -14,6 +20,16 @@
 
 	handle {
 		root * /srv
+		header {
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "same-origin"
+			Cross-Origin-Opener-Policy "same-origin"
+			# Kamera yalnızca kendi sayfalarımızda (çek karekodu okutma).
+			Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+		}
+		import csp.caddy
+
 		# Uygulama kabuğu her açılışta güncel mi diye sorulur; sürümlü (_framework) dosyaları tarayıcı önbellekler.
 		@kabuk path / /index.html /service-worker.js /service-worker-assets.js /manifest.webmanifest
 		header @kabuk Cache-Control "no-cache"

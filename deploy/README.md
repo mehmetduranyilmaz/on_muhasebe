@@ -35,7 +35,27 @@ git pull && deploy/kur.sh
 
 İmajlar yeniden derlenir; `migrator` yeni migration'ları uygular, ardından API yeni sürümle açılır.
 
+## Yedekleme
+
+`yedek` kapsayıcısı her gece 03.00'te (TSİ) veritabanının tam yedeğini (`pg_dump`, sıkıştırılmış) alır ve
+`deploy/yedekler/` klasörüne yazar; 14 günden eskileri siler (`.env` içinde `YEDEK_SAATI_UTC`, `YEDEK_GUN` ile değişir).
+
+```bash
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm yedek simdi   # elle yedek
+deploy/geri-yukle.sh deploy/yedekler/onmuhasebe-20261021-030000.dump --evet              # geri yükleme
+```
+
+Geri yükleme önce mevcut durumun yedeğini alır, API'yi durdurur, yedeği yükler, migration'ları yeniden uygular ve
+API'yi başlatır. **Yedekler aynı sunucuda durduğu için sunucu kaybına karşı korumaz:** `deploy/yedekler/` klasörünü
+düzenli olarak başka bir yere (nesne depolama, ikinci sunucu) kopyalayın. `.env` dosyası da yedeklenmelidir; o olmadan
+yedek açılır ama oturum anahtarları ve SMTP şifresi kaybolur.
+
 ## Güvenlik notları
+
+- Web sıkı içerik güvenlik politikasıyla (CSP) sunulur: yalnızca kendi dosyalarımız ve derlemede özeti alınan importmap
+  çalışabilir (`deploy/csp.cs`). Kamera izni yalnızca kendi sayfalarımıza açıktır. Tüm yanıtlar HSTS içerir.
+- API, Caddy'den gelen `X-Forwarded-For` ile gerçek istemci IP'sini görür (hız sınırı buna göre işler); dışarıdan
+  gönderilen sahte başlık Caddy tarafından geçersiz kılınır.
 
 - API veritabanına satır güvenliğine (RLS) tabi `onmuhasebe_uygulama` rolüyle bağlanır. Tablo sahibi (`onmuhasebe`)
   bağlantısı yalnızca `migrator` kapsayıcısına verilir.

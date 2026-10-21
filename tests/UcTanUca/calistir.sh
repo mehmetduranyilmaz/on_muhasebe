@@ -38,7 +38,7 @@ tarayici() {
   for t in $liste; do
     [ $ilk = 1 ] || ara; ilk=0
     dotnet run --project "$KOK/OnMuhasebe.Tarayici" -c Release --no-build -- "$t" > "$KOK/cikti/tarayici-$t.log" 2>&1 || KALAN=$((KALAN+1))
-    grep -E "^==|^KALDI|^SONUC" "$KOK/cikti/tarayici-$t.log"
+    grep -E "^==|^KALDI|^ATLANDI|^SONUC" "$KOK/cikti/tarayici-$t.log"
   done
 }
 

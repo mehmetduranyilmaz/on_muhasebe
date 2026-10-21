@@ -94,6 +94,8 @@ açılırsa `OM_HIZ_BEKLE=0` verilerek beklemeden çalışır. Günlükler ve ek
 | `OM_PSQL` | Doğrudan SQL için komut (ör. `psql postgresql://...`) | geliştirme konteyneri (`docker exec`) |
 | `OM_CHROME` | Chrome yolu | standart kurulum yerleri |
 | `OM_BEKLEME_CARPANI` | Yavaş makinede tarayıcı bekleme sürelerini uzatır | `1` |
+| `OM_GUVENSIZ_SERTIFIKA` | `1`: kendi imzalı sertifikayı kabul et (ör. `deploy` ile localhost) | `0` |
+| `OM_PERF_EPOSTA` | Vade testi için 20 bin carili performans firmasının hesabı; yoksa test atlanır | — |
 
 GitHub Actions (`.github/workflows/ci.yml`) her push'ta derleme, birim testleri, API senaryoları ve izolasyon testini;
 her gece ve elle tetiklendiğinde tarayıcı testlerini de çalıştırır. Gizli değerler her çalışmada rastgele üretilir.

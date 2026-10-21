@@ -52,6 +52,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Vekil başlıkları ilk okunur: sonraki her adım (hız sınırı, HSTS) gerçek istemci IP'sini ve şemayı görsün.
+app.UseForwardedHeaders();
+
 // CORS en dışta: hata yanıtlarında da CORS başlıkları bulunsun, tarayıcı hata mesajını okuyabilsin.
 app.UseCors();
 app.UseGuvenlikBasliklari(app.Environment);

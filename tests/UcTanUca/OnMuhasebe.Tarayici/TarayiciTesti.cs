@@ -18,7 +18,7 @@ internal abstract class TarayiciTesti
     protected static string SistemSifre => Ortam.SistemSifre;
     protected static string Dosyalar => Ortam.Dosyalar;
 
-    protected readonly HttpClient http = new();
+    protected readonly HttpClient http = YeniIstemci();
     protected readonly List<JsonNode> olaylar = [];
     protected string[] args = [];
 
@@ -27,6 +27,11 @@ internal abstract class TarayiciTesti
     private int _gecen;
     private int _kalan;
     private string _ekranlar = null!;
+
+    // Kendi imzalı sertifikalı ortamda (ör. deploy ile localhost) OM_GUVENSIZ_SERTIFIKA=1 sertifika doğrulamasını kapatır.
+    protected static HttpClient YeniIstemci() => Ortam.GuvensizSertifika
+        ? new HttpClient(new HttpClientHandler { ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator })
+        : new HttpClient();
 
     public abstract string Ad { get; }
 
@@ -48,7 +53,7 @@ internal abstract class TarayiciTesti
         var port = BosPort();
         var profil = Path.Combine(Path.GetTempPath(), "om-cdp-" + Guid.NewGuid().ToString("N"));
         using var chrome = Process.Start(new ProcessStartInfo(Ortam.Chrome,
-            $"--headless=new --disable-gpu --no-first-run --no-sandbox --lang=tr-TR --window-size=1400,1000 {ChromeArgumanlari}--remote-debugging-port={port} --user-data-dir=\"{profil}\" about:blank")
+            $"--headless=new --disable-gpu --no-first-run --no-sandbox --lang=tr-TR --window-size=1400,1000 {(Ortam.GuvensizSertifika ? "--ignore-certificate-errors " : "")}{ChromeArgumanlari}--remote-debugging-port={port} --user-data-dir=\"{profil}\" about:blank")
         { UseShellExecute = false, RedirectStandardError = true })!;
         chrome.ErrorDataReceived += (_, _) => { };
         chrome.BeginErrorReadLine();
@@ -64,7 +69,15 @@ internal abstract class TarayiciTesti
             var wsAdres = sekmeler!.First(s => s!["type"]!.GetValue<string>() == "page")!["webSocketDebuggerUrl"]!.GetValue<string>();
             _ws = new ClientWebSocket();
             await _ws.ConnectAsync(new Uri(wsAdres), CancellationToken.None);
+            await Komut("Log.enable");
             await CalistirAsync();
+
+            // İçerik güvenlik politikasının (canlıdaki CSP) engellediği bir kaynak ya da script olmamalı.
+            var ihlaller = olaylar
+                .Select(o => o["method"]?.GetValue<string>() == "Log.entryAdded" ? o["params"]?["entry"]?["text"]?.GetValue<string>() : null)
+                .Where(m => m?.Contains("Content Security Policy", StringComparison.Ordinal) == true)
+                .ToList();
+            Kontrol(ihlaller.Count == 0, "CSP ihlali yok" + (ihlaller.Count > 0 ? $" ({ihlaller.Count}): {ihlaller[0]}" : ""));
         }
         catch (Exception e)
         {
