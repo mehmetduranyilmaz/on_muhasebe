@@ -79,7 +79,8 @@ public enum VadeGruplama
     Ay
 }
 
-public sealed record CekSenetAyarlari(bool KesideciKimlikZorunlu, bool SenetBorcluKimlikZorunlu, RiskDavranisi RiskDavranisi);
+// KarneUyariEsigi: karnede bu kadar ya da daha az boş yaprak kalınca uyarılır.
+public sealed record CekSenetAyarlari(bool KesideciKimlikZorunlu, bool SenetBorcluKimlikZorunlu, RiskDavranisi RiskDavranisi, int KarneUyariEsigi = 5);
 
 // Keşideci/borçlu: kayıtlıysa BorcluId, değilse ad + kimlik no ile girilir ve kaydedilirken kartı açılır.
 public sealed record BorcluGirdisi(Guid? BorcluId, string? Ad, string? KimlikNo, string? Telefon);
@@ -110,6 +111,8 @@ public sealed record AlinanBordroIstegi(
     IReadOnlyList<AlinanEvrakGirdisi> Evraklar);
 
 // Verilen çek firmanın bir banka hesabına bağlıdır ve o hesabın dövizindedir; senette döviz seçilir.
+// KarneId verilirse seri karnenin aralığında, boş ve iptal edilmemiş olmalı; SeriNo boşsa karnenin sıradaki yaprağı kullanılır.
+// KarneId verilmezse seri, hesabın (senette defterin) aralığına düşen karneye kendiliğinden bağlanır.
 public sealed record VerilenEvrakGirdisi(
     EvrakTuru Tur,
     string SeriNo,
@@ -119,7 +122,8 @@ public sealed record VerilenEvrakGirdisi(
     Guid? KendiHesapId,
     decimal? Kur,
     decimal? CariKuru,
-    string? Aciklama);
+    string? Aciklama,
+    Guid? KarneId = null);
 
 public sealed record VerilenBordroIstegi(Guid CariHesapId, DateOnly Tarih, string? Aciklama, IReadOnlyList<VerilenEvrakGirdisi> Evraklar);
 
@@ -277,3 +281,39 @@ public sealed record BordroDetayi(
     string? HesapAdi,
     string? Aciklama,
     IReadOnlyList<EvrakOzeti> Evraklar);
+
+// Firmanın kendi çek karnesi (banka hesabına bağlı) ya da senet defteri. Seriler başlangıçtan ardışıktır.
+public sealed record KarneEkleIstegi(EvrakTuru Tur, Guid? KendiHesapId, string BaslangicSeri, int YaprakSayisi, DateOnly Tarih, string? Aciklama);
+
+public sealed record KarneOzeti(
+    Guid Id,
+    EvrakTuru Tur,
+    Guid? KendiHesapId,
+    string? HesapAdi,
+    string BaslangicSeri,
+    string BitisSeri,
+    int YaprakSayisi,
+    int Kullanilan,
+    int IptalEdilen,
+    int Kalan,
+    string? SiradakiSeri,
+    bool AzaldiMi,
+    DateOnly Tarih,
+    string? Aciklama,
+    bool AktifMi);
+
+[JsonConverter(typeof(JsonStringEnumConverter<YaprakDurumu>))]
+public enum YaprakDurumu
+{
+    Bos,
+    Kullanildi,
+    Iptal
+}
+
+public sealed record KarneYapragi(string SeriNo, YaprakDurumu Durum, Guid? EvrakId, string? EvrakKodu, string? CariUnvan, decimal? Tutar,
+    DateOnly? VadeTarihi, string? IptalNedeni);
+
+public sealed record KarneDetayi(KarneOzeti Ozet, IReadOnlyList<KarneYapragi> Yapraklar);
+
+// Yırtılan, kaybolan ya da hatalı yazılan yaprak; bir daha önerilmez.
+public sealed record YaprakIptalIstegi(string SeriNo, string Neden);

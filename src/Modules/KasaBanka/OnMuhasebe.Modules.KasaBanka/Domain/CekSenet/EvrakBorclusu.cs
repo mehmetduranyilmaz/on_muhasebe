@@ -88,6 +88,7 @@ internal sealed class CekSenetAyari : FirmaEntity
     public bool KesideciKimlikZorunlu { get; private set; } = true;
     public bool SenetBorcluKimlikZorunlu { get; private set; }
     public RiskDavranisi RiskDavranisi { get; private set; } = RiskDavranisi.UyarVeOnayIste;
+    public int KarneUyariEsigi { get; private set; } = 5;
 
     public static CekSenetAyari Varsayilan() => new();
 
@@ -96,9 +97,10 @@ internal sealed class CekSenetAyari : FirmaEntity
         KesideciKimlikZorunlu = a.KesideciKimlikZorunlu;
         SenetBorcluKimlikZorunlu = a.SenetBorcluKimlikZorunlu;
         RiskDavranisi = a.RiskDavranisi;
+        KarneUyariEsigi = a.KarneUyariEsigi;
     }
 
-    public CekSenetAyarlari Sozlesme() => new(KesideciKimlikZorunlu, SenetBorcluKimlikZorunlu, RiskDavranisi);
+    public CekSenetAyarlari Sozlesme() => new(KesideciKimlikZorunlu, SenetBorcluKimlikZorunlu, RiskDavranisi, KarneUyariEsigi);
 
     public bool KimlikZorunluMu(EvrakTuru tur) => tur == EvrakTuru.Cek ? KesideciKimlikZorunlu : SenetBorcluKimlikZorunlu;
 }

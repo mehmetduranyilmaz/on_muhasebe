@@ -44,6 +44,9 @@ internal sealed class Evrak : FirmaEntity
     // Verilen çekin bağlı olduğu banka hesabı.
     public Guid? KendiHesapId { get; private set; }
 
+    // Verilen evrakın yaprağı olduğu karne (çek karnesi / senet defteri).
+    public Guid? KarneId { get; private set; }
+
     public EvrakDurumu Durum { get; private set; }
 
     // Tahsile ya da teminata verildiği banka.
@@ -106,12 +109,12 @@ internal sealed class Evrak : FirmaEntity
 
     public static Evrak Verilen(
         string kod, VerilenEvrakGirdisi g, string paraBirimi, DateOnly tarih, Guid cariId, decimal kur, decimal cariTutar, decimal cariKur,
-        KasaHesabi? kendiHesap) => new()
+        KasaHesabi? kendiHesap, string seriNo, Guid? karneId) => new()
     {
         Kod = kod,
         Tur = g.Tur,
         Yon = EvrakYonu.Verilen,
-        SeriNo = g.SeriNo.Trim(),
+        SeriNo = seriNo,
         GirisTarihi = tarih,
         VadeTarihi = g.VadeTarihi,
         Tutar = Para.Yuvarla(g.Tutar),
@@ -121,6 +124,7 @@ internal sealed class Evrak : FirmaEntity
         CariTutar = cariTutar,
         CariKur = cariKur,
         KendiHesapId = kendiHesap?.Id,
+        KarneId = karneId,
         BankaAdi = kendiHesap?.BankaAdi,
         HesapNo = kendiHesap?.HesapNo,
         Durum = EvrakDurumu.Verildi,

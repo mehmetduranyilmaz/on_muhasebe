@@ -63,6 +63,18 @@ internal static class KasaBankaHatalari
     public static readonly Hata KimlikNoKullaniliyor = Hata.Cakisma("kimlik_no_kullaniliyor", "Bu VKN/TCKN ile kayıtlı bir keşideci/borçlu var.");
     public static readonly Hata BorcluEvrakliSilinemez = Hata.IsKurali("borclu_evrakli", "Evrakı olan keşideci/borçlu silinemez.");
     public static readonly Hata EvrakZatenKayitli = Hata.Cakisma("evrak_zaten_kayitli", "Bu seri numaralı çek aynı hesaptan zaten kayıtlı.");
+    public static readonly Hata SeriGerekli = Hata.Dogrulama("seri_gerekli", "Seri no girin ya da karne seçin.");
+    public static readonly Hata KarneBulunamadi = Hata.Bulunamadi("karne_bulunamadi", "Çek karnesi / senet defteri bulunamadı.");
+    public static readonly Hata KarneSeriGecersiz = Hata.Dogrulama("karne_seri_gecersiz", "Başlangıç seri no sayı ile bitmelidir (ör. ABC 1234501).");
+    public static readonly Hata KarneCakisiyor = Hata.Cakisma("karne_cakisiyor", "Bu seri aralığı aynı hesabın başka bir karnesiyle çakışıyor.");
+    public static readonly Hata KarneUyumsuz = Hata.IsKurali("karne_uyumsuz", "Seçilen karne bu evrakın türüne ya da banka hesabına ait değil.");
+    public static readonly Hata KarneKapali = Hata.IsKurali("karne_kapali", "Karne kapatılmış; yeniden açmadan kullanılamaz.");
+    public static readonly Hata KarneDoldu = Hata.IsKurali("karne_doldu", "Karnede boş yaprak kalmadı.");
+    public static readonly Hata KarneSeriDisinda = Hata.IsKurali("karne_seri_disinda", "Seri no karnenin aralığında değil.");
+    public static readonly Hata KarneYapragiKullanildi = Hata.Cakisma("karne_yapragi_kullanildi", "Bu yaprak daha önce kullanıldı.");
+    public static readonly Hata KarneYapragiIptal = Hata.IsKurali("karne_yapragi_iptal", "Bu yaprak iptal edilmiş (yırtık/kayıp); kullanılamaz.");
+    public static readonly Hata KarneYapragiIptalDegil = Hata.Bulunamadi("karne_yapragi_iptal_degil", "Bu yaprak iptal edilmemiş.");
+    public static readonly Hata KarneKullanildi = Hata.IsKurali("karne_kullanildi", "Yaprağı kullanılmış karne silinemez; kapatabilirsiniz.");
 
     public static Hata RiskOnayiGerekli(string mesaj) => Hata.IsKurali("risk_onayi_gerekli", $"{mesaj} Yine de kabul etmek için onaylayın.");
 

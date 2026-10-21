@@ -101,6 +101,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
 
+                    b.Property<int>("KarneUyariEsigi")
+                        .HasColumnType("integer")
+                        .HasColumnName("karne_uyari_esigi");
+
                     b.Property<bool>("KesideciKimlikZorunlu")
                         .HasColumnType("boolean")
                         .HasColumnName("kesideci_kimlik_zorunlu");
@@ -223,6 +227,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("hesap_no");
+
+                    b.Property<Guid?>("KarneId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("karne_id");
 
                     b.Property<DateOnly?>("KarsiliksizTarihi")
                         .HasColumnType("date")
@@ -348,6 +356,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                     b.HasIndex("FirmaId", "Kod")
                         .IsUnique()
                         .HasDatabaseName("ix_evrak_firma_id_kod");
+
+                    b.HasIndex("KarneId", "SeriNo")
+                        .HasDatabaseName("ix_evrak_karne_id_seri_no")
+                        .HasFilter("karne_id IS NOT NULL");
 
                     b.HasIndex("FirmaId", "Yon", "Durum", "VadeTarihi")
                         .HasDatabaseName("ix_evrak_firma_id_yon_durum_vade_tarihi");
@@ -643,6 +655,149 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasDatabaseName("ix_evrak_hareketi_evrak_id_sira");
 
                     b.ToTable("evrak_hareketi", "kasabanka");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.EvrakKarnesi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<bool>("AktifMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("aktif_mi");
+
+                    b.Property<long>("BaslangicNo")
+                        .HasColumnType("bigint")
+                        .HasColumnName("baslangic_no");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<int>("Hane")
+                        .HasColumnType("integer")
+                        .HasColumnName("hane");
+
+                    b.Property<Guid?>("KendiHesapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kendi_hesap_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("Onek")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("onek");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateOnly>("Tarih")
+                        .HasColumnType("date")
+                        .HasColumnName("tarih");
+
+                    b.Property<string>("Tur")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("tur");
+
+                    b.Property<int>("YaprakSayisi")
+                        .HasColumnType("integer")
+                        .HasColumnName("yaprak_sayisi");
+
+                    b.HasKey("Id")
+                        .HasName("pk_evrak_karnesi");
+
+                    b.HasIndex("KendiHesapId")
+                        .HasDatabaseName("ix_evrak_karnesi_kendi_hesap_id");
+
+                    b.HasIndex("FirmaId", "Tur", "KendiHesapId")
+                        .HasDatabaseName("ix_evrak_karnesi_firma_id_tur_kendi_hesap_id");
+
+                    b.ToTable("evrak_karnesi", "kasabanka");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.KarneYaprakIptali", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid>("KarneId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("karne_id");
+
+                    b.Property<string>("Neden")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("neden");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("SeriNo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("seri_no");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateOnly>("Tarih")
+                        .HasColumnType("date")
+                        .HasColumnName("tarih");
+
+                    b.HasKey("Id")
+                        .HasName("pk_karne_yaprak_iptali");
+
+                    b.HasIndex("KarneId", "SeriNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_karne_yaprak_iptali_karne_id_seri_no");
+
+                    b.ToTable("karne_yaprak_iptali", "kasabanka");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.EkstreAktarimi", b =>
@@ -1528,6 +1683,12 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_evrak_evrak_borclusu_borclu_id");
 
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.EvrakKarnesi", null)
+                        .WithMany()
+                        .HasForeignKey("KarneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_evrak_karneler_karne_id");
+
                     b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.KasaHesabi", null)
                         .WithMany()
                         .HasForeignKey("KendiHesapId")
@@ -1556,6 +1717,25 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_evrak_hareketi_evrak_evrak_id");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.EvrakKarnesi", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.KasaHesabi", null)
+                        .WithMany()
+                        .HasForeignKey("KendiHesapId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_evrak_karnesi_hesaplar_kendi_hesap_id");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.KarneYaprakIptali", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.EvrakKarnesi", null)
+                        .WithMany("Iptaller")
+                        .HasForeignKey("KarneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_karne_yaprak_iptali_evrak_karnesi_karne_id");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.EkstreAktarimi", b =>
@@ -1606,6 +1786,11 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.EvrakBorclusu", b =>
                 {
                     b.Navigation("Hesaplar");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.EvrakKarnesi", b =>
+                {
+                    b.Navigation("Iptaller");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.EkstreAktarimi", b =>

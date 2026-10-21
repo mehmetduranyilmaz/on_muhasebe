@@ -42,6 +42,8 @@ internal sealed class EvrakConfiguration : IEntityTypeConfiguration<Evrak>
         builder.HasOne<EvrakBorclusu>().WithMany().HasForeignKey(x => x.BorcluId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.KendiHesapId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.KonumHesapId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<EvrakKarnesi>().WithMany().HasForeignKey(x => x.KarneId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => new { x.KarneId, x.SeriNo }).HasFilter("karne_id IS NOT NULL");
         builder.HasMany(x => x.Hareketler).WithOne().HasForeignKey(x => x.EvrakId).OnDelete(DeleteBehavior.Restrict);
         builder.Navigation(x => x.Hareketler).HasField("_hareketler");
     }
@@ -114,5 +116,32 @@ internal sealed class CekSenetAyariConfiguration : IEntityTypeConfiguration<CekS
         builder.ToTable("cek_senet_ayari");
         builder.Property(x => x.RiskDavranisi).HasConversion<string>().HasMaxLength(20);
         builder.HasIndex(x => x.FirmaId).IsUnique();
+    }
+}
+
+internal sealed class EvrakKarnesiConfiguration : IEntityTypeConfiguration<EvrakKarnesi>
+{
+    public void Configure(EntityTypeBuilder<EvrakKarnesi> builder)
+    {
+        builder.ToTable("evrak_karnesi");
+        builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.Onek).HasMaxLength(20);
+        builder.Property(x => x.Aciklama).HasMaxLength(500);
+        builder.Ignore(x => x.BitisNo);
+        builder.HasIndex(x => new { x.FirmaId, x.Tur, x.KendiHesapId });
+        builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.KendiHesapId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(x => x.Iptaller).WithOne().HasForeignKey(x => x.KarneId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Iptaller).HasField("_iptaller");
+    }
+}
+
+internal sealed class KarneYaprakIptaliConfiguration : IEntityTypeConfiguration<KarneYaprakIptali>
+{
+    public void Configure(EntityTypeBuilder<KarneYaprakIptali> builder)
+    {
+        builder.ToTable("karne_yaprak_iptali");
+        builder.Property(x => x.SeriNo).HasMaxLength(30);
+        builder.Property(x => x.Neden).HasMaxLength(EvrakKarnesi.NedenUzunlugu);
+        builder.HasIndex(x => new { x.KarneId, x.SeriNo }).IsUnique();
     }
 }

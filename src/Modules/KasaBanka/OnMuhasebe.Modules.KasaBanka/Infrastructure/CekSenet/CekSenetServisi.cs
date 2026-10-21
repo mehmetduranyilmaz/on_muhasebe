@@ -162,13 +162,20 @@ internal sealed class CekSenetServisi(
                     {
                         return KasaBankaHatalari.PasifHesap;
                     }
+                }
 
-                    var seri = g.SeriNo.Trim();
-                    if (await db.Evraklar.AnyAsync(e => e.Yon == EvrakYonu.Verilen && e.KendiHesapId == hesap.Id && e.SeriNo == seri
-                                                        && e.Durum != EvrakDurumu.Iptal, ct))
-                    {
-                        return KasaBankaHatalari.EvrakZatenKayitli;
-                    }
+                var yaprak = await KarneYapragiAsync(g, hesap?.Id, ct);
+                if (!yaprak.BasariliMi)
+                {
+                    return yaprak.Hata;
+                }
+
+                var (seri, karneId) = yaprak.Deger;
+                if (hesap is not null
+                    && await db.Evraklar.AnyAsync(e => e.Yon == EvrakYonu.Verilen && e.KendiHesapId == hesap.Id && e.SeriNo == seri
+                                                       && e.Durum != EvrakDurumu.Iptal, ct))
+                {
+                    return KasaBankaHatalari.EvrakZatenKayitli;
                 }
 
                 var paraBirimi = hesap?.ParaBirimi ?? g.ParaBirimi ?? Shared.Contracts.Doviz.ParaBirimleri.Tl;
@@ -185,7 +192,7 @@ internal sealed class CekSenetServisi(
                 }
 
                 var evrak = Evrak.Verilen(await KodAsync("kasabanka.evrak", Evrak.KodOneki(EvrakYonu.Verilen, g.Tur), ct), g, paraBirimi, istek.Tarih,
-                    istek.CariHesapId, kur.Deger, cariTutar.Deger.Tutar, cariTutar.Deger.Kur, hesap);
+                    istek.CariHesapId, kur.Deger, cariTutar.Deger.Tutar, cariTutar.Deger.Kur, hesap, seri, karneId);
                 db.Evraklar.Add(evrak);
                 var hareket = evrak.Ilk(bordro.Id, Guid.CreateVersion7(), istek.Tarih, istek.Aciklama);
                 await db.SaveChangesAsync(ct);
@@ -528,6 +535,70 @@ internal sealed class CekSenetServisi(
 
     private Task<string> KodAsync(string tablo, string onek, CancellationToken ct) =>
         KodUretici.SonrakiAsync(db, tablo, onek, mevcutKullanici.FirmaId!.Value, ct);
+
+    // Karnede kullanılmış yapraklar; kayıt hatası nedeniyle iptal edilen evrakın yaprağı yeniden kullanılabilir.
+    public async Task<HashSet<string>> KullanilanSerilerAsync(Guid karneId, CancellationToken cancellationToken) =>
+        (await db.Evraklar.Where(e => e.KarneId == karneId && e.Durum != EvrakDurumu.Iptal).Select(e => e.SeriNo).ToListAsync(cancellationToken))
+        .ToHashSet();
+
+    // Verilen evrakın yaprağı. Karne seçildiyse seri onun aralığında, boş ve iptal edilmemiş olmalı; seri boşsa sıradaki yaprak alınır.
+    // Seçilmediyse seri aynı türün (çekte aynı banka hesabının) bir karnesine düşüyorsa o karneye bağlanır, düşmüyorsa karnesiz kalır.
+    private async Task<Sonuc<(string Seri, Guid? KarneId)>> KarneYapragiAsync(VerilenEvrakGirdisi g, Guid? hesapId, CancellationToken ct)
+    {
+        static Sonuc<(string Seri, Guid? KarneId)> Yaprak(string seri, Guid? karneId) => (seri, karneId);
+
+        EvrakKarnesi? karne;
+        if (g.KarneId is { } karneId)
+        {
+            karne = await db.Karneler.Include(k => k.Iptaller).SingleOrDefaultAsync(k => k.Id == karneId, ct);
+            if (karne is null)
+            {
+                return KasaBankaHatalari.KarneBulunamadi;
+            }
+
+            if (karne.Tur != g.Tur || karne.KendiHesapId != hesapId)
+            {
+                return KasaBankaHatalari.KarneUyumsuz;
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(g.SeriNo))
+        {
+            return KasaBankaHatalari.SeriGerekli;
+        }
+        else
+        {
+            var adaylar = await db.Karneler.Include(k => k.Iptaller).Where(k => k.Tur == g.Tur && k.KendiHesapId == hesapId).ToListAsync(ct);
+            karne = adaylar.FirstOrDefault(k => k.Icerir(g.SeriNo));
+            if (karne is null)
+            {
+                return Yaprak(g.SeriNo.Trim(), null);
+            }
+        }
+
+        if (!karne.AktifMi)
+        {
+            return KasaBankaHatalari.KarneKapali;
+        }
+
+        var kullanilanlar = await KullanilanSerilerAsync(karne.Id, ct);
+        var seri = string.IsNullOrWhiteSpace(g.SeriNo) ? karne.Siradaki(kullanilanlar) : EvrakSeriNo.Normalize(g.SeriNo);
+        if (seri is null)
+        {
+            return KasaBankaHatalari.KarneDoldu;
+        }
+
+        if (!karne.Icerir(seri))
+        {
+            return KasaBankaHatalari.KarneSeriDisinda;
+        }
+
+        if (karne.IptalMi(seri))
+        {
+            return KasaBankaHatalari.KarneYapragiIptal;
+        }
+
+        return kullanilanlar.Contains(seri) ? KasaBankaHatalari.KarneYapragiKullanildi : Yaprak(seri, karne.Id);
+    }
 
     private static string BelgeNo(Evrak e) => $"{e.Kod}/{e.SeriNo}";
 

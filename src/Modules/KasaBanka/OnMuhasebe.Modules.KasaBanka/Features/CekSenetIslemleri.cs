@@ -36,6 +36,7 @@ internal static class CekSenetIslemleri
         grup.MapPut("/ayarlar", AyarKaydetAsync).RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
 
         CekSenetSorgulari.Map(grup);
+        KarneIslemleri.Map(grup);
     }
 
     private static readonly AlanKontrolu<AlinanBordroIstegi>[] _alinanZorunlulari =
@@ -95,7 +96,8 @@ internal static class CekSenetIslemleri
             RuleForEach(x => x.Evraklar).ChildRules(e =>
             {
                 e.RuleFor(x => x.Tur).IsInEnum();
-                e.RuleFor(x => x.SeriNo).NotEmpty().MaximumLength(30);
+                e.RuleFor(x => x.SeriNo).NotEmpty().When(x => x.KarneId is null).WithMessage("Seri no girin ya da karne seçin.");
+                e.RuleFor(x => x.SeriNo).MaximumLength(30);
                 e.RuleFor(x => x.Tutar).GreaterThan(0).LessThan(1_000_000_000_000m);
                 e.RuleFor(x => x.ParaBirimi).Must(ParaBirimleri.GecerliMi).When(x => x.ParaBirimi is not null).WithMessage("Geçersiz para birimi.");
                 e.RuleFor(x => x.KendiHesapId).NotNull().When(x => x.Tur == EvrakTuru.Cek).WithMessage("Verilen çekin banka hesabı seçilmelidir.");
@@ -221,6 +223,11 @@ internal static class CekSenetIslemleri
         if (!Enum.IsDefined(istek.RiskDavranisi))
         {
             return Shared.Domain.Results.Hata.Dogrulama("risk_davranisi", "Geçersiz risk davranışı.").Problem();
+        }
+
+        if (istek.KarneUyariEsigi is < 0 or > EvrakKarnesi.AzamiYaprak)
+        {
+            return Shared.Domain.Results.Hata.Dogrulama("karne_uyari_esigi", "Karne uyarı eşiği 0 ile 500 arasında olmalıdır.").Problem();
         }
 
         var ayar = await db.CekSenetAyarlari.SingleOrDefaultAsync(ct);
