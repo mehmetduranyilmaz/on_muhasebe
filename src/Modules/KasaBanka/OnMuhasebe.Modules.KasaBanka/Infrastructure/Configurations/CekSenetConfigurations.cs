@@ -31,6 +31,7 @@ internal sealed class EvrakConfiguration : IEntityTypeConfiguration<Evrak>
         builder.Property(x => x.KesideYeri).HasMaxLength(100);
         builder.Property(x => x.KefilAdi).HasMaxLength(200);
         builder.Property(x => x.KefilKimlikNo).HasMaxLength(11);
+        builder.Property(x => x.Karekod).HasMaxLength(500);
         builder.Property(x => x.Aciklama).HasMaxLength(500);
         builder.Ignore(x => x.KalanTutar);
         builder.Ignore(x => x.GeriAlinacak);
@@ -39,6 +40,7 @@ internal sealed class EvrakConfiguration : IEntityTypeConfiguration<Evrak>
         builder.HasIndex(x => new { x.FirmaId, x.Yon, x.Durum, x.VadeTarihi });
         builder.HasIndex(x => new { x.FirmaId, x.CariHesapId });
         builder.HasIndex(x => new { x.FirmaId, x.BorcluId });
+        builder.HasIndex(x => new { x.FirmaId, x.Karekod }).HasFilter("karekod IS NOT NULL");
         builder.HasOne<EvrakBorclusu>().WithMany().HasForeignKey(x => x.BorcluId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.KendiHesapId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.KonumHesapId).OnDelete(DeleteBehavior.Restrict);

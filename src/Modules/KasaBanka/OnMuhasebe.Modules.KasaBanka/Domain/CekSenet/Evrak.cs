@@ -41,6 +41,9 @@ internal sealed class Evrak : FirmaEntity
     public string? KefilAdi { get; private set; }
     public string? KefilKimlikNo { get; private set; }
 
+    // Alınan çekin karekodundan okunan ham içerik; mükerrer giriş bununla da yakalanır.
+    public string? Karekod { get; private set; }
+
     // Verilen çekin bağlı olduğu banka hesabı.
     public Guid? KendiHesapId { get; private set; }
 
@@ -103,6 +106,7 @@ internal sealed class Evrak : FirmaEntity
         KesideYeri = Temiz(g.KesideYeri),
         KefilAdi = Temiz(g.KefilAdi),
         KefilKimlikNo = Temiz(g.KefilKimlikNo),
+        Karekod = Temiz(g.Karekod),
         Durum = EvrakDurumu.Portfoyde,
         Aciklama = Temiz(g.Aciklama)
     };

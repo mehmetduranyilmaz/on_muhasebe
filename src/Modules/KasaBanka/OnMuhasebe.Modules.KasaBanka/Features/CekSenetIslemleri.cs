@@ -37,6 +37,7 @@ internal static class CekSenetIslemleri
 
         CekSenetSorgulari.Map(grup);
         KarneIslemleri.Map(grup);
+        KarekodIslemleri.Map(grup);
     }
 
     private static readonly AlanKontrolu<AlinanBordroIstegi>[] _alinanZorunlulari =
@@ -81,6 +82,7 @@ internal static class CekSenetIslemleri
                 e.RuleFor(x => x.KesideYeri).MaximumLength(100);
                 e.RuleFor(x => x.KefilAdi).MaximumLength(200);
                 e.RuleFor(x => x.Aciklama).MaximumLength(500);
+                e.RuleFor(x => x.Karekod).MaximumLength(500);
                 e.RuleFor(x => x.BankaAdi).NotEmpty().When(x => x.Tur == EvrakTuru.Cek).WithMessage("Çekin bankası girilmelidir.");
             });
         }

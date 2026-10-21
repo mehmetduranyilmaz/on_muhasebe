@@ -5,6 +5,7 @@ using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Web.Api;
+using OnMuhasebe.Web.Bilesenler;
 using OnMuhasebe.Web.KasaBanka.Bilesenler;
 
 namespace OnMuhasebe.Web.KasaBanka.Pages;
@@ -33,6 +34,7 @@ public partial class BordroFormu
         public string? KefilKimlikNo { get; set; }
         public Guid? KendiHesapId { get; set; }
         public Guid? KarneId { get; set; }
+        public string? Karekod { get; set; }
         public string? Aciklama { get; set; }
         public RiskBilgisi? Risk { get; set; }
     }
@@ -209,6 +211,49 @@ public partial class BordroFormu
         }
 
         Snackbar.Add($"{plan.Count} evrak hazırlandı; kaydetmeden önce kontrol edin.", Severity.Info);
+    }
+
+    // Kamerayla/fotoğraftan okunan çek karekodu sunucuda çözülür; yalnızca bulunan alanlar doldurulur, tutar ve vade kullanıcıdadır.
+    private async Task KarekodOkutAsync(Satir s)
+    {
+        var dialog = await DialogService.ShowAsync<KarekodOkuyucuDialog>("Çek karekodunu okut",
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is not { Canceled: false, Data: string metin })
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync<KarekodBilgisi>("api/kasabanka/cek-senet/karekod-coz", new KarekodCozIstegi(metin));
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        var k = sonuc.Deger;
+        if (k.ZatenKayitli || _satirlar.Any(x => x != s && x.Karekod == k.Ham))
+        {
+            Snackbar.Add("Bu çek zaten kayıtlı (aynı karekod portföyde ya da bu bordroda).", Severity.Warning);
+            return;
+        }
+
+        s.Karekod = k.Ham;
+        s.SeriNo = k.SeriNo ?? s.SeriNo;
+        s.BankaAdi = k.BankaAdi ?? s.BankaAdi;
+        s.Sube = k.SubeKodu ?? s.Sube;
+        s.HesapNo = k.HesapNo ?? s.HesapNo;
+        if (k.KimlikNo is { } kimlik)
+        {
+            // Kayıtlı keşideci kimlik numarasıyla bulunup seçilir, yoksa yeni keşideci olarak numara yazılır; risk kontrolü de çalışır.
+            s.YeniBorclu = true;
+            await KimlikDegistiAsync(s, kimlik);
+        }
+
+        var dolan = new[] { k.SeriNo, k.BankaAdi, k.SubeKodu, k.HesapNo, k.KimlikNo }.Count(x => x is not null);
+        Snackbar.Add(dolan > 0
+                ? $"Karekod okundu, {dolan} bilgi dolduruldu. Tutar ve vadeyi girip kontrol edin."
+                : "Karekod okundu ancak alanları tanınamadı; ham içerik evrakla saklanacak. Bilgileri elle girin.",
+            dolan > 0 ? Severity.Success : Severity.Info);
     }
 
     private static Satir Klon(Satir s, string? seriNo, DateTime? vade, decimal tutar) => new()
@@ -424,7 +469,7 @@ public partial class BordroFormu
                 s.YeniBorclu ? new BorcluGirdisi(null, Bos(s.BorcluAdi), Bos(s.KimlikNo), null) : new BorcluGirdisi(s.Borclu!.Id, null, null, null),
                 s.Tur == EvrakTuru.Cek ? Bos(s.BankaAdi) : null, s.Tur == EvrakTuru.Cek ? Bos(s.Sube) : null, s.Tur == EvrakTuru.Cek ? Bos(s.HesapNo) : null,
                 s.Tur == EvrakTuru.Senet ? Bos(s.KesideYeri) : null, s.Tur == EvrakTuru.Senet ? Bos(s.KefilAdi) : null,
-                s.Tur == EvrakTuru.Senet ? Bos(s.KefilKimlikNo) : null, Bos(s.Aciklama))).ToList()), islemAnahtari: _anahtar.Deger);
+                s.Tur == EvrakTuru.Senet ? Bos(s.KefilKimlikNo) : null, Bos(s.Aciklama), s.Karekod)).ToList()), islemAnahtari: _anahtar.Deger);
 
     private Task<ApiSonucu<BordroSonucu>> CikisAsync() =>
         Api.PostAsync<BordroSonucu>("api/kasabanka/cek-senet/cikis", new VerilenBordroIstegi(

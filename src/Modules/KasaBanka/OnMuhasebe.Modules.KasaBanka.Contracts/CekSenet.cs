@@ -85,6 +85,7 @@ public sealed record CekSenetAyarlari(bool KesideciKimlikZorunlu, bool SenetBorc
 // Keşideci/borçlu: kayıtlıysa BorcluId, değilse ad + kimlik no ile girilir ve kaydedilirken kartı açılır.
 public sealed record BorcluGirdisi(Guid? BorcluId, string? Ad, string? KimlikNo, string? Telefon);
 
+// Karekod: çekten okunan ham Data Matrix içeriği; aynı karekodlu çek ikinci kez portföye alınamaz.
 public sealed record AlinanEvrakGirdisi(
     EvrakTuru Tur,
     string SeriNo,
@@ -100,7 +101,8 @@ public sealed record AlinanEvrakGirdisi(
     string? KesideYeri,
     string? KefilAdi,
     string? KefilKimlikNo,
-    string? Aciklama);
+    string? Aciklama,
+    string? Karekod = null);
 
 // Riskli keşideci/borçlu uyarısı gösterildiyse kullanıcı onayıyla RiskOnaylandi = true gönderilir.
 public sealed record AlinanBordroIstegi(
@@ -317,3 +319,20 @@ public sealed record KarneDetayi(KarneOzeti Ozet, IReadOnlyList<KarneYapragi> Ya
 
 // Yırtılan, kaybolan ya da hatalı yazılan yaprak; bir daha önerilmez.
 public sealed record YaprakIptalIstegi(string SeriNo, string Neden);
+
+public sealed record KarekodCozIstegi(string Metin);
+
+// Çek karekodundan çıkarılabilen bilgiler. Karekodun alan yapısı kamuya açık olmadığından ayrıştırma esnektir: emin olunamayan alan
+// boş döner ve kullanıcı tamamlar. Tutar ve vade karekodda yoktur.
+public sealed record KarekodBilgisi(
+    string Ham,
+    string? SeriNo,
+    string? BankaKodu,
+    string? BankaAdi,
+    string? SubeKodu,
+    string? HesapNo,
+    string? Iban,
+    string? KimlikNo,
+    Guid? BorcluId,
+    string? BorcluAdi,
+    bool ZatenKayitli);

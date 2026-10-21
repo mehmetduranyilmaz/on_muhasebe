@@ -47,7 +47,16 @@
                     {
                         <span class="ozet-alt">@Bicim.Tutar(s.Tutar, ParaBirimiOf(s))</span>
                     }
+                    @if (s.Karekod is not null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Icon="@Icons.Material.Filled.QrCode2" title="@s.Karekod">Karekodlu</MudChip>
+                    }
                     <MudSpacer />
+                    @if (Alinan && s.Tur == EvrakTuru.Cek)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.QrCodeScanner"
+                                   Class="karekod-dugmesi" OnClick="() => KarekodOkutAsync(s)">Karekod okut</MudButton>
+                    }
                     <MudTooltip Text="Seri ekle: ardışık numaralı evrakları vade planıyla oluştur">
                         <MudIconButton Icon="@Icons.Material.Filled.PlaylistAdd" Size="Size.Small" aria-label="Seri ekle" OnClick="() => SeriEkleAsync(s)" />
                     </MudTooltip>

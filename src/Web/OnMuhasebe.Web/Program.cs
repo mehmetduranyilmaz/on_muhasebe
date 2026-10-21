@@ -14,10 +14,14 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Boş bırakılırsa Web ile aynı adresten sunulan API kullanılır.
-var apiAdresi = builder.Configuration["ApiAdresi"] is { Length: > 0 } adres
-    ? new Uri(adres)
-    : new Uri(builder.HostEnvironment.BaseAddress);
+// Boş bırakılırsa Web ile aynı adresten sunulan API kullanılır. Ayar "localhost" gösterirken sayfa başka bir adresten (ör. telefondan
+// bilgisayarın yerel ağ IP'siyle) açılmışsa API de o adreste aranır.
+var sayfa = new Uri(builder.HostEnvironment.BaseAddress);
+var apiAdresi = builder.Configuration["ApiAdresi"] is { Length: > 0 } adres ? new Uri(adres) : sayfa;
+if (apiAdresi.IsLoopback && !sayfa.IsLoopback)
+{
+    apiAdresi = new UriBuilder(apiAdresi) { Host = sayfa.Host }.Uri;
+}
 
 builder.Services.AddMudServices(options =>
 {

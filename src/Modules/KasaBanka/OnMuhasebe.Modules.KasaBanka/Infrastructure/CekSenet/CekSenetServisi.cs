@@ -517,6 +517,14 @@ internal sealed class CekSenetServisi(
             return KasaBankaHatalari.EvrakZatenKayitli;
         }
 
+        // Karekod çeki tek başına tanımlar: aynı karekod bordroda ya da portföyde ikinci kez olamaz.
+        var karekodlar = evraklar.Where(e => !string.IsNullOrWhiteSpace(e.Karekod)).Select(e => e.Karekod!.Trim()).ToList();
+        if (karekodlar.Distinct().Count() != karekodlar.Count
+            || (karekodlar.Count > 0 && await KarekodKayitliAsync(karekodlar, ct)))
+        {
+            return KasaBankaHatalari.EvrakZatenKayitli;
+        }
+
         var seriler = cekler.Select(c => c.Seri).ToList();
         var mevcut = await db.Evraklar.AsNoTracking()
             .Where(e => e.Yon == EvrakYonu.Alinan && e.Tur == EvrakTuru.Cek && seriler.Contains(e.SeriNo) && e.Durum != EvrakDurumu.Iptal)
@@ -524,6 +532,9 @@ internal sealed class CekSenetServisi(
             .ToListAsync(ct);
         return mevcut.Any(m => cekler.Contains((m.SeriNo, m.HesapNo ?? ""))) ? KasaBankaHatalari.EvrakZatenKayitli : null;
     }
+
+    public Task<bool> KarekodKayitliAsync(IReadOnlyCollection<string> karekodlar, CancellationToken ct) =>
+        db.Evraklar.AnyAsync(e => e.Yon == EvrakYonu.Alinan && e.Karekod != null && karekodlar.Contains(e.Karekod) && e.Durum != EvrakDurumu.Iptal, ct);
 
     private async Task<EvrakBordrosu> BordroAsync(EvrakIslemi islem, DateOnly tarih, Guid? cariId, Guid? hesapId, string? aciklama, CancellationToken ct)
     {

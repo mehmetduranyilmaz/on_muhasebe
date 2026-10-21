@@ -228,6 +228,11 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("hesap_no");
 
+                    b.Property<string>("Karekod")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("karekod");
+
                     b.Property<Guid?>("KarneId")
                         .HasColumnType("uuid")
                         .HasColumnName("karne_id");
@@ -352,6 +357,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
 
                     b.HasIndex("FirmaId", "CariHesapId")
                         .HasDatabaseName("ix_evrak_firma_id_cari_hesap_id");
+
+                    b.HasIndex("FirmaId", "Karekod")
+                        .HasDatabaseName("ix_evrak_firma_id_karekod")
+                        .HasFilter("karekod IS NOT NULL");
 
                     b.HasIndex("FirmaId", "Kod")
                         .IsUnique()

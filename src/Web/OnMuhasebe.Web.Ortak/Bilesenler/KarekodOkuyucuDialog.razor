@@ -1,0 +1,156 @@
+@* Karekod okuyucu: telefonda arka kamera, laptopta web kamerası ya da galeriden/dosyadan fotoğraf. Sonuç okunan metindir. *@
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+<MudDialog>
+    <DialogContent>
+        <div class="tur-sekmeleri mb-3">
+            <button type="button" class="tur-sekmesi @(_kamera ? "secili" : "")" style="--vurgu:#3B82F6" @onclick="KameraSekmesiAsync">
+                <MudIcon Icon="@Icons.Material.Filled.PhotoCamera" Size="Size.Small" /> Kamera
+            </button>
+            <button type="button" class="tur-sekmesi @(_kamera ? "" : "secili")" style="--vurgu:#14B8A6" @onclick="FotografSekmesiAsync">
+                <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Size="Size.Small" /> Fotoğraf / galeri
+            </button>
+        </div>
+
+        <div class="karekod-alani" hidden="@(!_kamera)">
+            <video @ref="_video" class="karekod-video" playsinline muted autoplay></video>
+            @if (_hata is null)
+            {
+                <div class="karekod-cerceve"><span class="karekod-tarama"></span></div>
+            }
+        </div>
+
+        @if (!_kamera)
+        {
+            <label class="karekod-dosya">
+                <MudIcon Icon="@Icons.Material.Filled.AddPhotoAlternate" Size="Size.Large" />
+                <span><b>Fotoğraf seçin</b><br />Telefonda kamerayla çekebilir ya da galeriden seçebilirsiniz.</span>
+                <input @ref="_dosya" type="file" accept="image/*" @onchange="DosyaSecildiAsync" />
+            </label>
+        }
+
+        <div class="karekod-durum @(_hata is null ? "" : "hata")">
+            @if (_okunuyor)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(_hata ?? (_kamera ? "Karekodu çerçevenin içine getirin; okununca kendiliğinden kapanır." : _okunuyor ? "Fotoğraf inceleniyor..." : ""))
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private IJSObjectReference? _modul;
+    private DotNetObjectReference<KarekodOkuyucuDialog>? _ref;
+    private ElementReference _video;
+    private ElementReference _dosya;
+    private bool _kamera = true;
+    private bool _okunuyor;
+    private string? _hata;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk)
+        {
+            return;
+        }
+
+        _modul = await Js.InvokeAsync<IJSObjectReference>("import", "./_content/OnMuhasebe.Web.Ortak/karekod.js");
+        _ref = DotNetObjectReference.Create(this);
+        if (await _modul.InvokeAsync<string?>("kameraDurumu") is { } durum)
+        {
+            // Kamera açılamıyorsa doğrudan fotoğraf seçimine geçilir.
+            _hata = Mesaj(durum);
+            _kamera = false;
+            StateHasChanged();
+            return;
+        }
+
+        await KamerayiAcAsync();
+    }
+
+    private async Task KamerayiAcAsync()
+    {
+        _hata = null;
+        _okunuyor = true;
+        StateHasChanged();
+        var durum = await _modul!.InvokeAsync<string?>("kameraBaslat", _video, _ref);
+        _okunuyor = false;
+        _hata = durum is null ? null : Mesaj(durum);
+        StateHasChanged();
+    }
+
+    private async Task KameraSekmesiAsync()
+    {
+        if (_kamera || _modul is null)
+        {
+            return;
+        }
+
+        _kamera = true;
+        await KamerayiAcAsync();
+    }
+
+    private async Task FotografSekmesiAsync()
+    {
+        _kamera = false;
+        _hata = null;
+        if (_modul is not null)
+        {
+            await _modul.InvokeVoidAsync("kameraDurdur");
+        }
+    }
+
+    private async Task DosyaSecildiAsync()
+    {
+        _okunuyor = true;
+        _hata = null;
+        StateHasChanged();
+        var metin = await _modul!.InvokeAsync<string?>("dosyadanOku", _dosya);
+        _okunuyor = false;
+        if (metin is { Length: > 0 })
+        {
+            MudDialog.Close(DialogResult.Ok(metin));
+        }
+        else if (metin is not null)
+        {
+            _hata = "Fotoğrafta karekod bulunamadı. Karekodu yakından, net ve ışıkta çekip yeniden deneyin.";
+        }
+    }
+
+    [JSInvokable]
+    public void Okundu(string metin) => MudDialog.Close(DialogResult.Ok(metin));
+
+    private static string Mesaj(string durum) => durum switch
+    {
+        "https" => "Kamera yalnızca güvenli bağlantıda (https) açılır. Fotoğraf seçerek okutabilirsiniz.",
+        "izin" => "Kamera izni verilmedi. Tarayıcının adres çubuğundan izin verin ya da fotoğraf seçin.",
+        "kamera_yok" => "Kamera bulunamadı ya da başka bir uygulama kullanıyor. Fotoğraf seçerek okutabilirsiniz.",
+        "desteklenmiyor" => "Bu tarayıcı kamerayı desteklemiyor. Fotoğraf seçerek okutabilirsiniz.",
+        _ => "Kamera açılamadı. Fotoğraf seçerek okutabilirsiniz."
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_modul is not null)
+        {
+            try
+            {
+                await _modul.InvokeVoidAsync("kameraDurdur");
+                await _modul.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Sayfa kapanırken bağlantı gitmişse kamera zaten kapanır.
+            }
+        }
+
+        _ref?.Dispose();
+    }
+}

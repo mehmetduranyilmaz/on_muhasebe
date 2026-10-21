@@ -12,10 +12,12 @@ using OnMuhasebe.Shared.Infrastructure.Tekrar;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Web ayrı bir adresten çağırır; refresh token çerezi için credentials'a izin verilir.
+// Web ayrı bir adresten çağırır; refresh token çerezi için credentials'a izin verilir. Geliştirmede telefondan denemek için
+// yerel ağ adresleri (192.168.x, 10.x, 172.16-31.x) de kabul edilir ("telefon" çalıştırma profili).
 var izinliKaynaklar = builder.Configuration.GetSection("Cors:IzinliKaynaklar").Get<string[]>() ?? [];
+var gelistirme = builder.Environment.IsDevelopment();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
-    .WithOrigins(izinliKaynaklar)
+    .SetIsOriginAllowed(kaynak => izinliKaynaklar.Contains(kaynak) || (gelistirme && YerelAg.KaynakMi(kaynak)))
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials()));
@@ -56,3 +58,10 @@ app.MapHealthChecks("/health");
 app.MapModuller();
 
 app.Run();
+
+internal static class YerelAg
+{
+    public static bool KaynakMi(string kaynak) =>
+        Uri.TryCreate(kaynak, UriKind.Absolute, out var adres) && System.Net.IPAddress.TryParse(adres.Host, out var ip)
+        && ip.GetAddressBytes() is [10, ..] or [192, 168, ..] or [172, >= 16 and <= 31, ..];
+}
