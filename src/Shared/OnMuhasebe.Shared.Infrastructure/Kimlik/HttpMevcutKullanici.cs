@@ -3,11 +3,12 @@ using OnMuhasebe.Shared.Contracts.Kimlik;
 
 namespace OnMuhasebe.Shared.Infrastructure.Kimlik;
 
-internal sealed class HttpMevcutKullanici(IHttpContextAccessor httpContextAccessor) : IMevcutKullanici
+// Firma: kod bir firma kapsamı açtıysa (ArkaPlanBaglami) o, yoksa oturumdaki firma.
+internal sealed class HttpMevcutKullanici(IHttpContextAccessor httpContextAccessor, ArkaPlanBaglami arkaPlan) : IMevcutKullanici
 {
     public Guid? KullaniciId => ClaimGuid(ClaimTipleri.KullaniciId);
 
-    public Guid? FirmaId => ClaimGuid(ClaimTipleri.FirmaId);
+    public Guid? FirmaId => arkaPlan.FirmaId ?? ClaimGuid(ClaimTipleri.FirmaId);
 
     public string? KullaniciAdi => httpContextAccessor.HttpContext?.User.FindFirst(ClaimTipleri.Ad)?.Value;
 

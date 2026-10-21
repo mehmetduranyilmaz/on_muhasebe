@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.Cari.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Ayarlar;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
+using OnMuhasebe.Shared.Infrastructure.Bildirimler;
 using OnMuhasebe.Shared.Infrastructure.Modules;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 
@@ -28,6 +29,7 @@ public sealed class CariModulu : IModul
         services.AddScoped<CariKodUretici>();
         services.AddScoped<CariKapamaServisi>();
         services.AddScoped<ICariSorgusu, CariSorgusu>();
+        services.AddScoped<IBildirimKaynagi, RiskBildirimKaynagi>();
         services.AddScoped<ICariHareketYazici, CariHareketYazici>();
     }
 

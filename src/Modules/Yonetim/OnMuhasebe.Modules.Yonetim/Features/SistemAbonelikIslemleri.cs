@@ -9,6 +9,7 @@ using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Domain.Dogrulama;
+using OnMuhasebe.Shared.Infrastructure.Bildirimler;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -150,7 +151,8 @@ internal static class SistemAbonelikIslemleri
     // Yeni bitiş: lisans hâlâ geçerliyse mevcut bitişten, dolmuşsa bugünden itibaren istenen ay kadar. Paket bildirimdeki pakete geçer,
     // ek modüller korunur.
     private static async Task<IResult> OnaylaAsync(
-        Guid id, BildirimOnayIstegi? istek, YonetimDbContext db, ILisansSorgusu lisansSorgusu, TimeProvider zaman, CancellationToken cancellationToken)
+        Guid id, BildirimOnayIstegi? istek, YonetimDbContext db, ILisansSorgusu lisansSorgusu, IEnumerable<IBildirimTetikleyici> tetikleyiciler,
+        TimeProvider zaman, CancellationToken cancellationToken)
     {
         var bildirim = await db.OdemeBildirimleri
             .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
@@ -185,12 +187,14 @@ internal static class SistemAbonelikIslemleri
 
         await db.SaveChangesAsync(cancellationToken);
         await lisansSorgusu.OnbellektenKaldirAsync(bildirim.FirmaId, cancellationToken);
+        await TetikleAsync(tetikleyiciler, bildirim.FirmaId, cancellationToken);
         return TypedResults.Ok(await Ozetler(db.OdemeBildirimleri.IgnoreQueryFilters([ModulDbContext.FirmaFiltresi]).Where(b => b.Id == id), db)
             .SingleAsync(cancellationToken));
     }
 
     private static async Task<IResult> ReddetAsync(
-        Guid id, BildirimRetIstegi istek, YonetimDbContext db, TimeProvider zaman, CancellationToken cancellationToken)
+        Guid id, BildirimRetIstegi istek, YonetimDbContext db, IEnumerable<IBildirimTetikleyici> tetikleyiciler, TimeProvider zaman,
+        CancellationToken cancellationToken)
     {
         var bildirim = await db.OdemeBildirimleri
             .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
@@ -207,8 +211,18 @@ internal static class SistemAbonelikIslemleri
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        await TetikleAsync(tetikleyiciler, bildirim.FirmaId, cancellationToken);
         return TypedResults.Ok(await Ozetler(db.OdemeBildirimleri.IgnoreQueryFilters([ModulDbContext.FirmaFiltresi]).Where(b => b.Id == id), db)
             .SingleAsync(cancellationToken));
+    }
+
+    // Firma yöneticisi sonucu saatlik çalışmayı beklemeden görsün.
+    private static async Task TetikleAsync(IEnumerable<IBildirimTetikleyici> tetikleyiciler, Guid firmaId, CancellationToken ct)
+    {
+        foreach (var t in tetikleyiciler)
+        {
+            await t.FirmaIcinAsync(firmaId, ct);
+        }
     }
 
     internal static IQueryable<OdemeBildirimiOzeti> Ozetler(IQueryable<OdemeBildirimi> sorgu, YonetimDbContext db) =>

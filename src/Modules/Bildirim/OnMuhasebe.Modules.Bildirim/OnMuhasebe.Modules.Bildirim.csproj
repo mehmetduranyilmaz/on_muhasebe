@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OnMuhasebe.Hesaplama.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\OnMuhasebe.Shared.Infrastructure\OnMuhasebe.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Yonetim\OnMuhasebe.Modules.Yonetim.Contracts\OnMuhasebe.Modules.Yonetim.Contracts.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Modules.Bildirim.Contracts\OnMuhasebe.Modules.Bildirim.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

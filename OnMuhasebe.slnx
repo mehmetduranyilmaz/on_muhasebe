@@ -4,6 +4,10 @@
     <Project Path="src/Api/OnMuhasebe.Api/OnMuhasebe.Api.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Bildirim/">
+    <Project Path="src/Modules/Bildirim/OnMuhasebe.Modules.Bildirim.Contracts/OnMuhasebe.Modules.Bildirim.Contracts.csproj" />
+    <Project Path="src/Modules/Bildirim/OnMuhasebe.Modules.Bildirim/OnMuhasebe.Modules.Bildirim.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Cari/">
     <Project Path="src/Modules/Cari/OnMuhasebe.Modules.Cari.Contracts/OnMuhasebe.Modules.Cari.Contracts.csproj" />
     <Project Path="src/Modules/Cari/OnMuhasebe.Modules.Cari/OnMuhasebe.Modules.Cari.csproj" />

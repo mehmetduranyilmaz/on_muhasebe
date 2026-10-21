@@ -12,6 +12,7 @@ using OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
 using OnMuhasebe.Shared.Contracts.Ayarlar;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
+using OnMuhasebe.Shared.Infrastructure.Bildirimler;
 using OnMuhasebe.Shared.Infrastructure.Modules;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 
@@ -33,6 +34,7 @@ public sealed class KasaBankaModulu : IModul
         services.AddScoped<CariDovizServisi>();
         services.AddScoped<KasaIslemServisi>();
         services.AddScoped<CekSenetServisi>();
+        services.AddScoped<IBildirimKaynagi, CekSenetBildirimKaynagi>();
         services.AddScoped<EvrakRiskServisi>();
         services.AddScoped<EkstreServisi>();
         services.AddScoped<IKasaBankaSorgusu, KasaBankaSorgusu>();

@@ -8,6 +8,8 @@ public static class TurkiyeSaati
     public static DateOnly Bugun(TimeProvider zaman) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(zaman.GetUtcNow(), _bolge).DateTime);
 
+    public static DateTime Simdi(TimeProvider zaman) => TimeZoneInfo.ConvertTime(zaman.GetUtcNow(), _bolge).DateTime;
+
     private static TimeZoneInfo BolgeBul()
     {
         try

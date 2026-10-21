@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\Modules\Stok\OnMuhasebe.Modules.Stok\OnMuhasebe.Modules.Stok.csproj" />
     <ProjectReference Include="..\..\Modules\Fatura\OnMuhasebe.Modules.Fatura\OnMuhasebe.Modules.Fatura.csproj" />
     <ProjectReference Include="..\..\Modules\KasaBanka\OnMuhasebe.Modules.KasaBanka\OnMuhasebe.Modules.KasaBanka.csproj" />
+    <ProjectReference Include="..\..\Modules\Bildirim\OnMuhasebe.Modules.Bildirim\OnMuhasebe.Modules.Bildirim.csproj" />
   </ItemGroup>
 
 </Project>

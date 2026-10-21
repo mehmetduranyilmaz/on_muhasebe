@@ -9,10 +9,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using OnMuhasebe.Modules.Yonetim.Contracts;
 using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Features;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Bildirimler;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Modules;
@@ -78,6 +80,8 @@ public sealed class YonetimModulu : IModul
         services.AddScoped<DonemKilidiSorgusu>();
         services.AddScoped<IDonemKilidiSorgusu>(sp => sp.GetRequiredService<DonemKilidiSorgusu>());
         services.AddScoped<IIstekKaydiDeposu, IstekKaydiDeposu>();
+        services.AddScoped<IFirmaRehberi, FirmaRehberi>();
+        services.AddScoped<IBildirimKaynagi, AbonelikBildirimKaynagi>();
         services.AddHostedService<IstekKaydiTemizleyici>();
         services.AddHostedService<SistemYoneticisiTohumlayici>();
     }

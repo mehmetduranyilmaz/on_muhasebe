@@ -18,7 +18,9 @@ public static class SharedInfrastructureExtensions
 
         services.AddSingleton(TimeProvider.System);
         services.AddHttpContextAccessor();
+        services.AddScoped<ArkaPlanBaglami>();
         services.AddScoped<IMevcutKullanici, HttpMevcutKullanici>();
+        services.AddSingleton<FirmaKapsami>();
         services.AddScoped<DenetimInterceptor>();
         services.AddScoped<IslemKapsami>();
         services.AddScoped<IIslemKapsami>(sp => sp.GetRequiredService<IslemKapsami>());
