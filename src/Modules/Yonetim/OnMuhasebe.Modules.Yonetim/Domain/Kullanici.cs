@@ -31,6 +31,14 @@ internal sealed class Kullanici : BaseEntity
 
     public void SifreBelirle(string sifreOzeti) => SifreOzeti = sifreOzeti;
 
+    // Şifre değişince (kullanıcı ya da sıfırlama bağlantısıyla) hatalı giriş sayacı ve kilit de sıfırlanır.
+    public void SifreDegistir(string sifreOzeti)
+    {
+        SifreOzeti = sifreOzeti;
+        HataliGirisSayisi = 0;
+        KilitBitisTarihi = null;
+    }
+
     public bool KilitliMi(DateTime simdi) => KilitBitisTarihi > simdi;
 
     public void HataliGirisYapildi(DateTime simdi)

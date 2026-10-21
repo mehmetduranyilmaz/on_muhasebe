@@ -1,0 +1,60 @@
+@* Oturum açıkken şifre değiştirme. Başarılı olunca diğer cihazlardaki oturumlar kapanır, bu cihaz devam eder. *@
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mb-3">
+            Şifreniz değişince diğer cihazlardaki oturumlarınız kapanır.
+        </MudAlert>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_mevcut" Label="Mevcut şifre" InputType="InputType.Password"
+                          Required="true" RequiredError="Mevcut şifrenizi girin." autocomplete="current-password" />
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yeni" Label="Yeni şifre" InputType="InputType.Password" Class="mt-3"
+                          Required="true" RequiredError="Yeni şifre gerekli." Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
+                          HelperText="En az 8 karakter, harf ve rakam içermeli." autocomplete="new-password" />
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_tekrar" Label="Yeni şifre (tekrar)" InputType="InputType.Password" Class="mt-3"
+                          Required="true" RequiredError="Yeni şifreyi tekrar girin." Validation="@(new Func<string?, string?>(TekrarKontrol))"
+                          autocomplete="new-password" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Şifreyi değiştir</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private MudForm _form = null!;
+    private string _mevcut = "";
+    private string _yeni = "";
+    private string _tekrar = "";
+    private ApiHatasi? _hata;
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        if (_yeni == _mevcut)
+        {
+            _hata = new ApiHatasi("Yeni şifre mevcut şifreden farklı olmalıdır.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var sonuc = await Oturum.SifreDegistirAsync(new SifreDegistirIstegi(_mevcut, _yeni));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private string? TekrarKontrol(string? deger) => deger == _yeni ? null : "Şifreler eşleşmiyor.";
+}

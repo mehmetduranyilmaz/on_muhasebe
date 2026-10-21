@@ -85,6 +85,18 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
     }
 }
 
+internal sealed class SifreSifirlamaKoduConfiguration : IEntityTypeConfiguration<SifreSifirlamaKodu>
+{
+    public void Configure(EntityTypeBuilder<SifreSifirlamaKodu> builder)
+    {
+        builder.ToTable("sifre_sifirlama_kodu");
+        builder.Property(x => x.KodOzeti).HasMaxLength(64);
+        builder.HasIndex(x => x.KodOzeti).IsUnique();
+        builder.HasIndex(x => x.KullaniciId);
+        builder.HasOne<Kullanici>().WithMany().HasForeignKey(x => x.KullaniciId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 internal sealed class FirmaZorunluAlaniConfiguration : IEntityTypeConfiguration<FirmaZorunluAlani>
 {
     public void Configure(EntityTypeBuilder<FirmaZorunluAlani> builder)

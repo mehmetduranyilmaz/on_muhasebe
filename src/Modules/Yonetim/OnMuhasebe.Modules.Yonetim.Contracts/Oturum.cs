@@ -21,3 +21,9 @@ public sealed record KullaniciBilgisi(
 public sealed record FirmaOzeti(Guid Id, string Unvan, string Rol);
 
 public sealed record LisansOzeti(IReadOnlyList<string> Moduller, DateTime BitisTarihi, bool SaltOkunur);
+
+public sealed record SifreDegistirIstegi(string MevcutSifre, string YeniSifre);
+
+public sealed record SifreSifirlamaIstegi(string Eposta);
+
+public sealed record SifreSifirlaIstegi(string Kod, string YeniSifre);

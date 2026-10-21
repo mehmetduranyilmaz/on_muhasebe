@@ -3,6 +3,8 @@
 @inject OturumYoneticisi Oturum
 @inject TemaYoneticisi Tema
 @inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <MudLayout Class="@(Tema.KoyuMu ? "koyu-tema" : null)">
     <MudAppBar Elevation="0" Class="ust-cubuk">
@@ -29,6 +31,7 @@
                     <MudText Typo="Typo.caption">@Oturum.Bilgi?.Eposta</MudText>
                 </div>
                 <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Key" OnClick="SifreDegistirAsync">Şifre değiştir</MudMenuItem>
                 <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="CikisAsync">Çıkış</MudMenuItem>
             </ChildContent>
         </MudMenu>
@@ -91,5 +94,14 @@
     {
         await Oturum.CikisAsync();
         Navigasyon.NavigateTo("giris");
+    }
+
+    private async Task SifreDegistirAsync()
+    {
+        var dialog = await DialogService.ShowAsync<SifreDegistirDialog>("Şifre Değiştir", new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Şifreniz değiştirildi. Diğer cihazlardaki oturumlar kapatıldı.", Severity.Success);
+        }
     }
 }

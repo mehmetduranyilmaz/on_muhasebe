@@ -17,6 +17,9 @@
                   Variant="Variant.Outlined" Adornment="Adornment.End"
                   AdornmentIcon="@(_sifreGorunur ? Icons.Material.Outlined.VisibilityOff : Icons.Material.Outlined.Visibility)"
                   OnAdornmentClick="() => _sifreGorunur = !_sifreGorunur" AdornmentAriaLabel="Şifreyi göster" autocomplete="current-password" />
+    <div class="d-flex justify-end mt-1">
+        <MudLink Href="sifremi-unuttum" Typo="Typo.body2">Şifremi unuttum</MudLink>
+    </div>
     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
                Disabled="_islemde" Class="mt-6">
         @if (_islemde)

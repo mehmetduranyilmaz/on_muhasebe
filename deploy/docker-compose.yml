@@ -61,6 +61,7 @@ services:
     environment:
       <<: *api-ortami
       Guvenlik__VekilArkasinda: "true"
+      Uygulama__WebAdresi: https://${ALAN_ADI:?}
       Jwt__Anahtar: ${JWT_ANAHTARI:?}
       Bildirim__SifrelemeAnahtari: ${BILDIRIM_SIFRELEME_ANAHTARI:?}
       SistemYoneticisi__Eposta: ${SISTEM_YONETICISI_EPOSTA:?}

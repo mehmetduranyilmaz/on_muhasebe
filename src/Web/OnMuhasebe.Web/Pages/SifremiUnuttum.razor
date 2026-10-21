@@ -1,0 +1,51 @@
+@page "/sifremi-unuttum"
+@layout BosLayout
+@attribute [AllowAnonymous]
+@inject OturumYoneticisi Oturum
+
+<PageTitle>Şifremi Unuttum - Ön Muhasebe</PageTitle>
+
+<h2>Şifrenizi mi unuttunuz?</h2>
+
+@if (_gonderildi)
+{
+    <div class="belirme">
+        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-4">
+            <b>@_eposta</b> adresiyle bir hesap varsa şifre sıfırlama bağlantısı gönderildi. Bağlantı 1 saat geçerlidir.
+        </MudAlert>
+        <div class="alt">E-posta gelmediyse istenmeyen (spam) klasörüne bakın ya da birkaç dakika sonra yeniden isteyin.</div>
+    </div>
+}
+else
+{
+    <div class="alt">Hesabınızın e-posta adresini girin; yeni şifre belirlemeniz için bir bağlantı gönderelim.</div>
+    <HataGosterimi Hata="_hata" />
+    <MudForm @ref="_form">
+        <MudTextField @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Variant="Variant.Outlined"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Email" Required="true" RequiredError="E-posta gerekli."
+                      autocomplete="username" />
+    </MudForm>
+    <IslemDugmesi Islem="GonderAsync" FullWidth="true" Size="Size.Large" Class="mt-5" StartIcon="@Icons.Material.Filled.Send">Bağlantı gönder</IslemDugmesi>
+}
+
+<MudButton Href="giris" Variant="Variant.Text" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ArrowBack">Girişe dön</MudButton>
+
+@code {
+    private MudForm _form = null!;
+    private string _eposta = "";
+    private bool _gonderildi;
+    private ApiHatasi? _hata;
+
+    private async Task GonderAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var sonuc = await Oturum.SifreSifirlamaIstegiAsync(_eposta.Trim());
+        _hata = sonuc.Hata;
+        _gonderildi = sonuc.BasariliMi;
+    }
+}

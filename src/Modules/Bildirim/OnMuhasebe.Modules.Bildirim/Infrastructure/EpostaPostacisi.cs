@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.Bildirim.Domain;
 using OnMuhasebe.Modules.Yonetim.Contracts;
 using OnMuhasebe.Shared.Contracts.Bildirimler;
 using OnMuhasebe.Shared.Domain;
+using OnMuhasebe.Shared.Infrastructure;
 
 namespace OnMuhasebe.Modules.Bildirim.Infrastructure;
 
@@ -39,7 +40,7 @@ internal sealed partial class EpostaPostacisi(
         }
 
         var simdi = TurkiyeSaati.Simdi(zaman);
-        var adres = configuration["Bildirim:UygulamaAdresi"] ?? "http://localhost:5167/";
+        var adres = UygulamaAdresi.Oku(configuration);
         var epostalar = new List<Eposta>();
         var gidecek = new List<Domain.Bildirim>();
         foreach (var grup in bekleyenler.GroupBy(b => b.KullaniciId))

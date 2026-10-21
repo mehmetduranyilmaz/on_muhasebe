@@ -1,0 +1,69 @@
+@page "/sifre-sifirla"
+@layout BosLayout
+@attribute [AllowAnonymous]
+@inject OturumYoneticisi Oturum
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+
+<PageTitle>Yeni Şifre - Ön Muhasebe</PageTitle>
+
+<h2>Yeni şifre belirleyin</h2>
+
+@if (string.IsNullOrEmpty(Kod))
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
+        Bağlantı eksik. Lütfen e-postadaki bağlantıyı açın ya da yeni bağlantı isteyin.
+    </MudAlert>
+    <MudButton Href="sifremi-unuttum" Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true">Yeni bağlantı iste</MudButton>
+}
+else
+{
+    <div class="alt">Şifreniz değişince açık olan tüm oturumlarınız kapanır.</div>
+    <HataGosterimi Hata="_hata" />
+    <MudForm @ref="_form">
+        <MudTextField @bind-Value="_sifre" Label="Yeni şifre" InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-3"
+                      Required="true" RequiredError="Şifre gerekli." Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
+                      HelperText="En az 8 karakter, harf ve rakam içermeli." autocomplete="new-password" />
+        <MudTextField @bind-Value="_sifreTekrar" Label="Yeni şifre (tekrar)" InputType="InputType.Password" Variant="Variant.Outlined"
+                      Required="true" RequiredError="Şifreyi tekrar girin." Validation="@(new Func<string?, string?>(SifreTekrarKontrol))"
+                      autocomplete="new-password" />
+    </MudForm>
+    <IslemDugmesi Islem="KaydetAsync" FullWidth="true" Size="Size.Large" Class="mt-5" StartIcon="@Icons.Material.Filled.LockReset">Şifreyi kaydet</IslemDugmesi>
+    @if (_hata?.Kod == "sifirlama_kodu_gecersiz")
+    {
+        <MudButton Href="sifremi-unuttum" Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" Class="mt-2">Yeni bağlantı iste</MudButton>
+    }
+}
+
+<MudButton Href="giris" Variant="Variant.Text" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ArrowBack">Girişe dön</MudButton>
+
+@code {
+    [SupplyParameterFromQuery(Name = "kod")]
+    public string? Kod { get; set; }
+
+    private MudForm _form = null!;
+    private string _sifre = "";
+    private string _sifreTekrar = "";
+    private ApiHatasi? _hata;
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var sonuc = await Oturum.SifreSifirlaAsync(new SifreSifirlaIstegi(Kod!, _sifre));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            // Açık bir oturum varsa (başka hesap ya da eski token) kapatılır; yeni şifreyle girilir.
+            await Oturum.CikisAsync();
+            Snackbar.Add("Şifreniz değiştirildi. Yeni şifrenizle giriş yapabilirsiniz.", Severity.Success);
+            Navigasyon.NavigateTo("giris");
+        }
+    }
+
+    private string? SifreTekrarKontrol(string? deger) => deger == _sifre ? null : "Şifreler eşleşmiyor.";
+}

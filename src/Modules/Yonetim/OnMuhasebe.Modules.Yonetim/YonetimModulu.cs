@@ -94,6 +94,7 @@ public sealed class YonetimModulu : IModul
         Giris.Map(grup);
         Yenile.Map(grup);
         Cikis.Map(grup);
+        SifreIslemleri.Map(grup);
         FirmaDegistir.Map(grup);
         Ben.Map(grup);
         FirmaBilgileriIslemleri.Map(grup);

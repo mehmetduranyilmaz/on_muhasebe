@@ -24,6 +24,7 @@ public sealed class BildirimModulu : IModul
         services.AddSingleton<SifreKoruyucu>();
         services.AddScoped<IEpostaGonderici, SmtpEpostaGonderici>();
         services.AddScoped<EpostaPostacisi>();
+        services.AddScoped<IEpostaServisi, SistemEpostaServisi>();
         services.AddScoped<BildirimMotoru>();
         services.AddSingleton<BildirimCalistirici>();
         services.AddSingleton<IBildirimTetikleyici>(sp => sp.GetRequiredService<BildirimCalistirici>());

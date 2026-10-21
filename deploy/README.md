@@ -53,10 +53,10 @@ yedek açılır ama oturum anahtarları ve SMTP şifresi kaybolur.
 ## Güvenlik notları
 
 - Web sıkı içerik güvenlik politikasıyla (CSP) sunulur: yalnızca kendi dosyalarımız ve derlemede özeti alınan importmap
-  çalışabilir (`deploy/csp.cs`). Kamera izni yalnızca kendi sayfalarımıza açıktır. Tüm yanıtlar HSTS içerir.
+  çalışabilir (`deploy/csp.cs`). Kamera izni yalnızca kendi sayfalarımıza açıktır. Tüm yanıtlar HSTS içerir. Yazı tipi
+  dahil hiçbir dış kaynak yüklenmez (üçüncü taraflara kullanıcı IP'si gitmez).
 - API, Caddy'den gelen `X-Forwarded-For` ile gerçek istemci IP'sini görür (hız sınırı buna göre işler); dışarıdan
   gönderilen sahte başlık Caddy tarafından geçersiz kılınır.
-
 - API veritabanına satır güvenliğine (RLS) tabi `onmuhasebe_uygulama` rolüyle bağlanır. Tablo sahibi (`onmuhasebe`)
   bağlantısı yalnızca `migrator` kapsayıcısına verilir.
 - PostgreSQL dışarıya açılmaz; yalnızca kapsayıcı ağında erişilir.

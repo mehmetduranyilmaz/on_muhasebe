@@ -40,6 +40,16 @@ public sealed class OturumYoneticisi(IHttpClientFactory httpClientFactory, TimeP
         TokenAlAsync(istemci => istemci.SendAsync(YetkiliIstek(HttpMethod.Post, "api/yonetim/firma-degistir",
             JsonContent.Create(new FirmaDegistirIstegi(firmaId)))));
 
+    // Şifre değişince diğer cihazlardaki oturumlar kapanır; bu cihaz yeni token'la devam eder.
+    public Task<ApiSonucu> SifreDegistirAsync(SifreDegistirIstegi istek) =>
+        TokenAlAsync(istemci => istemci.SendAsync(YetkiliIstek(HttpMethod.Post, "api/yonetim/sifre-degistir", JsonContent.Create(istek))));
+
+    public Task<ApiSonucu> SifreSifirlamaIstegiAsync(string eposta) =>
+        OturumsuzGonderAsync("api/yonetim/sifre-sifirlama-istegi", new SifreSifirlamaIstegi(eposta));
+
+    public Task<ApiSonucu> SifreSifirlaAsync(SifreSifirlaIstegi istek) =>
+        OturumsuzGonderAsync("api/yonetim/sifre-sifirla", istek);
+
     public async Task SessizGirisAsync() => await YenileAsync(bilinenToken: null);
 
     public async Task CikisAsync()
@@ -96,6 +106,19 @@ public sealed class OturumYoneticisi(IHttpClientFactory httpClientFactory, TimeP
     }
 
     private HttpClient Istemci => httpClientFactory.CreateClient(KimlikIstemcisi);
+
+    private async Task<ApiSonucu> OturumsuzGonderAsync(string adres, object govde)
+    {
+        try
+        {
+            using var cevap = await Istemci.PostAsJsonAsync(adres, govde);
+            return cevap.IsSuccessStatusCode ? ApiSonucu.Basarili() : ApiSonucu.Basarisiz(await ApiHatasi.OkuAsync(cevap));
+        }
+        catch (HttpRequestException)
+        {
+            return ApiSonucu.Basarisiz(ApiHatasi.Baglanti);
+        }
+    }
 
     private async Task<ApiSonucu> TokenAlAsync(Func<HttpClient, Task<HttpResponseMessage>> istek)
     {

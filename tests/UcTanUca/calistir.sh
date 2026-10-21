@@ -7,7 +7,7 @@ KOK="$(cd "$(dirname "$0")" && pwd)"
 BEKLE="${OM_HIZ_BEKLE:-65}"
 NE="${1:-hepsi}"; shift || true
 KALAN=0
-SENARYOLAR="guvenlik senaryo cari stok fatura kasabanka ekstre cek_senet zorunlu tekrar denetim vade abonelik karne karekod bildirim"
+SENARYOLAR="guvenlik senaryo cari stok fatura kasabanka ekstre cek_senet zorunlu tekrar denetim vade abonelik karne karekod bildirim sifre"
 
 ara() { [ "$BEKLE" -gt 0 ] && sleep "$BEKLE"; return 0; }
 

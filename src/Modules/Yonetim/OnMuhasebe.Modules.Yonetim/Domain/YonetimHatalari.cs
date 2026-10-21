@@ -12,6 +12,8 @@ internal static class YonetimHatalari
     public static readonly Hata EpostaKayitli = Hata.Cakisma("eposta_kayitli", "Bu e-posta adresiyle zaten bir hesap var.");
     public static readonly Hata ZatenFirmaUyesi = Hata.Cakisma("zaten_firma_uyesi", "Bu kullanıcı zaten firmanıza bağlı.");
     public static readonly Hata SifreGerekli = Hata.Dogrulama("sifre_gerekli", "Yeni kullanıcı için şifre belirlenmelidir.");
+    public static readonly Hata MevcutSifreHatali = Hata.Dogrulama("mevcut_sifre_hatali", "Mevcut şifreniz hatalı.");
+    public static readonly Hata SifirlamaKoduGecersiz = Hata.IsKurali("sifirlama_kodu_gecersiz", "Şifre sıfırlama bağlantısı geçersiz ya da süresi dolmuş. Lütfen yeni bağlantı isteyin.");
     public static readonly Hata KendiniPasiflestiremez = Hata.IsKurali("kendini_pasiflestiremez", "Kendi hesabınızı pasifleştiremezsiniz.");
     public static readonly Hata KullaniciBulunamadi = Hata.Bulunamadi("kullanici_bulunamadi", "Kullanıcı bulunamadı.");
     public static readonly Hata FirmaBulunamadi = Hata.Bulunamadi("firma_bulunamadi", "Firma bulunamadı.");
