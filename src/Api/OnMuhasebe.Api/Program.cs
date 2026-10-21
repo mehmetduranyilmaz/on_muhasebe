@@ -38,6 +38,14 @@ builder.Services.AddModuller(builder.Configuration,
 
 var app = builder.Build();
 
+// Canlıda veritabanı, API açılmadan önce tek seferlik ayrı bir süreçle güncellenir; yönetici (tablo sahibi) bağlantısı
+// yalnızca bu sürece verilir, çalışan API satır güvenliğine tabi uygulama rolüyle bağlanır.
+if (args.Contains("--veritabani-guncelle"))
+{
+    await app.Services.MigrateModulDbContextsAsync(app.Configuration);
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     await app.Services.MigrateModulDbContextsAsync(app.Configuration);

@@ -1,0 +1,30 @@
+# Tek alan adı: Web (WASM) kökte, API /api altında. Alan adı gerçekse sertifika Let's Encrypt'ten otomatik alınır;
+# ALAN_ADI=localhost ile yerelde Caddy'nin kendi sertifikası kullanılır.
+{
+	email {$ACME_EPOSTA}
+}
+
+{$ALAN_ADI} {
+	encode zstd gzip
+
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv
+		# Uygulama kabuğu her açılışta güncel mi diye sorulur; sürümlü (_framework) dosyaları tarayıcı önbellekler.
+		@kabuk path / /index.html /service-worker.js /service-worker-assets.js /manifest.webmanifest
+		header @kabuk Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server {
+			precompressed br gzip
+		}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

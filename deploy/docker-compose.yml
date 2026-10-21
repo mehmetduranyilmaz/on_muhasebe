@@ -1,0 +1,74 @@
+# Canlı kurulum: PostgreSQL + veritabanı güncelleme + API + Web (Caddy, HTTPS). Ayarlar deploy/.env dosyasından okunur.
+# Kullanım (repo kökünden): docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+name: onmuhasebe
+
+x-api-ortami: &api-ortami
+  ASPNETCORE_ENVIRONMENT: Production
+  ConnectionStrings__OnMuhasebe: Host=postgres;Database=onmuhasebe;Username=onmuhasebe_uygulama;Password=${UYGULAMA_DB_SIFRESI:?};Gss Encryption Mode=Disable
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: onmuhasebe
+      POSTGRES_USER: onmuhasebe
+      POSTGRES_PASSWORD: ${POSTGRES_SIFRESI:?}
+    volumes:
+      - postgres-veri:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onmuhasebe -d onmuhasebe"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Tek seferlik: migration'lar ve satır güvenliği (uygulama rolü + politikalar). Yönetici bağlantısı yalnız burada.
+  migrator:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    image: onmuhasebe-api
+    command: ["--veritabani-guncelle"]
+    environment:
+      <<: *api-ortami
+      ConnectionStrings__OnMuhasebeYonetici: Host=postgres;Database=onmuhasebe;Username=onmuhasebe;Password=${POSTGRES_SIFRESI:?};Gss Encryption Mode=Disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    image: onmuhasebe-api
+    restart: unless-stopped
+    environment:
+      <<: *api-ortami
+      Jwt__Anahtar: ${JWT_ANAHTARI:?}
+      Bildirim__SifrelemeAnahtari: ${BILDIRIM_SIFRELEME_ANAHTARI:?}
+      SistemYoneticisi__Eposta: ${SISTEM_YONETICISI_EPOSTA:?}
+      SistemYoneticisi__Sifre: ${SISTEM_YONETICISI_SIFRESI:?}
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    image: onmuhasebe-web
+    restart: unless-stopped
+    environment:
+      ALAN_ADI: ${ALAN_ADI:?}
+      ACME_EPOSTA: ${ACME_EPOSTA:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy-veri:/data
+      - caddy-ayar:/config
+    depends_on:
+      - api
+
+volumes:
+  postgres-veri:
+  caddy-veri:
+  caddy-ayar:

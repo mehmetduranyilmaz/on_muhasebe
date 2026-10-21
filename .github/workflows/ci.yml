@@ -37,6 +37,18 @@ jobs:
       - name: Birim testleri
         run: dotnet test tests/OnMuhasebe.Hesaplama.Tests -c Release --no-build
 
+  # Canlı imajlar (deploy/) derlenebiliyor mu.
+  imaj:
+    needs: derleme
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: API imajı
+        run: docker build -f deploy/api.Dockerfile -t onmuhasebe-api .
+      - name: Web imajı
+        run: docker build -f deploy/web.Dockerfile -t onmuhasebe-web .
+
   uctanuca:
     needs: derleme
     runs-on: ubuntu-latest

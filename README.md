@@ -31,11 +31,12 @@ dotnet run --project src/Web/OnMuhasebe.Web --launch-profile http   # http://loc
 ```
 
 Geliştirme ortamında migration'lar API açılışında otomatik uygulanır.
-Canlıda migration'lar script ile kontrollü uygulanır:
+Canlıda API açılışta veritabanına dokunmaz; migration'ları ayrı bir süreç uygular
+(`dotnet OnMuhasebe.Api.dll --veritabani-guncelle`, yönetici bağlantısıyla).
 
-```bash
-dotnet ef migrations script --idempotent --project src/Modules/Yonetim/OnMuhasebe.Modules.Yonetim --startup-project src/Api/OnMuhasebe.Api --context YonetimDbContext
-```
+## Canlı kurulum
+
+Tek komutla Docker kurulumu (PostgreSQL, API, Web, otomatik HTTPS): [deploy/README.md](deploy/README.md).
 
 ## Yapılandırma
 
