@@ -76,6 +76,12 @@ internal static class KullaniciIslemleri
             return YonetimHatalari.ZatenFirmaUyesi.Problem();
         }
 
+        if (await db.FirmaLisanslari.Select(l => l.Paket.KullaniciLimiti).SingleOrDefaultAsync(cancellationToken) is { } limit
+            && await db.FirmaKullanicilari.CountAsync(u => u.AktifMi, cancellationToken) >= limit)
+        {
+            return YonetimHatalari.KullaniciLimiti(limit).Problem();
+        }
+
         db.FirmaKullanicilari.Add(FirmaKullanicisi.Olustur(kullanici.Id, istek.Rol));
         await db.SaveChangesAsync(cancellationToken);
 

@@ -28,7 +28,6 @@ internal static class SistemIslemleri
         sistem.MapGet("/firmalar", FirmalariListeleAsync);
         sistem.MapPost("/firmalar", FirmaOlusturAsync).Dogrula<FirmaOlusturIstegi>();
         sistem.MapPut("/firmalar/{firmaId:guid}/lisans", LisansAtaAsync).Dogrula<LisansAtaIstegi>();
-        sistem.MapGet("/paketler", PaketleriListeleAsync);
     }
 
     private static async Task<IResult> FirmalariListeleAsync(
@@ -70,17 +69,6 @@ internal static class SistemIslemleri
         }).ToList();
 
         return TypedResults.Ok(new SayfaliSonuc<SistemFirmaOzeti>(kayitlar, firmalar.Sayfa, firmalar.Boyut, firmalar.ToplamKayit));
-    }
-
-    private static async Task<IResult> PaketleriListeleAsync(YonetimDbContext db, CancellationToken cancellationToken)
-    {
-        var paketler = await db.Paketler
-            .AsNoTracking()
-            .OrderBy(p => p.Ad)
-            .Select(p => new PaketOzeti(p.Kod, p.Ad, p.TumModullerMi, p.Moduller))
-            .ToListAsync(cancellationToken);
-
-        return TypedResults.Ok(paketler);
     }
 
     internal sealed class FirmaOlusturDogrulayici : AbstractValidator<FirmaOlusturIstegi>

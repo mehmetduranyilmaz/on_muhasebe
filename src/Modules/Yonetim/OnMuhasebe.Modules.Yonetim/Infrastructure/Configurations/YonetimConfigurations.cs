@@ -57,6 +57,7 @@ internal sealed class PaketConfiguration : IEntityTypeConfiguration<Paket>
         builder.ToTable("paket");
         builder.Property(x => x.Kod).HasMaxLength(50);
         builder.Property(x => x.Ad).HasMaxLength(100);
+        builder.Property(x => x.Aciklama).HasMaxLength(500);
         builder.HasIndex(x => x.Kod).IsUnique();
     }
 }
@@ -115,5 +116,32 @@ internal sealed class DonemKilidiConfiguration : IEntityTypeConfiguration<DonemK
         builder.ToTable("donem_kilidi");
         builder.Property(x => x.Aciklama).HasMaxLength(DonemKilidi.AciklamaUzunlugu);
         builder.HasIndex(x => x.FirmaId).IsUnique();
+    }
+}
+
+internal sealed class OdemeBildirimiConfiguration : IEntityTypeConfiguration<OdemeBildirimi>
+{
+    public void Configure(EntityTypeBuilder<OdemeBildirimi> builder)
+    {
+        builder.ToTable("odeme_bildirimi");
+        builder.Property(x => x.Gonderen).HasMaxLength(OdemeBildirimi.GonderenUzunlugu);
+        builder.Property(x => x.Aciklama).HasMaxLength(OdemeBildirimi.AciklamaUzunlugu);
+        builder.Property(x => x.SonucNotu).HasMaxLength(OdemeBildirimi.AciklamaUzunlugu);
+        builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(20);
+        builder.HasIndex(x => new { x.FirmaId, x.OlusturmaTarihi });
+        builder.HasIndex(x => x.Durum);
+        builder.HasOne(x => x.Paket).WithMany().HasForeignKey(x => x.PaketId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class SistemAyariConfiguration : IEntityTypeConfiguration<SistemAyari>
+{
+    public void Configure(EntityTypeBuilder<SistemAyari> builder)
+    {
+        builder.ToTable("sistem_ayari");
+        builder.Property(x => x.OdemeAlicisi).HasMaxLength(200);
+        builder.Property(x => x.OdemeBankasi).HasMaxLength(100);
+        builder.Property(x => x.OdemeIban).HasMaxLength(34);
+        builder.Property(x => x.OdemeNotu).HasMaxLength(500);
     }
 }

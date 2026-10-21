@@ -495,17 +495,121 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                     b.ToTable("kullanici", "yonetim");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.OdemeBildirimi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<int>("AySayisi")
+                        .HasColumnType("integer")
+                        .HasColumnName("ay_sayisi");
+
+                    b.Property<string>("Durum")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("durum");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<string>("Gonderen")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("gonderen");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<DateOnly>("OdemeTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("odeme_tarihi");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<Guid>("PaketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paket_id");
+
+                    b.Property<string>("SonucNotu")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("sonuc_notu");
+
+                    b.Property<DateTime?>("SonucTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sonuc_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal>("Tutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tutar");
+
+                    b.Property<DateTime?>("YeniBitisTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("yeni_bitis_tarihi");
+
+                    b.HasKey("Id")
+                        .HasName("pk_odeme_bildirimi");
+
+                    b.HasIndex("Durum")
+                        .HasDatabaseName("ix_odeme_bildirimi_durum");
+
+                    b.HasIndex("PaketId")
+                        .HasDatabaseName("ix_odeme_bildirimi_paket_id");
+
+                    b.HasIndex("FirmaId", "OlusturmaTarihi")
+                        .HasDatabaseName("ix_odeme_bildirimi_firma_id_olusturma_tarihi");
+
+                    b.ToTable("odeme_bildirimi", "yonetim");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.Paket", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("aciklama");
+
                     b.Property<string>("Ad")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("ad");
+
+                    b.Property<decimal?>("AylikUcret")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("aylik_ucret");
 
                     b.Property<DateTime?>("GuncellemeTarihi")
                         .HasColumnType("timestamp with time zone")
@@ -521,6 +625,10 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("kod");
 
+                    b.Property<int?>("KullaniciLimiti")
+                        .HasColumnType("integer")
+                        .HasColumnName("kullanici_limiti");
+
                     b.PrimitiveCollection<List<string>>("Moduller")
                         .IsRequired()
                         .HasColumnType("text[]")
@@ -534,6 +642,14 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("olusturma_tarihi");
 
+                    b.Property<bool>("SatistaMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("satista_mi");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("integer")
+                        .HasColumnName("sira");
+
                     b.Property<uint>("Surum")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -543,6 +659,11 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                     b.Property<bool>("TumModullerMi")
                         .HasColumnType("boolean")
                         .HasColumnName("tum_moduller_mi");
+
+                    b.Property<decimal?>("YillikUcret")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("yillik_ucret");
 
                     b.HasKey("Id")
                         .HasName("pk_paket");
@@ -619,6 +740,60 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasDatabaseName("ix_refresh_token_token_ozeti");
 
                     b.ToTable("refresh_token", "yonetim");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.SistemAyari", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("OdemeAlicisi")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("odeme_alicisi");
+
+                    b.Property<string>("OdemeBankasi")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("odeme_bankasi");
+
+                    b.Property<string>("OdemeIban")
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)")
+                        .HasColumnName("odeme_iban");
+
+                    b.Property<string>("OdemeNotu")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("odeme_notu");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sistem_ayari");
+
+                    b.ToTable("sistem_ayari", "yonetim");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Shared.Infrastructure.Persistence.DegisiklikKaydi", b =>
@@ -739,6 +914,18 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_firma_lisansi_paketler_paket_id");
+
+                    b.Navigation("Paket");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.OdemeBildirimi", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.Yonetim.Domain.Paket", "Paket")
+                        .WithMany()
+                        .HasForeignKey("PaketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_odeme_bildirimi_paketler_paket_id");
 
                     b.Navigation("Paket");
                 });

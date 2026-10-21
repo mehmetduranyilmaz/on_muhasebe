@@ -19,4 +19,6 @@ internal sealed class YonetimDbContext(DbContextOptions<YonetimDbContext> option
     public DbSet<FirmaZorunluAlani> ZorunluAlanlar => Set<FirmaZorunluAlani>();
     public DbSet<IstekKaydi> IstekKayitlari => Set<IstekKaydi>();
     public DbSet<DonemKilidi> DonemKilitleri => Set<DonemKilidi>();
+    public DbSet<OdemeBildirimi> OdemeBildirimleri => Set<OdemeBildirimi>();
+    public DbSet<SistemAyari> SistemAyarlari => Set<SistemAyari>();
 }

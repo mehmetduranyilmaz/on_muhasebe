@@ -95,6 +95,8 @@ public sealed class YonetimModulu : IModul
         FirmaBilgileriIslemleri.Map(grup);
         KullaniciIslemleri.Map(grup);
         SistemIslemleri.Map(grup);
+        SistemAbonelikIslemleri.Map(grup);
+        AbonelikIslemleri.Map(grup);
         ZorunluAlanIslemleri.Map(grup);
         DonemKilidiIslemleri.Map(grup);
     }

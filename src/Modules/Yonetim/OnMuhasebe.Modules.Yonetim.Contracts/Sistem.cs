@@ -4,6 +4,8 @@ public static class PaketKodlari
 {
     public const string Deneme = "deneme";
     public const string Basic = "basic";
+    public const string Profesyonel = "profesyonel";
+    public const string Kurumsal = "kurumsal";
 }
 
 public sealed record FirmaOlusturIstegi(
@@ -31,7 +33,31 @@ public sealed record SistemFirmaOzeti(
     IReadOnlyList<string> EkModuller,
     int KullaniciSayisi);
 
-public sealed record PaketOzeti(string Kod, string Ad, bool TumModullerMi, IReadOnlyList<string> Moduller);
+public sealed record PaketOzeti(
+    string Kod,
+    string Ad,
+    bool TumModullerMi,
+    IReadOnlyList<string> Moduller,
+    string? Aciklama,
+    int? KullaniciLimiti,
+    decimal? AylikUcret,
+    decimal? YillikUcret,
+    bool SatistaMi,
+    int Sira,
+    int FirmaSayisi);
+
+// Kod yalnızca yeni pakette kullanılır (küçük harf, rakam, tire); güncellemede adresteki kod esastır.
+public sealed record PaketKaydetIstegi(
+    string Kod,
+    string Ad,
+    string? Aciklama,
+    bool TumModullerMi,
+    IReadOnlyList<string> Moduller,
+    int? KullaniciLimiti,
+    decimal? AylikUcret,
+    decimal? YillikUcret,
+    bool SatistaMi,
+    int Sira);
 
 // Firmanın kendi bilgileri; yazdırılan belgelerin (fatura) üst bilgisinde kullanılır.
 public sealed record FirmaBilgileri(
