@@ -1,0 +1,88 @@
+@* Firmanın "havale/EFT yaptım" bildirimi; tutar paketin seçilen süre ücretiyle dolu gelir. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <div class="tur-sekmeleri mb-1">
+                        <button type="button" class="tur-sekmesi @(_aySayisi == 1 ? "secili" : "")" style="--vurgu:#3B82F6" disabled="@(Paket.AylikUcret is null)"
+                                @onclick="() => SureSec(1)">Aylık@(Paket.AylikUcret is { } a ? $" · {Bicim.Tutar(a)} TL" : "")</button>
+                        <button type="button" class="tur-sekmesi @(_aySayisi == 12 ? "secili" : "")" style="--vurgu:#14B8A6" disabled="@(Paket.YillikUcret is null)"
+                                @onclick="() => SureSec(12)">Yıllık@(Paket.YillikUcret is { } y ? $" · {Bicim.Tutar(y)} TL" : "")</button>
+                    </div>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="Gönderilen tutar (TL)" Min="0"
+                                     Format="N2" HideSpinButtons="true" Required="true" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Ödeme tarihi" MaxDate="DateTime.Today.AddDays(1)"
+                                   Required="true" RequiredError="Tarih seçin." />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_gonderen" Label="Gönderen (hesap sahibi)" MaxLength="200"
+                                  Required="true" RequiredError="Gönderen gerekli." HelperText="Havaleyi hangi ad/unvanla gönderdiniz?" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama / dekont no" MaxLength="500" Lines="2" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="GonderAsync" StartIcon="@Icons.Material.Filled.Send">Bildir</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public SatistakiPaket Paket { get; set; } = null!;
+    [Parameter] public bool Yillik { get; set; }
+
+    private readonly IslemAnahtari _anahtar = new();
+    private MudForm _form = null!;
+    private int _aySayisi;
+    private decimal _tutar;
+    private DateTime? _tarih;
+    private string? _gonderen;
+    private string? _aciklama;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        SureSec(Yillik && Paket.YillikUcret is not null || Paket.AylikUcret is null ? 12 : 1);
+        _tarih = Zaman.GetLocalNow().Date;
+        _gonderen = Oturum.Bilgi?.AktifFirma?.Unvan;
+    }
+
+    private void SureSec(int aySayisi)
+    {
+        _aySayisi = aySayisi;
+        _tutar = (aySayisi == 12 ? Paket.YillikUcret : Paket.AylikUcret) ?? 0;
+    }
+
+    private async Task GonderAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var istek = new OdemeBildirimiIstegi(Paket.Kod, _aySayisi, _tutar, DateOnly.FromDateTime(_tarih!.Value), _gonderen!.Trim(),
+            string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim());
+        var sonuc = await Api.PostAsync<OdemeBildirimiOzeti>("api/yonetim/abonelik/odeme-bildirimleri", istek, islemAnahtari: _anahtar.Deger);
+        _anahtar.Sonuc(sonuc.Hata);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

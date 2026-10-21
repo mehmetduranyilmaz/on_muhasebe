@@ -1,0 +1,18 @@
+@* Ödeme bildirimini reddetme gerekçesi; firma bu metni abonelik ekranında görür. *@
+<MudDialog>
+    <DialogContent>
+        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_not" Label="Ret nedeni" MaxLength="500" Lines="3" AutoFocus="true"
+                      Placeholder="ör. Ödeme hesabımıza ulaşmadı; dekontu iletir misiniz?" Immediate="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@string.IsNullOrWhiteSpace(_not)"
+                   OnClick="() => MudDialog.Close(DialogResult.Ok(_not!.Trim()))">Reddet</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string? _not;
+}

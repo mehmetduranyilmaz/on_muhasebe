@@ -1,0 +1,149 @@
+@page "/sistem/odeme-bildirimleri"
+@attribute [Authorize(Roles = Roller.SistemYoneticisi)]
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="Ödeme Bildirimleri" AltBaslik="Firmaların havale/EFT bildirimleri: hesaba geçen ödemeyi onaylayın, abonelik uzasın" Ikon="@Icons.Material.Filled.AccountBalanceWallet" />
+
+<div class="tur-sekmeleri belirme">
+    @foreach (var (durum, metin, renk) in _sekmeler)
+    {
+        <button type="button" class="tur-sekmesi @(_durum == durum ? "secili" : "")" style="--vurgu:@renk" @onclick="() => SekmeAsync(durum)">
+            @metin
+            @if (durum == OdemeBildirimiDurumu.Bekliyor && _bekleyenSayisi > 0)
+            {
+                <span class="sekme-sayisi">@_bekleyenSayisi</span>
+            }
+        </button>
+    }
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+<VeriTablosu T="OdemeBildirimiOzeti" Kayitlar="_bildirimler" Yukleniyor="_yukleniyor" BosIkon="@Icons.Material.Outlined.TaskAlt"
+             BosBaslik="@(_durum == OdemeBildirimiDurumu.Bekliyor ? "Onay bekleyen bildirim yok" : "Bildirim yok")">
+    <Basliklar>
+        <MudTh>Firma</MudTh>
+        <MudTh>Paket</MudTh>
+        <MudTh Class="sayi">Tutar</MudTh>
+        <MudTh>Ödeme</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh></MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Firma">
+            <b>@context.FirmaUnvani</b>
+            <span class="mobil-alt-bilgi">Bildirim: @context.BildirimTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+        </MudTd>
+        <MudTd DataLabel="Paket">@context.PaketAdi · @(context.AySayisi == 12 ? "yıllık" : "aylık")</MudTd>
+        <MudTd DataLabel="Tutar" Class="sayi">
+            <b>@Bicim.Tutar(context.Tutar, "TRY")</b>
+            @if (context.PaketUcreti is { } ucret && ucret != context.Tutar)
+            {
+                <span class="mobil-alt-bilgi tutar-farki">Paket ücreti @Bicim.Tutar(ucret, "TRY")</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Ödeme">
+            @Bicim.Tarih(context.OdemeTarihi) · @context.Gonderen
+            @if (context.Aciklama is not null)
+            {
+                <span class="mobil-alt-bilgi">@context.Aciklama</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Durum">
+            <OdemeDurumuCipi Durum="context.Durum" />
+            @if (context.YeniBitisTarihi is { } bitis)
+            {
+                <span class="mobil-alt-bilgi">Yeni son gün: @bitis.AddDays(-1).ToString("dd.MM.yyyy")</span>
+            }
+            else if (context.SonucNotu is not null)
+            {
+                <span class="mobil-alt-bilgi">@context.SonucNotu</span>
+            }
+        </MudTd>
+        <MudTd Style="text-align:right; white-space:nowrap">
+            @if (context.Durum == OdemeBildirimiDurumu.Bekliyor)
+            {
+                <MudButton Size="Size.Small" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" OnClick="() => ReddetAsync(context)">Reddet</MudButton>
+                <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Check" OnClick="() => OnaylaAsync(context)">
+                    Onayla
+                </MudButton>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private static readonly (OdemeBildirimiDurumu? Durum, string Metin, string Renk)[] _sekmeler =
+    [
+        (OdemeBildirimiDurumu.Bekliyor, "Onay bekleyen", "#F59E0B"),
+        (OdemeBildirimiDurumu.Onaylandi, "Onaylanan", "#16A34A"),
+        (OdemeBildirimiDurumu.Reddedildi, "Reddedilen", "#EF4444"),
+        (null, "Tümü", "#3B82F6")
+    ];
+
+    private OdemeBildirimiDurumu? _durum = OdemeBildirimiDurumu.Bekliyor;
+    private List<OdemeBildirimiOzeti>? _bildirimler;
+    private int _bekleyenSayisi;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<List<OdemeBildirimiOzeti>>("api/yonetim/sistem/odeme-bildirimleri" + (_durum is { } d ? $"?durum={d}" : ""));
+        _hata = sonuc.Hata;
+        _bildirimler = sonuc.BasariliMi ? sonuc.Deger : [];
+        if (_durum == OdemeBildirimiDurumu.Bekliyor)
+        {
+            _bekleyenSayisi = _bildirimler.Count;
+        }
+
+        _yukleniyor = false;
+    }
+
+    private async Task SekmeAsync(OdemeBildirimiDurumu? durum)
+    {
+        _durum = durum;
+        await YukleAsync();
+    }
+
+    private async Task OnaylaAsync(OdemeBildirimiOzeti b)
+    {
+        var mesaj = $"{b.FirmaUnvani} firmasının {Bicim.Tutar(b.Tutar, "TRY")} tutarındaki ödemesi hesabınıza geçti mi? Onaylanınca firma " +
+                    $"{b.PaketAdi} paketine geçer ve aboneliği {(b.AySayisi == 12 ? "1 yıl" : "1 ay")} uzar.";
+        if (!await Onay.SorAsync("Ödemeyi onayla", mesaj, "Onayla"))
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync<OdemeBildirimiOzeti>($"api/yonetim/sistem/odeme-bildirimleri/{b.Id}/onayla", new BildirimOnayIstegi(null));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add($"Onaylandı. Yeni son gün: {sonuc.Deger.YeniBitisTarihi?.AddDays(-1):dd.MM.yyyy}", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private async Task ReddetAsync(OdemeBildirimiOzeti b)
+    {
+        var dialog = await DialogService.ShowAsync<RetNedeniDialog>($"Reddet: {b.FirmaUnvani}", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is not { Canceled: false, Data: string not })
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync<OdemeBildirimiOzeti>($"api/yonetim/sistem/odeme-bildirimleri/{b.Id}/reddet", new BildirimRetIstegi(not));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Bildirim reddedildi; firma gerekçeyi abonelik ekranında görür.", Severity.Info);
+            await YukleAsync();
+        }
+    }
+}

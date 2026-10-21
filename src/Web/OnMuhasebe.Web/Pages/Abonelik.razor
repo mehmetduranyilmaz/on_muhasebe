@@ -1,0 +1,217 @@
+@page "/abonelik"
+@attribute [Authorize(Roles = Roller.Yonetici)]
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="Abonelik" AltBaslik="Paketiniz, kalan süreniz ve havale/EFT ile yenileme" Ikon="@Icons.Material.Filled.WorkspacePremium" />
+
+<HataGosterimi Hata="_hata" />
+
+@if (_durum is not { } d)
+{
+    @if (_hata is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+    }
+}
+else
+{
+    var bekleyen = d.Bildirimler.FirstOrDefault(b => b.Durum == OdemeBildirimiDurumu.Bekliyor);
+
+    <div class="abonelik-ozeti kart belirme @(d.SaltOkunur ? "doldu" : d.KalanGun <= UyariGunu ? "yaklasti" : "")">
+        <div class="abonelik-halka" style="--oran:@Oran(d)">
+            <div class="abonelik-halka-ic">
+                <span class="abonelik-gun"><SayacDegeri Deger="d.KalanGun" Bicimle="@(g => ((int)g).ToString())" /></span>
+                <span class="abonelik-gun-etiket">gün kaldı</span>
+            </div>
+        </div>
+        <div class="abonelik-bilgi">
+            <div class="abonelik-paket">
+                @(d.PaketAdi ?? "Paket yok")
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                         Color="@(d.SaltOkunur ? Color.Error : d.KalanGun <= UyariGunu ? Color.Warning : Color.Success)">
+                    @(d.SaltOkunur ? "Süresi doldu · salt okunur" : d.KalanGun <= UyariGunu ? "Yenileme zamanı" : "Aktif")
+                </MudChip>
+            </div>
+            @if (d.BitisTarihi is { } bitis)
+            {
+                <div class="abonelik-satir"><MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" /> Son geçerli gün: <b>@SonGun(bitis)</b></div>
+            }
+            <div class="abonelik-satir">
+                <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+                Kullanıcılar: <b>@d.KullaniciSayisi</b> / @(d.KullaniciLimiti?.ToString() ?? "sınırsız")
+            </div>
+            @if (d.KullaniciLimiti is { } limit)
+            {
+                <MudProgressLinear Value="@Math.Min(100, d.KullaniciSayisi * 100.0 / limit)" Rounded="true" Size="Size.Small"
+                                   Color="@(d.KullaniciSayisi >= limit ? Color.Warning : Color.Primary)" Class="abonelik-limit" />
+            }
+        </div>
+    </div>
+
+    @if (bekleyen is not null)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4 belirme" Icon="@Icons.Material.Filled.HourglassTop">
+            @Bicim.Tutar(bekleyen.Tutar, "TRY") tutarındaki @bekleyen.PaketAdi (@SureMetni(bekleyen.AySayisi)) ödeme bildiriminiz onay bekliyor.
+            Ödemeniz hesabımıza ulaştığında aboneliğiniz uzatılacak.
+        </MudAlert>
+    }
+
+    <div class="d-flex align-center flex-wrap gap-3 mt-6 mb-3">
+        <MudText Typo="Typo.h6">Paketler</MudText>
+        <div class="tur-sekmeleri mb-0">
+            <button type="button" class="tur-sekmesi @(_yillik ? "" : "secili")" style="--vurgu:#3B82F6" @onclick="() => _yillik = false">Aylık</button>
+            <button type="button" class="tur-sekmesi @(_yillik ? "secili" : "")" style="--vurgu:#14B8A6" @onclick="() => _yillik = true">Yıllık</button>
+        </div>
+    </div>
+
+    <div class="paket-kartlari">
+        @foreach (var (p, i) in d.Paketler.Select((p, i) => (p, i)))
+        {
+            var ucret = _yillik ? p.YillikUcret : p.AylikUcret;
+            var mevcut = p.Kod == d.PaketKodu;
+            <div class="paket-karti kart kart-hover belirme @(mevcut ? "mevcut" : "")" style="--i:@i">
+                @if (mevcut)
+                {
+                    <span class="paket-rozet">Mevcut paketiniz</span>
+                }
+                <div class="paket-adi">@p.Ad</div>
+                @if (p.Aciklama is not null)
+                {
+                    <div class="paket-aciklama">@p.Aciklama</div>
+                }
+                <div class="paket-ucret">
+                    @if (ucret is { } u)
+                    {
+                        <span class="tutar">@Bicim.Tutar(u)</span><span class="birim">TL / @(_yillik ? "yıl" : "ay")</span>
+                    }
+                    else
+                    {
+                        <span class="teklif">@(_yillik ? "Yıllık seçenek yok" : "Teklif için iletişime geçin")</span>
+                    }
+                </div>
+                <ul class="paket-ozellikleri">
+                    <li><MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" /> @(p.KullaniciLimiti is { } l ? $"{l} kullanıcı" : "Sınırsız kullanıcı")</li>
+                    @foreach (var modul in p.TumModullerMi ? ModulMenusu.Tumu.Select(m => m.Kod) : p.Moduller)
+                    {
+                        <li><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /> @ModulMenusu.Ad(modul)</li>
+                    }
+                </ul>
+                <MudButton Variant="@(mevcut ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" FullWidth="true"
+                           StartIcon="@Icons.Material.Filled.AccountBalance"
+                           Disabled="@(ucret is null || d.OdemeBilgileri is null || bekleyen is not null)" OnClick="() => BildirAsync(p)">
+                    Havale yaptım, bildir
+                </MudButton>
+            </div>
+        }
+    </div>
+
+    <MudGrid Spacing="3" Class="mt-4">
+        <MudItem xs="12" md="5">
+            <div class="kart belirme pa-4 odeme-hesabi" style="--i:3">
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Color="Color.Primary" />
+                    <MudText Typo="Typo.subtitle1"><b>Ödeme hesabı</b></MudText>
+                </div>
+                @if (d.OdemeBilgileri is { } o)
+                {
+                    <div class="odeme-satir"><span>Alıcı</span><b>@o.Alici</b></div>
+                    <div class="odeme-satir"><span>Banka</span><b>@o.Banka</b></div>
+                    <div class="odeme-iban">
+                        <code>@Bicim.Iban(o.Iban!)</code>
+                        <MudTooltip Text="Kopyala">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="() => KopyalaAsync(o.Iban!)" aria-label="IBAN'ı kopyala" />
+                        </MudTooltip>
+                    </div>
+                    @if (o.Not is not null)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-2 mud-text-secondary">@o.Not</MudText>
+                    }
+                    <MudText Typo="Typo.caption" Class="mt-2 d-block">
+                        Havale/EFT'yi yaptıktan sonra seçtiğiniz paketin "Havale yaptım, bildir" düğmesiyle bize bildirin; onaylanınca aboneliğiniz uzar.
+                        Süreniz dolmadan yaptığınız ödemede kalan günleriniz korunur.
+                    </MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2">Ödeme hesabı henüz tanımlanmadı. Abonelik için lütfen bizimle iletişime geçin.</MudText>
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="7">
+            <MudText Typo="Typo.subtitle1" Class="mb-2"><b>Ödeme bildirimleriniz</b></MudText>
+            <VeriTablosu T="OdemeBildirimiOzeti" Kayitlar="d.Bildirimler" Dense="true" BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz bildirim yok"
+                         IskeletSatirSayisi="3">
+                <Basliklar>
+                    <MudTh>Tarih</MudTh>
+                    <MudTh>Paket</MudTh>
+                    <MudTh Class="sayi">Tutar</MudTh>
+                    <MudTh>Durum</MudTh>
+                </Basliklar>
+                <Satir>
+                    <MudTd DataLabel="Tarih">@Bicim.Tarih(context.OdemeTarihi)</MudTd>
+                    <MudTd DataLabel="Paket">@context.PaketAdi · @SureMetni(context.AySayisi)</MudTd>
+                    <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.Tutar, "TRY")</MudTd>
+                    <MudTd DataLabel="Durum">
+                        <OdemeDurumuCipi Durum="context.Durum" />
+                        @if (context.SonucNotu is not null)
+                        {
+                            <span class="mobil-alt-bilgi">@context.SonucNotu</span>
+                        }
+                    </MudTd>
+                </Satir>
+            </VeriTablosu>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private const int UyariGunu = 7;
+    private AbonelikDurumu? _durum;
+    private bool _yillik;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<AbonelikDurumu>("api/yonetim/abonelik");
+        _hata = sonuc.Hata;
+        _durum = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yillik = _durum?.Paketler.Any(p => p.AylikUcret is null && p.YillikUcret is not null) == true
+                  && _durum.Paketler.All(p => p.AylikUcret is null);
+    }
+
+    private async Task BildirAsync(SatistakiPaket paket)
+    {
+        var parametreler = new DialogParameters<OdemeBildirimiDialog>
+        {
+            { x => x.Paket, paket },
+            { x => x.Yillik, _yillik }
+        };
+        var dialog = await DialogService.ShowAsync<OdemeBildirimiDialog>($"Ödeme bildirimi: {paket.Ad}", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Bildiriminiz alındı. Ödemeniz onaylanınca aboneliğiniz uzatılacak.", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private async Task KopyalaAsync(string iban)
+    {
+        await Js.InvokeVoidAsync("navigator.clipboard.writeText", iban);
+        Snackbar.Add("IBAN kopyalandı.", Severity.Info);
+    }
+
+    // Bitiş, son geçerli günün ertesi gece yarısıdır.
+    private static string SonGun(DateTime bitis) => bitis.AddDays(-1).ToString("dd.MM.yyyy");
+
+    private static string Oran(AbonelikDurumu d) =>
+        (Math.Clamp(d.KalanGun / 30.0, 0, 1) * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    internal static string SureMetni(int aySayisi) => aySayisi == 12 ? "yıllık" : aySayisi == 1 ? "aylık" : $"{aySayisi} ay";
+}

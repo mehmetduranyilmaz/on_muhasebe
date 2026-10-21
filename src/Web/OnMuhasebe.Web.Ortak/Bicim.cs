@@ -39,4 +39,7 @@ public static class Bicim
     public static DateOnly? Gun(DateTime? tarih) => tarih is { } t ? DateOnly.FromDateTime(t) : null;
 
     public static DateTime? Takvim(DateOnly? tarih) => tarih?.ToDateTime(TimeOnly.MinValue);
+
+    // "TR330006..." -> "TR33 0006 ..." (okunur, kopyalanınca boşluksuz değer kullanılır).
+    public static string Iban(string iban) => string.Join(' ', iban.Chunk(4).Select(c => new string(c)));
 }

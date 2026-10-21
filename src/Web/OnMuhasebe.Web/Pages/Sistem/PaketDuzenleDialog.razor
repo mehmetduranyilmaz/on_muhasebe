@@ -1,0 +1,107 @@
+@* Paket ekleme/düzenleme. Modül ve limit değişikliği o paketi kullanan tüm firmalara hemen yansır. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudGrid Spacing="2">
+                <MudItem xs="5">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kod" Label="Kod" MaxLength="50" Disabled="@(Paket is not null)"
+                                  Required="true" RequiredError="Kod gerekli." HelperText="küçük harf, rakam, tire" />
+                </MudItem>
+                <MudItem xs="7">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" MaxLength="100" Required="true" RequiredError="Ad gerekli." />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudSwitch T="bool" @bind-Value="_tumModuller" Color="Color.Primary" Label="Tüm modüller (ileride eklenenler dahil)" />
+                </MudItem>
+                @if (!_tumModuller)
+                {
+                    <MudItem xs="12">
+                        <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="string" MultiSelection="true" @bind-SelectedValues="_moduller" Label="Modüller">
+                            @foreach (var modul in ModulMenusu.Tumu)
+                            {
+                                <MudSelectItem Value="@modul.Kod">@modul.Ad</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+                <MudItem xs="4">
+                    <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_limit" Label="Kullanıcı limiti" Min="1"
+                                     HelperText="Boş: sınırsız" HideSpinButtons="true" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aylik" Label="Aylık (TL)" Min="0" Format="N2"
+                                     HelperText="Boş: satılmaz" HideSpinButtons="true" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yillik" Label="Yıllık (TL)" Min="0" Format="N2"
+                                     HelperText="Boş: satılmaz" HideSpinButtons="true" />
+                </MudItem>
+                <MudItem xs="8">
+                    <MudSwitch T="bool" @bind-Value="_satista" Color="Color.Success" Label="Satışta (firmaların abonelik ekranında listelenir)" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sira" Label="Sıra" HideSpinButtons="true" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public PaketOzeti? Paket { get; set; }
+
+    private readonly IslemAnahtari _anahtar = new();
+    private MudForm _form = null!;
+    private string? _kod;
+    private string? _ad;
+    private string? _aciklama;
+    private bool _tumModuller;
+    private IReadOnlyCollection<string> _moduller = [];
+    private int? _limit;
+    private decimal? _aylik;
+    private decimal? _yillik;
+    private bool _satista;
+    private int _sira;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        if (Paket is { } p)
+        {
+            (_kod, _ad, _aciklama, _tumModuller, _moduller, _limit, _aylik, _yillik, _satista, _sira) =
+                (p.Kod, p.Ad, p.Aciklama, p.TumModullerMi, p.Moduller.ToList(), p.KullaniciLimiti, p.AylikUcret, p.YillikUcret, p.SatistaMi, p.Sira);
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var istek = new PaketKaydetIstegi(_kod!.Trim(), _ad!.Trim(), string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim(), _tumModuller,
+            _tumModuller ? [] : _moduller.ToList(), _limit, _aylik, _yillik, _satista, _sira);
+        var sonuc = Paket is null
+            ? await Api.PostAsync<PaketOzeti>("api/yonetim/sistem/paketler", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PutAsync<PaketOzeti>($"api/yonetim/sistem/paketler/{Paket.Kod}", istek);
+        _anahtar.Sonuc(sonuc.Hata);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

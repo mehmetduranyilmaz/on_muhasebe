@@ -8,12 +8,14 @@
     {
         <MudAlert Severity="Severity.Error" Square="true" Dense="true">
             Lisansınızın süresi doldu. Kayıtlarınızı görüntüleyebilirsiniz ancak yeni kayıt giremezsiniz.
+            <YenileBaglantisi />
         </MudAlert>
     }
     else if (KalanGun(lisans) <= UyariGunu)
     {
         <MudAlert Severity="Severity.Warning" Square="true" Dense="true">
             Lisansınızın bitmesine @KalanGun(lisans) gün kaldı (@lisans.BitisTarihi.ToLocalTime().ToString("d")).
+            <YenileBaglantisi />
         </MudAlert>
     }
 }

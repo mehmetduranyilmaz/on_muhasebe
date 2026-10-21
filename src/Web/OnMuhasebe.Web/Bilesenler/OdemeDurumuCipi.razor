@@ -1,0 +1,26 @@
+<MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@Renk" Icon="@Ikon">@Metin</MudChip>
+
+@code {
+    [Parameter, EditorRequired] public OdemeBildirimiDurumu Durum { get; set; }
+
+    private string Metin => Durum switch
+    {
+        OdemeBildirimiDurumu.Onaylandi => "Onaylandı",
+        OdemeBildirimiDurumu.Reddedildi => "Reddedildi",
+        _ => "Onay bekliyor"
+    };
+
+    private Color Renk => Durum switch
+    {
+        OdemeBildirimiDurumu.Onaylandi => Color.Success,
+        OdemeBildirimiDurumu.Reddedildi => Color.Error,
+        _ => Color.Warning
+    };
+
+    private string Ikon => Durum switch
+    {
+        OdemeBildirimiDurumu.Onaylandi => Icons.Material.Filled.CheckCircle,
+        OdemeBildirimiDurumu.Reddedildi => Icons.Material.Filled.Cancel,
+        _ => Icons.Material.Filled.HourglassTop
+    };
+}

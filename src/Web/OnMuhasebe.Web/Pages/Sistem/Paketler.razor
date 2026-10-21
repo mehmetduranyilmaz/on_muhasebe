@@ -1,0 +1,131 @@
+@page "/sistem/paketler"
+@attribute [Authorize(Roles = Roller.SistemYoneticisi)]
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="Paketler ve Ödeme" AltBaslik="Satıştaki paketlerin ücretleri, kullanıcı limitleri ve havale hesabı" Ikon="@Icons.Material.Filled.Sell">
+    <Islemler>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="() => DuzenleAsync(null)">Yeni Paket</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<VeriTablosu T="PaketOzeti" Kayitlar="_paketler" Yukleniyor="_paketler is null" SatirTiklandi="@(p => DuzenleAsync(p))" BosBaslik="Paket yok">
+    <Basliklar>
+        <MudTh>Paket</MudTh>
+        <MudTh>Modüller</MudTh>
+        <MudTh>Kullanıcı</MudTh>
+        <MudTh Class="sayi">Aylık</MudTh>
+        <MudTh Class="sayi">Yıllık</MudTh>
+        <MudTh>Satışta</MudTh>
+        <MudTh Class="sayi">Firma</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Paket">
+            <b>@context.Ad</b>
+            <span class="mobil-alt-bilgi">@context.Kod</span>
+        </MudTd>
+        <MudTd DataLabel="Modüller">@(context.TumModullerMi ? "Tümü" : string.Join(", ", context.Moduller.Select(ModulMenusu.Ad)))</MudTd>
+        <MudTd DataLabel="Kullanıcı">@(context.KullaniciLimiti?.ToString() ?? "Sınırsız")</MudTd>
+        <MudTd DataLabel="Aylık" Class="sayi">@Ucret(context.AylikUcret)</MudTd>
+        <MudTd DataLabel="Yıllık" Class="sayi">@Ucret(context.YillikUcret)</MudTd>
+        <MudTd DataLabel="Satışta">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.SatistaMi ? Color.Success : Color.Default)">
+                @(context.SatistaMi ? "Satışta" : "Gizli")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Firma" Class="sayi">@context.FirmaSayisi</MudTd>
+    </Satir>
+</VeriTablosu>
+
+<div class="mt-6"></div>
+<FormBolumu Baslik="Ödeme hesabı" Aciklama="Firmalar abonelik ekranında bu hesaba havale/EFT yapıp bildirir" Ikon="@Icons.Material.Filled.AccountBalance" Sira="2">
+    @if (_odeme is null)
+    {
+        <MudItem xs="12"><MudSkeleton Height="90px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
+    }
+    else
+    {
+        <MudItem xs="12" md="4">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_alici" Label="Alıcı (hesap sahibi)" MaxLength="200" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_banka" Label="Banka" MaxLength="100" />
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_iban" Label="IBAN" MaxLength="40" Placeholder="TR00 0000 0000 0000 0000 0000 00" />
+        </MudItem>
+        <MudItem xs="12" md="8">
+            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_not" Label="Not (firmalara gösterilir)" MaxLength="500"
+                          Placeholder="ör. Açıklamaya firma unvanınızı yazın." />
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
+            <IslemDugmesi Islem="OdemeKaydetAsync" StartIcon="@Icons.Material.Filled.Save">Ödeme hesabını kaydet</IslemDugmesi>
+        </MudItem>
+        @if (_odemeHatasi is not null)
+        {
+            <MudItem xs="12"><HataGosterimi Hata="_odemeHatasi" /></MudItem>
+        }
+    }
+</FormBolumu>
+
+@code {
+    private List<PaketOzeti>? _paketler;
+    private OdemeBilgileri? _odeme;
+    private string? _alici;
+    private string? _banka;
+    private string? _iban;
+    private string? _not;
+    private ApiHatasi? _hata;
+    private ApiHatasi? _odemeHatasi;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await YukleAsync();
+        var odeme = await Api.GetAsync<OdemeBilgileri>("api/yonetim/sistem/odeme-bilgileri");
+        if (odeme.BasariliMi)
+        {
+            OdemeAyarla(odeme.Deger);
+        }
+    }
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<PaketOzeti>>("api/yonetim/sistem/paketler");
+        _hata = sonuc.Hata;
+        _paketler = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private async Task DuzenleAsync(PaketOzeti? paket)
+    {
+        var parametreler = new DialogParameters<PaketDuzenleDialog> { { x => x.Paket, paket } };
+        var dialog = await DialogService.ShowAsync<PaketDuzenleDialog>(paket is null ? "Yeni Paket" : $"Paket: {paket.Ad}", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Paket kaydedildi.", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private void OdemeAyarla(OdemeBilgileri o)
+    {
+        _odeme = o;
+        (_alici, _banka, _iban, _not) = (o.Alici, o.Banka, o.Iban is null ? null : Bicim.Iban(o.Iban), o.Not);
+    }
+
+    private async Task OdemeKaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<OdemeBilgileri>("api/yonetim/sistem/odeme-bilgileri", new OdemeBilgileri(_alici, _banka, _iban, _not));
+        _odemeHatasi = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            OdemeAyarla(sonuc.Deger);
+            Snackbar.Add("Ödeme hesabı kaydedildi.", Severity.Success);
+        }
+    }
+
+    private static string Ucret(decimal? ucret) => ucret is { } u ? Bicim.Tutar(u, "TRY") : "—";
+}
