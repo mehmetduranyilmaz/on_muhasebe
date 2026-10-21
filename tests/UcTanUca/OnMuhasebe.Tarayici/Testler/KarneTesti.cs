@@ -14,8 +14,7 @@ internal sealed class KarneTesti : TarayiciTesti
     {
         await Komut("Page.enable");
         var eposta = $"karneui{DateTime.UtcNow.Ticks}@ornek.com";
-        var kayit = (await (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Karne Arayuz", ad = "Can", soyad = "Er", eposta, sifre = "Sifre1234" })).Content.ReadFromJsonAsync<JsonObject>())!;
+        var kayit = await KayitOlAsync(new { firmaUnvani = "Karne Arayuz", ad = "Can", soyad = "Er", eposta, sifre = "Sifre1234" });
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kayit["accessToken"]!.GetValue<string>());
         var cariId = (await Post("api/cari/hesaplar", new { unvan = "Tedarikci Ltd", tur = "Tedarikci", kisiTipi = "Tuzel", paraBirimi = "TRY" }))["id"]!.GetValue<string>();
         await Post("api/kasabanka/hesaplar", new { ad = "Is Bankasi TL", tur = "Banka", paraBirimi = "TRY" });

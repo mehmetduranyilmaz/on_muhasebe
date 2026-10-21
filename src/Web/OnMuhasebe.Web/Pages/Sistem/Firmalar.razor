@@ -99,7 +99,7 @@
         var dialog = await DialogService.ShowAsync<FirmaOlusturDialog>("Firma Aç", parametreler);
         if (await dialog.Result is { Canceled: false })
         {
-            Snackbar.Add("Firma açıldı.", Severity.Success);
+            Snackbar.Add("Firma açıldı; yöneticiye davet e-postası gönderildi.", Severity.Success);
             await YukleAsync();
         }
     }

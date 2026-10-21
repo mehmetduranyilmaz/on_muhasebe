@@ -21,10 +21,10 @@ kontrol() {
 }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Stok Test AS","ad":"Seda","soyad":"Can","eposta":"stok'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Stok Test AS","ad":"Seda","soyad":"Can","eposta":"stok'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
 istek GET /api/yonetim/ben "$T"; FIRMA=$(echo "$GOVDE" | grep -o '"aktifFirma":{"id":"[^"]*"' | cut -d'"' -f6)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"stokdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"stokdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 istek POST /api/yonetim/giris "" "$SISTEM_GIRIS"
 SYS=$(alan accessToken)
@@ -135,7 +135,7 @@ istek DELETE "/api/stok/depolar/$SUBE" "$T"
 kontrol 422 "Hareketli depo silinemez" hareketli_depo_silinemez
 
 echo "--- Yetki, izolasyon, lisans"
-istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Kullanici","soyad":"Bir","eposta":"stokkul'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
+davet_kabul "$T" '{"ad":"Kullanici","soyad":"Bir","eposta":"stokkul'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
 istek POST /api/yonetim/giris "" '{"eposta":"stokkul'"$U"'@ornek.com","sifre":"Sifre1234"}'
 TK=$(alan accessToken)
 istek PUT /api/stok/ayarlar "$TK" '{"maliyetYontemi":"Fifo","eksiStokDavranisi":"IzinVer"}'

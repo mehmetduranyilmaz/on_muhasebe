@@ -7,8 +7,8 @@ GECEN=0; KALAN=0
 dogru() { if eval "$1"; then echo "GECTI  $2"; GECEN=$((GECEN+1)); else echo "KALDI  $2 ${3:+-> $3}"; KALAN=$((KALAN+1)); fi; }
 
 U=$(date +%s)
-T=$(curl -s -X POST "$KOK/api/yonetim/kayit" -H "Content-Type: application/json" \
-  -d '{"firmaUnvani":"Guvenlik Test","ad":"G","soyad":"T","eposta":"guv'"$U"'@ornek.com","sifre":"Sifre1234"}' | grep -o '"accessToken":"[^"]*' | sed 's/.*:"//')
+kayit_ol '{"firmaUnvani":"Guvenlik Test","ad":"G","soyad":"T","eposta":"guv'"$U"'@ornek.com","sifre":"Sifre1234"}'
+T=$(echo "$GOVDE" | grep -o '"accessToken":"[^"]*' | sed 's/.*:"//')
 H="Authorization: Bearer $T"
 
 echo "--- Guvenlik basliklari"

@@ -18,9 +18,7 @@ internal sealed class CariTesti : TarayiciTesti
 
         // Kayıt API'den: UI kaydı ilk testte denendi. Oturum çerezini tarayıcıya giriş ekranından alıyoruz.
         var eposta = $"cariui{DateTime.UtcNow.Ticks}@ornek.com";
-        var kayit = await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Arayuz Test Ltd", ad = "Cem", soyad = "Yildiz", eposta, sifre = "Sifre1234" });
-        kayit.EnsureSuccessStatusCode();
+        await KayitOlAsync(new { firmaUnvani = "Arayuz Test Ltd", ad = "Cem", soyad = "Yildiz", eposta, sifre = "Sifre1234" });
 
         await Git("/giris");
         await Bekle("document.querySelectorAll('input').length >= 2");

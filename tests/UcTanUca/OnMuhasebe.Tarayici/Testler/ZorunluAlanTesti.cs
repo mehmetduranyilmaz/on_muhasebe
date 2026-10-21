@@ -14,8 +14,7 @@ internal sealed class ZorunluAlanTesti : TarayiciTesti
     {
         await Komut("Page.enable");
         var eposta = $"zorunluui{DateTime.UtcNow.Ticks}@ornek.com";
-        (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Zorunlu Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" })).EnsureSuccessStatusCode();
+        await KayitOlAsync(new { firmaUnvani = "Zorunlu Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" });
 
         await Git("/giris");
         await Bekle("document.querySelectorAll('input').length >= 2");

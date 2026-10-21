@@ -15,8 +15,7 @@ internal sealed class EkstreTesti : TarayiciTesti
         await Komut("Page.enable");
         await Komut("DOM.enable");
         var eposta = $"ekstreui{DateTime.UtcNow.Ticks}@ornek.com";
-        (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Ekstre Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" })).EnsureSuccessStatusCode();
+        await KayitOlAsync(new { firmaUnvani = "Ekstre Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" });
         var token = (await Post("api/yonetim/giris", new { eposta, sifre = "Sifre1234" }))["accessToken"]!.GetValue<string>();
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         await Post("api/cari/hesaplar", new { unvan = "Anadolu Gida Ltd. Sti.", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY" });

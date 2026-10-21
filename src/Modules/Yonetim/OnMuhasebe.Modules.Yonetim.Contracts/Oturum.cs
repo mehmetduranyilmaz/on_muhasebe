@@ -27,3 +27,7 @@ public sealed record SifreDegistirIstegi(string MevcutSifre, string YeniSifre);
 public sealed record SifreSifirlamaIstegi(string Eposta);
 
 public sealed record SifreSifirlaIstegi(string Kod, string YeniSifre);
+
+public sealed record EpostaDogrulaIstegi(string Kod);
+
+public sealed record DogrulamaTekrarIstegi(string Eposta);

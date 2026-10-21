@@ -27,6 +27,10 @@ Sistem yöneticisi şifresi ekrana yazılır. `.env` gizlidir; repoya eklenmez, 
 
 Yerelde denemek için alan adı yerine `localhost` verin (Caddy kendi sertifikasını kullanır, tarayıcı uyarı verir).
 
+**Kurulumdan hemen sonra e-postayı ayarlayın:** sistem yöneticisiyle girip *Sistem → E-posta ve Bildirimler* ekranından
+SMTP bilgilerini kaydedin ve test e-postası gönderin. Kayıt (e-posta doğrulama), kullanıcı daveti, firma yöneticisi
+daveti ve şifre sıfırlama e-postayla çalışır; SMTP ayarlanmadan kimse hesap açamaz.
+
 ## Güncelleme
 
 ```bash

@@ -1,12 +1,12 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Yonetim.Contracts;
 using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
+using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
@@ -78,10 +78,7 @@ internal static class SistemIslemleri
             RuleFor(x => x.FirmaUnvani).NotEmpty().MaximumLength(250);
             RuleFor(x => x.VergiNo).VergiNo();
             RuleFor(x => x.VergiDairesi).MaximumLength(100);
-            RuleFor(x => x.YoneticiAd).NotEmpty().MaximumLength(100);
-            RuleFor(x => x.YoneticiSoyad).NotEmpty().MaximumLength(100);
             RuleFor(x => x.YoneticiEposta).Eposta();
-            RuleFor(x => x.YoneticiSifre).Sifre().When(x => x.YoneticiSifre is not null);
             RuleFor(x => x.PaketKodu).NotEmpty();
         }
     }
@@ -98,7 +95,7 @@ internal static class SistemIslemleri
     private static async Task<IResult> FirmaOlusturAsync(
         FirmaOlusturIstegi istek,
         YonetimDbContext db,
-        IPasswordHasher<Kullanici> hasher,
+        KimlikPostasi posta,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
@@ -108,28 +105,18 @@ internal static class SistemIslemleri
             return YonetimHatalari.PaketBulunamadi.Problem();
         }
 
-        var eposta = Kullanici.EpostaNormalize(istek.YoneticiEposta);
-        var yonetici = await db.Kullanicilar.SingleOrDefaultAsync(k => k.Eposta == eposta, cancellationToken);
-        if (yonetici is null)
-        {
-            if (string.IsNullOrEmpty(istek.YoneticiSifre))
-            {
-                return YonetimHatalari.SifreGerekli.Problem();
-            }
-
-            yonetici = Kullanici.Olustur(istek.YoneticiAd, istek.YoneticiSoyad, istek.YoneticiEposta);
-            yonetici.SifreBelirle(hasher.HashPassword(yonetici, istek.YoneticiSifre));
-            db.Kullanicilar.Add(yonetici);
-        }
-
+        // Yönetici hesabı doğrudan bağlanmaz; davetle e-postanın sahibi katılır (bu adresle başkasının açtığı hesaba firma geçmez).
+        var simdi = zaman.GetUtcNow().UtcDateTime;
         var firma = Firma.Olustur(istek.FirmaUnvani, istek.VergiNo, istek.VergiDairesi);
+        var (kod, ozet) = TekKullanimlikKod.Uret();
         db.AddRange(
             firma,
-            FirmaKullanicisi.Olustur(yonetici.Id, Roller.Yonetici, firma.Id),
-            FirmaLisansi.Olustur(firma.Id, paket, zaman.GetUtcNow().UtcDateTime, GunSonu(istek.LisansBitisTarihi)));
+            FirmaLisansi.Olustur(firma.Id, paket, simdi, GunSonu(istek.LisansBitisTarihi)),
+            FirmaDaveti.Olustur(istek.YoneticiEposta, Roller.Yonetici, ozet, simdi, firma.Id));
         await db.SaveChangesAsync(cancellationToken);
+        await posta.DavetAsync(Kullanici.EpostaNormalize(istek.YoneticiEposta), firma.Unvan, "Ön Muhasebe", kod, cancellationToken);
 
-        return TypedResults.Created($"/api/yonetim/sistem/firmalar/{firma.Id}", new FirmaOlusturCevabi(firma.Id, yonetici.Id));
+        return TypedResults.Created($"/api/yonetim/sistem/firmalar/{firma.Id}", new FirmaOlusturCevabi(firma.Id));
     }
 
     private static async Task<IResult> LisansAtaAsync(

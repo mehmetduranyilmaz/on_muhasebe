@@ -29,6 +29,7 @@ internal sealed class SistemYoneticisiTohumlayici(IServiceScopeFactory scopeFact
 
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<Kullanici>>();
         var kullanici = Kullanici.Olustur("Sistem", "Yöneticisi", eposta, sistemYoneticisiMi: true);
+        kullanici.EpostaDogrula();
         kullanici.SifreBelirle(hasher.HashPassword(kullanici, sifre));
         db.Kullanicilar.Add(kullanici);
         await db.SaveChangesAsync(cancellationToken);

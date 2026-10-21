@@ -3,6 +3,7 @@
 @attribute [AllowAnonymous]
 @inject OturumYoneticisi Oturum
 @inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
 
 <PageTitle>Giriş - Ön Muhasebe</PageTitle>
 
@@ -11,6 +12,10 @@
 
 <form @onsubmit="GirisYapAsync" @onsubmit:preventDefault="true">
     <HataGosterimi Hata="_hata" />
+    @if (_hata?.Kod == "eposta_dogrulanmadi")
+    {
+        <IslemDugmesi Islem="DogrulamaTekrarAsync" Variant="Variant.Outlined" FullWidth="true" Class="mb-4" StartIcon="@Icons.Material.Filled.Send">Doğrulama bağlantısını yeniden gönder</IslemDugmesi>
+    }
     <MudTextField T="string" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Variant="Variant.Outlined"
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Email" Class="mb-4" autocomplete="username" />
     <MudTextField T="string" @bind-Value="_sifre" Label="Şifre" InputType="@(_sifreGorunur ? InputType.Text : InputType.Password)"
@@ -74,6 +79,13 @@
         {
             _hata = sonuc.Hata;
         }
+    }
+
+    private async Task DogrulamaTekrarAsync()
+    {
+        var sonuc = await Oturum.DogrulamaTekrarAsync(_eposta.Trim());
+        Snackbar.Add(sonuc.BasariliMi ? "Doğrulama bağlantısı gönderildi; gelen kutunuzu kontrol edin." : sonuc.Hata.Baslik,
+            sonuc.BasariliMi ? Severity.Info : Severity.Warning);
     }
 
     // Açık yönlendirme (open redirect) saldırısına karşı yalnızca uygulama içi göreli adreslere dönülür.

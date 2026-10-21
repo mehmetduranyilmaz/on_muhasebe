@@ -34,8 +34,8 @@ senet() { # SERI TUTAR [KARNE]
 cikis() { istek POST "$CS/cikis" "$T" '{"cariHesapId":"'"$CARI"'","tarih":"2026-10-21","evraklar":['"$1"']}'; }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Karne Test AS","ad":"K","soyad":"T","eposta":"karne'"$U"'@ornek.com","sifre":"Sifre1234"}'; T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger","ad":"D","soyad":"F","eposta":"karnediger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
+kayit_ol '{"firmaUnvani":"Karne Test AS","ad":"K","soyad":"T","eposta":"karne'"$U"'@ornek.com","sifre":"Sifre1234"}'; T=$(alan accessToken)
+kayit_ol '{"firmaUnvani":"Diger","ad":"D","soyad":"F","eposta":"karnediger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Tedarikci AS","tur":"Tedarikci","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; CARI=$(alan id)
 istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Is Bankasi","tur":"Banka","paraBirimi":"TRY","hesapNo":"1234"}'; BANKA=$(alan id)
 istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Akbank","tur":"Banka","paraBirimi":"TRY"}'; BANKA2=$(alan id)

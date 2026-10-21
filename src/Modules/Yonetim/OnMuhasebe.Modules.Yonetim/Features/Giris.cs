@@ -70,6 +70,13 @@ internal static class Giris
             kullanici.SifreBelirle(hasher.HashPassword(kullanici, istek.Sifre));
         }
 
+        // Şifre doğruysa söylenir; yanlış şifrede hesabın doğrulanıp doğrulanmadığı belli edilmez.
+        if (!kullanici.EpostaDogrulandiMi)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return YonetimHatalari.EpostaDogrulanmadi.Problem();
+        }
+
         var sonuc = await oturumServisi.AcAsync(kullanici, kullanici.SonFirmaId, eskiToken: null, cancellationToken);
         return sonuc.HttpSonucu();
     }

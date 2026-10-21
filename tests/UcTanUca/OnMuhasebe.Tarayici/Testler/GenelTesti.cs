@@ -35,7 +35,11 @@ internal sealed class GenelTesti : TarayiciTesti
         string[] alanlar = ["Tarayici Test Ltd", "", "Deniz", "Kara", eposta, "Sifre1234", "Sifre1234"];
         for (var i = 0; i < alanlar.Length; i++) await Doldur(i, alanlar[i]);
         await Tikla("Hesap Oluştur");
-        Kontrol(await Bekle($"location.pathname === '/' && {GovdeIcerir}('Hoş geldiniz, Deniz')"), "Kayit sonrasi ana sayfa acildi");
+        Kontrol(await Bekle($"{GovdeIcerir}('E-postanızı doğrulayın') && {GovdeIcerir}({S(eposta)})"), "Kayit sonrasi e-posta dogrulama ekrani");
+        await Ekran("1-dogrulama-bekliyor");
+        await Git($"/eposta-dogrula#kod={await MailpitKoduAsync(eposta, "eposta-dogrula")}");
+        Kontrol(await Bekle($"location.pathname === '/' && {GovdeIcerir}('Hoş geldiniz, Deniz')"), "E-postadaki baglantiyla dogrulandi, ana sayfa acildi");
+        Kontrol(await Js("location.hash") == "", "Dogrulama kodu adres cubugundan silindi");
         Kontrol(await Bekle($"{GovdeIcerir}('Cari Hesaplar') && {GovdeIcerir}('Kasa / Banka')"), "Deneme lisansi: tum modul kartlari ve menu gorunuyor");
         Kontrol(await Bekle($"{GovdeIcerir}('Tarayici Test Ltd')"), "Ust cubukta aktif firma gorunuyor");
         Kontrol(await Js("document.cookie.includes('om_yenile')") == "false", "Refresh token JavaScript'ten okunamiyor (HttpOnly)");
@@ -76,7 +80,8 @@ internal sealed class GenelTesti : TarayiciTesti
         string[] tekrar = ["Tekrar Ltd", "", "Deniz", "Kara", eposta, "Sifre1234", "Sifre1234"];
         for (var i = 0; i < tekrar.Length; i++) await Doldur(i, tekrar[i]);
         await Tikla("Hesap Oluştur");
-        Kontrol(await Bekle($"{GovdeIcerir}('zaten bir hesap var')"), "Ayni e-postayla kayitta hata mesaji ekranda (IslemDugmesi yeniden cizim)");
+        Kontrol(await Bekle($"{GovdeIcerir}('E-postanızı doğrulayın')") && await Js($"{GovdeIcerir}('zaten')") == "false",
+            "Ayni e-postayla kayit: hesabin varligi ekranda ele verilmez");
         await Git("/giris");
         await Bekle("document.querySelectorAll('input').length >= 2");
         await Doldur(0, SistemEposta);

@@ -232,6 +232,40 @@ internal abstract class TarayiciTesti
           return c?.querySelector('input')?.required ? 'zorunlu' : 'serbest'; })()
         """;
 
+    // Kayıt + e-postadaki bağlantıyla doğrulama (Mailpit); doğrulama yanıtını (accessToken) döner.
+    protected async Task<JsonObject> KayitOlAsync(object govde)
+    {
+        (await http.PostAsJsonAsync(Api + "api/yonetim/kayit", govde)).EnsureSuccessStatusCode();
+        var eposta = JsonSerializer.SerializeToNode(govde)!["eposta"]!.GetValue<string>();
+        var kod = await MailpitKoduAsync(eposta, "eposta-dogrula") ?? throw new InvalidOperationException($"{eposta} için doğrulama e-postası gelmedi");
+        var cevap = await http.PostAsJsonAsync(Api + "api/yonetim/eposta-dogrula", new { kod });
+        cevap.EnsureSuccessStatusCode();
+        return (await cevap.Content.ReadFromJsonAsync<JsonObject>())!;
+    }
+
+    // Adrese giden son e-postadaki bağlantı kodu; yol: eposta-dogrula, davet, sifre-sifirla.
+    protected static async Task<string?> MailpitKoduAsync(string eposta, string yol)
+    {
+        using var mailpit = new HttpClient();
+        for (var i = 0; i < 30; i++)
+        {
+            var arama = await mailpit.GetFromJsonAsync<JsonObject>($"{Ortam.Mailpit}/api/v1/search?query=to:{eposta}");
+            if (arama?["messages"]?.AsArray().FirstOrDefault()?["ID"]?.GetValue<string>() is { } id)
+            {
+                var mesaj = await mailpit.GetStringAsync($"{Ortam.Mailpit}/api/v1/message/{id}");
+                var m = System.Text.RegularExpressions.Regex.Match(mesaj, yol + "#kod=([A-Za-z0-9_-]+)");
+                if (m.Success)
+                {
+                    return m.Groups[1].Value;
+                }
+            }
+
+            await Task.Delay(300);
+        }
+
+        return null;
+    }
+
     protected async Task GirisYap(string kim, string sifre)
     {
         await Komut("Network.clearBrowserCookies");

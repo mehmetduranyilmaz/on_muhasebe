@@ -1,22 +1,16 @@
+@* Kullanıcı daveti: kişiye e-postayla bağlantı gider; kişi kabul edince firmaya katılır. *@
 @inject ApiIstemcisi Api
 
 <MudDialog>
     <DialogContent>
+        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mb-3">
+            Kişiye davet e-postası gönderilir. Hesabı yoksa bağlantıyla kendi şifresini belirler, varsa mevcut hesabıyla katılır.
+            Bağlantı 7 gün geçerlidir.
+        </MudAlert>
         <HataGosterimi Hata="_hata" />
         <MudForm @ref="_form">
-            <MudGrid Spacing="2">
-                <MudItem xs="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ad" Label="Ad" Required="true" RequiredError="Ad gerekli." />
-                </MudItem>
-                <MudItem xs="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_soyad" Label="Soyad" Required="true" RequiredError="Soyad gerekli." />
-                </MudItem>
-            </MudGrid>
-            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Class="mt-3"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email"
                           Required="true" RequiredError="E-posta gerekli." />
-            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password" Class="mt-3"
-                          Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
-                          HelperText="Kullanıcı sistemde zaten kayıtlıysa boş bırakın; mevcut hesabı firmanıza bağlanır." />
             <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_rol" Label="Rol" Class="mt-3">
                 <MudSelectItem Value="@Roller.Kullanici">Kullanıcı</MudSelectItem>
                 <MudSelectItem Value="@Roller.Yonetici">Yönetici</MudSelectItem>
@@ -25,7 +19,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_islemde" OnClick="KaydetAsync">Ekle</MudButton>
+        <IslemDugmesi Islem="GonderAsync" StartIcon="@Icons.Material.Filled.Send">Davet gönder</IslemDugmesi>
     </DialogActions>
 </MudDialog>
 
@@ -34,15 +28,11 @@
     private IMudDialogInstance MudDialog { get; set; } = null!;
 
     private MudForm _form = null!;
-    private string _ad = "";
-    private string _soyad = "";
     private string _eposta = "";
-    private string? _sifre;
     private string _rol = Roller.Kullanici;
-    private bool _islemde;
     private ApiHatasi? _hata;
 
-    private async Task KaydetAsync()
+    private async Task GonderAsync()
     {
         await _form.ValidateAsync();
         if (!_form.IsValid)
@@ -50,18 +40,11 @@
             return;
         }
 
-        _islemde = true;
-        var istek = new KullaniciEkleIstegi(_ad, _soyad, _eposta, string.IsNullOrEmpty(_sifre) ? null : _sifre, _rol);
-        var sonuc = await Api.PostAsync<FirmaKullanicisiCevabi>("api/yonetim/kullanicilar", istek);
-        _islemde = false;
-
+        var sonuc = await Api.PostAsync<DavetOzeti>("api/yonetim/kullanicilar", new KullaniciDavetIstegi(_eposta.Trim(), _rol));
+        _hata = sonuc.Hata;
         if (sonuc.BasariliMi)
         {
             MudDialog.Close(DialogResult.Ok(sonuc.Deger));
-        }
-        else
-        {
-            _hata = sonuc.Hata;
         }
     }
 }

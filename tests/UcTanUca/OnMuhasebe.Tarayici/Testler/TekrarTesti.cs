@@ -37,8 +37,7 @@ internal sealed class TekrarTesti : TarayiciTesti
 
         await Komut("Page.enable");
         var eposta = $"tekrarui{DateTime.UtcNow.Ticks}@ornek.com";
-        (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Tekrar Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" })).EnsureSuccessStatusCode();
+        await KayitOlAsync(new { firmaUnvani = "Tekrar Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" });
         var token = (await Post("api/yonetim/giris", new { eposta, sifre = "Sifre1234" }))["accessToken"]!.GetValue<string>();
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var cari = (await Post("api/cari/hesaplar", new { unvan = "Liman Market", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY" }))["id"]!.GetValue<string>();

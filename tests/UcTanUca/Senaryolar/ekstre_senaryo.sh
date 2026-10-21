@@ -40,9 +40,9 @@ duzenle() { # AKTARIM SATIR TUR [CARI] [KATEGORI] [KARSI] [KELIME]
 bakiye() { istek GET "/api/kasabanka/hesaplar/$1" "$T"; kontrol 200 "$2" "\"bakiye\":$3(\.0+)?,"; }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Ekstre Test AS","ad":"Ece","soyad":"Ak","eposta":"ekstre'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Ekstre Test AS","ad":"Ece","soyad":"Ak","eposta":"ekstre'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"ekstrediger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"ekstrediger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Anadolu Gida Ltd. Sti.","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; ANADOLU=$(alan id)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Beta Ticaret","tur":"Musteri","kisiTipi":"Tuzel","vergiNo":"1234567890","paraBirimi":"TRY"}'; BETA=$(alan id)

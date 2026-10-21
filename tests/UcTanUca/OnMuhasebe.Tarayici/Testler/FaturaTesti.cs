@@ -16,8 +16,7 @@ internal sealed class FaturaTesti : TarayiciTesti
 
         await Komut("Page.enable");
         var eposta = $"faturaui{DateTime.UtcNow.Ticks}@ornek.com";
-        (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Fatura Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" })).EnsureSuccessStatusCode();
+        await KayitOlAsync(new { firmaUnvani = "Fatura Arayuz Ltd", ad = "Ece", soyad = "Ak", eposta, sifre = "Sifre1234" });
         var token = (await (await http.PostAsJsonAsync(Api + "api/yonetim/giris", new { eposta, sifre = "Sifre1234" })).Content.ReadFromJsonAsync<JsonObject>())!["accessToken"]!.GetValue<string>();
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var cari = await (await http.PostAsJsonAsync(Api + "api/cari/hesaplar",

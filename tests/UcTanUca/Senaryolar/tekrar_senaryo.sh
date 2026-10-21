@@ -25,9 +25,9 @@ bakiye() { istek GET "/api/kasabanka/hesaplar/$1" "$T"; kontrol 200 "$2" "\"baki
 tahsilat() { echo '{"hesapId":"'"$KASA"'","cariHesapId":"'"$C1"'","tarih":"2026-10-11","tutar":'"$1"'}'; }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Tekrar Test AS","ad":"T","soyad":"K","eposta":"tekrar'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Tekrar Test AS","ad":"T","soyad":"K","eposta":"tekrar'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"tekrardiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"tekrardiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Musteri A","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; C1=$(alan id)
 istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Kasa","tur":"Kasa","paraBirimi":"TRY"}'; KASA=$(alan id)

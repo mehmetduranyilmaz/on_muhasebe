@@ -27,8 +27,8 @@ giris() { # TOKEN CARI KAREKOD SERI
 }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Karekod Test","ad":"K","soyad":"T","eposta":"karekod'"$U"'@ornek.com","sifre":"Sifre1234"}'; T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger","ad":"D","soyad":"F","eposta":"karekoddiger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
+kayit_ol '{"firmaUnvani":"Karekod Test","ad":"K","soyad":"T","eposta":"karekod'"$U"'@ornek.com","sifre":"Sifre1234"}'; T=$(alan accessToken)
+kayit_ol '{"firmaUnvani":"Diger","ad":"D","soyad":"F","eposta":"karekoddiger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Musteri","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; C=$(alan id)
 istek POST /api/cari/hesaplar "$T2" '{"unvan":"Musteri2","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; C2=$(alan id)
 

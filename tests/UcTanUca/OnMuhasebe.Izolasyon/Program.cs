@@ -32,10 +32,34 @@ async Task<JsonNode> Post(HttpClient h, string yol, object govde)
     return JsonNode.Parse(metin)!;
 }
 
+var mailpit = (Environment.GetEnvironmentVariable("OM_MAILPIT") is { Length: > 0 } mp ? mp : "http://localhost:8025").TrimEnd('/');
+
+// Adrese giden son e-postadaki bağlantı kodu (eposta-dogrula, davet).
+async Task<string> MailpitKodu(string eposta, string yol)
+{
+    using var h = new HttpClient();
+    for (var i = 0; i < 30; i++)
+    {
+        var arama = JsonNode.Parse(await h.GetStringAsync($"{mailpit}/api/v1/search?query=to:{eposta}"))!;
+        if (arama["messages"]?.AsArray().FirstOrDefault()?["ID"]?.GetValue<string>() is { } mesajId)
+        {
+            var mesaj = await h.GetStringAsync($"{mailpit}/api/v1/message/{mesajId}");
+            var m = System.Text.RegularExpressions.Regex.Match(mesaj, yol + "#kod=([A-Za-z0-9_-]+)");
+            if (m.Success) return m.Groups[1].Value;
+        }
+
+        await Task.Delay(300);
+    }
+
+    throw new InvalidOperationException($"{eposta} için {yol} e-postası gelmedi");
+}
+
+// Kayıt + e-postadaki bağlantıyla doğrulama.
 async Task<string> Kayit(string unvan)
 {
     var eposta = $"izo{Guid.NewGuid():N}@ornek.com";
-    var c = await Post(Istemci(null), "api/yonetim/kayit", new { firmaUnvani = unvan, ad = "I", soyad = "Z", eposta, sifre = "Sifre1234" });
+    (await Istemci(null).PostAsJsonAsync("api/yonetim/kayit", new { firmaUnvani = unvan, ad = "I", soyad = "Z", eposta, sifre = "Sifre1234" })).EnsureSuccessStatusCode();
+    var c = await Post(Istemci(null), "api/yonetim/eposta-dogrula", new { kod = await MailpitKodu(eposta, "eposta-dogrula") });
     return c["accessToken"]!.GetValue<string>();
 }
 
@@ -84,7 +108,11 @@ id["bordro"] = bordro["bordroId"]!.GetValue<string>();
 id["evrak"] = bordro["evrakIdleri"]![0]!.GetValue<string>();
 id["borclu"] = JsonNode.Parse(await a.GetStringAsync("api/kasabanka/cek-senet/borclular"))!["kayitlar"]![0]!["id"]!.GetValue<string>();
 var kullaniciEposta = $"izok{Guid.NewGuid():N}@ornek.com";
-id["kullanici"] = (await Post(a, "api/yonetim/kullanicilar", new { ad = "SIZINTI", soyad = "Kullanici", eposta = kullaniciEposta, sifre = "Sifre1234", rol = "Kullanici" }))["kullaniciId"]!.GetValue<string>();
+await Post(a, "api/yonetim/kullanicilar", new { eposta = kullaniciEposta, rol = "Kullanici" });
+await Post(Istemci(null), "api/yonetim/davet-kabul", new { kod = await MailpitKodu(kullaniciEposta, "davet"), ad = "SIZINTI", soyad = "Kullanici", sifre = "Sifre1234" });
+id["kullanici"] = JsonNode.Parse(await a.GetStringAsync("api/yonetim/kullanicilar"))!.AsArray()
+    .First(u => u!["eposta"]!.GetValue<string>() == kullaniciEposta)!["kullaniciId"]!.GetValue<string>();
+id["davet"] = (await Post(a, "api/yonetim/kullanicilar", new { eposta = $"izod{Guid.NewGuid():N}@ornek.com", rol = "Kullanici" }))["id"]!.GetValue<string>();
 var benA = JsonNode.Parse(await a.GetStringAsync("api/yonetim/ben"))!;
 id["firma"] = benA["aktifFirma"]!["id"]!.GetValue<string>();
 // Bildirim için sistemde ödeme hesabı ve Temel paketin yıllık ücreti tanımlı olmalı (abonelik_senaryo kurar).
@@ -127,6 +155,7 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/stok/kartlar/", "id", "stokKart"),
     ("/api/stok/kartlar/", "kartId", "stokKart"),
     ("/api/stok/hareketler/", "hareketId", "stokHareket"),
+    ("/api/yonetim/kullanicilar/davetler/", "id", "davet"),
     ("/api/yonetim/kullanicilar/", "kullaniciId", "kullanici"),
     ("/api/yonetim/sistem/odeme-bildirimleri/", "id", "bildirim"),
     ("/api/bildirim/", "id", "bildirimKaydi"),
@@ -226,13 +255,14 @@ Kontrol((await a.GetAsync($"api/fatura/faturalar/{id["fatura"]}")).StatusCode ==
 Kontrol((await a.GetAsync($"api/stok/kartlar/{id["stokKart"]}")).StatusCode == HttpStatusCode.OK, "A stok kartı duruyor");
 var kullanicilar = await a.GetStringAsync("api/yonetim/kullanicilar");
 Kontrol(kullanicilar.Contains(kullaniciEposta, StringComparison.Ordinal) && !kullanicilar.Contains("\"aktifMi\":false", StringComparison.Ordinal), "A kullanıcısı pasifleştirilmedi");
+Kontrol(JsonNode.Parse(await a.GetStringAsync("api/yonetim/kullanicilar/davetler"))!.AsArray().Any(d => d!["id"]!.GetValue<string>() == id["davet"]), "A'nın bekleyen daveti iptal edilmedi");
 
 Console.WriteLine("--- Rol kontrolleri");
 var kGiris = await Post(Istemci(null), "api/yonetim/giris", new { eposta = kullaniciEposta, sifre = "Sifre1234" });
 var k = Istemci(kGiris["accessToken"]!.GetValue<string>());
 Kontrol((await k.PutAsJsonAsync("api/fatura/ayarlar", new { })).StatusCode == HttpStatusCode.Forbidden, "Kullanıcı rolü fatura ayarlarını değiştiremez (403)");
 Kontrol((await k.PutAsJsonAsync("api/yonetim/zorunlu-alanlar", new { secili = Array.Empty<string>() })).StatusCode == HttpStatusCode.Forbidden, "Kullanıcı rolü zorunlu alanları değiştiremez (403)");
-Kontrol((await k.PostAsJsonAsync("api/yonetim/kullanicilar", new { ad = "X", soyad = "Y", eposta = "x@y.com", rol = "Yonetici" })).StatusCode == HttpStatusCode.Forbidden, "Kullanıcı rolü kullanıcı ekleyemez (403)");
+Kontrol((await k.PostAsJsonAsync("api/yonetim/kullanicilar", new { eposta = "x@y.com", rol = "Yonetici" })).StatusCode == HttpStatusCode.Forbidden, "Kullanıcı rolü kullanıcı ekleyemez (403)");
 Kontrol((await a.GetAsync("api/yonetim/sistem/firmalar")).StatusCode == HttpStatusCode.Forbidden, "Firma yöneticisi sistem yönetimine erişemez (403)");
 Kontrol((await Istemci(null).GetAsync($"api/cari/hesaplar/{id["cari"]}")).StatusCode == HttpStatusCode.Unauthorized, "Oturumsuz istek reddedilir (401)");
 Kontrol((await Istemci("bozuk.token.degeri").GetAsync("api/cari/hesaplar")).StatusCode == HttpStatusCode.Unauthorized, "Sahte token reddedilir (401)");

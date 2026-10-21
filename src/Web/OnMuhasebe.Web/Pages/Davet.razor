@@ -1,0 +1,103 @@
+@page "/davet"
+@layout BosLayout
+@attribute [AllowAnonymous]
+@inject OturumYoneticisi Oturum
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+@inject IJSRuntime Js
+
+<PageTitle>Davet - Ön Muhasebe</PageTitle>
+
+@if (_bilgi is null && _hata is null)
+{
+    <h2>Davet</h2>
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else if (_bilgi is null)
+{
+    <h2>Davet</h2>
+    <HataGosterimi Hata="_hata" />
+    <MudButton Href="giris" Variant="Variant.Text" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ArrowBack">Girişe dön</MudButton>
+}
+else
+{
+    <h2>@_bilgi.FirmaUnvani</h2>
+    <div class="alt">
+        <b>@_bilgi.Eposta</b> olarak @(_bilgi.Rol == Roller.Yonetici ? "yönetici" : "kullanıcı") rolüyle davet edildiniz.
+        @(_bilgi.HesapVarMi ? "Katılmak için şifrenizi girin." : "Katılmak için hesabınızı oluşturun.")
+    </div>
+    <HataGosterimi Hata="_hata" />
+    <MudForm @ref="_form">
+        @if (!_bilgi.HesapVarMi)
+        {
+            <MudGrid Spacing="2" Class="mb-1">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_ad" Label="Ad" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" RequiredError="Ad gerekli." />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_soyad" Label="Soyad" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" RequiredError="Soyad gerekli." />
+                </MudItem>
+            </MudGrid>
+            <MudTextField @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-3" Margin="Margin.Dense"
+                          Required="true" RequiredError="Şifre gerekli." Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
+                          HelperText="En az 8 karakter, harf ve rakam içermeli." autocomplete="new-password" />
+            <MudTextField @bind-Value="_sifreTekrar" Label="Şifre (tekrar)" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Required="true" RequiredError="Şifreyi tekrar girin." Validation="@(new Func<string?, string?>(SifreTekrarKontrol))"
+                          autocomplete="new-password" />
+        }
+        else
+        {
+            <MudTextField @bind-Value="_sifre" Label="Şifre" InputType="InputType.Password" Variant="Variant.Outlined"
+                          Required="true" RequiredError="Şifrenizi girin." autocomplete="current-password" />
+            <div class="d-flex justify-end mt-1">
+                <MudLink Href="sifremi-unuttum" Typo="Typo.body2">Şifremi unuttum</MudLink>
+            </div>
+        }
+    </MudForm>
+    <IslemDugmesi Islem="KabulAsync" FullWidth="true" Size="Size.Large" Class="mt-5" StartIcon="@Icons.Material.Filled.GroupAdd">Daveti kabul et</IslemDugmesi>
+}
+
+@code {
+    private string? _kod;
+    private DavetBilgisi? _bilgi;
+    private MudForm _form = null!;
+    private string _ad = "";
+    private string _soyad = "";
+    private string _sifre = "";
+    private string _sifreTekrar = "";
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _kod = await BaglantiKodu.AlAsync(Navigasyon, Js);
+        if (_kod is null)
+        {
+            _hata = new ApiHatasi("Bağlantı eksik. Lütfen davet e-postasındaki bağlantıyı açın.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var sonuc = await Oturum.DavetBilgiAsync(_kod);
+        _hata = sonuc.Hata;
+        _bilgi = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task KabulAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var hesapVar = _bilgi!.HesapVarMi;
+        var sonuc = await Oturum.DavetKabulAsync(new DavetKabulIstegi(_kod!, hesapVar ? null : _ad, hesapVar ? null : _soyad, _sifre));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add($"{_bilgi.FirmaUnvani} firmasına katıldınız.", Severity.Success);
+            Navigasyon.NavigateTo("", replace: true);
+        }
+    }
+
+    private string? SifreTekrarKontrol(string? deger) => deger == _sifre ? null : "Şifreler eşleşmiyor.";
+}

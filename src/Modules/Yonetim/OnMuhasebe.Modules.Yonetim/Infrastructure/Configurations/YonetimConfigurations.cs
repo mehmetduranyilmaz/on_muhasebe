@@ -85,15 +85,30 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
     }
 }
 
-internal sealed class SifreSifirlamaKoduConfiguration : IEntityTypeConfiguration<SifreSifirlamaKodu>
+internal sealed class KullaniciKoduConfiguration : IEntityTypeConfiguration<KullaniciKodu>
 {
-    public void Configure(EntityTypeBuilder<SifreSifirlamaKodu> builder)
+    public void Configure(EntityTypeBuilder<KullaniciKodu> builder)
     {
-        builder.ToTable("sifre_sifirlama_kodu");
+        builder.ToTable("kullanici_kodu");
+        builder.Property(x => x.Amac).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.KodOzeti).HasMaxLength(64);
         builder.HasIndex(x => x.KodOzeti).IsUnique();
         builder.HasIndex(x => x.KullaniciId);
         builder.HasOne<Kullanici>().WithMany().HasForeignKey(x => x.KullaniciId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class FirmaDavetiConfiguration : IEntityTypeConfiguration<FirmaDaveti>
+{
+    public void Configure(EntityTypeBuilder<FirmaDaveti> builder)
+    {
+        builder.ToTable("firma_daveti");
+        builder.Property(x => x.Eposta).HasMaxLength(256);
+        builder.Property(x => x.Rol).HasMaxLength(20);
+        builder.Property(x => x.KodOzeti).HasMaxLength(64);
+        builder.HasIndex(x => x.KodOzeti).IsUnique();
+        builder.HasIndex(x => new { x.FirmaId, x.Eposta });
+        builder.HasOne(x => x.Firma).WithMany().HasForeignKey(x => x.FirmaId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

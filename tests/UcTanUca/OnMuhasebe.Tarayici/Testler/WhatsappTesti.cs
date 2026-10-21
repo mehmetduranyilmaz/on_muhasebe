@@ -14,8 +14,7 @@ internal sealed class WhatsappTesti : TarayiciTesti
     {
         await Komut("Page.enable");
         var eposta = $"waui{DateTime.UtcNow.Ticks}@ornek.com";
-        var kayit = (await (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Mesaj Ticaret", ad = "Ece", soyad = "Su", eposta, sifre = "Sifre1234" })).Content.ReadFromJsonAsync<JsonObject>())!;
+        var kayit = await KayitOlAsync(new { firmaUnvani = "Mesaj Ticaret", ad = "Ece", soyad = "Su", eposta, sifre = "Sifre1234" });
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kayit["accessToken"]!.GetValue<string>());
         var cariId = (await Post("api/cari/hesaplar", new { unvan = "Telefonlu Musteri", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY", telefon = "0532 111 22 33" }))["id"]!.GetValue<string>();
         var telefonsuzId = (await Post("api/cari/hesaplar", new { unvan = "Telefonsuz Musteri", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY" }))["id"]!.GetValue<string>();

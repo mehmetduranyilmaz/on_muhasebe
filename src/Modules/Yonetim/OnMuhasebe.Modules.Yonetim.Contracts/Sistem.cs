@@ -12,14 +12,12 @@ public sealed record FirmaOlusturIstegi(
     string FirmaUnvani,
     string? VergiNo,
     string? VergiDairesi,
-    string YoneticiAd,
-    string YoneticiSoyad,
     string YoneticiEposta,
-    string? YoneticiSifre,
     string PaketKodu,
     DateOnly LisansBitisTarihi);
 
-public sealed record FirmaOlusturCevabi(Guid FirmaId, Guid YoneticiId);
+// Firma yöneticisine davet e-postası gider; hesap açma ya da mevcut hesapla katılma daveti kabul edince olur.
+public sealed record FirmaOlusturCevabi(Guid FirmaId);
 
 public sealed record LisansAtaIstegi(string PaketKodu, DateOnly BitisTarihi, IReadOnlyList<string>? EkModuller);
 

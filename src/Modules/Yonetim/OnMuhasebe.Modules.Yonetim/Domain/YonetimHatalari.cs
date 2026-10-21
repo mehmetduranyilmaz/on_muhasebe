@@ -11,9 +11,14 @@ internal static class YonetimHatalari
     public static readonly Hata FirmaUyesiDegil = Hata.Yetki("firma_uyesi_degil", "Bu firmaya erişiminiz yok.");
     public static readonly Hata EpostaKayitli = Hata.Cakisma("eposta_kayitli", "Bu e-posta adresiyle zaten bir hesap var.");
     public static readonly Hata ZatenFirmaUyesi = Hata.Cakisma("zaten_firma_uyesi", "Bu kullanıcı zaten firmanıza bağlı.");
-    public static readonly Hata SifreGerekli = Hata.Dogrulama("sifre_gerekli", "Yeni kullanıcı için şifre belirlenmelidir.");
     public static readonly Hata MevcutSifreHatali = Hata.Dogrulama("mevcut_sifre_hatali", "Mevcut şifreniz hatalı.");
     public static readonly Hata SifirlamaKoduGecersiz = Hata.IsKurali("sifirlama_kodu_gecersiz", "Şifre sıfırlama bağlantısı geçersiz ya da süresi dolmuş. Lütfen yeni bağlantı isteyin.");
+    public static readonly Hata DogrulamaKoduGecersiz = Hata.IsKurali("dogrulama_kodu_gecersiz", "Doğrulama bağlantısı geçersiz ya da süresi dolmuş. Lütfen yeni bağlantı isteyin.");
+    public static readonly Hata EpostaDogrulanmadi = Hata.KimlikDogrulama("eposta_dogrulanmadi", "E-posta adresiniz henüz doğrulanmadı. Gelen kutunuzdaki bağlantıya tıklayın.");
+    public static readonly Hata DavetGecersiz = Hata.IsKurali("davet_gecersiz", "Davet bağlantısı geçersiz, iptal edilmiş ya da süresi dolmuş. Firma yöneticinizden yeni davet isteyin.");
+    public static readonly Hata DavetBulunamadi = Hata.Bulunamadi("davet_bulunamadi", "Davet bulunamadı.");
+    public static readonly Hata DavetCokSik = Hata.IsKurali("davet_cok_sik", "Davet az önce gönderildi; birkaç dakika sonra yeniden deneyin.");
+    public static readonly Hata HesapBilgisiGerekli = Hata.Dogrulama("hesap_bilgisi_gerekli", "Ad, soyad ve şifre girin.");
     public static readonly Hata KendiniPasiflestiremez = Hata.IsKurali("kendini_pasiflestiremez", "Kendi hesabınızı pasifleştiremezsiniz.");
     public static readonly Hata KullaniciBulunamadi = Hata.Bulunamadi("kullanici_bulunamadi", "Kullanıcı bulunamadı.");
     public static readonly Hata FirmaBulunamadi = Hata.Bulunamadi("firma_bulunamadi", "Firma bulunamadı.");

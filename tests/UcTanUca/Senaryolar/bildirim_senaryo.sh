@@ -28,9 +28,9 @@ sayi() { echo "$GOVDE" | grep -o "$1" | wc -l | tr -d ' '; }
 U=$(date +%s)
 AYLA="bildirimayla$U@ornek.com"
 istek POST /api/yonetim/giris "" "$SISTEM_GIRIS"; SYS=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Bildirim Test AS","ad":"Ayla","soyad":"Yonetici","eposta":"'"$AYLA"'","sifre":"Sifre1234"}'; T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger","ad":"D","soyad":"F","eposta":"bildirimdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
-istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Kaan","soyad":"Kullanici","eposta":"bildirimkaan'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
+kayit_ol '{"firmaUnvani":"Bildirim Test AS","ad":"Ayla","soyad":"Yonetici","eposta":"'"$AYLA"'","sifre":"Sifre1234"}'; T=$(alan accessToken)
+kayit_ol '{"firmaUnvani":"Diger","ad":"D","soyad":"F","eposta":"bildirimdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
+davet_kabul "$T" '{"ad":"Kaan","soyad":"Kullanici","eposta":"bildirimkaan'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
 istek POST /api/yonetim/giris "" '{"eposta":"bildirimkaan'"$U"'@ornek.com","sifre":"Sifre1234"}'; TK=$(alan accessToken)
 
 echo "--- SMTP (sistem)"

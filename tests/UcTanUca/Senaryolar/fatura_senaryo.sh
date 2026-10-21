@@ -29,9 +29,9 @@ fatura() { # TUR CARI SATIRLAR [EK_ALANLAR]
 }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Fatura Test AS","ad":"Ece","soyad":"Kar","eposta":"fatura'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Fatura Test AS","ad":"Ece","soyad":"Kar","eposta":"fatura'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"faturadiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"faturadiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 
 echo "--- Hazirlik"

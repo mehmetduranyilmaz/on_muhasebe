@@ -1,0 +1,64 @@
+@page "/eposta-dogrula"
+@layout BosLayout
+@attribute [AllowAnonymous]
+@inject OturumYoneticisi Oturum
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+@inject IJSRuntime Js
+
+<PageTitle>E-posta Doğrulama - Ön Muhasebe</PageTitle>
+
+<h2>E-posta doğrulama</h2>
+
+@if (_hata is null)
+{
+    <div class="alt">Hesabınız etkinleştiriliyor…</div>
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+}
+else
+{
+    <HataGosterimi Hata="_hata" />
+    <div class="alt">Yeni bağlantı için e-posta adresinizi girin.</div>
+    <MudTextField @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email" Variant="Variant.Outlined" autocomplete="username" />
+    <IslemDugmesi Islem="TekrarAsync" FullWidth="true" Class="mt-4" StartIcon="@Icons.Material.Filled.Send" Disabled="@string.IsNullOrWhiteSpace(_eposta)">Yeni bağlantı gönder</IslemDugmesi>
+    <MudButton Href="giris" Variant="Variant.Text" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ArrowBack">Girişe dön</MudButton>
+}
+
+@code {
+    private string _eposta = "";
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var kod = await BaglantiKodu.AlAsync(Navigasyon, Js);
+        if (kod is null)
+        {
+            _hata = new ApiHatasi("Bağlantı eksik. Lütfen e-postadaki bağlantıyı açın.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var sonuc = await Oturum.EpostaDogrulaAsync(kod);
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("E-posta adresiniz doğrulandı. Hoş geldiniz!", Severity.Success);
+            Navigasyon.NavigateTo("", replace: true);
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    private async Task TekrarAsync()
+    {
+        var sonuc = await Oturum.DogrulamaTekrarAsync(_eposta.Trim());
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Hesabınız doğrulanmayı bekliyorsa yeni bağlantı gönderildi.", Severity.Info);
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

@@ -21,10 +21,10 @@ kontrol() {
 }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Cari Test A.S.","vergiNo":"1234567890","ad":"Ayse","soyad":"Demir","eposta":"cari'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Cari Test A.S.","vergiNo":"1234567890","ad":"Ayse","soyad":"Demir","eposta":"cari'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
 istek GET /api/yonetim/ben "$T"; FIRMA=$(echo "$GOVDE" | grep -o '"aktifFirma":{"id":"[^"]*"' | cut -d'"' -f6)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Baska Firma","ad":"B","soyad":"F","eposta":"baska'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Baska Firma","ad":"B","soyad":"F","eposta":"baska'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 istek POST /api/yonetim/giris "" "$SISTEM_GIRIS"
 SYS=$(alan accessToken)

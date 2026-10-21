@@ -33,9 +33,9 @@ cek() { # SERI TUTAR VADE BORCLU(json) [HESAPNO] [EK]
 }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Cek Test AS","ad":"Cem","soyad":"Ak","eposta":"cek'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Cek Test AS","ad":"Cem","soyad":"Ak","eposta":"cek'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"cekdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"cekdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Musteri A","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; C1=$(alan id)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Tedarikci B","tur":"Tedarikci","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; C2=$(alan id)

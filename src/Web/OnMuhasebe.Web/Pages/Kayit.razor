@@ -7,6 +7,19 @@
 
 <PageTitle>Kayıt Ol - Ön Muhasebe</PageTitle>
 
+@if (_gonderildi)
+{
+    <h2>E-postanızı doğrulayın</h2>
+    <div class="belirme">
+        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.MarkEmailRead">
+            <b>@_eposta</b> adresine bir doğrulama bağlantısı gönderdik. Hesabınız bağlantıya tıkladığınızda etkinleşir.
+        </MudAlert>
+        <div class="alt">E-posta gelmediyse istenmeyen (spam) klasörüne bakın. Bağlantı 24 saat geçerlidir.</div>
+        <IslemDugmesi Islem="TekrarAsync" Variant="Variant.Outlined" FullWidth="true" StartIcon="@Icons.Material.Filled.Send">Bağlantıyı yeniden gönder</IslemDugmesi>
+    </div>
+}
+else
+{
 <h2>Ücretsiz deneyin</h2>
 <div class="alt">14 gün boyunca tüm modüller açık. Kredi kartı gerekmez.</div>
 
@@ -37,6 +50,7 @@
 </MudForm>
 
 <IslemDugmesi Islem="KayitOlAsync" FullWidth="true" Size="Size.Large" Class="mt-5">Hesap Oluştur</IslemDugmesi>
+}
 <MudButton Href="giris" Variant="Variant.Text" FullWidth="true" Class="mt-2">Zaten hesabınız var mı? Giriş yapın</MudButton>
 
 @code {
@@ -48,6 +62,7 @@
     private string _eposta = "";
     private string _sifre = "";
     private string _sifreTekrar = "";
+    private bool _gonderildi;
     private ApiHatasi? _hata;
 
     private async Task KayitOlAsync()
@@ -60,15 +75,15 @@
 
         _hata = null;
         var sonuc = await Oturum.KayitAsync(new KayitIstegi(_firmaUnvani, _vergiNo, _ad, _soyad, _eposta, _sifre));
-        if (sonuc.BasariliMi)
-        {
-            Snackbar.Add("Hoş geldiniz! 14 günlük deneme süreniz başladı.", Severity.Success);
-            Navigasyon.NavigateTo("");
-        }
-        else
-        {
-            _hata = sonuc.Hata;
-        }
+        _gonderildi = sonuc.BasariliMi;
+        _hata = sonuc.Hata;
+    }
+
+    private async Task TekrarAsync()
+    {
+        var sonuc = await Oturum.DogrulamaTekrarAsync(_eposta.Trim());
+        Snackbar.Add(sonuc.BasariliMi ? "Bağlantı yeniden gönderildi (iki dakikada en fazla bir kez)." : sonuc.Hata.Baslik,
+            sonuc.BasariliMi ? Severity.Info : Severity.Warning);
     }
 
     private static string? VergiNoKontrol(string? deger) =>

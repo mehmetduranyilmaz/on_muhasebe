@@ -26,17 +26,14 @@ giris() { echo '{"eposta":"'"$1"'","sifre":"'"$2"'"}'; }
 pencere() { [ "${OM_HIZ_BEKLE:-65}" -gt 0 ] && { echo "  (hız sınırı penceresi için 61 sn bekleniyor)"; sleep 61; }; return 0; }
 # Mailpit'te alıcıya giden son e-postadaki sıfırlama kodu ve e-posta sayısı.
 posta_sayisi() { curl -s "$MAILPIT/search?query=to:$1" | grep -o '"messages_count":[0-9]*' | cut -d: -f2; }
-son_kod() {
-  local id; id=$(curl -s "$MAILPIT/search?query=to:$1" | grep -o '"ID":"[^"]*"' | head -1 | cut -d'"' -f4)
-  curl -s "$MAILPIT/message/$id" | grep -o 'sifre-sifirla?kod=[A-Za-z0-9_-]*' | head -1 | cut -d= -f2
-}
+son_kod() { mailpit_kodu "$1" sifre-sifirla; }
 
 U=$(date +%s)
 EPOSTA="sifre$U@ornek.com"
 
 echo "--- Şifre değiştirme"
-istek POST $Y/kayit "" "$DIR/cihaz1.jar" '{"firmaUnvani":"Sifre Ltd","ad":"Seda","soyad":"Sifre","eposta":"'"$EPOSTA"'","sifre":"Sifre1234"}'
-kontrol 201 "Kayit" accessToken; T=$(alan accessToken)
+kayit_ol '{"firmaUnvani":"Sifre Ltd","ad":"Seda","soyad":"Sifre","eposta":"'"$EPOSTA"'","sifre":"Sifre1234"}' "$DIR/cihaz1.jar"
+kontrol 200 "Kayit + e-posta dogrulama" accessToken; T=$(alan accessToken)
 istek POST $Y/giris "" "$DIR/cihaz2.jar" "$(giris "$EPOSTA" Sifre1234)"
 kontrol 200 "Ikinci cihazda giris" accessToken
 istek POST $Y/giris "" "" "$SISTEM_GIRIS"; SYS=$(alan accessToken)
@@ -69,18 +66,19 @@ istek POST $Y/sifre-sifirlama-istegi "" "" '{"eposta":"yok'"$U"'@ornek.com"}'
 kontrol 202 "Kayitsiz e-posta: ayni yanit (hesap varligi sizmaz)"
 istek POST $Y/sifre-sifirlama-istegi "" "" '{"eposta":"bozuk"}'
 kontrol 400 "Gecersiz e-posta reddedildi"
+ONCE=$(posta_sayisi "$EPOSTA")
 istek POST $Y/sifre-sifirlama-istegi "" "" '{"eposta":"'"${EPOSTA^^}"'"}'
 kontrol 202 "Kayitli e-posta (buyuk harfle) icin istek alindi"
 sleep 1
 KODU=$(son_kod "$EPOSTA")
 [ ${#KODU} -ge 40 ] && { echo "GECTI  E-postada sifirlama baglantisi var"; GECEN=$((GECEN+1)); } || { echo "KALDI  E-postada baglanti yok"; KALAN=$((KALAN+1)); }
 ID=$(curl -s "$MAILPIT/search?query=to:$EPOSTA" | grep -o '"ID":"[^"]*"' | head -1 | cut -d'"' -f4)
-curl -s "$MAILPIT/message/$ID" | grep -q 'http://localhost:5167/sifre-sifirla?kod=' \
+curl -s "$MAILPIT/message/$ID" | grep -q 'http://localhost:5167/sifre-sifirla#kod=' \
   && { echo "GECTI  Baglanti yapilandirilan uygulama adresinde"; GECEN=$((GECEN+1)); } || { echo "KALDI  Baglanti adresi yanlis"; KALAN=$((KALAN+1)); }
 istek POST $Y/sifre-sifirlama-istegi "" "" '{"eposta":"'"$EPOSTA"'"}'
 kontrol 202 "Hemen ikinci istek de 202"
 sleep 1
-[ "$(posta_sayisi "$EPOSTA")" = 1 ] && { echo "GECTI  2 dk dolmadan ikinci e-posta gitmedi"; GECEN=$((GECEN+1)); } || { echo "KALDI  Ikinci e-posta gitti"; KALAN=$((KALAN+1)); }
+[ "$(posta_sayisi "$EPOSTA")" = "$((ONCE + 1))" ] && { echo "GECTI  2 dk dolmadan ikinci e-posta gitmedi"; GECEN=$((GECEN+1)); } || { echo "KALDI  Ikinci e-posta gitti"; KALAN=$((KALAN+1)); }
 
 istek POST $Y/sifre-sifirla "" "" '{"kod":"uydurma-kod","yeniSifre":"Sifirla123"}'
 kontrol 422 "Uydurma kod reddedildi" sifirlama_kodu_gecersiz
@@ -101,7 +99,8 @@ kontrol 200 "Sifirlanan sifreyle giris" accessToken
 echo "--- Kilitli hesap sifirlamayla acilir"
 pencere
 KILIT="kilit$U@ornek.com"
-istek POST $Y/kayit "" "" '{"firmaUnvani":"Kilit Ltd","ad":"Kaan","soyad":"Kilit","eposta":"'"$KILIT"'","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Kilit Ltd","ad":"Kaan","soyad":"Kilit","eposta":"'"$KILIT"'","sifre":"Sifre1234"}'
+pencere
 for i in 1 2 3 4 5; do istek POST $Y/giris "" "" "$(giris "$KILIT" Yanlis123)"; done
 istek POST $Y/giris "" "" "$(giris "$KILIT" Sifre1234)"
 kontrol 401 "5 hatali giristen sonra hesap kilitli" hesap_kilitli

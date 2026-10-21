@@ -7,7 +7,7 @@ namespace OnMuhasebe.Tarayici.Testler;
 
 // Şifremi unuttum (Mailpit'teki bağlantıyla), yeni şifre ve menüden şifre değiştirme ekranlarını dener; yazı tipinin
 // kendi sunucumuzdan geldiğini de denetler.
-internal sealed partial class SifreTesti : TarayiciTesti
+internal sealed class SifreTesti : TarayiciTesti
 {
     public override string Ad => "sifre";
 
@@ -16,8 +16,7 @@ internal sealed partial class SifreTesti : TarayiciTesti
         await Komut("Page.enable");
         await Komut("Network.enable");
         var eposta = $"sifreui{DateTime.UtcNow.Ticks}@ornek.com";
-        (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Sifre Arayuz", ad = "Selin", soyad = "Yeni", eposta, sifre = "Sifre1234" })).EnsureSuccessStatusCode();
+        await KayitOlAsync(new { firmaUnvani = "Sifre Arayuz", ad = "Selin", soyad = "Yeni", eposta, sifre = "Sifre1234" });
 
         // Sıfırlama e-postası Mailpit'e gitsin.
         var sistem = YeniIstemci();
@@ -41,13 +40,13 @@ internal sealed partial class SifreTesti : TarayiciTesti
         Kontrol(await Bekle(Govde("şifre sıfırlama bağlantısı gönderildi"), 10), "Gonderildi mesaji");
         await Ekran("2-gonderildi");
 
-        var kod = await SifirlamaKoduAsync(eposta);
+        var kod = await MailpitKoduAsync(eposta, "sifre-sifirla");
         Kontrol(kod is { Length: >= 40 }, "Mailpit'te sifirlama baglantisi");
 
         // --- Yeni şifre
         await Git("/sifre-sifirla");
         Kontrol(await Bekle(Govde("Bağlantı eksik"), 10), "Kodsuz baglantida uyari");
-        await Git($"/sifre-sifirla?kod={kod}");
+        await Git($"/sifre-sifirla#kod={kod}");
         await Bekle("!!" + Alan("Yeni şifre"), 10);
         await Doldur("Yeni şifre", "Unuttum123");
         await Doldur("Yeni şifre (tekrar)", "Farkli123");
@@ -58,7 +57,7 @@ internal sealed partial class SifreTesti : TarayiciTesti
         await Tikla("Şifreyi kaydet");
         Kontrol(await Bekle($"location.pathname === '/giris' && {Govde("Şifreniz değiştirildi.")}", 15), "Sifre kaydedildi, girise donuldu");
 
-        await Git($"/sifre-sifirla?kod={kod}");
+        await Git($"/sifre-sifirla#kod={kod}");
         await Bekle("!!" + Alan("Yeni şifre"), 10);
         await Doldur("Yeni şifre", "Tekrar1234");
         await Doldur("Yeni şifre (tekrar)", "Tekrar1234");
@@ -93,25 +92,4 @@ internal sealed partial class SifreTesti : TarayiciTesti
             && await Js($"performance.getEntriesByType('resource').some(r => ![location.origin, {S(new Uri(Api).GetLeftPart(UriPartial.Authority))}, 'data:'].some(k => r.name.startsWith(k)))") == "false",
             "Yazi tipi yerelden, dis kaynaga istek yok");
     }
-
-    private static async Task<string?> SifirlamaKoduAsync(string eposta)
-    {
-        using var mailpit = new HttpClient();
-        for (var i = 0; i < 20; i++)
-        {
-            var arama = await mailpit.GetFromJsonAsync<JsonObject>($"{Ortam.Mailpit}/api/v1/search?query=to:{eposta}");
-            if (arama?["messages"]?.AsArray().FirstOrDefault()?["ID"]?.GetValue<string>() is { } id)
-            {
-                var mesaj = await mailpit.GetStringAsync($"{Ortam.Mailpit}/api/v1/message/{id}");
-                return KodDeseni().Match(mesaj) is { Success: true } m ? m.Groups[1].Value : null;
-            }
-
-            await Task.Delay(500);
-        }
-
-        return null;
-    }
-
-    [GeneratedRegex("sifre-sifirla\\?kod=([A-Za-z0-9_-]+)")]
-    private static partial Regex KodDeseni();
 }

@@ -33,8 +33,33 @@ public sealed class OturumYoneticisi(IHttpClientFactory httpClientFactory, TimeP
     public Task<ApiSonucu> GirisAsync(GirisIstegi istek) =>
         TokenAlAsync(istemci => istemci.PostAsJsonAsync("api/yonetim/giris", istek));
 
+    // Kayıt oturum açmaz: hesap, e-postaya giden bağlantıyla doğrulanınca (EpostaDogrulaAsync) açılır.
     public Task<ApiSonucu> KayitAsync(KayitIstegi istek) =>
-        TokenAlAsync(istemci => istemci.PostAsJsonAsync("api/yonetim/kayit", istek));
+        OturumsuzGonderAsync("api/yonetim/kayit", istek);
+
+    public Task<ApiSonucu> EpostaDogrulaAsync(string kod) =>
+        TokenAlAsync(istemci => istemci.PostAsJsonAsync("api/yonetim/eposta-dogrula", new EpostaDogrulaIstegi(kod)));
+
+    public Task<ApiSonucu> DogrulamaTekrarAsync(string eposta) =>
+        OturumsuzGonderAsync("api/yonetim/dogrulama-tekrar", new DogrulamaTekrarIstegi(eposta));
+
+    public async Task<ApiSonucu<DavetBilgisi>> DavetBilgiAsync(string kod)
+    {
+        try
+        {
+            using var cevap = await Istemci.PostAsJsonAsync("api/yonetim/davet-bilgi", new DavetBilgiIstegi(kod));
+            return cevap.IsSuccessStatusCode
+                ? ApiSonucu<DavetBilgisi>.Basarili((await cevap.Content.ReadFromJsonAsync<DavetBilgisi>())!)
+                : ApiSonucu<DavetBilgisi>.Basarisiz(await ApiHatasi.OkuAsync(cevap));
+        }
+        catch (HttpRequestException)
+        {
+            return ApiSonucu<DavetBilgisi>.Basarisiz(ApiHatasi.Baglanti);
+        }
+    }
+
+    public Task<ApiSonucu> DavetKabulAsync(DavetKabulIstegi istek) =>
+        TokenAlAsync(istemci => istemci.PostAsJsonAsync("api/yonetim/davet-kabul", istek));
 
     public Task<ApiSonucu> FirmaDegistirAsync(Guid firmaId) =>
         TokenAlAsync(istemci => istemci.SendAsync(YetkiliIstek(HttpMethod.Post, "api/yonetim/firma-degistir",

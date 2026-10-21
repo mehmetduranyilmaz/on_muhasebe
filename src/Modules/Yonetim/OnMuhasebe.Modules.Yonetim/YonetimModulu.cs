@@ -74,6 +74,7 @@ public sealed class YonetimModulu : IModul
         services.AddSingleton<IPasswordHasher<Kullanici>, PasswordHasher<Kullanici>>();
         services.AddSingleton<TokenServisi>();
         services.AddScoped<OturumServisi>();
+        services.AddScoped<KimlikPostasi>();
         services.AddScoped<ILisansSorgusu, LisansSorgusu>();
         services.AddScoped<ZorunluAlanSorgusu>();
         services.AddScoped<IZorunluAlanSorgusu>(sp => sp.GetRequiredService<ZorunluAlanSorgusu>());
@@ -95,6 +96,7 @@ public sealed class YonetimModulu : IModul
         Yenile.Map(grup);
         Cikis.Map(grup);
         SifreIslemleri.Map(grup);
+        DavetIslemleri.Map(grup);
         FirmaDegistir.Map(grup);
         Ben.Map(grup);
         FirmaBilgileriIslemleri.Map(grup);

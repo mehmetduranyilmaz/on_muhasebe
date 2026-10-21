@@ -14,8 +14,7 @@ internal sealed class SeriGirisTesti : TarayiciTesti
     {
         await Komut("Page.enable");
         var eposta = $"seriui{DateTime.UtcNow.Ticks}@ornek.com";
-        var kayit = (await (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Seri Arayuz", ad = "Ada", soyad = "Su", eposta, sifre = "Sifre1234" })).Content.ReadFromJsonAsync<JsonObject>())!;
+        var kayit = await KayitOlAsync(new { firmaUnvani = "Seri Arayuz", ad = "Ada", soyad = "Su", eposta, sifre = "Sifre1234" });
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kayit["accessToken"]!.GetValue<string>());
         var musteri = (await Post("api/cari/hesaplar", new { unvan = "Taksitli Musteri", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY" }))["id"]!.GetValue<string>();
         var tedarikci = (await Post("api/cari/hesaplar", new { unvan = "Tedarikci Ltd", tur = "Tedarikci", kisiTipi = "Tuzel", paraBirimi = "TRY" }))["id"]!.GetValue<string>();

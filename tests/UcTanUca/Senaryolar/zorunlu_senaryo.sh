@@ -23,9 +23,9 @@ kontrol() {
 cari() { echo '{"unvan":"'"$1"'","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"'"${2:+,$2}"'}'; }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Zorunlu Test AS","ad":"Zeki","soyad":"Ak","eposta":"zorunlu'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Zorunlu Test AS","ad":"Zeki","soyad":"Ak","eposta":"zorunlu'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"zorunludiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"zorunludiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" "$(cari "Eski Musteri")"; ESKI=$(alan id); ESKI_SURUM=$(alan surum)
 istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Kasa","tur":"Kasa","paraBirimi":"TRY"}'; KASA=$(alan id)

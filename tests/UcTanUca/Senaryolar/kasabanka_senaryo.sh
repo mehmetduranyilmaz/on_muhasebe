@@ -30,9 +30,9 @@ satis() { # CARI TUTAR [EK]
 }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Kasa Test AS","ad":"Can","soyad":"Er","eposta":"kasa'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Kasa Test AS","ad":"Can","soyad":"Er","eposta":"kasa'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"kasadiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"kasadiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Musteri A","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; C1=$(alan id)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Supplier USD","tur":"Tedarikci","kisiTipi":"Tuzel","paraBirimi":"USD"}'; C2=$(alan id)

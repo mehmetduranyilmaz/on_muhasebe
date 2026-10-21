@@ -27,11 +27,11 @@ fatura() { # CARI TARIH SATIRLAR [EK]
 fsurum() { echo "$GOVDE" | grep -o "\"surum\":[0-9]*" | tail -1 | cut -d: -f2; }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Denetim Test AS","ad":"Deniz","soyad":"Ak","eposta":"denetim'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Denetim Test AS","ad":"Deniz","soyad":"Ak","eposta":"denetim'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"denetimdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Diger Firma","ad":"D","soyad":"F","eposta":"denetimdiger'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T2=$(alan accessToken)
-istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Kemal","soyad":"Kul","eposta":"denetimkul'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
+davet_kabul "$T" '{"ad":"Kemal","soyad":"Kul","eposta":"denetimkul'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
 istek POST /api/yonetim/giris "" '{"eposta":"denetimkul'"$U"'@ornek.com","sifre":"Sifre1234"}'
 TK=$(alan accessToken)
 

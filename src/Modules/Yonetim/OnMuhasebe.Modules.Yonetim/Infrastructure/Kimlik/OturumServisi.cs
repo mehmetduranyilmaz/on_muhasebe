@@ -15,6 +15,15 @@ internal sealed class OturumServisi(
     IHttpContextAccessor httpContextAccessor,
     TimeProvider zaman)
 {
+    // Şifre değişince ya da sıfırlanınca kullanıcının bütün açık oturumları kapanır (kaydetmeyi çağıran yapar).
+    public static async Task TumunuKapatAsync(YonetimDbContext db, Guid kullaniciId, DateTime simdi, CancellationToken cancellationToken)
+    {
+        var tokenlar = await db.RefreshTokenlar
+            .Where(t => t.KullaniciId == kullaniciId && t.IptalTarihi == null && t.BitisTarihi > simdi)
+            .ToListAsync(cancellationToken);
+        tokenlar.ForEach(t => t.IptalEt(simdi));
+    }
+
     // Tercih edilen firmaya üyelik yoksa ilk aktif üyeliğe düşer. eskiToken verilirse rotasyonla iptal edilir.
     public async Task<Sonuc<TokenCevabi>> AcAsync(
         Kullanici kullanici, Guid? tercihFirmaId, RefreshToken? eskiToken, CancellationToken cancellationToken)

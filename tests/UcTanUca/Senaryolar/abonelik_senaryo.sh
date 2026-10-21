@@ -28,9 +28,9 @@ bildir() { echo '{"paketKodu":"'"$1"'","aySayisi":'"$2"',"tutar":'"$3"',"odemeTa
 
 U=$(date +%s)
 istek POST /api/yonetim/giris "" "$SISTEM_GIRIS"; SYS=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Abone Ltd '"$U"'","ad":"Ayla","soyad":"Bal","eposta":"abone'"$U"'@ornek.com","sifre":"Sifre1234"}'; T=$(alan accessToken)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Diger Abone","ad":"D","soyad":"A","eposta":"abonediger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
-istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Kaan","soyad":"Kul","eposta":"abonekul'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
+kayit_ol '{"firmaUnvani":"Abone Ltd '"$U"'","ad":"Ayla","soyad":"Bal","eposta":"abone'"$U"'@ornek.com","sifre":"Sifre1234"}'; T=$(alan accessToken)
+kayit_ol '{"firmaUnvani":"Diger Abone","ad":"D","soyad":"A","eposta":"abonediger'"$U"'@ornek.com","sifre":"Sifre1234"}'; T2=$(alan accessToken)
+davet_kabul "$T" '{"ad":"Kaan","soyad":"Kul","eposta":"abonekul'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
 istek POST /api/yonetim/giris "" '{"eposta":"abonekul'"$U"'@ornek.com","sifre":"Sifre1234"}'; TK=$(alan accessToken)
 
 echo "--- Paketler (sistem)"

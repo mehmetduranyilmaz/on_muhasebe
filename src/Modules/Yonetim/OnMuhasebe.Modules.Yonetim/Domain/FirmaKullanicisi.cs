@@ -33,6 +33,13 @@ internal sealed class FirmaKullanicisi : FirmaEntity
         return uyelik;
     }
 
+    // Pasifleştirilmiş üye yeniden davet edilip kabul edince üyelik davetteki rolle yeniden açılır.
+    public void Aktiflestir(string rol)
+    {
+        AktifMi = true;
+        Rol = rol;
+    }
+
     public Sonuc Pasiflestir(Guid islemiYapanId)
     {
         if (KullaniciId == islemiYapanId)

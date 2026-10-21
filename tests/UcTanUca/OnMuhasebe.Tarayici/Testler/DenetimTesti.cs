@@ -14,8 +14,7 @@ internal sealed class DenetimTesti : TarayiciTesti
     {
         await Komut("Page.enable");
         var eposta = $"denetimui{DateTime.UtcNow.Ticks}@ornek.com";
-        var kayit = (await (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Denetim Arayuz Ltd", ad = "Selin", soyad = "Ak", eposta, sifre = "Sifre1234" })).Content.ReadFromJsonAsync<JsonObject>())!;
+        var kayit = await KayitOlAsync(new { firmaUnvani = "Denetim Arayuz Ltd", ad = "Selin", soyad = "Ak", eposta, sifre = "Sifre1234" });
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kayit["accessToken"]!.GetValue<string>());
         var cari = await Post("api/cari/hesaplar", new { unvan = "Gecmis Market", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY", telefon = "0212 100" });
         var cariId = cari["id"]!.GetValue<string>();

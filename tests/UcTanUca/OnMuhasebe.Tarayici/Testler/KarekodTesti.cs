@@ -86,8 +86,7 @@ internal class KarekodTesti : TarayiciTesti
     {
         await Komut("Page.enable");
         var eposta = $"karekodui{DateTime.UtcNow.Ticks}@ornek.com";
-        var kayit = (await (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = "Karekod Arayuz", ad = "Ece", soyad = "Kar", eposta, sifre = "Sifre1234" })).Content.ReadFromJsonAsync<JsonObject>())!;
+        var kayit = await KayitOlAsync(new { firmaUnvani = "Karekod Arayuz", ad = "Ece", soyad = "Kar", eposta, sifre = "Sifre1234" });
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kayit["accessToken"]!.GetValue<string>());
         var cariId = (await Post("api/cari/hesaplar", new { unvan = "Cekli Musteri", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY" }))["id"]!.GetValue<string>();
 

@@ -16,8 +16,7 @@ internal sealed class AbonelikTesti : TarayiciTesti
         await Komut("Network.enable");
         var eposta = $"aboneui{DateTime.UtcNow.Ticks}@ornek.com";
         var unvan = $"Arayuz Abone {DateTime.UtcNow.Ticks % 100000}";
-        (await http.PostAsJsonAsync(Api + "api/yonetim/kayit",
-            new { firmaUnvani = unvan, ad = "Nil", soyad = "Ay", eposta, sifre = "Sifre1234" })).EnsureSuccessStatusCode();
+        await KayitOlAsync(new { firmaUnvani = unvan, ad = "Nil", soyad = "Ay", eposta, sifre = "Sifre1234" });
 
         // --- Firma: abonelik ekranı ve bildirim
         await GirisYap(eposta, "Sifre1234");

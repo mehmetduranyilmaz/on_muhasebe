@@ -4,12 +4,13 @@
 @inject OturumYoneticisi Oturum
 @inject NavigationManager Navigasyon
 @inject ISnackbar Snackbar
+@inject IJSRuntime Js
 
 <PageTitle>Yeni Şifre - Ön Muhasebe</PageTitle>
 
 <h2>Yeni şifre belirleyin</h2>
 
-@if (string.IsNullOrEmpty(Kod))
+@if (string.IsNullOrEmpty(_kod))
 {
     <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4">
         Bağlantı eksik. Lütfen e-postadaki bağlantıyı açın ya da yeni bağlantı isteyin.
@@ -38,13 +39,13 @@ else
 <MudButton Href="giris" Variant="Variant.Text" FullWidth="true" Class="mt-2" StartIcon="@Icons.Material.Filled.ArrowBack">Girişe dön</MudButton>
 
 @code {
-    [SupplyParameterFromQuery(Name = "kod")]
-    public string? Kod { get; set; }
-
+    private string? _kod;
     private MudForm _form = null!;
     private string _sifre = "";
     private string _sifreTekrar = "";
     private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync() => _kod = await BaglantiKodu.AlAsync(Navigasyon, Js);
 
     private async Task KaydetAsync()
     {
@@ -54,7 +55,7 @@ else
             return;
         }
 
-        var sonuc = await Oturum.SifreSifirlaAsync(new SifreSifirlaIstegi(Kod!, _sifre));
+        var sonuc = await Oturum.SifreSifirlaAsync(new SifreSifirlaIstegi(_kod!, _sifre));
         _hata = sonuc.Hata;
         if (sonuc.BasariliMi)
         {

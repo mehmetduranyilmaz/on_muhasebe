@@ -26,8 +26,14 @@ U=$(date +%s)
 ALI="ali$U@ornek.com"; VELI="veli$U@ornek.com"; AYSE="ayse$U@ornek.com"
 
 echo "--- Kayit ve giris"
-istek POST /kayit "" "$DIR/ali.jar" '{"firmaUnvani":"A Ticaret","vergiNo":"1234567890","ad":"Ali","soyad":"Yilmaz","eposta":"'"$ALI"'","sifre":"Sifre1234"}'
-kontrol 201 "Kendi kaydi: firma + yonetici + deneme lisansi" accessToken
+istek POST /kayit "" "" '{"firmaUnvani":"A Ticaret","vergiNo":"1234567890","ad":"Ali","soyad":"Yilmaz","eposta":"'"$ALI"'","sifre":"Sifre1234"}'
+kontrol 202 "Kayit alindi, oturum acilmadi (e-posta dogrulanacak)" "$ALI"
+istek POST /giris "" "" '{"eposta":"'"$ALI"'","sifre":"Sifre1234"}'
+kontrol 401 "Dogrulanmadan giris yok" eposta_dogrulanmadi
+istek POST /eposta-dogrula "" "$DIR/ali.jar" '{"kod":"uydurma"}'
+kontrol 422 "Uydurma dogrulama kodu reddedildi" dogrulama_kodu_gecersiz
+istek POST /eposta-dogrula "" "$DIR/ali.jar" '{"kod":"'"$(mailpit_kodu "$ALI" eposta-dogrula)"'"}'
+kontrol 200 "E-postadaki baglantiyla dogrulandi: firma + yonetici + deneme lisansi, oturum acildi" accessToken
 ALI_TOKEN=$(alan accessToken)
 grep -q om_yenile "$DIR/ali.jar" && echo "GECTI  Refresh token HttpOnly cerezde" && GECEN=$((GECEN+1)) || { echo "KALDI  Cerez yok"; KALAN=$((KALAN+1)); }
 
@@ -35,8 +41,14 @@ istek GET /ben "$ALI_TOKEN"
 kontrol 200 "Ben: aktif firma A, deneme lisansi tum moduller" '"moduller":\["cari","stok","fatura","kasabanka"\]'
 FIRMA_A=$(echo "$GOVDE" | grep -o '"aktifFirma":{"id":"[^"]*"' | cut -d'"' -f6)
 
-istek POST /kayit "" "" '{"firmaUnvani":"X","ad":"A","soyad":"B","eposta":"'"$ALI"'","sifre":"Sifre1234"}'
-kontrol 409 "Ayni e-postayla ikinci kayit reddedildi" eposta_kayitli
+istek POST /kayit "" "" '{"firmaUnvani":"X","ad":"A","soyad":"B","eposta":"'"$ALI"'","sifre":"Baska1234"}'
+kontrol 202 "Ayni e-postayla ikinci kayit: yanit hesabin varligini ele vermez"
+istek POST /giris "" "" '{"eposta":"'"$ALI"'","sifre":"Baska1234"}'
+kontrol 401 "Ikinci kayit mevcut hesabin sifresini degistirmedi" giris_basarisiz
+sleep 1
+curl -s "$MAILPIT/search?query=to:$ALI" | grep -q "zaten hesab" \
+  && { echo "GECTI  Hesap sahibine 'zaten hesabiniz var' e-postasi gitti"; GECEN=$((GECEN+1)); } \
+  || { echo "KALDI  'zaten hesabiniz var' e-postasi yok"; KALAN=$((KALAN+1)); }
 
 istek POST /kayit "" "" '{"firmaUnvani":"","ad":"A","soyad":"B","eposta":"bozuk","sifre":"kisa"}'
 kontrol 400 "Dogrulama hatalari Turkce" "bo"
@@ -69,12 +81,26 @@ istek POST /giris "" "$DIR/sys.jar" "$SISTEM_GIRIS"
 kontrol 200 "Sistem yoneticisi girisi (firmasiz)" accessToken
 SYS_TOKEN=$(alan accessToken)
 
-istek POST /sistem/firmalar "$ALI_TOKEN" "" '{"firmaUnvani":"B","yoneticiAd":"A","yoneticiSoyad":"B","yoneticiEposta":"x@y.com","yoneticiSifre":"Sifre1234","paketKodu":"basic","lisansBitisTarihi":"2027-12-31"}'
+istek POST /sistem/firmalar "$ALI_TOKEN" "" '{"firmaUnvani":"B","yoneticiEposta":"x@y.com","paketKodu":"basic","lisansBitisTarihi":"2027-12-31"}'
 kontrol 403 "Normal kullanici sistem endpoint'ine erisemez"
 
-istek POST /sistem/firmalar "$SYS_TOKEN" "" '{"firmaUnvani":"B Insaat","vergiNo":"9876543217","yoneticiAd":"Ali","yoneticiSoyad":"Yilmaz","yoneticiEposta":"'"$ALI"'","paketKodu":"basic","lisansBitisTarihi":"2027-12-31"}'
-kontrol 201 "Sistem yoneticisi firma B'yi acti, mevcut Ali'yi yonetici yapti" firmaId
+istek POST /sistem/firmalar "$SYS_TOKEN" "" '{"firmaUnvani":"B Insaat","vergiNo":"9876543217","yoneticiEposta":"'"$ALI"'","paketKodu":"basic","lisansBitisTarihi":"2027-12-31"}'
+kontrol 201 "Sistem yoneticisi firma B'yi acti, Ali'ye yonetici daveti gitti" firmaId
 FIRMA_B=$(alan firmaId)
+
+istek GET /ben "$ALI_TOKEN"
+if echo "$GOVDE" | grep -q "B Insaat"; then KOD=999; fi
+kontrol 200 "Davet kabul edilmeden Ali firma B'ye bagli degil"
+
+DAVET_KODU=$(mailpit_kodu "$ALI" davet)
+istek POST /davet-bilgi "" "" '{"kod":"'"$DAVET_KODU"'"}'
+kontrol 200 "Davet bilgisi: firma B, yonetici, mevcut hesap" '"firmaUnvani":"B Insaat".*"rol":"Yonetici","hesapVarMi":true'
+istek POST /davet-kabul "" "" '{"kod":"'"$DAVET_KODU"'","sifre":"Yanlis123"}'
+kontrol 401 "Yanlis sifreyle davet kabul edilmez" giris_basarisiz
+istek POST /davet-kabul "" "" '{"kod":"'"$DAVET_KODU"'","sifre":"Sifre1234"}'
+kontrol 200 "Ali daveti kendi sifresiyle kabul etti" accessToken
+istek POST /davet-kabul "" "" '{"kod":"'"$DAVET_KODU"'","sifre":"Sifre1234"}'
+kontrol 422 "Kabul edilen davet ikinci kez kullanilamaz" davet_gecersiz
 
 istek GET /ben "$ALI_TOKEN"
 kontrol 200 "Ali iki firmayi goruyor" "B Insaat"
@@ -89,15 +115,20 @@ istek POST /firma-degistir "$ALI_TOKEN" "" '{"firmaId":"'"$(cat /proc/sys/kernel
 kontrol 403 "Uyesi olmadigi firmaya gecis reddedildi" firma_uyesi_degil
 
 echo "--- Kullanici yonetimi ve firma izolasyonu"
-istek POST /kullanicilar "$ALI_TOKEN" "" '{"ad":"Veli","soyad":"Kaya","eposta":"'"$VELI"'","sifre":"Sifre1234","rol":"Kullanici"}'
-kontrol 201 "Firma A'ya Veli eklendi"
-VELI_ID=$(alan kullaniciId)
+davet_kabul "$ALI_TOKEN" '{"ad":"Veli","soyad":"Kaya","eposta":"'"$VELI"'","sifre":"Sifre1234","rol":"Kullanici"}'
+kontrol 200 "Veli davetle firma A'ya katildi (kendi sifresini belirledi)" accessToken
 
-istek POST /kullanicilar "$ALI_TOKEN" "" '{"ad":"Ayse","soyad":"Ak","eposta":"'"$AYSE"'","rol":"Kullanici"}'
-kontrol 400 "Yeni kullanici sifresiz eklenemez" sifre_gerekli
+istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$AYSE"'","rol":"Kullanici"}'
+kontrol 201 "Ayse'ye davet gitti" '"eposta":"'"$AYSE"'","rol":"Kullanici"'
+if echo "$GOVDE" | grep -q '"ad"'; then KOD=999; fi
+kontrol 201 "Davet yaniti kisisel bilgi (ad/soyad) icermez"
+istek GET /kullanicilar/davetler "$ALI_TOKEN"
+kontrol 200 "Bekleyen davetlerde Ayse var" "$AYSE"
 
-istek POST /kullanicilar "$ALI_TOKEN" "" '{"ad":"V","soyad":"K","eposta":"'"$VELI"'","rol":"Patron"}'
+istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$VELI"'","rol":"Patron"}'
 kontrol 400 "Gecersiz rol reddedildi"
+istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$VELI"'","rol":"Kullanici"}'
+kontrol 409 "Zaten uye olan kisiye davet gitmez" zaten_firma_uyesi
 
 istek GET /kullanicilar "$ALI_TOKEN"
 kontrol 200 "Firma A listesi Veli'yi iceriyor" "$VELI"
@@ -110,6 +141,7 @@ VELI_TOKEN=$(alan accessToken)
 istek GET /kullanicilar "$VELI_TOKEN"
 kontrol 403 "Kullanici rolu kullanici yonetemez"
 
+istek GET /kullanicilar "$ALI_TOKEN"; VELI_ID=$(echo "$GOVDE" | grep -o "\"kullaniciId\":\"[^\"]*\",\"ad\":\"Veli\"" | cut -d\" -f4)
 istek POST "/kullanicilar/$VELI_ID/pasiflestir" "$ALI_TOKEN"
 kontrol 204 "Veli pasiflestirildi"
 istek POST /yenile "" "$DIR/veli.jar"

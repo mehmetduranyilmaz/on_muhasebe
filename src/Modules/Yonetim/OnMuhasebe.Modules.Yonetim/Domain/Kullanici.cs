@@ -19,6 +19,12 @@ internal sealed class Kullanici : BaseEntity
     public DateTime? KilitBitisTarihi { get; private set; }
     public Guid? SonFirmaId { get; private set; }
 
+    // Kayıtla açılan hesap, e-postadaki bağlantıyla doğrulanana kadar giriş yapamaz. Davetle ya da şifre sıfırlamayla
+    // açılan/kurtarılan hesap da doğrulanmış sayılır (e-postanın sahibi olduğu kanıtlanmıştır).
+    public bool EpostaDogrulandiMi { get; private set; }
+
+    public string AdSoyad => $"{Ad} {Soyad}";
+
     public static Kullanici Olustur(string ad, string soyad, string eposta, bool sistemYoneticisiMi = false) => new()
     {
         Ad = ad.Trim(),
@@ -26,6 +32,20 @@ internal sealed class Kullanici : BaseEntity
         Eposta = EpostaNormalize(eposta),
         SistemYoneticisiMi = sistemYoneticisiMi
     };
+
+    public void EpostaDogrula() => EpostaDogrulandiMi = true;
+
+    // Doğrulanmamış hesap henüz kimsenin değildir: aynı e-postayla yeniden kayıt ya da davet, bilgileri günceller.
+    public void BekleyenHesabiGuncelle(string ad, string soyad)
+    {
+        if (EpostaDogrulandiMi)
+        {
+            throw new InvalidOperationException("Doğrulanmış hesabın bilgileri bu yolla değiştirilemez.");
+        }
+
+        Ad = ad.Trim();
+        Soyad = soyad.Trim();
+    }
 
     public static string EpostaNormalize(string eposta) => eposta.Trim().ToLowerInvariant();
 

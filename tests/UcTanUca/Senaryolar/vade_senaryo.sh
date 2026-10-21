@@ -22,7 +22,7 @@ kontrol() {
 satir() { echo '{"stokKartiId":null,"birim":"ADET","miktar":'"$1"',"birimFiyat":'"$2"',"kdvOrani":20,"kdvDahilMi":false,"iskonto1":0,"iskonto2":0,"iskonto3":0,"ad":"'"${3:-Hizmet}"'"}'; }
 
 U=$(date +%s)
-istek POST /api/yonetim/kayit "" '{"firmaUnvani":"Vade Test AS","ad":"V","soyad":"T","eposta":"vade'"$U"'@ornek.com","sifre":"Sifre1234"}'
+kayit_ol '{"firmaUnvani":"Vade Test AS","ad":"V","soyad":"T","eposta":"vade'"$U"'@ornek.com","sifre":"Sifre1234"}'
 T=$(alan accessToken)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Gecikmeli Musteri","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; C1=$(alan id)
 istek POST /api/cari/hesaplar "$T" '{"unvan":"Dovizli Musteri","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"USD"}'; C2=$(alan id)

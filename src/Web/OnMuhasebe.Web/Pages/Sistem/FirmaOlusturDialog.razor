@@ -17,19 +17,9 @@
             </MudGrid>
 
             <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Firma yöneticisi</MudText>
-            <MudGrid Spacing="2">
-                <MudItem xs="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiAd" Label="Ad" Required="true" RequiredError="Ad gerekli." />
-                </MudItem>
-                <MudItem xs="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiSoyad" Label="Soyad" Required="true" RequiredError="Soyad gerekli." />
-                </MudItem>
-            </MudGrid>
             <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiEposta" Label="E-posta" InputType="InputType.Email"
-                          Required="true" RequiredError="E-posta gerekli." />
-            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yoneticiSifre" Label="Şifre" InputType="InputType.Password"
-                          Validation="@(new Func<string?, IEnumerable<string>>(SifreKurallari.Kontrol))"
-                          HelperText="Kişi sistemde zaten kayıtlıysa boş bırakın." />
+                          Required="true" RequiredError="E-posta gerekli."
+                          HelperText="Bu adrese davet gider; kişi bağlantıyla hesabını kurar ya da mevcut hesabıyla katılır." />
 
             <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">Lisans</MudText>
             <MudGrid Spacing="2">
@@ -64,10 +54,7 @@
     private string _unvan = "";
     private string? _vergiNo;
     private string? _vergiDairesi;
-    private string _yoneticiAd = "";
-    private string _yoneticiSoyad = "";
     private string _yoneticiEposta = "";
-    private string? _yoneticiSifre;
     private string? _paketKodu = PaketKodlari.Basic;
     private DateTime? _bitis;
     private bool _islemde;
@@ -85,9 +72,7 @@
 
         _islemde = true;
         var istek = new FirmaOlusturIstegi(
-            _unvan, _vergiNo, _vergiDairesi, _yoneticiAd, _yoneticiSoyad, _yoneticiEposta,
-            string.IsNullOrEmpty(_yoneticiSifre) ? null : _yoneticiSifre,
-            _paketKodu!, DateOnly.FromDateTime(_bitis!.Value));
+            _unvan, _vergiNo, _vergiDairesi, _yoneticiEposta, _paketKodu!, DateOnly.FromDateTime(_bitis!.Value));
         var sonuc = await Api.PostAsync<FirmaOlusturCevabi>("api/yonetim/sistem/firmalar", istek);
         _islemde = false;
 
