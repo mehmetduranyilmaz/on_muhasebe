@@ -61,6 +61,8 @@ jobs:
       TZ: Europe/Istanbul
       ASPNETCORE_ENVIRONMENT: Development
       Kimlik__DakikalikIstekLimiti: "100000"
+      # Testler beklemeden arka arkaya koşar; oturumsuz istek (kayıt, doğrulama, davet) IP sınırı da yükseltilir.
+      Guvenlik__OturumsuzDakikalikIstek: "100000"
       OM_HIZ_BEKLE: "0"
       OM_PSQL: psql postgresql://onmuhasebe:onmuhasebe_dev@localhost:5432/onmuhasebe
       OM_BEKLEME_CARPANI: "2"

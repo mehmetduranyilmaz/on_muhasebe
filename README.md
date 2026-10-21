@@ -84,7 +84,7 @@ bash tests/UcTanUca/calistir.sh tarayici bildirim     # tek test (adlar: dotnet 
 ```
 
 Kayıt ve davetler e-postayla doğrulandığı için testler Mailpit gerektirir; `calistir.sh` başlarken SMTP'yi Mailpit'e
-ayarlar. Giriş/kayıt hız sınırı (10/dk) nedeniyle testler arasında 65 sn beklenir. API `Kimlik__DakikalikIstekLimiti=100000` ile
+ayarlar. Giriş/kayıt hız sınırı (10/dk) nedeniyle testler arasında 65 sn beklenir. API `Kimlik__DakikalikIstekLimiti=100000` ve `Guvenlik__OturumsuzDakikalikIstek=100000` ile
 açılırsa `OM_HIZ_BEKLE=0` verilerek beklemeden çalışır. Günlükler ve ekran görüntüleri `tests/UcTanUca/cikti/` altına yazılır.
 
 | Ortam değişkeni | Açıklama | Varsayılan |
