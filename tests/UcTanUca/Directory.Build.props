@@ -1,0 +1,12 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Uçtan uca testler betik niteliğinde: derleyici uyarıları hata kalır, kod stili zorlanmaz. -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-minimum</AnalysisLevel>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

@@ -1,4 +1,4 @@
-# Geliştirme ortamı: yalnızca PostgreSQL. API ve Web `dotnet run` ile çalışır.
+# Geliştirme ortamı: PostgreSQL ve e-posta test sunucusu (Mailpit). API ve Web `dotnet run` ile çalışır.
 services:
   postgres:
     image: postgres:18-alpine
@@ -17,6 +17,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Bildirim e-postaları: SMTP localhost:1025, gelen kutusu http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: onmuhasebe-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   postgres-data:

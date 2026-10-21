@@ -25,6 +25,7 @@
     <!-- MailKit (MimeKit) üzerinden gelen geçişli bağımlılık; açıklı 10.0.0 yerine yamalı sürüm. -->
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="ZXing.Net" Version="0.16.10" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
 

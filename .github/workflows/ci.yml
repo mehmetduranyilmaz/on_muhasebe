@@ -1,0 +1,106 @@
+# Her push ve PR'da: derleme (paket güvenlik denetimi dahil), birim testleri, API senaryoları ve firma izolasyon testi.
+# Tarayıcı testleri uzun sürdüğü için elle (workflow_dispatch) ve her gece çalışır.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      tarayici:
+        description: Tarayıcı testleri de çalışsın
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 1 * * *" # 04.00 TSİ
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  derleme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Derleme
+        run: dotnet build OnMuhasebe.slnx -c Release
+      - name: Birim testleri
+        run: dotnet test tests/OnMuhasebe.Hesaplama.Tests -c Release --no-build
+
+  uctanuca:
+    needs: derleme
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TZ: Europe/Istanbul
+      ASPNETCORE_ENVIRONMENT: Development
+      Kimlik__DakikalikIstekLimiti: "100000"
+      OM_HIZ_BEKLE: "0"
+      OM_PSQL: psql postgresql://onmuhasebe:onmuhasebe_dev@localhost:5432/onmuhasebe
+      OM_BEKLEME_CARPANI: "2"
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: onmuhasebe
+          POSTGRES_USER: onmuhasebe
+          POSTGRES_PASSWORD: onmuhasebe_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U onmuhasebe -d onmuhasebe" --health-interval 5s --health-timeout 5s --health-retries 10
+      mailpit:
+        image: axllent/mailpit:v1.27
+        ports: ["1025:1025", "8025:8025"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Derleme
+        run: dotnet build OnMuhasebe.slnx -c Release
+      # Gizli değerler her çalışmada rastgele üretilir; hiçbiri repoda veya CI ayarlarında saklanmaz.
+      - name: Geçici gizli değerler
+        run: |
+          SIFRE="Ci$(openssl rand -hex 12)"
+          echo "::add-mask::$SIFRE"
+          {
+            echo "Jwt__Anahtar=$(openssl rand -base64 48)"
+            echo "Bildirim__SifrelemeAnahtari=$(openssl rand -base64 32)"
+            echo "SistemYoneticisi__Eposta=sistem@onmuhasebe.local"
+            echo "SistemYoneticisi__Sifre=$SIFRE"
+            echo "OM_SISTEM_SIFRE=$SIFRE"
+          } >> "$GITHUB_ENV"
+      - name: API ve Web'i başlat
+        run: |
+          mkdir -p tests/UcTanUca/cikti
+          nohup dotnet run --project src/Api/OnMuhasebe.Api -c Release --no-build --launch-profile http > tests/UcTanUca/cikti/api.log 2>&1 &
+          nohup dotnet run --project src/Web/OnMuhasebe.Web -c Release --no-build --launch-profile http > tests/UcTanUca/cikti/web.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf http://localhost:5128/health > /dev/null && curl -sf http://localhost:5167/ > /dev/null && exit 0; sleep 2; done
+          echo "API/Web açılmadı"; tail -50 tests/UcTanUca/cikti/api.log; exit 1
+      - name: API senaryoları
+        run: bash tests/UcTanUca/calistir.sh senaryolar
+      - name: Firma izolasyonu
+        if: success() || failure()
+        run: bash tests/UcTanUca/calistir.sh izolasyon
+      - name: Tarayıcı testleri
+        if: (success() || failure()) && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.tarayici))
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+          bash tests/UcTanUca/calistir.sh tarayici
+      - name: Test çıktıları
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uctanuca-cikti
+          path: tests/UcTanUca/cikti/
+          retention-days: 7

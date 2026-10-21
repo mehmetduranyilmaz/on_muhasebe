@@ -48,4 +48,8 @@
   <Folder Name="/tests/">
     <Project Path="tests/OnMuhasebe.Hesaplama.Tests/OnMuhasebe.Hesaplama.Tests.csproj" />
   </Folder>
+  <Folder Name="/tests/UcTanUca/">
+    <Project Path="tests/UcTanUca/OnMuhasebe.Izolasyon/OnMuhasebe.Izolasyon.csproj" />
+    <Project Path="tests/UcTanUca/OnMuhasebe.Tarayici/OnMuhasebe.Tarayici.csproj" />
+  </Folder>
 </Solution>

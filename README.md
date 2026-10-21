@@ -57,7 +57,42 @@ Canlıda Web ve API **aynı ana alan adında** olmalıdır (ör. `app.firma.com`
 ```
 src/Api        API host
 src/Shared     Ortak domain, altyapı ve sözleşmeler (DTO)
-src/Modules    İş modülleri (Yonetim, Doviz, Cari, Stok, Fatura, KasaBanka)
+src/Modules    İş modülleri (Yonetim, Doviz, Cari, Stok, Fatura, KasaBanka, Bildirim)
 src/Web        Blazor WebAssembly PWA
-tests          Hesaplama testleri (dotnet test)
+tests          Hesaplama testleri (dotnet test) ve uçtan uca testler (tests/UcTanUca)
 ```
+
+## Testler
+
+```bash
+dotnet test tests/OnMuhasebe.Hesaplama.Tests     # birim (hesaplama) testleri
+```
+
+Uçtan uca testler çalışan API ve Web'e karşı koşar (`tests/UcTanUca`):
+
+| Grup | İçerik |
+|---|---|
+| `senaryolar` | Modül başına API senaryoları (bash + curl), `Senaryolar/*.sh` |
+| `izolasyon` | Firma A'nın kayıtlarına firma B ile API'deki her uçtan erişim denemesi; uç listesi OpenAPI'den okunur, eşlemesi olmayan yeni uç hata sayılır |
+| `tarayici` | Headless Chrome ile ekran testleri (DevTools Protocol); karekod testi için `ffmpeg` gerekir |
+
+```bash
+export OM_SISTEM_SIFRE="<API'deki SistemYoneticisi:Sifre>"
+bash tests/UcTanUca/calistir.sh hepsi                 # ya da: senaryolar | izolasyon | tarayici
+bash tests/UcTanUca/calistir.sh tarayici bildirim     # tek test (adlar: dotnet run --project tests/UcTanUca/OnMuhasebe.Tarayici)
+```
+
+Giriş/kayıt hız sınırı (10/dk) nedeniyle testler arasında 65 sn beklenir. API `Kimlik__DakikalikIstekLimiti=100000` ile
+açılırsa `OM_HIZ_BEKLE=0` verilerek beklemeden çalışır. Günlükler ve ekran görüntüleri `tests/UcTanUca/cikti/` altına yazılır.
+
+| Ortam değişkeni | Açıklama | Varsayılan |
+|---|---|---|
+| `OM_SISTEM_SIFRE` / `OM_SISTEM_EPOSTA` | Sistem yöneticisi girişi | — / `sistem@onmuhasebe.local` |
+| `OM_API` / `OM_WEB` | Adresler | `http://localhost:5128` / `http://localhost:5167` |
+| `OM_MAILPIT`, `OM_SMTP_SUNUCU`, `OM_SMTP_PORT` | Bildirim e-postaları için Mailpit | `http://localhost:8025`, `localhost`, `1025` |
+| `OM_PSQL` | Doğrudan SQL için komut (ör. `psql postgresql://...`) | geliştirme konteyneri (`docker exec`) |
+| `OM_CHROME` | Chrome yolu | standart kurulum yerleri |
+| `OM_BEKLEME_CARPANI` | Yavaş makinede tarayıcı bekleme sürelerini uzatır | `1` |
+
+GitHub Actions (`.github/workflows/ci.yml`) her push'ta derleme, birim testleri, API senaryoları ve izolasyon testini;
+her gece ve elle tetiklendiğinde tarayıcı testlerini de çalıştırır. Gizli değerler her çalışmada rastgele üretilir.

@@ -483,3 +483,7 @@ $RECYCLE.BIN/
 
 # Claude Code kişisel ayarları
 .claude/settings.local.json
+
+# Uçtan uca test çıktıları (ekran görüntüleri, üretilen dosyalar)
+tests/UcTanUca/cikti/
+tests/UcTanUca/Dosyalar/buyuk.csv
