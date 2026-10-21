@@ -25,7 +25,8 @@ SISTEM_YONETICISI_EPOSTA=$EPOSTA
 SISTEM_YONETICISI_SIFRESI=$SIFRE
 AYAR
   echo "Ayarlar oluşturuldu: $ENV"
-  echo "Sistem yöneticisi: $EPOSTA / $SIFRE  (şifre .env içinde de durur; güvenli bir yere not edin)"
+  # Şifre ekrana basılmaz (terminal geçmişine düşmesin); .env içindeki SISTEM_YONETICISI_SIFRESI ile ilk girişi yapıp değiştirin.
+  echo "Sistem yöneticisi: $EPOSTA (ilk şifre: $ENV içinde SISTEM_YONETICISI_SIFRESI; girişten sonra menüden değiştirin)"
 fi
 
 docker compose -f "$DIZIN/docker-compose.yml" --env-file "$ENV" up -d --build --remove-orphans

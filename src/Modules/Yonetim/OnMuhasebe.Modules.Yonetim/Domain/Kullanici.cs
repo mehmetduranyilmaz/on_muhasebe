@@ -4,9 +4,6 @@ namespace OnMuhasebe.Modules.Yonetim.Domain;
 
 internal sealed class Kullanici : BaseEntity
 {
-    public const int AzamiHataliGiris = 5;
-    public static readonly TimeSpan KilitSuresi = TimeSpan.FromMinutes(15);
-
     private Kullanici() { }
 
     public string Ad { get; private set; } = null!;
@@ -15,8 +12,6 @@ internal sealed class Kullanici : BaseEntity
     public string SifreOzeti { get; private set; } = null!;
     public bool AktifMi { get; private set; } = true;
     public bool SistemYoneticisiMi { get; private set; }
-    public int HataliGirisSayisi { get; private set; }
-    public DateTime? KilitBitisTarihi { get; private set; }
     public Guid? SonFirmaId { get; private set; }
 
     // Kayıtla açılan hesap, e-postadaki bağlantıyla doğrulanana kadar giriş yapamaz. Davetle ya da şifre sıfırlamayla
@@ -51,30 +46,5 @@ internal sealed class Kullanici : BaseEntity
 
     public void SifreBelirle(string sifreOzeti) => SifreOzeti = sifreOzeti;
 
-    // Şifre değişince (kullanıcı ya da sıfırlama bağlantısıyla) hatalı giriş sayacı ve kilit de sıfırlanır.
-    public void SifreDegistir(string sifreOzeti)
-    {
-        SifreOzeti = sifreOzeti;
-        HataliGirisSayisi = 0;
-        KilitBitisTarihi = null;
-    }
-
-    public bool KilitliMi(DateTime simdi) => KilitBitisTarihi > simdi;
-
-    public void HataliGirisYapildi(DateTime simdi)
-    {
-        HataliGirisSayisi++;
-        if (HataliGirisSayisi >= AzamiHataliGiris)
-        {
-            KilitBitisTarihi = simdi + KilitSuresi;
-            HataliGirisSayisi = 0;
-        }
-    }
-
-    public void OturumAcildi(Guid? firmaId)
-    {
-        HataliGirisSayisi = 0;
-        KilitBitisTarihi = null;
-        SonFirmaId = firmaId;
-    }
+    public void OturumAcildi(Guid? firmaId) => SonFirmaId = firmaId;
 }

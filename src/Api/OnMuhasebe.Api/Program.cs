@@ -52,12 +52,15 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Firma izolasyonunun veritabanı katmanı (RLS) ancak uygulama kısıtlı rolle bağlanırsa işler; değilse API açılmaz.
+await VeritabaniGuvenligi.UygulamaRolunuDenetleAsync(app.Configuration.GetConnectionString(PersistenceExtensions.BaglantiAdi)!, CancellationToken.None);
+
 // Vekil başlıkları ilk okunur: sonraki her adım (hız sınırı, HSTS) gerçek istemci IP'sini ve şemayı görsün.
 app.UseForwardedHeaders();
 
 // CORS en dışta: hata yanıtlarında da CORS başlıkları bulunsun, tarayıcı hata mesajını okuyabilsin.
 app.UseCors();
-app.UseGuvenlikBasliklari(app.Environment);
+app.UseGuvenlikBasliklari();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseHttpsRedirection();

@@ -5,7 +5,7 @@ namespace OnMuhasebe.Modules.Yonetim.Domain;
 internal static class YonetimHatalari
 {
     public static readonly Hata GirisBasarisiz = Hata.KimlikDogrulama("giris_basarisiz", "E-posta veya şifre hatalı.");
-    public static readonly Hata HesapKilitli = Hata.KimlikDogrulama("hesap_kilitli", "Çok sayıda hatalı giriş yapıldı. Lütfen 15 dakika sonra tekrar deneyin.");
+    public static readonly Hata HesapKilitli = Hata.KimlikDogrulama("hesap_kilitli", "Çok sayıda hatalı deneme yapıldı. 15 dakika sonra tekrar deneyin ya da şifrenizi sıfırlayın.");
     public static readonly Hata FirmaYok = Hata.KimlikDogrulama("firma_yok", "Hesabınız aktif bir firmaya bağlı değil.");
     public static readonly Hata OturumGecersiz = Hata.KimlikDogrulama("oturum_gecersiz", "Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.");
     public static readonly Hata FirmaUyesiDegil = Hata.Yetki("firma_uyesi_degil", "Bu firmaya erişiminiz yok.");

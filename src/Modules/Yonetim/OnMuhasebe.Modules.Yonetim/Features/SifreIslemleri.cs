@@ -64,6 +64,8 @@ internal static class SifreIslemleri
         YonetimDbContext db,
         IPasswordHasher<Kullanici> hasher,
         OturumServisi oturumServisi,
+        GirisDenemeleri denemeler,
+        HttpContext http,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
@@ -74,7 +76,8 @@ internal static class SifreIslemleri
             return YonetimHatalari.OturumGecersiz.Problem();
         }
 
-        if (kullanici.KilitliMi(simdi))
+        var ip = http.Connection.RemoteIpAddress?.ToString();
+        if (denemeler.KilitliMi(kullanici.Eposta, ip))
         {
             return YonetimHatalari.HesapKilitli.Problem();
         }
@@ -82,12 +85,13 @@ internal static class SifreIslemleri
         // Yanlış mevcut şifre girişteki gibi sayılır: ele geçirilmiş bir oturumla şifre denenemesin.
         if (hasher.VerifyHashedPassword(kullanici, kullanici.SifreOzeti, istek.MevcutSifre) == PasswordVerificationResult.Failed)
         {
-            kullanici.HataliGirisYapildi(simdi);
-            await db.SaveChangesAsync(cancellationToken);
+            denemeler.Basarisiz(kullanici.Eposta, ip);
             return YonetimHatalari.MevcutSifreHatali.Problem();
         }
 
-        kullanici.SifreDegistir(hasher.HashPassword(kullanici, istek.YeniSifre));
+        denemeler.Basarili(kullanici.Eposta, ip);
+
+        kullanici.SifreBelirle(hasher.HashPassword(kullanici, istek.YeniSifre));
         await OturumServisi.TumunuKapatAsync(db, kullanici.Id, simdi, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -123,6 +127,7 @@ internal static class SifreIslemleri
         SifreSifirlaIstegi istek,
         YonetimDbContext db,
         IPasswordHasher<Kullanici> hasher,
+        GirisDenemeleri denemeler,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
@@ -137,8 +142,9 @@ internal static class SifreIslemleri
             return YonetimHatalari.SifirlamaKoduGecersiz.Problem();
         }
 
-        kullanici.SifreDegistir(hasher.HashPassword(kullanici, istek.YeniSifre));
+        kullanici.SifreBelirle(hasher.HashPassword(kullanici, istek.YeniSifre));
         kullanici.EpostaDogrula();
+        denemeler.Sifirla(kullanici.Eposta);
 
         // Bu kod ve kullanıcının bekleyen diğer sıfırlama kodları da artık kullanılamaz.
         var bekleyenler = await db.KullaniciKodlari

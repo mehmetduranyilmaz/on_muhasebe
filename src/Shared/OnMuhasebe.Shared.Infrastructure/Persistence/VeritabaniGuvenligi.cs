@@ -34,6 +34,27 @@ public static partial class VeritabaniGuvenligi
         await komut.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    // API açılışında: uygulama bağlantısı RLS'i atlayabilen bir rolle (süper kullanıcı, BYPASSRLS ya da tablo sahibi)
+    // yapılandırılmışsa uygulama başlamaz. Böyle bir yanlış yapılandırma firma izolasyonunun ikinci savunma hattını sessizce kapatırdı.
+    public static async Task UygulamaRolunuDenetleAsync(string uygulamaBaglantisi, CancellationToken cancellationToken)
+    {
+        await using var baglanti = new NpgsqlConnection(uygulamaBaglantisi);
+        await baglanti.OpenAsync(cancellationToken);
+        await using var komut = baglanti.CreateCommand();
+        komut.CommandText = """
+            SELECT r.rolsuper OR r.rolbypassrls
+                OR EXISTS (SELECT 1 FROM pg_tables t WHERE t.tableowner = current_user
+                           AND t.schemaname NOT IN ('pg_catalog', 'information_schema'))
+            FROM pg_roles r WHERE r.rolname = current_user
+            """;
+        if (await komut.ExecuteScalarAsync(cancellationToken) is true)
+        {
+            throw new InvalidOperationException(
+                "Uygulama veritabanı bağlantısı satır güvenliğini (RLS) atlayabilen bir rolle yapılmış (süper kullanıcı, BYPASSRLS ya da tablo sahibi). "
+                + "ConnectionStrings:OnMuhasebe kısıtlı uygulama rolünü (onmuhasebe_uygulama) kullanmalıdır.");
+        }
+    }
+
     private static string KurulumSql(string rol, string sifre)
     {
         var sifreLiteral = "'" + sifre.Replace("'", "''", StringComparison.Ordinal) + "'";
@@ -45,6 +66,8 @@ public static partial class VeritabaniGuvenligi
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{{rol}}') THEN
                     CREATE ROLE {{rol}} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {{sifreLiteral}};
                 END IF;
+                -- Rol önceden (elle) oluşturulmuş ya da şifre değişmiş olabilir: kısıtlar ve şifre her çalıştırmada yeniden uygulanır.
+                ALTER ROLE {{rol}} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD {{sifreLiteral}};
 
                 FOR s IN SELECT nspname FROM pg_namespace
                          WHERE nspname NOT LIKE 'pg\_%' AND nspname <> 'information_schema' LOOP

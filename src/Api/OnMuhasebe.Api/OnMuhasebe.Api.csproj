@@ -4,6 +4,11 @@
     <UserSecretsId>c126a9aa-7a82-40a7-9bab-ff07633fefa6</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Geliştirme ayarları (yerel veritabanı şifreleri) canlı imaja girmez. -->
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />

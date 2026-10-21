@@ -63,7 +63,15 @@ yedek açılır ama oturum anahtarları ve SMTP şifresi kaybolur.
   gönderilen sahte başlık Caddy tarafından geçersiz kılınır.
 - API veritabanına satır güvenliğine (RLS) tabi `onmuhasebe_uygulama` rolüyle bağlanır. Tablo sahibi (`onmuhasebe`)
   bağlantısı yalnızca `migrator` kapsayıcısına verilir.
+- API açılışta veritabanına bağlandığı rolü denetler; rol satır güvenliğini atlayabiliyorsa (süper kullanıcı, BYPASSRLS,
+  tablo sahibi) hiç açılmaz.
 - PostgreSQL dışarıya açılmaz; yalnızca kapsayıcı ağında erişilir.
+- Kapsayıcılar: API ve Web tüm Linux yetkileri bırakılmış (`cap_drop: ALL`), yetki yükseltme kapalı; API salt okunur dosya
+  sisteminde ve root olmayan kullanıcıyla çalışır. Günlükler döndürülür (10 MB × 5).
+- Hatalı şifre denemeleri e-posta + IP çiftine sayılır (15 dakikada 5); başkası kendi IP'sinden bir kullanıcıyı
+  kilitleyemez. Çok IP'den dağıtık denemeye karşı e-posta başına 50 deneme sınırı vardır.
+- Yedek dosyaları yalnızca sahibince okunabilir (0600). Son başarılı yedek 26 saatten eskiyse `yedek` kapsayıcısı
+  `unhealthy` görünür.
 - `.env` içindeki değerler: `JWT_ANAHTARI` değişirse tüm oturumlar düşer; `BILDIRIM_SIFRELEME_ANAHTARI` değişirse
   kayıtlı SMTP şifresi yeniden girilmelidir.
 

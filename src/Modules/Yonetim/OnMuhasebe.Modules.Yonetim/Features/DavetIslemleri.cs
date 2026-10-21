@@ -81,6 +81,8 @@ internal static class DavetIslemleri
         YonetimDbContext db,
         IPasswordHasher<Kullanici> hasher,
         OturumServisi oturumServisi,
+        GirisDenemeleri denemeler,
+        HttpContext http,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
@@ -96,7 +98,8 @@ internal static class DavetIslemleri
 
         if (kullanici is { EpostaDogrulandiMi: true })
         {
-            if (kullanici.KilitliMi(simdi))
+            var ip = http.Connection.RemoteIpAddress?.ToString();
+            if (denemeler.KilitliMi(kullanici.Eposta, ip))
             {
                 return YonetimHatalari.HesapKilitli.Problem();
             }
@@ -104,10 +107,11 @@ internal static class DavetIslemleri
             var dogrulama = hasher.VerifyHashedPassword(kullanici, kullanici.SifreOzeti, istek.Sifre);
             if (dogrulama == PasswordVerificationResult.Failed)
             {
-                kullanici.HataliGirisYapildi(simdi);
-                await db.SaveChangesAsync(cancellationToken);
+                denemeler.Basarisiz(kullanici.Eposta, ip);
                 return YonetimHatalari.GirisBasarisiz.Problem();
             }
+
+            denemeler.Basarili(kullanici.Eposta, ip);
 
             if (dogrulama == PasswordVerificationResult.SuccessRehashNeeded)
             {

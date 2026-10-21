@@ -2,6 +2,9 @@
 # Yedek kapsayıcısında çalışır. Argümansız: her gün YEDEK_SAATI_UTC saatinde (varsayılan 0 = 03.00 TSİ) yedek alır,
 # YEDEK_GUN günden eskileri siler. "simdi" argümanıyla tek yedek alıp çıkar.
 set -eu
+# Yedekte tüm firmaların verisi var: dosyalar ve klasör yalnızca sahibince okunabilir.
+umask 077
+chmod 700 /yedekler
 YEDEK_SAATI_UTC="${YEDEK_SAATI_UTC:-0}"
 YEDEK_GUN="${YEDEK_GUN:-14}"
 

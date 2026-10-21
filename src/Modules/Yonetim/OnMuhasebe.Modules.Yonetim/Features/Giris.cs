@@ -39,31 +39,35 @@ internal static class Giris
         YonetimDbContext db,
         IPasswordHasher<Kullanici> hasher,
         OturumServisi oturumServisi,
-        TimeProvider zaman,
+        GirisDenemeleri denemeler,
+        HttpContext http,
         CancellationToken cancellationToken)
     {
-        var simdi = zaman.GetUtcNow().UtcDateTime;
         var eposta = Kullanici.EpostaNormalize(istek.Eposta);
-        var kullanici = await db.Kullanicilar.SingleOrDefaultAsync(k => k.Eposta == eposta, cancellationToken);
+        var ip = http.Connection.RemoteIpAddress?.ToString();
 
+        // Kilit, hesap var olsun olmasın aynı işler (yanıt hesabın varlığını ele vermez).
+        if (denemeler.KilitliMi(eposta, ip))
+        {
+            return YonetimHatalari.HesapKilitli.Problem();
+        }
+
+        var kullanici = await db.Kullanicilar.SingleOrDefaultAsync(k => k.Eposta == eposta, cancellationToken);
         if (kullanici is null || !kullanici.AktifMi)
         {
             hasher.VerifyHashedPassword(_sahteKullanici, _sahteOzet, istek.Sifre);
+            denemeler.Basarisiz(eposta, ip);
             return YonetimHatalari.GirisBasarisiz.Problem();
-        }
-
-        if (kullanici.KilitliMi(simdi))
-        {
-            return YonetimHatalari.HesapKilitli.Problem();
         }
 
         var dogrulama = hasher.VerifyHashedPassword(kullanici, kullanici.SifreOzeti, istek.Sifre);
         if (dogrulama == PasswordVerificationResult.Failed)
         {
-            kullanici.HataliGirisYapildi(simdi);
-            await db.SaveChangesAsync(cancellationToken);
+            denemeler.Basarisiz(eposta, ip);
             return YonetimHatalari.GirisBasarisiz.Problem();
         }
+
+        denemeler.Basarili(eposta, ip);
 
         if (dogrulama == PasswordVerificationResult.SuccessRehashNeeded)
         {

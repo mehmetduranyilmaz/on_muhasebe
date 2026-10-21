@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace OnMuhasebe.Shared.Infrastructure.Guvenlik;
 
@@ -86,14 +85,9 @@ public static class GuvenlikExtensions
         });
 
     // API cevapları JSON'dur; tarayıcıya hiçbir içerik çalıştırma, çerçeveye gömme ya da önbellekleme izni verilmez.
-    public static IApplicationBuilder UseGuvenlikBasliklari(this IApplicationBuilder app, IHostEnvironment ortam)
-    {
-        if (!ortam.IsDevelopment())
-        {
-            app.UseHsts();
-        }
-
-        return app.Use(async (http, sonraki) =>
+    // HSTS burada verilmez: TLS'i ters vekil (Caddy) sonlandırır ve tüm yanıtlara tek, uzun süreli HSTS başlığını o ekler.
+    public static IApplicationBuilder UseGuvenlikBasliklari(this IApplicationBuilder app) =>
+        app.Use(async (http, sonraki) =>
         {
             http.Response.OnStarting(() =>
             {
@@ -116,7 +110,6 @@ public static class GuvenlikExtensions
             });
             await sonraki(http);
         });
-    }
 }
 
 // Dosya yükleyen uca genel gövde sınırından geniş izin: .WithMetadata(new YuklemeBoyutu(...)).

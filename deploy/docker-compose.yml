@@ -6,8 +6,22 @@ x-api-ortami: &api-ortami
   ASPNETCORE_ENVIRONMENT: Production
   ConnectionStrings__OnMuhasebe: Host=postgres;Database=onmuhasebe;Username=onmuhasebe_uygulama;Password=${UYGULAMA_DB_SIFRESI:?};Gss Encryption Mode=Disable
 
+# Günlükler döndürülür: sınırsız büyüyüp diski (dolayısıyla veritabanını ve yedekleri) durdurmasın.
+x-gunluk: &gunluk
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+# Uygulama kapsayıcıları hiçbir Linux yetkisine ihtiyaç duymaz; yetki yükseltme kapalı, dosya sistemi salt okunur.
+x-sertlestirme: &sertlestirme
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
 services:
   postgres:
+    <<: *gunluk
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
@@ -24,11 +38,13 @@ services:
 
   # Tek seferlik: migration'lar ve satır güvenliği (uygulama rolü + politikalar). Yönetici bağlantısı yalnız burada.
   migrator:
+    <<: [*gunluk, *sertlestirme]
     build:
       context: ..
       dockerfile: deploy/api.Dockerfile
     image: onmuhasebe-api
     command: ["--veritabani-guncelle"]
+    read_only: true
     environment:
       <<: *api-ortami
       ConnectionStrings__OnMuhasebeYonetici: Host=postgres;Database=onmuhasebe;Username=onmuhasebe;Password=${POSTGRES_SIFRESI:?};Gss Encryption Mode=Disable
@@ -37,10 +53,13 @@ services:
         condition: service_healthy
 
   # Gece yedeği (deploy/yedekler). Elle: docker compose ... run --rm yedek simdi
+  # Son başarılı yedek 26 saatten eskiyse kapsayıcı "unhealthy" görünür (docker compose ps).
   yedek:
+    <<: *gunluk
     image: postgres:18-alpine
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/yedek.sh"]
+    security_opt: ["no-new-privileges:true"]
     environment:
       PGHOST: postgres
       PGDATABASE: onmuhasebe
@@ -51,19 +70,28 @@ services:
     volumes:
       - ./yedek.sh:/yedek.sh:ro
       - ./yedekler:/yedekler
+    healthcheck:
+      test: ["CMD-SHELL", "find /yedekler -name 'onmuhasebe-*.dump' -mmin -1560 | grep -q ."]
+      interval: 1h
+      start_period: 26h
     depends_on:
       postgres:
         condition: service_healthy
 
   api:
+    <<: [*gunluk, *sertlestirme]
     image: onmuhasebe-api
     restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 1g
     environment:
       <<: *api-ortami
       Guvenlik__VekilArkasinda: "true"
       Uygulama__WebAdresi: https://${ALAN_ADI:?}
       Jwt__Anahtar: ${JWT_ANAHTARI:?}
       Bildirim__SifrelemeAnahtari: ${BILDIRIM_SIFRELEME_ANAHTARI:?}
+      # Yalnızca ilk açılışta (hesap yokken) sistem yöneticisini oluşturmak için okunur; sonra şifre uygulamadan değiştirilir.
       SistemYoneticisi__Eposta: ${SISTEM_YONETICISI_EPOSTA:?}
       SistemYoneticisi__Sifre: ${SISTEM_YONETICISI_SIFRESI:?}
     depends_on:
@@ -71,11 +99,15 @@ services:
         condition: service_completed_successfully
 
   web:
+    <<: [*gunluk, *sertlestirme]
     build:
       context: ..
       dockerfile: deploy/web.Dockerfile
     image: onmuhasebe-web
     restart: unless-stopped
+    # 80/443'ü dinlemek için tek gereken yetki.
+    cap_add: [NET_BIND_SERVICE]
+    mem_limit: 256m
     environment:
       ALAN_ADI: ${ALAN_ADI:?}
       ACME_EPOSTA: ${ACME_EPOSTA:-}

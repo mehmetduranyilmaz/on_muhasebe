@@ -526,14 +526,6 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
 
-                    b.Property<int>("HataliGirisSayisi")
-                        .HasColumnType("integer")
-                        .HasColumnName("hatali_giris_sayisi");
-
-                    b.Property<DateTime?>("KilitBitisTarihi")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("kilit_bitis_tarihi");
-
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
                         .HasColumnName("olusturan_id");

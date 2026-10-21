@@ -52,6 +52,8 @@ public sealed class YonetimModulu : IModul
                     ValidIssuer = ayarlar.Value.Yayinci,
                     ValidAudience = ayarlar.Value.Hedef,
                     IssuerSigningKey = TokenServisi.ImzaAnahtari(ayarlar.Value),
+                    // Yalnızca imzaladığımız algoritma kabul edilir (algoritma karıştırma saldırılarına karşı).
+                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
                     NameClaimType = ClaimTipleri.Ad,
                     RoleClaimType = ClaimTipleri.Rol,
                     ClockSkew = TimeSpan.FromSeconds(30)
@@ -75,6 +77,8 @@ public sealed class YonetimModulu : IModul
         services.AddSingleton<TokenServisi>();
         services.AddScoped<OturumServisi>();
         services.AddScoped<KimlikPostasi>();
+        services.AddMemoryCache();
+        services.AddSingleton<GirisDenemeleri>();
         services.AddScoped<ILisansSorgusu, LisansSorgusu>();
         services.AddScoped<ZorunluAlanSorgusu>();
         services.AddScoped<IZorunluAlanSorgusu>(sp => sp.GetRequiredService<ZorunluAlanSorgusu>());
