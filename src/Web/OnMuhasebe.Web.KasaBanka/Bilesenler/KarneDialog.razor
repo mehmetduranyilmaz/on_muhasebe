@@ -1,0 +1,101 @@
+@* Yeni çek karnesi (banka hesabına bağlı) ya da senet defteri. Bitiş serisi başlangıç ve yaprak sayısından gösterilir. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudForm @ref="_form">
+            <MudGrid Spacing="2">
+                @if (Tur == EvrakTuru.Cek)
+                {
+                    <MudItem xs="12">
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Banka hesabı" @bind-Value="_hesapId" Required="true"
+                                   RequiredError="Hesap seçin." AnchorOrigin="Origin.BottomCenter" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountBalance">
+                            @foreach (var h in _hesaplar)
+                            {
+                                <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @h.ParaBirimi</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+                <MudItem xs="7">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_baslangic" Label="İlk yaprağın seri no" MaxLength="30"
+                                  Required="true" RequiredError="Seri no gerekli." Immediate="true" Placeholder="@(Tur == EvrakTuru.Cek ? "ör. ABC 0001098" : "ör. 0001")"
+                                  Validation="@(new Func<string?, string?>(s => string.IsNullOrWhiteSpace(s) || EvrakSeriNo.Ayir(s) is not null ? null : "Seri no sayı ile bitmelidir."))" />
+                </MudItem>
+                <MudItem xs="5">
+                    <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yaprak" Label="Yaprak sayısı" Min="1" Max="500" Immediate="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    @if (Bitis is { } bitis)
+                    {
+                        <div class="karne-onizleme">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" />
+                            <span><b>@EvrakSeriNo.Normalize(_baslangic!)</b> – <b>@bitis</b> · @_yaprak yaprak</span>
+                        </div>
+                    }
+                </MudItem>
+                <MudItem xs="6">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Alış tarihi" DateFormat="dd.MM.yyyy" Required="true" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(Bitis is null || _yaprak < 1)">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public EvrakTuru Tur { get; set; }
+
+    private readonly IslemAnahtari _anahtar = new();
+    private MudForm _form = null!;
+    private List<HesapOzeti> _hesaplar = [];
+    private Guid? _hesapId;
+    private string? _baslangic;
+    private int _yaprak = 25;
+    private DateTime? _tarih = DateTime.Today;
+    private string? _aciklama;
+    private ApiHatasi? _hata;
+
+    private string? Bitis => _yaprak is >= 1 and <= 500 && EvrakSeriNo.Ardisik(_baslangic ?? "", _yaprak) is { } s ? s[^1] : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Tur == EvrakTuru.Cek)
+        {
+            var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar");
+            _hesaplar = hesaplar.BasariliMi ? hesaplar.Deger.Where(h => h.Tur == HesapTuru.Banka && h.AktifMi).ToList() : [];
+            _hesapId = _hesaplar.FirstOrDefault()?.Id;
+        }
+        else
+        {
+            _yaprak = 50;
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var istek = new KarneEkleIstegi(Tur, Tur == EvrakTuru.Cek ? _hesapId : null, _baslangic!.Trim(), _yaprak, DateOnly.FromDateTime(_tarih!.Value),
+            string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim());
+        var sonuc = await Api.PostAsync<KarneOzeti>("api/kasabanka/cek-senet/karneler", istek, islemAnahtari: _anahtar.Deger);
+        _anahtar.Sonuc(sonuc.Hata);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

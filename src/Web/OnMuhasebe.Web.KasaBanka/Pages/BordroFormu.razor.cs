@@ -32,6 +32,7 @@ public partial class BordroFormu
         public string? KefilAdi { get; set; }
         public string? KefilKimlikNo { get; set; }
         public Guid? KendiHesapId { get; set; }
+        public Guid? KarneId { get; set; }
         public string? Aciklama { get; set; }
         public RiskBilgisi? Risk { get; set; }
     }
@@ -46,6 +47,8 @@ public partial class BordroFormu
     private string? _aciklama;
     private readonly List<Satir> _satirlar = [];
     private List<HesapOzeti> _hesaplar = [];
+    private List<KarneOzeti> _karneler = [];
+    private readonly Dictionary<Guid, KarneDetayi> _karneDetaylari = [];
     private CekSenetAyarlari _ayar = new(true, false, RiskDavranisi.UyarVeOnayIste);
     private ApiHatasi? _hata;
     private readonly IslemAnahtari _anahtar = new();
@@ -97,7 +100,7 @@ public partial class BordroFormu
 
             foreach (var (s, i) in _satirlar.Select((s, i) => (s, i + 1)))
             {
-                var eksik = string.IsNullOrWhiteSpace(s.SeriNo) ? "evrak no"
+                var eksik = string.IsNullOrWhiteSpace(s.SeriNo) ? s.KarneId is null ? "evrak no" : "evrak no (karnede boş yaprak yok)"
                     : s.Vade is null ? "vade"
                     : s.Tutar <= 0 ? "tutar"
                     : Alinan && s.YeniBorclu && string.IsNullOrWhiteSpace(s.BorcluAdi) ? "keşideci/borçlu adı"
@@ -123,6 +126,12 @@ public partial class BordroFormu
         _zorunlu = await ZorunluAlanlar.SeciliAsync();
         var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar");
         _hesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
+        if (!Alinan)
+        {
+            var karneler = await Api.GetAsync<List<KarneOzeti>>("api/kasabanka/cek-senet/karneler?aktif=true");
+            _karneler = karneler.BasariliMi ? karneler.Deger : [];
+        }
+
         var ayar = await Api.GetAsync<CekSenetAyarlari>("api/kasabanka/cek-senet/ayarlar");
         if (ayar.BasariliMi)
         {
@@ -134,33 +143,109 @@ public partial class BordroFormu
             await CariSecildiAsync(new CariSecim(c.Deger.Id, c.Deger.Unvan, c.Deger.Kod));
         }
 
-        Ekle(EvrakTuru.Cek);
+        await EkleAsync(EvrakTuru.Cek);
     }
 
-    private void Ekle(EvrakTuru tur)
+    private async Task EkleAsync(EvrakTuru tur)
     {
         var onceki = _satirlar.LastOrDefault();
-        _satirlar.Add(new Satir
+        var satir = new Satir
         {
             Tur = tur,
             Vade = onceki?.Vade,
             ParaBirimi = onceki?.ParaBirimi ?? ParaBirimleri.Tl,
             KendiHesapId = onceki?.KendiHesapId ?? _hesaplar.FirstOrDefault(h => h.Tur == HesapTuru.Banka && h.AktifMi)?.Id
-        });
+        };
+        _satirlar.Add(satir);
+        await KarneVarsayilaniAsync(satir);
     }
 
     // Aynı keşidecinin ardışık çekleri için: bilgiler kopyalanır, çek no bir artırılır.
-    private void Kopyala(Satir s)
+    private async Task KopyalaAsync(Satir s)
     {
         var yeni = new Satir
         {
             Tur = s.Tur, Vade = s.Vade?.AddMonths(1), Tutar = s.Tutar, ParaBirimi = s.ParaBirimi, Borclu = s.Borclu, YeniBorclu = s.YeniBorclu,
             BorcluAdi = s.BorcluAdi, KimlikNo = s.KimlikNo, KayitliHesaplar = s.KayitliHesaplar, BankaAdi = s.BankaAdi, Sube = s.Sube,
             HesapNo = s.HesapNo, KesideYeri = s.KesideYeri, KefilAdi = s.KefilAdi, KefilKimlikNo = s.KefilKimlikNo, KendiHesapId = s.KendiHesapId,
-            Risk = s.Risk,
-            SeriNo = long.TryParse(s.SeriNo, out var n) ? (n + 1).ToString(System.Globalization.CultureInfo.InvariantCulture).PadLeft(s.SeriNo!.Length, '0') : null
+            Risk = s.Risk, KarneId = s.KarneId,
+            SeriNo = EvrakSeriNo.Ardisik(s.SeriNo ?? "", 2) is { } ardisik ? ardisik[1] : null
         };
         _satirlar.Insert(_satirlar.IndexOf(s) + 1, yeni);
+        if (yeni.KarneId is not null)
+        {
+            await SiradakiYaprakAsync(yeni);
+        }
+    }
+
+    // Bu bordrodaki satırlar da düşüldükten sonra karnede kalacak boş yaprak eşiğin altındaysa seri alanının altında uyarı.
+    private string? KarneIpucu(Satir s)
+    {
+        if (Alinan || s.KarneId is not { } id || _karneler.FirstOrDefault(k => k.Id == id) is not { } k)
+        {
+            return null;
+        }
+
+        var kalacak = k.Kalan - _satirlar.Count(x => x.KarneId == id && !string.IsNullOrWhiteSpace(x.SeriNo));
+        return _ayar.KarneUyariEsigi > 0 && kalacak <= _ayar.KarneUyariEsigi ? $"Bu bordrodan sonra karnede {kalacak} boş yaprak kalacak" : null;
+    }
+
+    // Verilen evrakta kullanılabilecek karneler: çekte seçili banka hesabınınkiler, senette senet defterleri.
+    private IEnumerable<KarneOzeti> Karneleri(Satir s) =>
+        _karneler.Where(k => k.Tur == s.Tur && (s.Tur == EvrakTuru.Senet || k.KendiHesapId == s.KendiHesapId));
+
+    private async Task KarneVarsayilaniAsync(Satir s)
+    {
+        if (Alinan)
+        {
+            return;
+        }
+
+        var uygun = Karneleri(s).ToList();
+        if (s.KarneId is null || uygun.All(k => k.Id != s.KarneId))
+        {
+            s.KarneId = uygun.FirstOrDefault(k => k.Kalan > 0)?.Id;
+        }
+
+        await SiradakiYaprakAsync(s);
+    }
+
+    private async Task HesapDegistiAsync(Satir s, Guid? hesapId)
+    {
+        s.KendiHesapId = hesapId;
+        s.KarneId = null;
+        s.SeriNo = null;
+        await KarneVarsayilaniAsync(s);
+    }
+
+    private async Task KarneSecildiAsync(Satir s, Guid? karneId)
+    {
+        s.KarneId = karneId;
+        s.SeriNo = null;
+        await SiradakiYaprakAsync(s);
+    }
+
+    // Karnenin ilk boş yaprağı; aynı bordroda aynı karneden önceki satırların aldığı yapraklar atlanır.
+    private async Task SiradakiYaprakAsync(Satir s)
+    {
+        if (s.KarneId is not { } karneId)
+        {
+            return;
+        }
+
+        if (!_karneDetaylari.TryGetValue(karneId, out var detay))
+        {
+            var sonuc = await Api.GetAsync<KarneDetayi>($"api/kasabanka/cek-senet/karneler/{karneId}");
+            if (!sonuc.BasariliMi)
+            {
+                return;
+            }
+
+            detay = _karneDetaylari[karneId] = sonuc.Deger;
+        }
+
+        var alinmis = _satirlar.Where(x => x != s && x.KarneId == karneId && x.SeriNo is not null).Select(x => EvrakSeriNo.Normalize(x.SeriNo!)).ToHashSet();
+        s.SeriNo = detay.Yapraklar.FirstOrDefault(y => y.Durum == YaprakDurumu.Bos && !alinmis.Contains(y.SeriNo))?.SeriNo;
     }
 
     private async Task<IEnumerable<CariSecim>> CariAraAsync(string? arama, CancellationToken cancellationToken)
@@ -305,7 +390,7 @@ public partial class BordroFormu
             _cari!.Id, DateOnly.FromDateTime(_tarih!.Value), Bos(_aciklama),
             _satirlar.Select(s => new VerilenEvrakGirdisi(
                 s.Tur, s.SeriNo!.Trim(), DateOnly.FromDateTime(s.Vade!.Value), s.Tutar, s.Tur == EvrakTuru.Senet ? s.ParaBirimi : null,
-                s.Tur == EvrakTuru.Cek ? s.KendiHesapId : null, null, null, Bos(s.Aciklama))).ToList()), islemAnahtari: _anahtar.Deger);
+                s.Tur == EvrakTuru.Cek ? s.KendiHesapId : null, null, null, Bos(s.Aciklama), s.KarneId)).ToList()), islemAnahtari: _anahtar.Deger);
 
     private static string? Bos(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

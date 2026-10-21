@@ -1,0 +1,247 @@
+@page "/cek-senet/karneler"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Çek Karneleri ve Senet Defterleri" GeriAdres="cek-senet" Ikon="@Icons.Material.Filled.MenuBook">
+    <AltIcerik><span>Verdiğiniz çek ve senetlerin yaprak takibi: sıradaki yaprak, kullanılan, yırtık/kayıp</span></AltIcerik>
+    <Islemler>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="YeniAsync">
+                @(_tur == EvrakTuru.Cek ? "Yeni çek karnesi" : "Yeni senet defteri")
+            </MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<div class="d-flex flex-wrap align-center gap-3 mb-3">
+    <div class="tur-sekmeleri mb-0">
+        <button type="button" class="tur-sekmesi @(_tur == EvrakTuru.Cek ? "secili" : "")" style="--vurgu:#3B82F6" @onclick="() => TurAsync(EvrakTuru.Cek)">
+            <MudIcon Icon="@CekSenetMetinleri.TurIkonu(EvrakTuru.Cek)" Size="Size.Small" /> Çek karneleri
+        </button>
+        <button type="button" class="tur-sekmesi @(_tur == EvrakTuru.Senet ? "secili" : "")" style="--vurgu:#8B5CF6" @onclick="() => TurAsync(EvrakTuru.Senet)">
+            <MudIcon Icon="@CekSenetMetinleri.TurIkonu(EvrakTuru.Senet)" Size="Size.Small" /> Senet defterleri
+        </button>
+    </div>
+    <MudSwitch T="bool" Value="_kapalilar" ValueChanged="KapalilarAsync" Color="Color.Primary" Label="Kapatılanları da göster" />
+</div>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_karneler is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else if (_karneler.Count == 0)
+{
+    <BosDurum Ikon="@Icons.Material.Outlined.MenuBook" Baslik="@(_tur == EvrakTuru.Cek ? "Çek karnesi yok" : "Senet defteri yok")"
+              Aciklama="Karneyi tanımlarsanız evrak verirken sıradaki yaprak kendiliğinden gelir, kullanılan ve yırtılan yapraklar izlenir." />
+}
+else
+{
+    <div class="karne-kartlari">
+        @foreach (var (k, i) in _karneler.Select((k, i) => (k, i)))
+        {
+            <div class="karne-karti kart kart-hover belirme @(k.Id == _secili?.Ozet.Id ? "secili" : "") @(k.AktifMi ? "" : "kapali")" style="--i:@i"
+                 @onclick="() => SecAsync(k)">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@(k.Tur == EvrakTuru.Cek ? Icons.Material.Filled.AccountBalance : Icons.Material.Filled.MenuBook)" Size="Size.Small" />
+                    <b>@(k.HesapAdi ?? "Senet defteri")</b>
+                    <MudSpacer />
+                    @if (!k.AktifMi)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">Kapalı</MudChip>
+                    }
+                    else if (k.Kalan == 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Error">Doldu</MudChip>
+                    }
+                    else if (k.AzaldiMi)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning" Icon="@Icons.Material.Filled.WarningAmber">Azaldı</MudChip>
+                    }
+                </div>
+                <div class="karne-aralik">@k.BaslangicSeri – @k.BitisSeri</div>
+                <div class="karne-cubugu" title="@($"{k.Kullanilan} kullanıldı · {k.IptalEdilen} iptal · {k.Kalan} boş")">
+                    <span class="kullanildi" style="width:@Yuzde(k.Kullanilan, k.YaprakSayisi)"></span>
+                    <span class="iptal" style="width:@Yuzde(k.IptalEdilen, k.YaprakSayisi)"></span>
+                </div>
+                <div class="karne-sayilar">
+                    <span><i class="nokta kullanildi"></i>@k.Kullanilan kullanıldı</span>
+                    <span><i class="nokta iptal"></i>@k.IptalEdilen iptal</span>
+                    <span><i class="nokta bos"></i>@k.Kalan boş</span>
+                </div>
+                @if (k.SiradakiSeri is { } siradaki)
+                {
+                    <div class="karne-siradaki">Sıradaki yaprak: <b>@siradaki</b></div>
+                }
+                @if (k.Aciklama is not null)
+                {
+                    <div class="ozet-alt">@k.Aciklama</div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (_secili is { } d)
+    {
+        <div class="kart belirme pa-4 mt-4">
+            <div class="d-flex flex-wrap align-center gap-2 mb-3">
+                <MudText Typo="Typo.h6">@(d.Ozet.HesapAdi ?? "Senet defteri") · @d.Ozet.BaslangicSeri – @d.Ozet.BitisSeri</MudText>
+                <MudSpacer />
+                @if (!Oturum.SaltOkunurMu)
+                {
+                    @if (d.Ozet.Kullanilan == 0)
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="() => SilAsync(d.Ozet)">Sil</MudButton>
+                    }
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@(d.Ozet.AktifMi ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                               OnClick="() => DurumAsync(d.Ozet)">@(d.Ozet.AktifMi ? "Karneyi kapat" : "Yeniden aç")</MudButton>
+                }
+            </div>
+            <div class="ozet-alt mb-2">Boş yaprağa tıklayıp yırtık/kayıp olarak iptal edin; iptal edilene tıklayıp geri alın. Kullanılan yaprak evrakı açar.</div>
+            <div class="yaprak-izgarasi">
+                @foreach (var y in d.Yapraklar)
+                {
+                    @if (y.Durum == YaprakDurumu.Kullanildi)
+                    {
+                        <a class="yaprak kullanildi" href="@($"cek-senet/{y.EvrakId}")" title="@($"{y.CariUnvan} · {Bicim.Tutar(y.Tutar ?? 0)} · vade {Bicim.Tarih(y.VadeTarihi)}")">
+                            <span class="yaprak-no">@y.SeriNo</span>
+                            <span class="yaprak-alt">@y.CariUnvan</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <button type="button" class="yaprak @(y.Durum == YaprakDurumu.Iptal ? "iptal" : "bos") @(y.SeriNo == d.Ozet.SiradakiSeri ? "siradaki" : "")"
+                                disabled="@Oturum.SaltOkunurMu" title="@(y.IptalNedeni ?? (y.SeriNo == d.Ozet.SiradakiSeri ? "Sıradaki yaprak" : "Boş"))"
+                                @onclick="() => YaprakAsync(d.Ozet, y)">
+                            <span class="yaprak-no">@y.SeriNo</span>
+                            <span class="yaprak-alt">@(y.Durum == YaprakDurumu.Iptal ? y.IptalNedeni : y.SeriNo == d.Ozet.SiradakiSeri ? "sıradaki" : "boş")</span>
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private EvrakTuru _tur = EvrakTuru.Cek;
+    private bool _kapalilar;
+    private List<KarneOzeti>? _karneler;
+    private KarneDetayi? _secili;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<KarneOzeti>>($"api/kasabanka/cek-senet/karneler?tur={_tur}" + (_kapalilar ? "" : "&aktif=true"));
+        _hata = sonuc.Hata;
+        _karneler = sonuc.BasariliMi ? sonuc.Deger : [];
+        if (_secili is { } s && _karneler.FirstOrDefault(k => k.Id == s.Ozet.Id) is { } guncel)
+        {
+            await SecAsync(guncel);
+        }
+        else
+        {
+            _secili = null;
+        }
+    }
+
+    private async Task TurAsync(EvrakTuru tur)
+    {
+        _tur = tur;
+        _secili = null;
+        await YukleAsync();
+    }
+
+    private async Task KapalilarAsync(bool goster)
+    {
+        _kapalilar = goster;
+        await YukleAsync();
+    }
+
+    private async Task SecAsync(KarneOzeti k)
+    {
+        var sonuc = await Api.GetAsync<KarneDetayi>($"api/kasabanka/cek-senet/karneler/{k.Id}");
+        _hata = sonuc.Hata;
+        _secili = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task YeniAsync()
+    {
+        var dialog = await DialogService.ShowAsync<KarneDialog>(_tur == EvrakTuru.Cek ? "Yeni çek karnesi" : "Yeni senet defteri",
+            new DialogParameters<KarneDialog> { { x => x.Tur, _tur } }, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: KarneOzeti yeni })
+        {
+            Snackbar.Add("Karne tanımlandı.", Severity.Success);
+            await YukleAsync();
+            await SecAsync(yeni);
+        }
+    }
+
+    private async Task YaprakAsync(KarneOzeti k, KarneYapragi y)
+    {
+        ApiSonucu<KarneDetayi> sonuc;
+        if (y.Durum == YaprakDurumu.Iptal)
+        {
+            if (!await Onay.SorAsync("İptali geri al", $"{y.SeriNo} numaralı yaprak yeniden boş sayılsın mı?", "Geri al"))
+            {
+                return;
+            }
+
+            sonuc = await Api.DeleteAsync<KarneDetayi>($"api/kasabanka/cek-senet/karneler/{k.Id}/yaprak-iptal/{Uri.EscapeDataString(y.SeriNo)}");
+        }
+        else
+        {
+            var dialog = await DialogService.ShowAsync<YaprakIptalDialog>($"Yaprağı iptal et: {y.SeriNo}",
+                new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+            if (await dialog.Result is not { Canceled: false, Data: string neden })
+            {
+                return;
+            }
+
+            sonuc = await Api.PostAsync<KarneDetayi>($"api/kasabanka/cek-senet/karneler/{k.Id}/yaprak-iptal", new YaprakIptalIstegi(y.SeriNo, neden));
+        }
+
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            await YukleAsync();
+        }
+    }
+
+    private async Task DurumAsync(KarneOzeti k)
+    {
+        var sonuc = await Api.PostAsync<KarneOzeti>($"api/kasabanka/cek-senet/karneler/{k.Id}/{(k.AktifMi ? "kapat" : "ac")}", new { });
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(k.AktifMi ? "Karne kapatıldı; artık yaprak önerilmez." : "Karne yeniden açıldı.", Severity.Info);
+            await YukleAsync();
+        }
+    }
+
+    private async Task SilAsync(KarneOzeti k)
+    {
+        if (!await Onay.SorAsync("Karneyi sil", $"{k.BaslangicSeri} – {k.BitisSeri} karnesi silinsin mi?", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/kasabanka/cek-senet/karneler/{k.Id}");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            _secili = null;
+            await YukleAsync();
+        }
+    }
+
+    private static string Yuzde(int adet, int toplam) =>
+        (toplam == 0 ? 0 : adet * 100.0 / toplam).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "%";
+}

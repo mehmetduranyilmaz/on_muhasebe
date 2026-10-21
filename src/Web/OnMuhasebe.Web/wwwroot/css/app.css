@@ -3089,3 +3089,83 @@ td.soluk {
 .whatsapp-dugmesi { --mud-palette-primary: #25D366; color: #128C7E !important; border-color: color-mix(in srgb, #25D366 55%, transparent) !important; }
 .whatsapp-dugmesi:hover { background: color-mix(in srgb, #25D366 10%, transparent) !important; }
 .whatsapp-dugmesi .mud-icon-root { color: #25D366; }
+
+/* ---------- Çek karnesi / senet defteri ---------- */
+.karne-kartlari {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+}
+
+.karne-karti {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.karne-karti.secili { border-color: var(--om-mavi); box-shadow: 0 0 0 1px var(--om-mavi); }
+.karne-karti.kapali { opacity: .65; }
+.karne-aralik { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-weight: 700; letter-spacing: .02em; }
+
+.karne-cubugu {
+    display: flex;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--om-turkuaz) 22%, transparent);
+}
+
+.karne-cubugu span { height: 100%; transition: width .6s var(--om-yumusak); }
+.karne-cubugu .kullanildi { background: var(--om-mavi); }
+.karne-cubugu .iptal { background: var(--mud-palette-error); }
+
+.karne-sayilar { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .82rem; color: var(--mud-palette-text-secondary); }
+.karne-sayilar .nokta { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.nokta.kullanildi { background: var(--om-mavi); }
+.nokta.iptal { background: var(--mud-palette-error); }
+.nokta.bos { background: color-mix(in srgb, var(--om-turkuaz) 45%, transparent); }
+.karne-siradaki { font-size: .88rem; }
+
+.yaprak-izgarasi {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 8px;
+}
+
+.yaprak {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: var(--mud-palette-surface);
+    color: inherit;
+    text-align: left;
+    text-decoration: none;
+    font: inherit;
+    cursor: pointer;
+    transition: transform .15s var(--om-yay), box-shadow .15s;
+    animation: om-belir .3s var(--om-yumusak) both;
+}
+
+.yaprak:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .35); }
+.yaprak-no { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .82rem; font-weight: 700; }
+.yaprak-alt { font-size: .72rem; color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yaprak.bos { border-style: dashed; border-color: color-mix(in srgb, var(--om-turkuaz) 60%, transparent); }
+.yaprak.siradaki { border: 2px solid var(--om-turkuaz); background: color-mix(in srgb, var(--om-turkuaz) 10%, var(--mud-palette-surface)); }
+.yaprak.kullanildi { background: color-mix(in srgb, var(--om-mavi) 12%, var(--mud-palette-surface)); border-color: color-mix(in srgb, var(--om-mavi) 45%, transparent); }
+.yaprak.iptal { background: color-mix(in srgb, var(--mud-palette-error) 10%, var(--mud-palette-surface)); border-color: color-mix(in srgb, var(--mud-palette-error) 45%, transparent); }
+.yaprak.iptal .yaprak-no { text-decoration: line-through; }
+
+.karne-onizleme {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--om-mavi) 8%, transparent);
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}

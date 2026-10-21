@@ -1,0 +1,23 @@
+@* Karnedeki boş yaprağın iptal nedeni (yırtıldı, kayboldu, hatalı yazıldı...). *@
+<MudDialog>
+    <DialogContent>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach (var hazir in new[] { "Yırtıldı", "Kayboldu", "Hatalı yazıldı", "Bankaya iade edildi" })
+            {
+                <button type="button" class="durum-filtresi @(_neden == hazir ? "secili" : "")" style="--renk:#EF4444" @onclick="() => _neden = hazir">@hazir</button>
+            }
+        </div>
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_neden" Label="Neden" MaxLength="200" Immediate="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@string.IsNullOrWhiteSpace(_neden)"
+                   OnClick="() => MudDialog.Close(DialogResult.Ok(_neden!.Trim()))">Yaprağı iptal et</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string? _neden;
+}

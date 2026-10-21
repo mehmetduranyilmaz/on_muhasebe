@@ -36,6 +36,9 @@ public sealed class ApiIstemcisi(IHttpClientFactory httpClientFactory)
     public Task<ApiSonucu> DeleteAsync(string adres, CancellationToken cancellationToken = default, string? islemAnahtari = null) =>
         GonderAsync(() => YazAsync(HttpMethod.Delete, adres, null, islemAnahtari, cancellationToken), cancellationToken);
 
+    public Task<ApiSonucu<T>> DeleteAsync<T>(string adres, CancellationToken cancellationToken = default, string? islemAnahtari = null) =>
+        GonderAsync<T>(() => YazAsync(HttpMethod.Delete, adres, null, islemAnahtari, cancellationToken), cancellationToken);
+
     private Task<HttpResponseMessage> YazAsync(HttpMethod metot, string adres, HttpContent? icerik, string? islemAnahtari, CancellationToken cancellationToken)
     {
         var istek = new HttpRequestMessage(metot, adres) { Content = icerik };

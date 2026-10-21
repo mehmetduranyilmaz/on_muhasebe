@@ -47,12 +47,13 @@
                         <span class="ozet-alt">@Bicim.Tutar(s.Tutar, ParaBirimiOf(s))</span>
                     }
                     <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" aria-label="Kopyala" OnClick="() => Kopyala(s)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" aria-label="Kopyala" OnClick="() => KopyalaAsync(s)" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="() => _satirlar.Remove(s)" />
                 </div>
                 <MudGrid Spacing="2">
                     <MudItem xs="6" md="3">
-                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(s.Tur == EvrakTuru.Cek ? "Çek no" : "Senet no")" @bind-Value="s.SeriNo" MaxLength="30" Required="true" />
+                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(s.Tur == EvrakTuru.Cek ? "Çek no" : "Senet no")" @bind-Value="s.SeriNo" MaxLength="30" Required="true"
+                                      HelperText="@KarneIpucu(s)" />
                     </MudItem>
                     <MudItem xs="6" md="3">
                         <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Vade" @bind-Date="s.Vade" DateFormat="dd.MM.yyyy" Required="true" />
@@ -120,19 +121,34 @@
                             </MudItem>
                         }
                     }
-                    else if (s.Tur == EvrakTuru.Cek)
+                    else
                     {
-                        <MudItem xs="12" md="6">
-                            <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Çekin banka hesabı" @bind-Value="s.KendiHesapId" Required="true"
-                                       AnchorOrigin="Origin.BottomCenter" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountBalance">
-                                @foreach (var h in _hesaplar.Where(h => h.Tur == HesapTuru.Banka && h.AktifMi))
+                        @if (s.Tur == EvrakTuru.Cek)
+                        {
+                            <MudItem xs="12" md="4">
+                                <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Çekin banka hesabı" Value="s.KendiHesapId"
+                                           ValueChanged="h => HesapDegistiAsync(s, h)" Required="true"
+                                           AnchorOrigin="Origin.BottomCenter" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountBalance">
+                                    @foreach (var h in _hesaplar.Where(h => h.Tur == HesapTuru.Banka && h.AktifMi))
+                                    {
+                                        <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @h.ParaBirimi</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                        }
+                        <MudItem xs="12" md="@(s.Tur == EvrakTuru.Cek ? 4 : 6)">
+                            <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(s.Tur == EvrakTuru.Cek ? "Çek karnesi" : "Senet defteri")"
+                                       Value="s.KarneId" ValueChanged="k => KarneSecildiAsync(s, k)" AnchorOrigin="Origin.BottomCenter"
+                                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.MenuBook">
+                                <MudSelectItem T="Guid?" Value="@((Guid?)null)">Karnesiz (no elle)</MudSelectItem>
+                                @foreach (var k in Karneleri(s))
                                 {
-                                    <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @h.ParaBirimi</MudSelectItem>
+                                    <MudSelectItem T="Guid?" Value="k.Id">@k.BaslangicSeri – @k.BitisSeri · @k.Kalan boş</MudSelectItem>
                                 }
                             </MudSelect>
                         </MudItem>
                     }
-                    <MudItem xs="12" md="@(Alinan || s.Tur == EvrakTuru.Senet ? 12 : 6)">
+                    <MudItem xs="12" md="@(Alinan ? 12 : s.Tur == EvrakTuru.Senet ? 6 : 4)">
                         <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Not" @bind-Value="s.Aciklama" MaxLength="500" />
                     </MudItem>
                 </MudGrid>
@@ -140,8 +156,8 @@
         }
 
         <div class="d-flex flex-wrap gap-2 mt-3 mb-4">
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RequestQuote" OnClick="() => Ekle(EvrakTuru.Cek)">Çek ekle</MudButton>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" OnClick="() => Ekle(EvrakTuru.Senet)">Senet ekle</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RequestQuote" OnClick="() => EkleAsync(EvrakTuru.Cek)">Çek ekle</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" OnClick="() => EkleAsync(EvrakTuru.Senet)">Senet ekle</MudButton>
         </div>
     </MudItem>
 

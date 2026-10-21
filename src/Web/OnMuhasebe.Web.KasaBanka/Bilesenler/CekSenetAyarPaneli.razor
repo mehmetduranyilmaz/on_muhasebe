@@ -17,6 +17,10 @@
             <div class="ayar-aciklama">Karekodlu çeklerin hepsinde yazılıdır; kara liste kontrolü bu numarayla güvenilir yapılır.</div>
             <MudSwitch T="bool" @bind-Value="_senetKimlik" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu" Label="Senette borçlu VKN/TCKN zorunlu" Class="mt-2" />
             <div class="ayar-aciklama">Kapalıyken numara girilmezse kontrol yalnızca isimle yapılır.</div>
+            <div class="ayar-baslik mt-4">Çek karnesi / senet defteri</div>
+            <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_karneEsigi" Label="Azalma uyarısı (boş yaprak)" Min="0" Max="500"
+                             Disabled="Oturum.SaltOkunurMu" Style="max-width:220px" HelperText="0: uyarma" />
+            <div class="ayar-aciklama">Karnede bu kadar ya da daha az boş yaprak kalınca yeni karne almanız için uyarılırsınız.</div>
         </MudItem>
         <MudItem xs="12" md="6">
             <div class="ayar-baslik">Riskli keşideci / borçlu</div>
@@ -45,8 +49,9 @@
     private bool _cekKimlik;
     private bool _senetKimlik;
     private RiskDavranisi _risk;
+    private int _karneEsigi;
 
-    private CekSenetAyarlari Yeni => new(_cekKimlik, _senetKimlik, _risk);
+    private CekSenetAyarlari Yeni => new(_cekKimlik, _senetKimlik, _risk, _karneEsigi);
 
     protected override async Task OnInitializedAsync()
     {
@@ -60,7 +65,7 @@
     private void Ayarla(CekSenetAyarlari a)
     {
         _ayar = a;
-        (_cekKimlik, _senetKimlik, _risk) = (a.KesideciKimlikZorunlu, a.SenetBorcluKimlikZorunlu, a.RiskDavranisi);
+        (_cekKimlik, _senetKimlik, _risk, _karneEsigi) = (a.KesideciKimlikZorunlu, a.SenetBorcluKimlikZorunlu, a.RiskDavranisi, a.KarneUyariEsigi);
     }
 
     private async Task KaydetAsync()
