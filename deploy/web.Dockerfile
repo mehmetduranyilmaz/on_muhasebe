@@ -8,7 +8,7 @@ RUN dotnet publish src/Web/OnMuhasebe.Web -c Release -o /yayin
 COPY deploy/csp.cs deploy/
 RUN dotnet run deploy/csp.cs -- /yayin/wwwroot/index.html /yayin/csp.caddy
 
-FROM caddy:2.11-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+FROM caddy:2.11-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=derleme /yayin/csp.caddy /etc/caddy/csp.caddy
 COPY --from=derleme /yayin/wwwroot /srv
