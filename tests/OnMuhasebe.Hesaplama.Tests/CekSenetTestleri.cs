@@ -25,7 +25,7 @@ public class CekSenetTestleri
     }
 
     [Theory]
-    [InlineData(EvrakDurumu.Portfoyde, new[] { EvrakIslemi.TahsileVerme, EvrakIslemi.ElTahsil, EvrakIslemi.Ciro, EvrakIslemi.Karsiliksiz, EvrakIslemi.Iade, EvrakIslemi.TeminataVerme })]
+    [InlineData(EvrakDurumu.Portfoyde, new[] { EvrakIslemi.TahsileVerme, EvrakIslemi.ElTahsil, EvrakIslemi.Ciro, EvrakIslemi.Karsiliksiz, EvrakIslemi.Iade, EvrakIslemi.TeminataVerme, EvrakIslemi.Oteleme })]
     [InlineData(EvrakDurumu.Tahsilde, new[] { EvrakIslemi.TahsildenGeriAlma, EvrakIslemi.Tahsil, EvrakIslemi.Karsiliksiz })]
     [InlineData(EvrakDurumu.CiroEdildi, new[] { EvrakIslemi.CirodanTahsil, EvrakIslemi.CirodanGeriAlma, EvrakIslemi.CirodanKarsiliksiz })]
     [InlineData(EvrakDurumu.Karsiliksiz, new[] { EvrakIslemi.HukukiTakip, EvrakIslemi.KarsiliksizdanTahsil, EvrakIslemi.KarsiliksizIade })]
