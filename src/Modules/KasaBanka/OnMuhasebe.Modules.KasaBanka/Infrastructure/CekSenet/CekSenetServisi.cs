@@ -346,7 +346,7 @@ internal sealed class CekSenetServisi(
             ciro = (ciroCari.Id, ct2.Deger.Tutar, ct2.Deger.Kur);
         }
 
-        var uygulama = evrak.Uygula(gecis, bordro.Id, Guid.CreateVersion7(), istek.Tarih, hesap?.Id, ciro, istek.Tutar, istek.Aciklama);
+        var uygulama = evrak.Uygula(gecis, bordro.Id, Guid.CreateVersion7(), istek.Tarih, hesap?.Id, ciro, istek.Tutar, istek.Aciklama, istek.YeniVade);
         if (!uygulama.BasariliMi)
         {
             return uygulama.Hata;

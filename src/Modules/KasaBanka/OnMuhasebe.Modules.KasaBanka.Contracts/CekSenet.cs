@@ -61,7 +61,9 @@ public enum EvrakIslemi
     Odeme,
     VerilenIade,
     VerilenKarsiliksiz,
-    KarsiliksizGeriAlma
+    KarsiliksizGeriAlma,
+    // Öteleme: portföydeki alınan evrakın ibraz/vade tarihini ileri alma (keşideci "çekimi geç takasa sor" der). Durum değişmez.
+    Oteleme
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<RiskDavranisi>))]
@@ -140,7 +142,9 @@ public sealed record EvrakIslemIstegi(
     decimal? Tutar,
     decimal? Kur,
     decimal? CariKuru,
-    string? Aciklama);
+    string? Aciklama,
+    // Yalnızca Öteleme işleminde: evrakın yeni ibraz/vade tarihi.
+    DateOnly? YeniVade = null);
 
 public sealed record BordroSonucu(Guid BordroId, string BordroNo, IReadOnlyList<Guid> EvrakIdleri);
 

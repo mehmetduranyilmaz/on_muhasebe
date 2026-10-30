@@ -71,6 +71,8 @@ internal static class EvrakGecisleri
         new(EvrakIslemi.Iade, EvrakYonu.Alinan, [EvrakDurumu.Portfoyde], EvrakDurumu.IadeEdildi, HesapIhtiyaci.Yok, CariEtkisi.MusteriIade),
         new(EvrakIslemi.TeminataVerme, EvrakYonu.Alinan, [EvrakDurumu.Portfoyde], EvrakDurumu.Teminatta, HesapIhtiyaci.Banka, CariEtkisi.Yok),
         new(EvrakIslemi.TeminattanAlma, EvrakYonu.Alinan, [EvrakDurumu.Teminatta], EvrakDurumu.Portfoyde, HesapIhtiyaci.Yok, CariEtkisi.Yok),
+        // Öteleme: portföydeki evrakın vadesi ileri alınır; durum, cari ve kasa etkilenmez.
+        new(EvrakIslemi.Oteleme, EvrakYonu.Alinan, [EvrakDurumu.Portfoyde], EvrakDurumu.Portfoyde, HesapIhtiyaci.Yok, CariEtkisi.Yok),
         new(EvrakIslemi.Odeme, EvrakYonu.Verilen, [EvrakDurumu.Verildi], EvrakDurumu.Odendi, HesapIhtiyaci.Kayitli, CariEtkisi.Yok, ParaGirisi: false),
         new(EvrakIslemi.VerilenIade, EvrakYonu.Verilen, [EvrakDurumu.Verildi], EvrakDurumu.IadeAlindi, HesapIhtiyaci.Yok, CariEtkisi.TedarikciIade),
         new(EvrakIslemi.VerilenKarsiliksiz, EvrakYonu.Verilen, [EvrakDurumu.Verildi], EvrakDurumu.Karsiliksiz, HesapIhtiyaci.Yok, CariEtkisi.TedarikciKarsiliksiz),

@@ -152,7 +152,7 @@ internal sealed class Evrak : FirmaEntity
     // Geçişi uygular. hesapId: tahsil/teminat/ödeme hesabı; ciroCari: ciro edilen cari ve tutarı; tutar: karşılıksızdan kısmi tahsil.
     public Sonuc<EvrakHareketi> Uygula(
         Gecis gecis, Guid bordroId, Guid islemId, DateOnly tarih, Guid? hesapId, (Guid Id, decimal Tutar, decimal Kur)? ciroCari, decimal? tutar,
-        string? aciklama)
+        string? aciklama, DateOnly? yeniVade = null)
     {
         if (gecis.Yon != Yon || !gecis.Kaynaklar.Contains(Durum))
         {
@@ -162,6 +162,11 @@ internal sealed class Evrak : FirmaEntity
         if (tarih < SonHareketTarihi)
         {
             return KasaBankaHatalari.EvrakTarihiGeride;
+        }
+
+        if (gecis.Islem == EvrakIslemi.Oteleme && (yeniVade is not { } yv || yv <= VadeTarihi))
+        {
+            return KasaBankaHatalari.OtelemeTarihiGecersiz;
         }
 
         var islemTutari = Tutar;
@@ -202,6 +207,9 @@ internal sealed class Evrak : FirmaEntity
                 break;
             case EvrakIslemi.KarsiliksizdanTahsil:
                 TahsilEdilen += islemTutari;
+                break;
+            case EvrakIslemi.Oteleme:
+                VadeTarihi = yeniVade!.Value;
                 break;
         }
 

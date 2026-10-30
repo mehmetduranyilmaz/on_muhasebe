@@ -118,6 +118,7 @@ internal static class CekSenetIslemleri
             RuleFor(x => x.Tutar).GreaterThan(0).When(x => x.Tutar is not null);
             RuleFor(x => x.Tutar).Null().When(x => x.Islem != EvrakIslemi.KarsiliksizdanTahsil)
                 .WithMessage("Tutar yalnızca karşılıksızdan tahsilde girilir.");
+            RuleFor(x => x.YeniVade).NotNull().When(x => x.Islem == EvrakIslemi.Oteleme).WithMessage("Yeni vade gerekli.");
             RuleFor(x => x.Aciklama).MaximumLength(500);
         }
     }

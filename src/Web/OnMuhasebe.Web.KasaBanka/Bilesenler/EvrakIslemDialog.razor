@@ -39,6 +39,13 @@
             <MudItem xs="12" sm="6">
                 <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="İşlem tarihi" @bind-Date="_tarih" DateFormat="dd.MM.yyyy" Required="true" />
             </MudItem>
+            @if (Islem == EvrakIslemi.Oteleme)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Yeni vade" @bind-Date="_yeniVade" DateFormat="dd.MM.yyyy" Required="true"
+                                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Update" />
+                </MudItem>
+            }
             @if (HesapGerekli)
             {
                 <MudItem xs="12" sm="6">
@@ -96,6 +103,7 @@
     [Parameter, EditorRequired] public IReadOnlyList<HesapOzeti> Hesaplar { get; set; } = [];
 
     private DateTime? _tarih = DateTime.Today;
+    private DateTime? _yeniVade;
     private Guid? _hesapId;
     private CariSecim? _cari;
     private decimal _tutar;
@@ -114,7 +122,8 @@
         && (Girdi == IslemGirdisi.Banka ? h.Tur == HesapTuru.Banka : h.Tur is HesapTuru.Kasa or HesapTuru.Banka));
 
     private bool HazirMi => _tarih is not null && (!HesapGerekli || _hesapId is not null) && (Girdi != IslemGirdisi.Cari || _cari is not null)
-                            && (Islem != EvrakIslemi.KarsiliksizdanTahsil || Evraklar.Count > 1 || _tutar > 0);
+                            && (Islem != EvrakIslemi.KarsiliksizdanTahsil || Evraklar.Count > 1 || _tutar > 0)
+                            && (Islem != EvrakIslemi.Oteleme || _yeniVade is not null);
 
     protected override void OnInitialized()
     {
@@ -135,7 +144,8 @@
         var tutar = Islem == EvrakIslemi.KarsiliksizdanTahsil && Evraklar.Count == 1 && _tutar != Evraklar[0].KalanTutar ? _tutar : (decimal?)null;
         var istek = new EvrakIslemIstegi(Islem, DateOnly.FromDateTime(_tarih!.Value), Evraklar.Select(e => e.Id).ToList(),
             HesapGerekli ? _hesapId : null, Girdi == IslemGirdisi.Cari ? _cari?.Id : null, tutar, null, null,
-            string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim());
+            string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim(),
+            Islem == EvrakIslemi.Oteleme && _yeniVade is { } yv ? DateOnly.FromDateTime(yv) : null);
         var sonuc = await Api.PostAsync<BordroSonucu>("api/kasabanka/cek-senet/islemler", istek, islemAnahtari: _anahtar.Deger);
         _anahtar.Sonuc(sonuc.Hata);
         if (sonuc.BasariliMi)

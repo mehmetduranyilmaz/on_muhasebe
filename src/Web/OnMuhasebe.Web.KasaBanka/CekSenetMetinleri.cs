@@ -81,7 +81,9 @@ public static class CekSenetMetinleri
         EvrakIslemi.Odeme => "Ödendi",
         EvrakIslemi.VerilenIade => "İade alındı",
         EvrakIslemi.VerilenKarsiliksiz => "Karşılıksız çıktı",
-        _ => "Karşılıksız evrakı geri aldık"
+        EvrakIslemi.Oteleme => "Vadeyi ötele",
+        EvrakIslemi.KarsiliksizGeriAlma => "Karşılıksız evrakı geri aldık",
+        _ => islem.ToString()
     };
 
     // İşlemin cari ve kasa etkisinin kullanıcıya açıklaması.
@@ -106,6 +108,7 @@ public static class CekSenetMetinleri
         EvrakIslemi.VerilenIade => "Tedarikçi evrakı geri verdi; tedarikçinin borçlanması geri alınır.",
         EvrakIslemi.VerilenKarsiliksiz => "Verdiğimiz evrak ödenemedi; tedarikçinin alacağı yeniden doğar.",
         EvrakIslemi.KarsiliksizGeriAlma => "Karşılıksız çıkan evrakımız tedarikçiden geri alındı. Cari etkilenmez.",
+        EvrakIslemi.Oteleme => "Keşidecinin talebiyle evrak daha geç ibraz edilir; yeni vade girilir. Durum, cari ve kasa etkilenmez.",
         _ => ""
     };
 
@@ -120,6 +123,7 @@ public static class CekSenetMetinleri
         EvrakIslemi.Karsiliksiz or EvrakIslemi.CirodanKarsiliksiz or EvrakIslemi.VerilenKarsiliksiz => Icons.Material.Filled.Report,
         EvrakIslemi.HukukiTakip => Icons.Material.Filled.Gavel,
         EvrakIslemi.TeminataVerme => Icons.Material.Filled.Shield,
+        EvrakIslemi.Oteleme => Icons.Material.Filled.Update,
         EvrakIslemi.Iade or EvrakIslemi.KarsiliksizIade or EvrakIslemi.VerilenIade or EvrakIslemi.KarsiliksizGeriAlma => Icons.Material.Filled.KeyboardReturn,
         _ => Icons.Material.Filled.Undo
     };
@@ -133,6 +137,7 @@ public static class CekSenetMetinleri
         EvrakIslemi.TahsileVerme or EvrakIslemi.TeminataVerme or EvrakIslemi.Giris => "#3B82F6",
         EvrakIslemi.Cikis => "#F59E0B",
         EvrakIslemi.Iade or EvrakIslemi.KarsiliksizIade or EvrakIslemi.VerilenIade or EvrakIslemi.KarsiliksizGeriAlma => "#D97706",
+        EvrakIslemi.Oteleme => "#0EA5E9",
         _ => "#64748B"
     };
 

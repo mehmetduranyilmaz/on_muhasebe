@@ -6,6 +6,7 @@ internal static class KasaBankaHatalari
 {
     public static readonly Hata HesapBulunamadi = Hata.Bulunamadi("hesap_bulunamadi", "Kasa/banka hesabı bulunamadı.");
     public static readonly Hata TeminatBulunamadi = Hata.Bulunamadi("teminat_bulunamadi", "Teminat kaydı bulunamadı.");
+    public static readonly Hata OtelemeTarihiGecersiz = Hata.Dogrulama("oteleme_tarihi", "Öteleme için yeni vade, mevcut vadeden sonra olmalıdır.");
     public static readonly Hata SubeBulunamadi = Hata.Bulunamadi("sube_bulunamadi", "Şube bulunamadı.");
     public static readonly Hata SubeKullaniliyor = Hata.IsKurali("sube_kullaniliyor", "Bu şube bir hesaba bağlı; önce hesaplardan çıkarın.");
     public static readonly Hata IslemBulunamadi = Hata.Bulunamadi("islem_bulunamadi", "İşlem bulunamadı.");
