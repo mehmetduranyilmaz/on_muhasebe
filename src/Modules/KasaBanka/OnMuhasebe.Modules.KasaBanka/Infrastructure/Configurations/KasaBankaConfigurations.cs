@@ -14,6 +14,7 @@ internal sealed class KasaHesabiConfiguration : IEntityTypeConfiguration<KasaHes
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(15);
         builder.Property(x => x.ParaBirimi).HasMaxLength(3);
         builder.Property(x => x.BankaAdi).HasMaxLength(100);
+        builder.Property(x => x.BankaHesapTuru).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Sube).HasMaxLength(100);
         builder.Property(x => x.HesapNo).HasMaxLength(50);
         builder.Property(x => x.Iban).HasMaxLength(34);

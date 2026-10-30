@@ -13,6 +13,16 @@ public enum HesapTuru
     Pos
 }
 
+// Banka hesabının alt türü (yalnızca HesapTuru.Banka için anlamlıdır). Döviz ayrımı para biriminden gelir.
+[JsonConverter(typeof(JsonStringEnumConverter<BankaHesapTuru>))]
+public enum BankaHesapTuru
+{
+    Vadesiz,
+    Vadeli,
+    // Kredili mevduat hesabı (KMH / artı para).
+    Kmh
+}
+
 [JsonConverter(typeof(JsonStringEnumConverter<KasaHareketTuru>))]
 public enum KasaHareketTuru
 {
@@ -56,6 +66,7 @@ public sealed record HesapKaydetIstegi(
     string? Iban,
     decimal? Limit,
     string? Aciklama,
+    BankaHesapTuru? BankaHesapTuru = null,
     uint Surum = 0);
 
 public sealed record HesapOzeti(
@@ -83,6 +94,7 @@ public sealed record HesapDetayi(
     string? Iban,
     decimal? Limit,
     string? Aciklama,
+    BankaHesapTuru? BankaHesapTuru,
     bool AktifMi,
     decimal Bakiye,
     decimal BakiyeTl,

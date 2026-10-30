@@ -234,7 +234,7 @@ internal static class HesapIslemleri
         db.Hesaplar.AsNoTracking()
             .Where(h => h.Id == id)
             .Select(h => new HesapDetayi(
-                h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.BankaAdi, h.Sube, h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.AktifMi,
+                h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.BankaAdi, h.Sube, h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.BankaHesapTuru, h.AktifMi,
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.Giris - x.Cikis),
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.GirisTl - x.CikisTl),
                 db.KasaHareketleri.Any(x => x.HesapId == h.Id),

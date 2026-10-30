@@ -1510,6 +1510,11 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("banka_adi");
 
+                    b.Property<string>("BankaHesapTuru")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("banka_hesap_turu");
+
                     b.Property<Guid>("FirmaId")
                         .HasColumnType("uuid")
                         .HasColumnName("firma_id");

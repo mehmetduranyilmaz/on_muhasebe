@@ -16,6 +16,9 @@ internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
     public HesapTuru Tur { get; private set; }
     public string ParaBirimi { get; private set; } = null!;
     public string? BankaAdi { get; private set; }
+
+    // Banka hesabının alt türü (yalnızca Banka için dolu): vadesiz, vadeli, KMH.
+    public BankaHesapTuru? BankaHesapTuru { get; private set; }
     public string? Sube { get; private set; }
     public string? HesapNo { get; private set; }
     public string? Iban { get; private set; }
@@ -65,6 +68,7 @@ internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
     {
         Ad = b.Ad;
         BankaAdi = b.Tur == HesapTuru.Kasa ? null : b.BankaAdi;
+        BankaHesapTuru = b.Tur == HesapTuru.Banka ? (b.BankaHesapTuru ?? Contracts.BankaHesapTuru.Vadesiz) : null;
         Sube = b.Tur == HesapTuru.Banka ? b.Sube : null;
         HesapNo = b.Tur == HesapTuru.Kasa ? null : b.HesapNo;
         Iban = b.Tur == HesapTuru.Banka ? b.Iban : null;
@@ -78,6 +82,7 @@ internal sealed record HesapBilgileri(
     HesapTuru Tur,
     string ParaBirimi,
     string? BankaAdi,
+    BankaHesapTuru? BankaHesapTuru,
     string? Sube,
     string? HesapNo,
     string? Iban,
@@ -85,7 +90,7 @@ internal sealed record HesapBilgileri(
     string? Aciklama)
 {
     public static HesapBilgileri Istekten(HesapKaydetIstegi i) => new(
-        i.Ad.Trim(), i.Tur, i.ParaBirimi, Temiz(i.BankaAdi), Temiz(i.Sube), Temiz(i.HesapNo),
+        i.Ad.Trim(), i.Tur, i.ParaBirimi, Temiz(i.BankaAdi), i.BankaHesapTuru, Temiz(i.Sube), Temiz(i.HesapNo),
         Temiz(i.Iban) is { } iban ? Shared.Domain.Dogrulama.Iban.Normalize(iban) : null, i.Limit, Temiz(i.Aciklama));
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();

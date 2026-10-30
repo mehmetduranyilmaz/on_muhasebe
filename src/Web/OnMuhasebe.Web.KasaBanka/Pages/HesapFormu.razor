@@ -59,6 +59,13 @@ else
                 @if (_tur == HesapTuru.Banka)
                 {
                     <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="BankaHesapTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_bankaHesapTuru" Label="Hesap türü">
+                            <MudSelectItem Value="BankaHesapTuru.Vadesiz">Vadesiz</MudSelectItem>
+                            <MudSelectItem Value="BankaHesapTuru.Vadeli">Vadeli</MudSelectItem>
+                            <MudSelectItem Value="BankaHesapTuru.Kmh">Kredili mevduat (KMH)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
                         <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sube" Label="Şube" MaxLength="100" />
                     </MudItem>
                 }
@@ -107,6 +114,7 @@ else
     private string _ad = "";
     private string _paraBirimi = ParaBirimleri.Tl;
     private string? _bankaAdi;
+    private BankaHesapTuru _bankaHesapTuru = BankaHesapTuru.Vadesiz;
     private string? _sube;
     private string? _hesapNo;
     private string? _iban;
@@ -140,6 +148,7 @@ else
             var h = sonuc.Deger;
             (_tur, _kod, _ad, _paraBirimi, _bankaAdi, _sube) = (h.Tur, h.Kod, h.Ad, h.ParaBirimi, h.BankaAdi, h.Sube);
             (_hesapNo, _iban, _limit, _aciklama, _surum, _hareketVarMi) = (h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.Surum, h.HareketVarMi);
+            _bankaHesapTuru = h.BankaHesapTuru ?? BankaHesapTuru.Vadesiz;
         }
 
         _yukleniyor = false;
@@ -160,7 +169,7 @@ else
             return;
         }
 
-        var istek = new HesapKaydetIstegi(_kod, _ad, _tur, _paraBirimi, _bankaAdi, _sube, _hesapNo, _iban, _limit, _aciklama, _surum);
+        var istek = new HesapKaydetIstegi(_kod, _ad, _tur, _paraBirimi, _bankaAdi, _sube, _hesapNo, _iban, _limit, _aciklama, _bankaHesapTuru, _surum);
         var sonuc = Id is { } id
             ? await Api.PutAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PostAsync<HesapDetayi>("api/kasabanka/hesaplar", istek, islemAnahtari: _anahtar.Deger);
