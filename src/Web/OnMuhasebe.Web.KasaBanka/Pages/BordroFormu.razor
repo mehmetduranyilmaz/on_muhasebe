@@ -112,7 +112,7 @@
                                 </MudItem>
                             }
                             <MudItem xs="12" md="4">
-                                <BankaSecici Value="s.BankaAdi" ValueChanged="v => s.BankaAdi = v" Required="true" />
+                                <BankaSecici Value="@s.BankaAdi" ValueChanged="v => s.BankaAdi = v" Required="true" />
                             </MudItem>
                             <MudItem xs="6" md="4">
                                 <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Şube" @bind-Value="s.Sube" MaxLength="100" />
