@@ -5,7 +5,10 @@
         <HataGosterimi Hata="_hata" />
         <div class="ozet-alt mb-2"><MudIcon Icon="@Icons.Material.Filled.AccountBalance" Size="Size.Small" /> @BankaAdi</div>
         <MudForm @ref="_form">
-            <MudTextField @bind-Value="_ad" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Şube adı" Required="true" RequiredError="Şube adı gerekli." MaxLength="150" Class="mb-2" />
+            <div class="d-flex gap-2 mb-2">
+                <MudTextField @bind-Value="_kod" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Şube kodu" MaxLength="10" Style="max-width:150px" />
+                <MudTextField @bind-Value="_ad" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Şube adı" Required="true" RequiredError="Şube adı gerekli." MaxLength="150" Style="flex:1" />
+            </div>
             <MudTextField @bind-Value="_portfoyYoneticisi" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Portföy yöneticisi (müşteri temsilcisi)" MaxLength="150" Class="mb-2"
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SupportAgent" />
             <div class="d-flex gap-2">
@@ -28,6 +31,7 @@
     [Parameter] public Guid? SubeId { get; set; }
 
     private MudForm _form = null!;
+    private string? _kod;
     private string _ad = "";
     private string? _portfoyYoneticisi;
     private string? _telefon;
@@ -47,7 +51,7 @@
         if (sonuc.BasariliMi)
         {
             var s = sonuc.Deger;
-            (_ad, _portfoyYoneticisi, _telefon, _faks, _surum) = (s.Ad, s.PortfoyYoneticisi, s.Telefon, s.Faks, s.Surum);
+            (_kod, _ad, _portfoyYoneticisi, _telefon, _faks, _surum) = (s.Kod, s.Ad, s.PortfoyYoneticisi, s.Telefon, s.Faks, s.Surum);
         }
         else
         {
@@ -63,20 +67,20 @@
             return;
         }
 
-        var istek = new SubeKaydetIstegi(BankaAdi, _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks), _surum);
+        var istek = new SubeKaydetIstegi(BankaAdi, Bos(_kod), _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks), _surum);
         if (SubeId is { } id)
         {
             var sonuc = await Api.PutAsync($"api/kasabanka/subeler/{id}", istek, islemAnahtari: _anahtar.Deger);
             _anahtar.Sonuc(sonuc.Hata);
             if (!sonuc.BasariliMi) { _hata = sonuc.Hata; return; }
-            MudDialog.Close(DialogResult.Ok(new SubeOzeti(id, BankaAdi, _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks))));
+            MudDialog.Close(DialogResult.Ok(new SubeOzeti(id, BankaAdi, Bos(_kod), _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks))));
         }
         else
         {
             var sonuc = await Api.PostAsync<Guid>("api/kasabanka/subeler", istek, islemAnahtari: _anahtar.Deger);
             _anahtar.Sonuc(sonuc.Hata);
             if (!sonuc.BasariliMi) { _hata = sonuc.Hata; return; }
-            MudDialog.Close(DialogResult.Ok(new SubeOzeti(sonuc.Deger, BankaAdi, _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks))));
+            MudDialog.Close(DialogResult.Ok(new SubeOzeti(sonuc.Deger, BankaAdi, Bos(_kod), _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks))));
         }
     }
 

@@ -92,7 +92,7 @@ else
                         <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapNo" Label="Hesap no" MaxLength="50" />
                     </MudItem>
                     <MudItem xs="12" md="8">
-                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_iban" Label="IBAN" MaxLength="40" Placeholder="TR00 0000 0000 0000 0000 0000 00"
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="IbanGosterim" Label="IBAN" MaxLength="42" Placeholder="TR00 0000 0000 0000 0000 0000 00"
                                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Tag" Immediate="true"
                                       Error="@(!string.IsNullOrWhiteSpace(_iban) && !IbanBicimiDogruMu(_iban))" ErrorText="TR ile başlayan 26 karakter olmalı" />
                     </MudItem>
@@ -261,11 +261,24 @@ else
 
             if (h.SubeId is { } subeId && await Api.GetAsync<SubeDetayi>($"api/kasabanka/subeler/{subeId}") is { BasariliMi: true } sd)
             {
-                _seciliSube = new SubeOzeti(sd.Deger.Id, sd.Deger.BankaAdi, sd.Deger.Ad, sd.Deger.PortfoyYoneticisi, sd.Deger.Telefon, sd.Deger.Faks);
+                _seciliSube = new SubeOzeti(sd.Deger.Id, sd.Deger.BankaAdi, sd.Deger.Kod, sd.Deger.Ad, sd.Deger.PortfoyYoneticisi, sd.Deger.Telefon, sd.Deger.Faks);
             }
         }
 
         _yukleniyor = false;
+    }
+
+    // _iban boşluksuz/büyük harf saklanır; alanda 4'erli gruplarla gösterilir (yazarken de yazıldıktan sonra da).
+    private string? IbanGosterim
+    {
+        get => string.IsNullOrEmpty(_iban) ? _iban : IbanBicimle(_iban);
+        set => _iban = string.IsNullOrWhiteSpace(value) ? null : new string(value.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+    }
+
+    private static string IbanBicimle(string ham)
+    {
+        var temiz = new string(ham.Where(char.IsLetterOrDigit).ToArray());
+        return string.Join(' ', Enumerable.Range(0, (temiz.Length + 3) / 4).Select(i => temiz.Substring(i * 4, Math.Min(4, temiz.Length - i * 4))));
     }
 
     // Kontrol hanesi sunucuda doğrulanır; burada yalnızca biçim uyarısı verilir.

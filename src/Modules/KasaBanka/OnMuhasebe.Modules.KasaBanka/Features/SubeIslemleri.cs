@@ -30,6 +30,7 @@ internal static class SubeIslemleri
         public Dogrulayici()
         {
             RuleFor(x => x.BankaAdi).NotEmpty().MaximumLength(100);
+            RuleFor(x => x.Kod).MaximumLength(10);
             RuleFor(x => x.Ad).NotEmpty().MaximumLength(150);
             RuleFor(x => x.PortfoyYoneticisi).MaximumLength(150);
             RuleFor(x => x.Telefon).MaximumLength(30);
@@ -53,7 +54,7 @@ internal static class SubeIslemleri
 
         var kayitlar = await sorgu
             .OrderBy(s => s.BankaAdi).ThenBy(s => s.Ad)
-            .Select(s => new SubeOzeti(s.Id, s.BankaAdi, s.Ad, s.PortfoyYoneticisi, s.Telefon, s.Faks))
+            .Select(s => new SubeOzeti(s.Id, s.BankaAdi, s.Kod, s.Ad, s.PortfoyYoneticisi, s.Telefon, s.Faks))
             .ToListAsync(cancellationToken);
         return TypedResults.Ok(kayitlar);
     }
@@ -61,7 +62,7 @@ internal static class SubeIslemleri
     private static async Task<IResult> DetayAsync(Guid id, KasaBankaDbContext db, CancellationToken cancellationToken) =>
         await db.Subeler.AsNoTracking()
             .Where(s => s.Id == id)
-            .Select(s => new SubeDetayi(s.Id, s.BankaAdi, s.Ad, s.PortfoyYoneticisi, s.Telefon, s.Faks, s.Surum))
+            .Select(s => new SubeDetayi(s.Id, s.BankaAdi, s.Kod, s.Ad, s.PortfoyYoneticisi, s.Telefon, s.Faks, s.Surum))
             .SingleOrDefaultAsync(cancellationToken) is { } detay
             ? TypedResults.Ok(detay)
             : KasaBankaHatalari.SubeBulunamadi.Problem();

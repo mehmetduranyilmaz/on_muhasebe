@@ -10,7 +10,7 @@
                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountTree">
         <ItemTemplate Context="sube">
             <div class="d-flex justify-space-between align-center gap-2" style="width:100%">
-                <span>@sube.Ad</span>
+                <span>@(sube.Kod is { } k ? $"{k} · {sube.Ad}" : sube.Ad)</span>
                 @if (sube.PortfoyYoneticisi is { } py)
                 {
                     <small style="opacity:.6">@py</small>

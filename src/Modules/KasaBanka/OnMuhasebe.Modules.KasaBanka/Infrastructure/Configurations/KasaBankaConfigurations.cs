@@ -39,6 +39,7 @@ internal sealed class SubeConfiguration : IEntityTypeConfiguration<Sube>
     {
         builder.ToTable("sube");
         builder.Property(x => x.BankaAdi).HasMaxLength(100);
+        builder.Property(x => x.Kod).HasMaxLength(10);
         builder.Property(x => x.Ad).HasMaxLength(150);
         builder.Property(x => x.PortfoyYoneticisi).HasMaxLength(150);
         builder.Property(x => x.Telefon).HasMaxLength(30);

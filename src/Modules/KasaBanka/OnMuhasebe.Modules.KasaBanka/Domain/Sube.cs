@@ -9,6 +9,7 @@ internal sealed class Sube : FirmaEntity
     private Sube() { }
 
     public string BankaAdi { get; private set; } = null!;
+    public string? Kod { get; private set; }
     public string Ad { get; private set; } = null!;
     public string? PortfoyYoneticisi { get; private set; }
     public string? Telefon { get; private set; }
@@ -17,6 +18,7 @@ internal sealed class Sube : FirmaEntity
     public static Sube Olustur(SubeKaydetIstegi i) => new()
     {
         BankaAdi = i.BankaAdi.Trim(),
+        Kod = Temiz(i.Kod),
         Ad = i.Ad.Trim(),
         PortfoyYoneticisi = Temiz(i.PortfoyYoneticisi),
         Telefon = Temiz(i.Telefon),
@@ -26,6 +28,7 @@ internal sealed class Sube : FirmaEntity
     public void Guncelle(SubeKaydetIstegi i)
     {
         BankaAdi = i.BankaAdi.Trim();
+        Kod = Temiz(i.Kod);
         Ad = i.Ad.Trim();
         PortfoyYoneticisi = Temiz(i.PortfoyYoneticisi);
         Telefon = Temiz(i.Telefon);
