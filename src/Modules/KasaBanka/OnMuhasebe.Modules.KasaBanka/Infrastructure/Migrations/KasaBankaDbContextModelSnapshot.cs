@@ -1527,6 +1527,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
 
+                    b.Property<int?>("HesapKesimGunu")
+                        .HasColumnType("integer")
+                        .HasColumnName("hesap_kesim_gunu");
+
                     b.Property<string>("HesapNo")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -1562,6 +1566,39 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("para_birimi");
 
+                    b.Property<Guid?>("PosAktarilacakHesapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pos_aktarilacak_hesap_id");
+
+                    b.Property<string>("PosBatchNo")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("pos_batch_no");
+
+                    b.Property<string>("PosCalismaSekli")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("pos_calisma_sekli");
+
+                    b.Property<int?>("PosGunSayisi")
+                        .HasColumnType("integer")
+                        .HasColumnName("pos_gun_sayisi");
+
+                    b.Property<string>("PosGunTipi")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("pos_gun_tipi");
+
+                    b.Property<decimal?>("PosKomisyonOrani")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)")
+                        .HasColumnName("pos_komisyon_orani");
+
+                    b.Property<string>("PosTerminalNo")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("pos_terminal_no");
+
                     b.Property<bool>("SilindiMi")
                         .HasColumnType("boolean")
                         .HasColumnName("silindi_mi");
@@ -1570,10 +1607,18 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("silinme_tarihi");
 
+                    b.Property<int?>("SonOdemeGunu")
+                        .HasColumnType("integer")
+                        .HasColumnName("son_odeme_gunu");
+
                     b.Property<string>("Sube")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("sube");
+
+                    b.Property<Guid?>("SubeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sube_id");
 
                     b.Property<uint>("Surum")
                         .IsConcurrencyToken()
@@ -1590,11 +1635,85 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_kasa_hesabi");
 
+                    b.HasIndex("PosAktarilacakHesapId")
+                        .HasDatabaseName("ix_kasa_hesabi_pos_aktarilacak_hesap_id");
+
+                    b.HasIndex("SubeId")
+                        .HasDatabaseName("ix_kasa_hesabi_sube_id");
+
                     b.HasIndex("FirmaId", "Kod")
                         .IsUnique()
                         .HasDatabaseName("ix_kasa_hesabi_firma_id_kod");
 
                     b.ToTable("kasa_hesabi", "kasabanka");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Sube", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("ad");
+
+                    b.Property<string>("BankaAdi")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("banka_adi");
+
+                    b.Property<string>("Faks")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("faks");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("PortfoyYoneticisi")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("portfoy_yoneticisi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Telefon")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("telefon");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sube");
+
+                    b.HasIndex("FirmaId", "BankaAdi")
+                        .HasDatabaseName("ix_sube_firma_id_banka_adi");
+
+                    b.ToTable("sube", "kasabanka");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Teminat", b =>
@@ -1888,6 +2007,21 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_kasa_hareketi_hesaplar_hesap_id");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.KasaHesabi", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.KasaHesabi", null)
+                        .WithMany()
+                        .HasForeignKey("PosAktarilacakHesapId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_kasa_hesabi_kasa_hesabi_pos_aktarilacak_hesap_id");
+
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.Sube", null)
+                        .WithMany()
+                        .HasForeignKey("SubeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_kasa_hesabi_subeler_sube_id");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.Evrak", b =>

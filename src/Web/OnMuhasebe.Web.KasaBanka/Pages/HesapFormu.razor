@@ -54,8 +54,9 @@ else
             <FormBolumu Baslik="@(_tur == HesapTuru.Banka ? "Banka bilgileri" : _tur == HesapTuru.KrediKarti ? "Kart bilgileri" : "POS bilgileri")"
                         Ikon="@Icons.Material.Filled.AccountBalance" Sira="2">
                 <MudItem xs="12" sm="6" md="4">
-                    <BankaSecici Value="@_bankaAdi" ValueChanged="v => _bankaAdi = v" />
+                    <BankaSecici Value="@_bankaAdi" ValueChanged="BankaSecildi" />
                 </MudItem>
+
                 @if (_tur == HesapTuru.Banka)
                 {
                     <MudItem xs="12" sm="6" md="4">
@@ -66,25 +67,93 @@ else
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="12" sm="6" md="4">
-                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sube" Label="Şube" MaxLength="100" />
+                        <SubeSecici BankaAdi="@_bankaAdi" Value="_seciliSube" ValueChanged="SubeSecildi" />
                     </MudItem>
-                }
-                <MudItem xs="12" sm="6" md="4">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapNo" MaxLength="50"
-                                  Label="@(_tur == HesapTuru.KrediKarti ? "Kart no (son 4 hane yeterli)" : _tur == HesapTuru.Pos ? "Üye işyeri no" : "Hesap no")" />
-                </MudItem>
-                @if (_tur == HesapTuru.Banka)
-                {
+                    @if (_seciliSube is { } sb && (sb.PortfoyYoneticisi is not null || sb.Telefon is not null || sb.Faks is not null))
+                    {
+                        <MudItem xs="12">
+                            <div class="ozet-alt d-flex flex-wrap gap-3" style="opacity:.75">
+                                @if (sb.PortfoyYoneticisi is { } py)
+                                {
+                                    <span><MudIcon Icon="@Icons.Material.Filled.SupportAgent" Size="Size.Small" /> @py</span>
+                                }
+                                @if (sb.Telefon is { } tel)
+                                {
+                                    <span><MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" /> @tel</span>
+                                }
+                                @if (sb.Faks is { } faks)
+                                {
+                                    <span><MudIcon Icon="@Icons.Material.Filled.Print" Size="Size.Small" /> @faks</span>
+                                }
+                            </div>
+                        </MudItem>
+                    }
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapNo" Label="Hesap no" MaxLength="50" />
+                    </MudItem>
                     <MudItem xs="12" md="8">
                         <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_iban" Label="IBAN" MaxLength="40" Placeholder="TR00 0000 0000 0000 0000 0000 00"
                                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Tag" Immediate="true"
                                       Error="@(!string.IsNullOrWhiteSpace(_iban) && !IbanBicimiDogruMu(_iban))" ErrorText="TR ile başlayan 26 karakter olmalı" />
                     </MudItem>
                 }
-                @if (_tur == HesapTuru.KrediKarti)
+                else if (_tur == HesapTuru.KrediKarti)
                 {
                     <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapNo" Label="Kart no (son 4 hane yeterli)" MaxLength="50" />
+                    </MudItem>
+                    <MudItem xs="6" sm="3" md="2">
+                        <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapKesimGunu" Label="Hesap kesim günü" Min="1" Max="31" HideSpinButtons="true" HelperText="Ayın günü" />
+                    </MudItem>
+                    <MudItem xs="6" sm="3" md="2">
+                        <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sonOdemeGunu" Label="Son ödeme günü" Min="1" Max="31" HideSpinButtons="true" HelperText="Ayın günü" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
                         <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_limit" Label="Kart limiti" Format="N2" Min="0" HideSpinButtons="true" />
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapNo" Label="Üye işyeri no" MaxLength="50" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="PosCalismaSekli" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_posCalismaSekli" Label="Çalışma şekli">
+                            <MudSelectItem Value="PosCalismaSekli.Komisyonlu">Komisyonlu</MudSelectItem>
+                            <MudSelectItem Value="PosCalismaSekli.Blokeli">Blokeli</MudSelectItem>
+                            <MudSelectItem Value="PosCalismaSekli.Karma">Karma (bloke + komisyon)</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    @if (_posCalismaSekli is PosCalismaSekli.Komisyonlu or PosCalismaSekli.Karma)
+                    {
+                        <MudItem xs="6" sm="4" md="3">
+                            <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_posKomisyonOrani" Label="Komisyon oranı %" Format="N2" Min="0" Max="100" HideSpinButtons="true" />
+                        </MudItem>
+                    }
+                    <MudItem xs="6" sm="4" md="3">
+                        <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_posGunSayisi" Min="0" Max="365" HideSpinButtons="true"
+                                         Label="@(_posCalismaSekli == PosCalismaSekli.Komisyonlu ? "Valör (gün)" : "Bloke gün")" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="3">
+                        <MudSelect T="BlokeGunTipi" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_posGunTipi" Label="Gün tipi">
+                            <MudSelectItem Value="BlokeGunTipi.TakvimGunu">Takvim günü</MudSelectItem>
+                            <MudSelectItem Value="BlokeGunTipi.IsGunu">İş günü</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_posAktarilacakHesapId" Label="Çözüldüğünde aktarılacak hesap" Clearable="true"
+                                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountBalance">
+                            @foreach (var h in _bankaHesaplari)
+                            {
+                                <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @h.ParaBirimi</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="3">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_posTerminalNo" Label="Terminal no" MaxLength="30" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="3">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_posBatchNo" Label="Batch no (gün sonu)" MaxLength="30" />
                     </MudItem>
                 }
             </FormBolumu>
@@ -116,14 +185,44 @@ else
     private string? _bankaAdi;
     private BankaHesapTuru _bankaHesapTuru = BankaHesapTuru.Vadesiz;
     private string? _sube;
+    private Guid? _subeId;
+    private SubeOzeti? _seciliSube;
     private string? _hesapNo;
     private string? _iban;
     private decimal? _limit;
+    private int? _hesapKesimGunu;
+    private int? _sonOdemeGunu;
+    private PosCalismaSekli _posCalismaSekli = PosCalismaSekli.Komisyonlu;
+    private decimal? _posKomisyonOrani;
+    private int? _posGunSayisi;
+    private BlokeGunTipi _posGunTipi = BlokeGunTipi.IsGunu;
+    private Guid? _posAktarilacakHesapId;
+    private string? _posTerminalNo;
+    private string? _posBatchNo;
+    private List<HesapOzeti> _bankaHesaplari = [];
     private string? _aciklama;
     private uint _surum;
     private bool _hareketVarMi;
     private bool _yukleniyor = true;
     private ApiHatasi? _hata;
+
+    // Banka değişince o bankaya ait olmayan şube seçimi geçersiz kalır; temizlenir.
+    private void BankaSecildi(string? banka)
+    {
+        if (banka != _bankaAdi)
+        {
+            (_seciliSube, _subeId, _sube) = (null, null, null);
+        }
+
+        _bankaAdi = banka;
+    }
+
+    private void SubeSecildi(SubeOzeti? sube)
+    {
+        _seciliSube = sube;
+        _subeId = sube?.Id;
+        _sube = sube?.Ad;
+    }
 
     private string Ornek => _tur switch
     {
@@ -135,6 +234,10 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // POS'ta "çözüldüğünde aktarılacak hesap" için banka hesapları.
+        var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?tur=Banka&aktif=true");
+        _bankaHesaplari = hesaplar.BasariliMi ? hesaplar.Deger : [];
+
         if (Id is { } id)
         {
             var sonuc = await Api.GetAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}");
@@ -149,6 +252,17 @@ else
             (_tur, _kod, _ad, _paraBirimi, _bankaAdi, _sube) = (h.Tur, h.Kod, h.Ad, h.ParaBirimi, h.BankaAdi, h.Sube);
             (_hesapNo, _iban, _limit, _aciklama, _surum, _hareketVarMi) = (h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.Surum, h.HareketVarMi);
             _bankaHesapTuru = h.BankaHesapTuru ?? BankaHesapTuru.Vadesiz;
+            (_subeId, _hesapKesimGunu, _sonOdemeGunu) = (h.SubeId, h.HesapKesimGunu, h.SonOdemeGunu);
+            _posCalismaSekli = h.PosCalismaSekli ?? PosCalismaSekli.Komisyonlu;
+            (_posKomisyonOrani, _posGunSayisi) = (h.PosKomisyonOrani, h.PosGunSayisi);
+            _posGunTipi = h.PosGunTipi ?? BlokeGunTipi.IsGunu;
+            (_posAktarilacakHesapId, _posTerminalNo, _posBatchNo) = (h.PosAktarilacakHesapId, h.PosTerminalNo, h.PosBatchNo);
+            _bankaHesaplari = _bankaHesaplari.Where(x => x.Id != id).ToList();
+
+            if (h.SubeId is { } subeId && await Api.GetAsync<SubeDetayi>($"api/kasabanka/subeler/{subeId}") is { BasariliMi: true } sd)
+            {
+                _seciliSube = new SubeOzeti(sd.Deger.Id, sd.Deger.BankaAdi, sd.Deger.Ad, sd.Deger.PortfoyYoneticisi, sd.Deger.Telefon, sd.Deger.Faks);
+            }
         }
 
         _yukleniyor = false;
@@ -169,7 +283,10 @@ else
             return;
         }
 
-        var istek = new HesapKaydetIstegi(_kod, _ad, _tur, _paraBirimi, _bankaAdi, _sube, _hesapNo, _iban, _limit, _aciklama, _bankaHesapTuru, _surum);
+        var istek = new HesapKaydetIstegi(_kod, _ad, _tur, _paraBirimi, _bankaAdi, _sube, _hesapNo, _iban, _limit, _aciklama, _bankaHesapTuru,
+            SubeId: _subeId, HesapKesimGunu: _hesapKesimGunu, SonOdemeGunu: _sonOdemeGunu,
+            PosCalismaSekli: _posCalismaSekli, PosKomisyonOrani: _posKomisyonOrani, PosGunSayisi: _posGunSayisi, PosGunTipi: _posGunTipi,
+            PosAktarilacakHesapId: _posAktarilacakHesapId, PosTerminalNo: _posTerminalNo, PosBatchNo: _posBatchNo, Surum: _surum);
         var sonuc = Id is { } id
             ? await Api.PutAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PostAsync<HesapDetayi>("api/kasabanka/hesaplar", istek, islemAnahtari: _anahtar.Deger);

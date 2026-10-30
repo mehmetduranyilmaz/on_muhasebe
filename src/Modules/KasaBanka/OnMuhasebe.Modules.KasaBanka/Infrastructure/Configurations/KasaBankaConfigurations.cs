@@ -18,8 +18,29 @@ internal sealed class KasaHesabiConfiguration : IEntityTypeConfiguration<KasaHes
         builder.Property(x => x.Sube).HasMaxLength(100);
         builder.Property(x => x.HesapNo).HasMaxLength(50);
         builder.Property(x => x.Iban).HasMaxLength(34);
+        builder.Property(x => x.PosCalismaSekli).HasConversion<string>().HasMaxLength(12);
+        builder.Property(x => x.PosGunTipi).HasConversion<string>().HasMaxLength(12);
+        builder.Property(x => x.PosKomisyonOrani).HasPrecision(9, 4);
+        builder.Property(x => x.PosTerminalNo).HasMaxLength(30);
+        builder.Property(x => x.PosBatchNo).HasMaxLength(30);
         builder.Property(x => x.Aciklama).HasMaxLength(500);
         builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
+        builder.HasOne<Sube>().WithMany().HasForeignKey(x => x.SubeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.PosAktarilacakHesapId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class SubeConfiguration : IEntityTypeConfiguration<Sube>
+{
+    public void Configure(EntityTypeBuilder<Sube> builder)
+    {
+        builder.ToTable("sube");
+        builder.Property(x => x.BankaAdi).HasMaxLength(100);
+        builder.Property(x => x.Ad).HasMaxLength(150);
+        builder.Property(x => x.PortfoyYoneticisi).HasMaxLength(150);
+        builder.Property(x => x.Telefon).HasMaxLength(30);
+        builder.Property(x => x.Faks).HasMaxLength(30);
+        builder.HasIndex(x => new { x.FirmaId, x.BankaAdi });
     }
 }
 

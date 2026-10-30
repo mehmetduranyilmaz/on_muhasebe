@@ -23,6 +23,23 @@ public enum BankaHesapTuru
     Kmh
 }
 
+// POS çalışma şekli. Komisyonlu: tutar valör günü sonra hesaba geçer, komisyon kesilir. Blokeli: komisyon yok, bloke gün sonra çözülür. Karma: ikisi birlikte.
+[JsonConverter(typeof(JsonStringEnumConverter<PosCalismaSekli>))]
+public enum PosCalismaSekli
+{
+    Komisyonlu,
+    Blokeli,
+    Karma
+}
+
+// Bloke/valör gün sayımı: takvim günü tüm günleri, iş günü hafta sonu ve tatilleri saymaz.
+[JsonConverter(typeof(JsonStringEnumConverter<BlokeGunTipi>))]
+public enum BlokeGunTipi
+{
+    TakvimGunu,
+    IsGunu
+}
+
 [JsonConverter(typeof(JsonStringEnumConverter<KasaHareketTuru>))]
 public enum KasaHareketTuru
 {
@@ -67,6 +84,17 @@ public sealed record HesapKaydetIstegi(
     decimal? Limit,
     string? Aciklama,
     BankaHesapTuru? BankaHesapTuru = null,
+    // Banka: şube kartı. Kredi kartı: hesap kesim/son ödeme günü (ayın günü). POS: çalışma şekli ve koşulları.
+    Guid? SubeId = null,
+    int? HesapKesimGunu = null,
+    int? SonOdemeGunu = null,
+    PosCalismaSekli? PosCalismaSekli = null,
+    decimal? PosKomisyonOrani = null,
+    int? PosGunSayisi = null,
+    BlokeGunTipi? PosGunTipi = null,
+    Guid? PosAktarilacakHesapId = null,
+    string? PosTerminalNo = null,
+    string? PosBatchNo = null,
     uint Surum = 0);
 
 public sealed record HesapOzeti(
@@ -95,6 +123,17 @@ public sealed record HesapDetayi(
     decimal? Limit,
     string? Aciklama,
     BankaHesapTuru? BankaHesapTuru,
+    Guid? SubeId,
+    string? SubeAdi,
+    int? HesapKesimGunu,
+    int? SonOdemeGunu,
+    PosCalismaSekli? PosCalismaSekli,
+    decimal? PosKomisyonOrani,
+    int? PosGunSayisi,
+    BlokeGunTipi? PosGunTipi,
+    Guid? PosAktarilacakHesapId,
+    string? PosTerminalNo,
+    string? PosBatchNo,
     bool AktifMi,
     decimal Bakiye,
     decimal BakiyeTl,

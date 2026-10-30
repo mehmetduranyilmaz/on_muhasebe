@@ -1,0 +1,76 @@
+@* Bankaya bağlı şube seçimi: seçili bankanın şubeleri listelenir, yeni şube eklenebilir/düzenlenebilir. *@
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+
+<div class="d-flex gap-1 align-start" style="width:100%">
+    <MudAutocomplete T="SubeOzeti" Value="Value" ValueChanged="ValueChanged" SearchFunc="AraAsync"
+                     ToStringFunc="@(s => s?.Ad ?? "")" Label="Şube" Variant="Variant.Outlined" Margin="Margin.Dense"
+                     Clearable="true" MaxItems="15" DebounceInterval="200" Disabled="@(string.IsNullOrWhiteSpace(BankaAdi))"
+                     HelperText="@(string.IsNullOrWhiteSpace(BankaAdi) ? "Önce banka seçin" : null)" Style="flex:1"
+                     Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountTree">
+        <ItemTemplate Context="sube">
+            <div class="d-flex justify-space-between align-center gap-2" style="width:100%">
+                <span>@sube.Ad</span>
+                @if (sube.PortfoyYoneticisi is { } py)
+                {
+                    <small style="opacity:.6">@py</small>
+                }
+            </div>
+        </ItemTemplate>
+    </MudAutocomplete>
+    @if (Value is not null)
+    {
+        <MudTooltip Text="Şubeyi düzenle">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mt-1" OnClick="() => DuzenleAsync(Value.Id)" />
+        </MudTooltip>
+    }
+    <MudTooltip Text="Yeni şube ekle">
+        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary" Class="mt-1"
+                       Disabled="@(string.IsNullOrWhiteSpace(BankaAdi))" OnClick="YeniAsync" />
+    </MudTooltip>
+</div>
+
+@code {
+    [Parameter] public string? BankaAdi { get; set; }
+    [Parameter] public SubeOzeti? Value { get; set; }
+    [Parameter] public EventCallback<SubeOzeti?> ValueChanged { get; set; }
+
+    private async Task<IEnumerable<SubeOzeti>> AraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(BankaAdi))
+        {
+            return [];
+        }
+
+        var sonuc = await Api.GetAsync<List<SubeOzeti>>(
+            $"api/kasabanka/subeler?banka={Uri.EscapeDataString(BankaAdi)}&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private async Task YeniAsync()
+    {
+        if (string.IsNullOrWhiteSpace(BankaAdi))
+        {
+            return;
+        }
+
+        var dialog = await DialogService.ShowAsync<SubeDialog>("Yeni şube",
+            new DialogParameters<SubeDialog> { { d => d.BankaAdi, BankaAdi } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: SubeOzeti sube })
+        {
+            await ValueChanged.InvokeAsync(sube);
+        }
+    }
+
+    private async Task DuzenleAsync(Guid id)
+    {
+        var dialog = await DialogService.ShowAsync<SubeDialog>("Şubeyi düzenle",
+            new DialogParameters<SubeDialog> { { d => d.BankaAdi, BankaAdi ?? "" }, { d => d.SubeId, id } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: SubeOzeti sube })
+        {
+            await ValueChanged.InvokeAsync(sube);
+        }
+    }
+}

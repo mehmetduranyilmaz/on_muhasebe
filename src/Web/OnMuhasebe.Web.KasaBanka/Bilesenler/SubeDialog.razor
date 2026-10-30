@@ -1,0 +1,84 @@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <div class="ozet-alt mb-2"><MudIcon Icon="@Icons.Material.Filled.AccountBalance" Size="Size.Small" /> @BankaAdi</div>
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_ad" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Şube adı" Required="true" RequiredError="Şube adı gerekli." MaxLength="150" Class="mb-2" />
+            <MudTextField @bind-Value="_portfoyYoneticisi" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Portföy yöneticisi (müşteri temsilcisi)" MaxLength="150" Class="mb-2"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.SupportAgent" />
+            <div class="d-flex gap-2">
+                <MudTextField @bind-Value="_telefon" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Telefon" MaxLength="30"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone" />
+                <MudTextField @bind-Value="_faks" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Faks" MaxLength="30"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Print" />
+            </div>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public string BankaAdi { get; set; } = "";
+    [Parameter] public Guid? SubeId { get; set; }
+
+    private MudForm _form = null!;
+    private string _ad = "";
+    private string? _portfoyYoneticisi;
+    private string? _telefon;
+    private string? _faks;
+    private uint _surum;
+    private ApiHatasi? _hata;
+    private readonly IslemAnahtari _anahtar = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (SubeId is not { } id)
+        {
+            return;
+        }
+
+        var sonuc = await Api.GetAsync<SubeDetayi>($"api/kasabanka/subeler/{id}");
+        if (sonuc.BasariliMi)
+        {
+            var s = sonuc.Deger;
+            (_ad, _portfoyYoneticisi, _telefon, _faks, _surum) = (s.Ad, s.PortfoyYoneticisi, s.Telefon, s.Faks, s.Surum);
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        var istek = new SubeKaydetIstegi(BankaAdi, _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks), _surum);
+        if (SubeId is { } id)
+        {
+            var sonuc = await Api.PutAsync($"api/kasabanka/subeler/{id}", istek, islemAnahtari: _anahtar.Deger);
+            _anahtar.Sonuc(sonuc.Hata);
+            if (!sonuc.BasariliMi) { _hata = sonuc.Hata; return; }
+            MudDialog.Close(DialogResult.Ok(new SubeOzeti(id, BankaAdi, _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks))));
+        }
+        else
+        {
+            var sonuc = await Api.PostAsync<Guid>("api/kasabanka/subeler", istek, islemAnahtari: _anahtar.Deger);
+            _anahtar.Sonuc(sonuc.Hata);
+            if (!sonuc.BasariliMi) { _hata = sonuc.Hata; return; }
+            MudDialog.Close(DialogResult.Ok(new SubeOzeti(sonuc.Deger, BankaAdi, _ad.Trim(), Bos(_portfoyYoneticisi), Bos(_telefon), Bos(_faks))));
+        }
+    }
+
+    private static string? Bos(string? d) => string.IsNullOrWhiteSpace(d) ? null : d.Trim();
+}

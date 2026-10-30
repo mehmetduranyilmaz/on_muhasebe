@@ -50,6 +50,12 @@ internal static class HesapIslemleri
             RuleFor(x => x.Iban).Must(Iban.GecerliMi).When(x => !string.IsNullOrWhiteSpace(x.Iban))
                 .WithMessage("Geçerli bir IBAN girin (TR ile başlayan 26 karakter).");
             RuleFor(x => x.Limit).GreaterThanOrEqualTo(0);
+            RuleFor(x => x.HesapKesimGunu).InclusiveBetween(1, 31).When(x => x.HesapKesimGunu is not null);
+            RuleFor(x => x.SonOdemeGunu).InclusiveBetween(1, 31).When(x => x.SonOdemeGunu is not null);
+            RuleFor(x => x.PosKomisyonOrani).InclusiveBetween(0, 100).When(x => x.PosKomisyonOrani is not null);
+            RuleFor(x => x.PosGunSayisi).InclusiveBetween(0, 365).When(x => x.PosGunSayisi is not null);
+            RuleFor(x => x.PosTerminalNo).MaximumLength(30);
+            RuleFor(x => x.PosBatchNo).MaximumLength(30);
             RuleFor(x => x.Aciklama).MaximumLength(500);
         }
     }
@@ -234,7 +240,10 @@ internal static class HesapIslemleri
         db.Hesaplar.AsNoTracking()
             .Where(h => h.Id == id)
             .Select(h => new HesapDetayi(
-                h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.BankaAdi, h.Sube, h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.BankaHesapTuru, h.AktifMi,
+                h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.BankaAdi, h.Sube, h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.BankaHesapTuru,
+                h.SubeId, db.Subeler.Where(s => s.Id == h.SubeId).Select(s => s.Ad).FirstOrDefault(),
+                h.HesapKesimGunu, h.SonOdemeGunu, h.PosCalismaSekli, h.PosKomisyonOrani, h.PosGunSayisi, h.PosGunTipi,
+                h.PosAktarilacakHesapId, h.PosTerminalNo, h.PosBatchNo, h.AktifMi,
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.Giris - x.Cikis),
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.GirisTl - x.CikisTl),
                 db.KasaHareketleri.Any(x => x.HesapId == h.Id),

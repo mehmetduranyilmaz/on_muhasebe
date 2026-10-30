@@ -25,6 +25,23 @@ internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
 
     // Kredi kartı limiti (bilgi amaçlı).
     public decimal? Limit { get; private set; }
+
+    // Banka: bağlı şube kartı (portföy yöneticisi/iletişim şubede).
+    public Guid? SubeId { get; private set; }
+
+    // Kredi kartı: hesap kesim ve son ödeme günü (ayın günü, 1-31).
+    public int? HesapKesimGunu { get; private set; }
+    public int? SonOdemeGunu { get; private set; }
+
+    // POS: çalışma şekli ve koşulları. Bloke çözülünce tutar PosAktarilacakHesap'a aktarılır.
+    public PosCalismaSekli? PosCalismaSekli { get; private set; }
+    public decimal? PosKomisyonOrani { get; private set; }
+    public int? PosGunSayisi { get; private set; }
+    public BlokeGunTipi? PosGunTipi { get; private set; }
+    public Guid? PosAktarilacakHesapId { get; private set; }
+    public string? PosTerminalNo { get; private set; }
+    public string? PosBatchNo { get; private set; }
+
     public string? Aciklama { get; private set; }
     public bool AktifMi { get; private set; } = true;
     public bool SilindiMi { get; private set; }
@@ -70,9 +87,19 @@ internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
         BankaAdi = b.Tur == HesapTuru.Kasa ? null : b.BankaAdi;
         BankaHesapTuru = b.Tur == HesapTuru.Banka ? (b.BankaHesapTuru ?? Contracts.BankaHesapTuru.Vadesiz) : null;
         Sube = b.Tur == HesapTuru.Banka ? b.Sube : null;
+        SubeId = b.Tur == HesapTuru.Banka ? b.SubeId : null;
         HesapNo = b.Tur == HesapTuru.Kasa ? null : b.HesapNo;
         Iban = b.Tur == HesapTuru.Banka ? b.Iban : null;
         Limit = b.Tur == HesapTuru.KrediKarti ? b.Limit : null;
+        HesapKesimGunu = b.Tur == HesapTuru.KrediKarti ? b.HesapKesimGunu : null;
+        SonOdemeGunu = b.Tur == HesapTuru.KrediKarti ? b.SonOdemeGunu : null;
+        PosCalismaSekli = b.Tur == HesapTuru.Pos ? b.PosCalismaSekli : null;
+        PosKomisyonOrani = b.Tur == HesapTuru.Pos ? b.PosKomisyonOrani : null;
+        PosGunSayisi = b.Tur == HesapTuru.Pos ? b.PosGunSayisi : null;
+        PosGunTipi = b.Tur == HesapTuru.Pos ? b.PosGunTipi : null;
+        PosAktarilacakHesapId = b.Tur == HesapTuru.Pos ? b.PosAktarilacakHesapId : null;
+        PosTerminalNo = b.Tur == HesapTuru.Pos ? b.PosTerminalNo : null;
+        PosBatchNo = b.Tur == HesapTuru.Pos ? b.PosBatchNo : null;
         Aciklama = b.Aciklama;
     }
 }
@@ -87,11 +114,23 @@ internal sealed record HesapBilgileri(
     string? HesapNo,
     string? Iban,
     decimal? Limit,
+    Guid? SubeId,
+    int? HesapKesimGunu,
+    int? SonOdemeGunu,
+    PosCalismaSekli? PosCalismaSekli,
+    decimal? PosKomisyonOrani,
+    int? PosGunSayisi,
+    BlokeGunTipi? PosGunTipi,
+    Guid? PosAktarilacakHesapId,
+    string? PosTerminalNo,
+    string? PosBatchNo,
     string? Aciklama)
 {
     public static HesapBilgileri Istekten(HesapKaydetIstegi i) => new(
         i.Ad.Trim(), i.Tur, i.ParaBirimi, Temiz(i.BankaAdi), i.BankaHesapTuru, Temiz(i.Sube), Temiz(i.HesapNo),
-        Temiz(i.Iban) is { } iban ? Shared.Domain.Dogrulama.Iban.Normalize(iban) : null, i.Limit, Temiz(i.Aciklama));
+        Temiz(i.Iban) is { } iban ? Shared.Domain.Dogrulama.Iban.Normalize(iban) : null, i.Limit, i.SubeId,
+        i.HesapKesimGunu, i.SonOdemeGunu, i.PosCalismaSekli, i.PosKomisyonOrani, i.PosGunSayisi, i.PosGunTipi,
+        i.PosAktarilacakHesapId, Temiz(i.PosTerminalNo), Temiz(i.PosBatchNo), Temiz(i.Aciklama));
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

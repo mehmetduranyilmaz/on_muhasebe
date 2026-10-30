@@ -47,6 +47,7 @@ public sealed class KasaBankaModulu : IModul
 
         grup.MapDegisiklikGecmisi<KasaBankaDbContext>();
         HesapIslemleri.Map(grup);
+        SubeIslemleri.Map(grup);
         IslemIslemleri.Map(grup);
         KategoriIslemleri.Map(grup);
         KasaBankaRaporlari.Map(grup);

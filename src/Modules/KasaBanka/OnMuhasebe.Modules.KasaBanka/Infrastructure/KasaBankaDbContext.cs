@@ -32,6 +32,7 @@ internal sealed class KasaBankaDbContext(DbContextOptions<KasaBankaDbContext> op
     public DbSet<CekSenetAyari> CekSenetAyarlari => Set<CekSenetAyari>();
     public DbSet<EvrakKarnesi> Karneler => Set<EvrakKarnesi>();
     public DbSet<Teminat> Teminatlar => Set<Teminat>();
+    public DbSet<Sube> Subeler => Set<Sube>();
 
     // Kolon eşlemesi JSON olarak tek kolonda tutulur; konvansiyonla tanımlanınca EF onu ilişkili entity sanmaz.
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
