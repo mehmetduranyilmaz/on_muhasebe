@@ -9,7 +9,7 @@
         @if (!Oturum.SaltOkunurMu)
         {
             <div class="d-flex gap-2 align-center mb-3">
-                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yeniAd" Label="Yeni depo adı" MaxLength="100" />
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="YeniAd" Immediate="true" Label="Yeni depo adı" MaxLength="100" OnKeyDown="TusAsync" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="string.IsNullOrWhiteSpace(_yeniAd)" OnClick="EkleAsync">Ekle</MudButton>
             </div>
         }
@@ -50,6 +50,21 @@
     private List<Depo> _depolar = [];
     private string _yeniAd = "";
     private ApiHatasi? _hata;
+
+    // Yazarken butonun anlık güncellenmesi için Immediate; yalnızca boşluk yazılırsa alan temizlenir (buton pasif kalır).
+    private string YeniAd
+    {
+        get => _yeniAd;
+        set => _yeniAd = string.IsNullOrWhiteSpace(value) ? "" : value;
+    }
+
+    private async Task TusAsync(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or "NumpadEnter" && !string.IsNullOrWhiteSpace(_yeniAd))
+        {
+            await EkleAsync();
+        }
+    }
 
     protected override Task OnInitializedAsync() => YukleAsync();
 
