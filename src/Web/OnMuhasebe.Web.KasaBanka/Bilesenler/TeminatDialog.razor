@@ -1,0 +1,194 @@
+@inject ApiIstemcisi Api
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (_yukleniyor)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" Class="rounded-lg" />
+        }
+        else
+        {
+            <MudForm @ref="_form">
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudSelect T="TeminatYonu" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yon" Label="Yön">
+                            <MudSelectItem T="TeminatYonu" Value="TeminatYonu.Alinan">Alınan</MudSelectItem>
+                            <MudSelectItem T="TeminatYonu" Value="TeminatYonu.Verilen">Verilen</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudSelect T="TeminatTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür">
+                            @foreach (var tur in TeminatMetinleri.Turler)
+                            {
+                                <MudSelectItem T="TeminatTuru" Value="tur">@TeminatMetinleri.Tur(tur)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="7">
+                        <MudTextField @bind-Value="_tarafAdi" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@TeminatMetinleri.TarafEtiketi(_yon)"
+                                      Required="true" RequiredError="Taraf gerekli." MaxLength="250" />
+                    </MudItem>
+                    <MudItem xs="12" sm="5">
+                        <MudTextField @bind-Value="_referansNo" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Referans no (mektup/tapu/sözleşme)" MaxLength="100" />
+                    </MudItem>
+                    <MudItem xs="7" sm="8">
+                        <MudNumericField T="decimal" @bind-Value="_tutar" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tutar" Format="N2" Min="0" HideSpinButtons="true" />
+                    </MudItem>
+                    <MudItem xs="5" sm="4">
+                        <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_paraBirimi" Label="Para birimi">
+                            @foreach (var pb in ParaBirimleri.Tumu)
+                            {
+                                <MudSelectItem T="string" Value="pb.Kod">@pb.Kod</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudDatePicker @bind-Date="_verilisTarihi" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Veriliş tarihi" DateFormat="dd.MM.yyyy" Required="true" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudDatePicker @bind-Date="_vadeTarihi" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Vade / geçerlilik (isteğe bağlı)" DateFormat="dd.MM.yyyy" Clearable="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_aciklama" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Açıklama" MaxLength="1000" Lines="2" />
+                    </MudItem>
+                    @if (TeminatId is not null)
+                    {
+                        <MudItem xs="12" Class="d-flex align-center gap-2 flex-wrap">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Style="@($"color:{TeminatMetinleri.DurumRengi(_durum)}")">
+                                Durum: @TeminatMetinleri.Durum(_durum)
+                            </MudChip>
+                            <MudSpacer />
+                            @if (_durum == TeminatDurumu.Aktif)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.KeyboardReturn" OnClick="() => DurumAsync(TeminatDurumu.IadeEdildi)">İade edildi</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.PriceCheck" OnClick="() => DurumAsync(TeminatDurumu.Irat)">İrat edildi</MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Replay" OnClick="() => DurumAsync(TeminatDurumu.Aktif)">Aktife al</MudButton>
+                            }
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (TeminatId is not null)
+        {
+            <MudButton Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="SilAsync" Class="mr-auto">Sil</MudButton>
+        }
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid? TeminatId { get; set; }
+
+    private MudForm _form = null!;
+    private TeminatYonu _yon = TeminatYonu.Alinan;
+    private TeminatTuru _tur = TeminatTuru.TeminatMektubu;
+    private string _tarafAdi = "";
+    private string? _referansNo;
+    private decimal _tutar;
+    private string _paraBirimi = ParaBirimleri.Tl;
+    private DateTime? _verilisTarihi = DateTime.Today;
+    private DateTime? _vadeTarihi;
+    private string? _aciklama;
+    private TeminatDurumu _durum = TeminatDurumu.Aktif;
+    private uint _surum;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+    private readonly IslemAnahtari _anahtar = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (TeminatId is not { } id)
+        {
+            return;
+        }
+
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<TeminatDetayi>($"api/kasabanka/teminatlar/{id}");
+        if (sonuc.BasariliMi)
+        {
+            var t = sonuc.Deger;
+            (_yon, _tur, _tarafAdi, _referansNo, _tutar, _paraBirimi) = (t.Yon, t.Tur, t.TarafAdi, t.ReferansNo, t.Tutar, t.ParaBirimi);
+            _verilisTarihi = t.VerilisTarihi.ToDateTime(TimeOnly.MinValue);
+            _vadeTarihi = t.VadeTarihi?.ToDateTime(TimeOnly.MinValue);
+            (_aciklama, _durum, _surum) = (t.Aciklama, t.Durum, t.Surum);
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+
+        _yukleniyor = false;
+    }
+
+    private async Task KaydetAsync()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid || _verilisTarihi is null)
+        {
+            return;
+        }
+
+        var istek = new TeminatKaydetIstegi(_tur, _yon, _tarafAdi.Trim(), string.IsNullOrWhiteSpace(_referansNo) ? null : _referansNo.Trim(),
+            _tutar, _paraBirimi, DateOnly.FromDateTime(_verilisTarihi.Value),
+            _vadeTarihi is { } v ? DateOnly.FromDateTime(v) : null, string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim(), _surum);
+        var sonuc = TeminatId is { } id
+            ? await Api.PutAsync($"api/kasabanka/teminatlar/{id}", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PostAsync("api/kasabanka/teminatlar", istek, islemAnahtari: _anahtar.Deger);
+        _anahtar.Sonuc(sonuc.Hata);
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(TeminatId is null ? "Teminat eklendi." : "Teminat güncellendi.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    private async Task DurumAsync(TeminatDurumu durum)
+    {
+        var tarih = durum == TeminatDurumu.Aktif ? (DateOnly?)null : DateOnly.FromDateTime(DateTime.Today);
+        var sonuc = await Api.PostAsync($"api/kasabanka/teminatlar/{TeminatId}/durum", new TeminatDurumIstegi(durum, tarih));
+        if (sonuc.BasariliMi)
+        {
+            _durum = durum;
+            Snackbar.Add($"Teminat durumu: {TeminatMetinleri.Durum(durum)}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Teminatı sil", $"{_tarafAdi} teminat kaydı silinecek.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/kasabanka/teminatlar/{TeminatId}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Teminat silindi.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

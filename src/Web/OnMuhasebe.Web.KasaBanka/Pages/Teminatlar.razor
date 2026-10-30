@@ -1,0 +1,103 @@
+@page "/teminatlar"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+
+<SayfaBasligi Baslik="Teminatlar" GeriAdres="kasabanka" Ikon="@Icons.Material.Filled.Shield">
+    <AltIcerik><span>Alınan ve verilen teminatlar: teminat mektubu, ipotek, rehin, kefalet, nakit teminat (takip defteri)</span></AltIcerik>
+</SayfaBasligi>
+
+<div class="d-flex flex-wrap align-center gap-2 mb-3">
+    <div class="tur-sekmeleri mb-0">
+        <button type="button" class="tur-sekmesi @(_yon is null ? "secili" : "")" style="--vurgu:#1E3A5F" @onclick="() => YonSecAsync(null)">Tümü</button>
+        <button type="button" class="tur-sekmesi @(_yon == TeminatYonu.Alinan ? "secili" : "")" style="--vurgu:#16A34A" @onclick="() => YonSecAsync(TeminatYonu.Alinan)">Alınan</button>
+        <button type="button" class="tur-sekmesi @(_yon == TeminatYonu.Verilen ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="() => YonSecAsync(TeminatYonu.Verilen)">Verilen</button>
+    </div>
+    <MudSelect T="TeminatDurumu?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_durum" ValueChanged="DurumSecAsync" Clearable="true"
+               Placeholder="Tüm durumlar" Style="max-width:170px">
+        <MudSelectItem T="TeminatDurumu?" Value="@TeminatDurumu.Aktif">Aktif</MudSelectItem>
+        <MudSelectItem T="TeminatDurumu?" Value="@TeminatDurumu.IadeEdildi">İade edildi</MudSelectItem>
+        <MudSelectItem T="TeminatDurumu?" Value="@TeminatDurumu.Irat">İrat edildi</MudSelectItem>
+    </MudSelect>
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" DebounceInterval="350"
+                  Placeholder="Taraf ya da referans" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:260px" />
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="() => AcAsync(null)">Yeni teminat</MudButton>
+</div>
+
+<VeriTablosu T="TeminatOzeti" Kayitlar="_kayitlar" Yukleniyor="_yukleniyor" Dense="true" SatirTiklandi="t => AcAsync(t.Id)"
+             BosIkon="@Icons.Material.Outlined.Shield" BosBaslik="Teminat kaydı yok"
+             BosAciklama="Alınan veya verilen teminatları (mektup, ipotek, rehin, kefalet…) buradan ekleyin.">
+    <Basliklar>
+        <MudTh>Tür</MudTh>
+        <MudTh>Yön</MudTh>
+        <MudTh>Taraf</MudTh>
+        <MudTh>Referans</MudTh>
+        <MudTh class="sayi">Tutar</MudTh>
+        <MudTh>Vade</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Tür">
+            <div class="d-flex align-center gap-2"><MudIcon Icon="@TeminatMetinleri.TurIkonu(context.Tur)" Size="Size.Small" /> @TeminatMetinleri.Tur(context.Tur)</div>
+        </MudTd>
+        <MudTd DataLabel="Yön">@TeminatMetinleri.Yon(context.Yon)</MudTd>
+        <MudTd DataLabel="Taraf"><b>@context.TarafAdi</b></MudTd>
+        <MudTd DataLabel="Referans">@(context.ReferansNo ?? "—")</MudTd>
+        <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.Tutar, context.ParaBirimi)</MudTd>
+        <MudTd DataLabel="Vade">@(context.VadeTarihi is { } v ? Bicim.Tarih(v) : "—")</MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Style="@($"color:{TeminatMetinleri.DurumRengi(context.Durum)};font-weight:600")">@TeminatMetinleri.Durum(context.Durum)</MudChip>
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private List<TeminatOzeti>? _kayitlar;
+    private TeminatYonu? _yon;
+    private TeminatDurumu? _durum;
+    private string? _arama;
+    private bool _yukleniyor;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sorgu = new List<string>();
+        if (_yon is not null) { sorgu.Add($"yon={_yon}"); }
+        if (_durum is not null) { sorgu.Add($"durum={_durum}"); }
+        if (!string.IsNullOrWhiteSpace(_arama)) { sorgu.Add($"arama={Uri.EscapeDataString(_arama)}"); }
+        var sonuc = await Api.GetAsync<List<TeminatOzeti>>($"api/kasabanka/teminatlar{(sorgu.Count > 0 ? "?" + string.Join("&", sorgu) : "")}");
+        _kayitlar = sonuc.BasariliMi ? sonuc.Deger : [];
+        _yukleniyor = false;
+    }
+
+    private Task YonSecAsync(TeminatYonu? yon)
+    {
+        _yon = yon;
+        return YukleAsync();
+    }
+
+    private Task DurumSecAsync(TeminatDurumu? durum)
+    {
+        _durum = durum;
+        return YukleAsync();
+    }
+
+    private Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        return YukleAsync();
+    }
+
+    private async Task AcAsync(Guid? id)
+    {
+        var dialog = await DialogService.ShowAsync<TeminatDialog>(id is null ? "Yeni teminat" : "Teminat",
+            new DialogParameters<TeminatDialog> { { d => d.TeminatId, id } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+}

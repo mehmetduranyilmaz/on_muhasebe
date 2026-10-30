@@ -1597,6 +1597,104 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                     b.ToTable("kasa_hesabi", "kasabanka");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Teminat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<string>("Durum")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("durum");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<DateOnly?>("IadeTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("iade_tarihi");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("ParaBirimi")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("para_birimi");
+
+                    b.Property<string>("ReferansNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("referans_no");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("TarafAdi")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("taraf_adi");
+
+                    b.Property<string>("Tur")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tur");
+
+                    b.Property<decimal>("Tutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tutar");
+
+                    b.Property<DateOnly?>("VadeTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("vade_tarihi");
+
+                    b.Property<DateOnly>("VerilisTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("verilis_tarihi");
+
+                    b.Property<string>("Yon")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("yon");
+
+                    b.HasKey("Id")
+                        .HasName("pk_teminat");
+
+                    b.HasIndex("FirmaId", "Durum")
+                        .HasDatabaseName("ix_teminat_firma_id_durum");
+
+                    b.ToTable("teminat", "kasabanka");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Shared.Infrastructure.Persistence.DegisiklikKaydi", b =>
                 {
                     b.Property<Guid>("Id")

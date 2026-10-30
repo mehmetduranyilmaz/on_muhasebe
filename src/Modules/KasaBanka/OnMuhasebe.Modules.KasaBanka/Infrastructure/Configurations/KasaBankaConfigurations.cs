@@ -23,6 +23,22 @@ internal sealed class KasaHesabiConfiguration : IEntityTypeConfiguration<KasaHes
     }
 }
 
+internal sealed class TeminatConfiguration : IEntityTypeConfiguration<Teminat>
+{
+    public void Configure(EntityTypeBuilder<Teminat> builder)
+    {
+        builder.ToTable("teminat");
+        builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(20);
+        builder.Property(x => x.Yon).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(15);
+        builder.Property(x => x.TarafAdi).HasMaxLength(250);
+        builder.Property(x => x.ReferansNo).HasMaxLength(100);
+        builder.Property(x => x.ParaBirimi).HasMaxLength(3);
+        builder.Property(x => x.Aciklama).HasMaxLength(1000);
+        builder.HasIndex(x => new { x.FirmaId, x.Durum });
+    }
+}
+
 internal sealed class KasaHareketiConfiguration : IEntityTypeConfiguration<KasaHareketi>
 {
     public void Configure(EntityTypeBuilder<KasaHareketi> builder)
