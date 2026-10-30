@@ -1,0 +1,29 @@
+@* Banka seçimi: güncel banka listesinden (ad + SWIFT) seçilir; listede olmayan banka serbestçe yazılabilir (CoerceValue). *@
+@using OnMuhasebe.Shared.Contracts.Bankalar
+
+<MudAutocomplete T="string" Value="Value" ValueChanged="ValueChanged" SearchFunc="AraAsync"
+                 Label="@Label" Variant="Variant.Outlined" Margin="Margin.Dense"
+                 CoerceValue="true" ResetValueOnEmptyText="false" Clearable="true" MaxItems="15" DebounceInterval="150"
+                 Required="Required" RequiredError="@RequiredError" MaxLength="100"
+                 Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountBalance">
+    <ItemTemplate Context="banka">
+        <div class="d-flex justify-space-between align-center gap-3" style="width:100%">
+            <span>@banka</span>
+            @if (Bankalar.Swift(banka) is { } swift)
+            {
+                <small style="opacity:.55">@swift</small>
+            }
+        </div>
+    </ItemTemplate>
+</MudAutocomplete>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Banka";
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string RequiredError { get; set; } = "Banka gerekli.";
+
+    private Task<IEnumerable<string>> AraAsync(string? arama, CancellationToken cancellationToken) =>
+        Task.FromResult(Bankalar.Ara(arama).Select(b => b.Ad));
+}

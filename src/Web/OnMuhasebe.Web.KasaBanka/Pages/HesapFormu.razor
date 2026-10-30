@@ -54,7 +54,7 @@ else
             <FormBolumu Baslik="@(_tur == HesapTuru.Banka ? "Banka bilgileri" : _tur == HesapTuru.KrediKarti ? "Kart bilgileri" : "POS bilgileri")"
                         Ikon="@Icons.Material.Filled.AccountBalance" Sira="2">
                 <MudItem xs="12" sm="6" md="4">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_bankaAdi" Label="Banka" MaxLength="100" />
+                    <BankaSecici Value="_bankaAdi" ValueChanged="v => _bankaAdi = v" />
                 </MudItem>
                 @if (_tur == HesapTuru.Banka)
                 {
