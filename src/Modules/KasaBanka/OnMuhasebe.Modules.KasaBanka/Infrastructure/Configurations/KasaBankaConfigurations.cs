@@ -1,5 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 
 namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Configurations;
@@ -46,17 +49,31 @@ internal sealed class SubeConfiguration : IEntityTypeConfiguration<Sube>
 
 internal sealed class TeminatConfiguration : IEntityTypeConfiguration<Teminat>
 {
+    private static readonly ValueConverter<Dictionary<string, string>, string> DetayDonusturucu = new(
+        v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+        v => string.IsNullOrEmpty(v) ? new() : JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null) ?? new());
+
+    private static readonly ValueComparer<Dictionary<string, string>> DetayKarsilastirici = new(
+        (a, b) => JsonSerializer.Serialize(a, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(b, (JsonSerializerOptions?)null),
+        v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null).GetHashCode(),
+        v => JsonSerializer.Deserialize<Dictionary<string, string>>(JsonSerializer.Serialize(v, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null) ?? new());
+
     public void Configure(EntityTypeBuilder<Teminat> builder)
     {
         builder.ToTable("teminat");
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Yon).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(15);
-        builder.Property(x => x.TarafAdi).HasMaxLength(250);
+        builder.Property(x => x.KomisyonDonemi).HasConversion<string>().HasMaxLength(12);
+        builder.Property(x => x.KomisyonOrani).HasPrecision(9, 4);
+        builder.Property(x => x.KomisyonTutari).HasPrecision(18, 2);
+        builder.Property(x => x.BankaAdi).HasMaxLength(100);
         builder.Property(x => x.ReferansNo).HasMaxLength(100);
         builder.Property(x => x.ParaBirimi).HasMaxLength(3);
         builder.Property(x => x.Aciklama).HasMaxLength(1000);
+        builder.Property(x => x.Detaylar).HasConversion(DetayDonusturucu, DetayKarsilastirici).HasColumnType("jsonb");
         builder.HasIndex(x => new { x.FirmaId, x.Durum });
+        builder.HasIndex(x => new { x.FirmaId, x.CariHesapId });
     }
 }
 

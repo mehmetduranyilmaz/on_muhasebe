@@ -49,4 +49,15 @@ public static class TeminatMetinleri
         TeminatDurumu.IadeEdildi => "#64748B",
         _ => "#DC2626"
     };
+
+    public static IReadOnlyList<KomisyonDonemi> Donemler { get; } = Enum.GetValues<KomisyonDonemi>();
+
+    public static string Donem(KomisyonDonemi donem) => donem switch
+    {
+        KomisyonDonemi.Pesin => "Peşin",
+        KomisyonDonemi.Aylik => "Aylık",
+        KomisyonDonemi.UcAylik => "3 aylık",
+        KomisyonDonemi.AltiAylik => "6 aylık",
+        _ => "Yıllık"
+    };
 }

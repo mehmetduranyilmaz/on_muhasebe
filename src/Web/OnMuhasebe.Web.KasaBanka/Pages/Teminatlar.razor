@@ -19,7 +19,7 @@
         <MudSelectItem T="TeminatDurumu?" Value="@TeminatDurumu.Irat">İrat edildi</MudSelectItem>
     </MudSelect>
     <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" DebounceInterval="350"
-                  Placeholder="Taraf ya da referans" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:260px" />
+                  Placeholder="Banka ya da referans" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:260px" />
     <MudSpacer />
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="() => AcAsync(null)">Yeni teminat</MudButton>
 </div>
@@ -41,7 +41,13 @@
             <div class="d-flex align-center gap-2"><MudIcon Icon="@TeminatMetinleri.TurIkonu(context.Tur)" Size="Size.Small" /> @TeminatMetinleri.Tur(context.Tur)</div>
         </MudTd>
         <MudTd DataLabel="Yön">@TeminatMetinleri.Yon(context.Yon)</MudTd>
-        <MudTd DataLabel="Taraf"><b>@context.TarafAdi</b></MudTd>
+        <MudTd DataLabel="Taraf">
+            <b>@(context.CariUnvan ?? "—")</b>
+            @if (context.BankaAdi is { } banka)
+            {
+                <div class="mobil-alt-bilgi">@banka</div>
+            }
+        </MudTd>
         <MudTd DataLabel="Referans">@(context.ReferansNo ?? "—")</MudTd>
         <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.Tutar, context.ParaBirimi)</MudTd>
         <MudTd DataLabel="Vade">@(context.VadeTarihi is { } v ? Bicim.Tarih(v) : "—")</MudTd>

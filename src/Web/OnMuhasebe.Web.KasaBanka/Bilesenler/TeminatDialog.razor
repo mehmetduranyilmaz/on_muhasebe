@@ -7,7 +7,7 @@
         <HataGosterimi Hata="_hata" />
         @if (_yukleniyor)
         {
-            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" Class="rounded-lg" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
         }
         else
         {
@@ -20,20 +20,32 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="6">
-                        <MudSelect T="TeminatTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür">
+                        <MudSelect T="TeminatTuru" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_tur" ValueChanged="TurDegisti" Label="Tür">
                             @foreach (var tur in TeminatMetinleri.Turler)
                             {
                                 <MudSelectItem T="TeminatTuru" Value="tur">@TeminatMetinleri.Tur(tur)</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
-                    <MudItem xs="12" sm="7">
-                        <MudTextField @bind-Value="_tarafAdi" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@TeminatMetinleri.TarafEtiketi(_yon)"
-                                      Required="true" RequiredError="Taraf gerekli." MaxLength="250" />
+
+                    <MudItem xs="12">
+                        <MudAutocomplete T="CariSecim" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@TeminatMetinleri.TarafEtiketi(_yon)"
+                                         Value="_cari" ValueChanged="c => _cari = c" SearchFunc="CariAraAsync"
+                                         ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")" DebounceInterval="300"
+                                         ResetValueOnEmptyText="true" Clearable="true" MaxItems="10" Required="true" RequiredError="Cari seçin."
+                                         Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.People" />
                     </MudItem>
-                    <MudItem xs="12" sm="5">
-                        <MudTextField @bind-Value="_referansNo" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Referans no (mektup/tapu/sözleşme)" MaxLength="100" />
+
+                    @if (TeminatSemasi.Bankali(_tur))
+                    {
+                        <MudItem xs="12" sm="7">
+                            <BankaSecici Value="@_bankaAdi" ValueChanged="v => _bankaAdi = v" Label="Banka" />
+                        </MudItem>
+                    }
+                    <MudItem xs="12" sm="@(TeminatSemasi.Bankali(_tur) ? 5 : 6)">
+                        <MudTextField @bind-Value="_referansNo" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@TeminatSemasi.ReferansEtiketi(_tur)" MaxLength="100" />
                     </MudItem>
+
                     <MudItem xs="7" sm="8">
                         <MudNumericField T="decimal" @bind-Value="_tutar" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tutar" Format="N2" Min="0" HideSpinButtons="true" />
                     </MudItem>
@@ -49,17 +61,45 @@
                         <MudDatePicker @bind-Date="_verilisTarihi" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Veriliş tarihi" DateFormat="dd.MM.yyyy" Required="true" />
                     </MudItem>
                     <MudItem xs="6">
-                        <MudDatePicker @bind-Date="_vadeTarihi" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Vade / geçerlilik (isteğe bağlı)" DateFormat="dd.MM.yyyy" Clearable="true" />
+                        <MudDatePicker @bind-Date="_vadeTarihi" Variant="Variant.Outlined" Margin="Margin.Dense" Editable="true" Label="Vade / geçerlilik (opsiyonel)" DateFormat="dd.MM.yyyy" Clearable="true" />
                     </MudItem>
+
+                    @if (TeminatSemasi.Komisyonlu(_tur))
+                    {
+                        <MudItem xs="12"><div class="ozet-alt"><MudIcon Icon="@Icons.Material.Filled.Percent" Size="Size.Small" /> Komisyon (bankaya ödenir)</div></MudItem>
+                        <MudItem xs="4">
+                            <MudNumericField T="decimal?" @bind-Value="_komisyonOrani" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Oran % (yıllık)" Format="N2" Min="0" Max="100" HideSpinButtons="true" />
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudNumericField T="decimal?" @bind-Value="_komisyonTutari" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tutar" Format="N2" Min="0" HideSpinButtons="true" />
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudSelect T="KomisyonDonemi?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_komisyonDonemi" Label="Dönem" Clearable="true">
+                                @foreach (var d in TeminatMetinleri.Donemler)
+                                {
+                                    <MudSelectItem T="KomisyonDonemi?" Value="d">@TeminatMetinleri.Donem(d)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    }
+
+                    @foreach (var alan in TeminatSemasi.Alanlar(_tur))
+                    {
+                        <MudItem xs="12" sm="6" @key="alan.Kod">
+                            <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@alan.Etiket" MaxLength="200"
+                                          Value="@_detaylar.GetValueOrDefault(alan.Kod)" ValueChanged="v => DetaySet(alan.Kod, v)"
+                                          InputMode="@(alan.Tipi == TeminatAlanTipi.Sayi ? InputMode.numeric : InputMode.text)" />
+                        </MudItem>
+                    }
+
                     <MudItem xs="12">
                         <MudTextField @bind-Value="_aciklama" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Açıklama" MaxLength="1000" Lines="2" />
                     </MudItem>
+
                     @if (TeminatId is not null)
                     {
                         <MudItem xs="12" Class="d-flex align-center gap-2 flex-wrap">
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Style="@($"color:{TeminatMetinleri.DurumRengi(_durum)}")">
-                                Durum: @TeminatMetinleri.Durum(_durum)
-                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Style="@($"color:{TeminatMetinleri.DurumRengi(_durum)}")">Durum: @TeminatMetinleri.Durum(_durum)</MudChip>
                             <MudSpacer />
                             @if (_durum == TeminatDurumu.Aktif)
                             {
@@ -93,12 +133,17 @@
     private MudForm _form = null!;
     private TeminatYonu _yon = TeminatYonu.Alinan;
     private TeminatTuru _tur = TeminatTuru.TeminatMektubu;
-    private string _tarafAdi = "";
+    private CariSecim? _cari;
+    private string? _bankaAdi;
     private string? _referansNo;
     private decimal _tutar;
     private string _paraBirimi = ParaBirimleri.Tl;
     private DateTime? _verilisTarihi = DateTime.Today;
     private DateTime? _vadeTarihi;
+    private decimal? _komisyonOrani;
+    private decimal? _komisyonTutari;
+    private KomisyonDonemi? _komisyonDonemi;
+    private readonly Dictionary<string, string> _detaylar = [];
     private string? _aciklama;
     private TeminatDurumu _durum = TeminatDurumu.Aktif;
     private uint _surum;
@@ -118,9 +163,12 @@
         if (sonuc.BasariliMi)
         {
             var t = sonuc.Deger;
-            (_yon, _tur, _tarafAdi, _referansNo, _tutar, _paraBirimi) = (t.Yon, t.Tur, t.TarafAdi, t.ReferansNo, t.Tutar, t.ParaBirimi);
+            (_yon, _tur, _bankaAdi, _referansNo, _tutar, _paraBirimi) = (t.Yon, t.Tur, t.BankaAdi, t.ReferansNo, t.Tutar, t.ParaBirimi);
+            _cari = new CariSecim(t.CariHesapId, t.CariUnvan ?? "", "");
             _verilisTarihi = t.VerilisTarihi.ToDateTime(TimeOnly.MinValue);
             _vadeTarihi = t.VadeTarihi?.ToDateTime(TimeOnly.MinValue);
+            (_komisyonOrani, _komisyonTutari, _komisyonDonemi) = (t.KomisyonOrani, t.KomisyonTutari, t.KomisyonDonemi);
+            foreach (var (k, v) in t.Detaylar) { _detaylar[k] = v; }
             (_aciklama, _durum, _surum) = (t.Aciklama, t.Durum, t.Surum);
         }
         else
@@ -131,17 +179,38 @@
         _yukleniyor = false;
     }
 
+    private void TurDegisti(TeminatTuru tur) => _tur = tur;
+
+    private void DetaySet(string kod, string? deger)
+    {
+        if (string.IsNullOrWhiteSpace(deger))
+        {
+            _detaylar.Remove(kod);
+        }
+        else
+        {
+            _detaylar[kod] = deger.Trim();
+        }
+    }
+
+    private async Task<IEnumerable<CariSecim>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>(
+            $"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar.Select(c => new CariSecim(c.Id, c.Unvan, c.Kod)) : [];
+    }
+
     private async Task KaydetAsync()
     {
         await _form.ValidateAsync();
-        if (!_form.IsValid || _verilisTarihi is null)
+        if (!_form.IsValid || _verilisTarihi is null || _cari is null)
         {
             return;
         }
 
-        var istek = new TeminatKaydetIstegi(_tur, _yon, _tarafAdi.Trim(), string.IsNullOrWhiteSpace(_referansNo) ? null : _referansNo.Trim(),
-            _tutar, _paraBirimi, DateOnly.FromDateTime(_verilisTarihi.Value),
-            _vadeTarihi is { } v ? DateOnly.FromDateTime(v) : null, string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim(), _surum);
+        var istek = new TeminatKaydetIstegi(_tur, _yon, _cari.Id, Bos(_bankaAdi), Bos(_referansNo), _tutar, _paraBirimi,
+            DateOnly.FromDateTime(_verilisTarihi.Value), _vadeTarihi is { } v ? DateOnly.FromDateTime(v) : null,
+            _komisyonOrani, _komisyonTutari, _komisyonDonemi, _detaylar, Bos(_aciklama), _surum);
         var sonuc = TeminatId is { } id
             ? await Api.PutAsync($"api/kasabanka/teminatlar/{id}", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PostAsync("api/kasabanka/teminatlar", istek, islemAnahtari: _anahtar.Deger);
@@ -163,7 +232,6 @@
         var sonuc = await Api.PostAsync($"api/kasabanka/teminatlar/{TeminatId}/durum", new TeminatDurumIstegi(durum, tarih));
         if (sonuc.BasariliMi)
         {
-            _durum = durum;
             Snackbar.Add($"Teminat durumu: {TeminatMetinleri.Durum(durum)}.", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }
@@ -175,7 +243,7 @@
 
     private async Task SilAsync()
     {
-        if (!await Onay.SorAsync("Teminatı sil", $"{_tarafAdi} teminat kaydı silinecek.", "Sil", tehlikeli: true))
+        if (!await Onay.SorAsync("Teminatı sil", "Bu teminat kaydı silinecek.", "Sil", tehlikeli: true))
         {
             return;
         }
@@ -191,4 +259,6 @@
             _hata = sonuc.Hata;
         }
     }
+
+    private static string? Bos(string? d) => string.IsNullOrWhiteSpace(d) ? null : d.Trim();
 }

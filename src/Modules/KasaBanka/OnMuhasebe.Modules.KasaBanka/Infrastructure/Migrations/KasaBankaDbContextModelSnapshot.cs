@@ -1727,6 +1727,20 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("aciklama");
 
+                    b.Property<string>("BankaAdi")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("banka_adi");
+
+                    b.Property<Guid>("CariHesapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cari_hesap_id");
+
+                    b.Property<string>("Detaylar")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("detaylar");
+
                     b.Property<string>("Durum")
                         .IsRequired()
                         .HasMaxLength(15)
@@ -1748,6 +1762,21 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                     b.Property<DateOnly?>("IadeTarihi")
                         .HasColumnType("date")
                         .HasColumnName("iade_tarihi");
+
+                    b.Property<string>("KomisyonDonemi")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("komisyon_donemi");
+
+                    b.Property<decimal?>("KomisyonOrani")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)")
+                        .HasColumnName("komisyon_orani");
+
+                    b.Property<decimal?>("KomisyonTutari")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("komisyon_tutari");
 
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
@@ -1773,12 +1802,6 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
-
-                    b.Property<string>("TarafAdi")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)")
-                        .HasColumnName("taraf_adi");
 
                     b.Property<string>("Tur")
                         .IsRequired()
@@ -1807,6 +1830,9 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_teminat");
+
+                    b.HasIndex("FirmaId", "CariHesapId")
+                        .HasDatabaseName("ix_teminat_firma_id_cari_hesap_id");
 
                     b.HasIndex("FirmaId", "Durum")
                         .HasDatabaseName("ix_teminat_firma_id_durum");
