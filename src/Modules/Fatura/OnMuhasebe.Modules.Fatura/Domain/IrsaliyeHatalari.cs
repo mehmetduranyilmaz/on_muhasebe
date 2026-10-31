@@ -11,6 +11,8 @@ internal static class IrsaliyeHatalari
     public static readonly Hata DepoSevkindeCariOlmaz = Hata.Dogrulama("depo_sevk_cari", "Depolar arası sevk irsaliyesinde cari seçilmez.");
     public static readonly Hata HedefDepoGerekli = Hata.Dogrulama("hedef_depo_gerekli", "Depolar arası sevkte malın gideceği depo seçilmelidir.");
     public static readonly Hata TeslimAdresiGerekli = Hata.Dogrulama("teslim_adresi_gerekli", "Depolar arası sevkte malın teslim edileceği deponun adresi yazılmalıdır.");
+    public static readonly Hata TasimaBilgisiGerekli = Hata.Dogrulama("tasima_bilgisi_gerekli",
+        "Malı kimin taşıdığı girilmelidir: kendi aracınızla ise araç plakası, şoför adı ve T.C. kimlik no; kargo/nakliye firmasıyla ise taşıyıcının unvanı ve VKN'si.");
     public static readonly Hata HedefDepoAyni = Hata.Dogrulama("hedef_depo_ayni", "Malın çıktığı depo ile gideceği depo aynı olamaz.");
     public static readonly Hata SevkTarihtenOnceOlamaz = Hata.Dogrulama("sevk_tarihi_gecersiz", "Fiili sevk tarihi irsaliye düzenleme tarihinden önce olamaz.");
     public static readonly Hata MaliyetGerekli = Hata.Dogrulama("irsaliye_maliyet_gerekli",

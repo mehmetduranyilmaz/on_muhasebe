@@ -43,7 +43,9 @@ internal static class IrsaliyeIslemleri
             RuleFor(x => x.Kur).GreaterThan(0).When(x => x.Kur is not null);
             RuleFor(x => x.Numara).MaximumLength(30);
             RuleFor(x => x.TeslimAdresi).MaximumLength(500);
-            RuleFor(x => x.AracPlakasi).MaximumLength(20);
+            RuleFor(x => x.AracPlakasi).MaximumLength(20)
+                .Must(p => PlakaGecerliMi(p!)).When(x => !string.IsNullOrWhiteSpace(x.AracPlakasi))
+                .WithMessage("Araç plakası geçersiz (ör. 34 ABC 123: il kodu 01-81, 1-3 harf, 2-4 rakam).");
             RuleFor(x => x.SoforAdi).MaximumLength(100);
             RuleFor(x => x.SoforTckn).Must(t => VergiKimlik.TcknGecerliMi(t!.Trim()))
                 .When(x => !string.IsNullOrWhiteSpace(x.SoforTckn)).WithMessage("Şoförün T.C. kimlik numarası geçersiz.");
@@ -62,6 +64,10 @@ internal static class IrsaliyeIslemleri
             });
         }
     }
+
+    // Türk plakası: il kodu (01-81) + 1-3 harf + 2-4 rakam; boşluklar yok sayılır.
+    internal static bool PlakaGecerliMi(string plaka) =>
+        System.Text.RegularExpressions.Regex.IsMatch(plaka.Replace(" ", "").ToUpperInvariant(), "^(0[1-9]|[1-7][0-9]|8[01])[A-Z]{1,3}[0-9]{2,4}$");
 
     private static async Task<IResult> ListeleAsync(
         FaturaDbContext db, IrsaliyeTuru? tur, IrsaliyeDurumu? durum, Guid? cariId, FaturalamaDurumu? faturalama, bool? acik,

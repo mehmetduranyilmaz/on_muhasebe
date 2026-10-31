@@ -81,6 +81,11 @@ public sealed record StokKartiDetayi(
 // Barkod okutma: barkod kartın kendisine ya da ek birimlerinden birine ait olabilir.
 public sealed record BarkodSonucu(Guid StokKartiId, string Kod, string Ad, string Birim, decimal Katsayi);
 
-public sealed record Depo(Guid Id, string Ad, bool VarsayilanMi, bool AktifMi);
+public sealed record Depo(Guid Id, string Ad, bool VarsayilanMi, bool AktifMi, string? Adres = null, string? Il = null, string? Ilce = null)
+{
+    // Tek satırlık adres: "Açık adres, İlçe/İl".
+    public string? TamAdres => string.Join(", ", new[] { Adres, string.Join("/", new[] { Ilce, Il }.Where(x => !string.IsNullOrEmpty(x))) }
+        .Where(x => !string.IsNullOrEmpty(x))) is { Length: > 0 } a ? a : null;
+}
 
-public sealed record DepoKaydetIstegi(string Ad);
+public sealed record DepoKaydetIstegi(string Ad, string? Adres = null, string? Il = null, string? Ilce = null);

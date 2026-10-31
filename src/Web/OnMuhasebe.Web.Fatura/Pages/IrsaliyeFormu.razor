@@ -23,7 +23,7 @@ else
                 @if (DepoSevkMi)
                 {
                     <MudItem xs="12" md="6">
-                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hedefDepoId" Label="Malın gideceği depo"
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_hedefDepoId" ValueChanged="HedefDepoSecildi" Label="Malın gideceği depo"
                                    Required="true" RequiredError="Hedef depo seçin.">
                             @foreach (var d in _depolar)
                             {
@@ -85,23 +85,50 @@ else
                 </MudItem>
             </FormBolumu>
 
-            <FormBolumu Baslik="Taşıma bilgileri" Aciklama="Kâğıt irsaliyede isteğe bağlı; e-İrsaliye'de araç plakası ve şoför zorunludur"
+            <FormBolumu Baslik="Taşıma bilgileri" Aciklama="@(GidenMi ? "Malı kimin taşıdığı zorunludur" : "Karşı tarafın irsaliyesindeki taşıma bilgisi (isteğe bağlı)")"
                         Ikon="@Icons.Material.Filled.LocalShipping" Sira="1">
-                <MudItem xs="6" md="3">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aracPlakasi" Label="Araç plakası" MaxLength="20" />
+                <MudItem xs="12">
+                    <div class="tur-sekmeleri mb-0">
+                        <button type="button" class="tur-sekmesi @(_tasiyiciIle ? "" : "secili")" style="--vurgu:#3B82F6" @onclick="() => _tasiyiciIle = false">
+                            <MudIcon Icon="@Icons.Material.Filled.LocalShipping" Size="Size.Small" /> Kendi aracımız
+                        </button>
+                        <button type="button" class="tur-sekmesi @(_tasiyiciIle ? "secili" : "")" style="--vurgu:#14B8A6" @onclick="() => _tasiyiciIle = true">
+                            <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> Taşıyıcı firma (kargo/nakliye)
+                        </button>
+                    </div>
                 </MudItem>
-                <MudItem xs="6" md="5">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soforAdi" Label="Şoför adı soyadı" MaxLength="100" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soforTckn" Label="Şoför T.C. kimlik no" MaxLength="11" />
-                </MudItem>
-                <MudItem xs="12" md="8">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tasiyiciUnvani" Label="Taşıyıcı firma (kargo/nakliye)" MaxLength="250" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tasiyiciVkn" Label="Taşıyıcı VKN/TCKN" MaxLength="11" />
-                </MudItem>
+                @if (_tasiyiciIle)
+                {
+                    <MudItem xs="12" md="8">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tasiyiciUnvani" Label="Taşıyıcı firma unvanı" MaxLength="250"
+                                      Required="GidenMi" RequiredError="Taşıyıcı unvanı gerekli." />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tasiyiciVkn" Label="Taşıyıcı VKN/TCKN" MaxLength="11"
+                                      Required="GidenMi" RequiredError="Taşıyıcı VKN gerekli." />
+                    </MudItem>
+                    <MudItem xs="6" md="3">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aracPlakasi" Label="Araç plakası (biliniyorsa)" MaxLength="20" />
+                    </MudItem>
+                    <MudItem xs="6" md="9">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soforAdi" Label="Şoför (biliniyorsa)" MaxLength="100" />
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="6" md="3">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aracPlakasi" Label="Araç plakası" MaxLength="20" Placeholder="34 ABC 123"
+                                      Required="GidenMi" RequiredError="Araç plakası gerekli." />
+                    </MudItem>
+                    <MudItem xs="6" md="5">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soforAdi" Label="Şoför adı soyadı" MaxLength="100"
+                                      Required="GidenMi" RequiredError="Şoför adı gerekli." />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soforTckn" Label="Şoför T.C. kimlik no" MaxLength="11"
+                                      Required="GidenMi" RequiredError="Şoför TCKN gerekli." />
+                    </MudItem>
+                }
             </FormBolumu>
 
             <FormBolumu Baslik="Sevk edilen mallar" Aciklama="@SatirAciklamasi" Ikon="@Icons.Material.Filled.FormatListNumbered" Sira="2">
@@ -285,6 +312,7 @@ else
     private string? _tasiyiciVkn;
     private string? _aciklama;
     private bool _fiyatli;
+    private bool _tasiyiciIle;
     private readonly List<IrsaliyeSatirModeli> _satirlar = [];
     private List<Depo> _depolar = [];
     private int _stokAramaAnahtari;
@@ -311,7 +339,26 @@ else
                                      && (DepoSevkMi ? _hedefDepoId is not null && !string.IsNullOrWhiteSpace(_teslimAdresi) : _cari is not null)
                                      && (GidenMi || !string.IsNullOrWhiteSpace(_numara))
                                      && (!AlisMi || _satirlar.All(s => s.BirimFiyat is not null))
+                                     && (!GidenMi || TasimaBilgisiTamMi)
                                      && (!Dovizli || _kur > 0);
+
+    // Kendi aracımızla: plaka + şoför adı + TCKN; taşıyıcı firmayla: unvan + VKN (VUK 230 / e-İrsaliye).
+    private bool TasimaBilgisiTamMi => _tasiyiciIle
+        ? Dolu(_tasiyiciUnvani) && Dolu(_tasiyiciVkn)
+        : Dolu(_aracPlakasi) && Dolu(_soforAdi) && Dolu(_soforTckn);
+
+    private static bool Dolu(string? deger) => !string.IsNullOrWhiteSpace(deger);
+
+    // Teslim adresi boşsa ya da önceki depodan otomatik doldurulmuşsa hedef deponun adresiyle yenilenir.
+    private void HedefDepoSecildi(Guid? depoId)
+    {
+        var onceki = _depolar.FirstOrDefault(d => d.Id == _hedefDepoId)?.TamAdres;
+        _hedefDepoId = depoId;
+        if (string.IsNullOrWhiteSpace(_teslimAdresi) || _teslimAdresi == onceki)
+        {
+            _teslimAdresi = _depolar.FirstOrDefault(d => d.Id == depoId)?.TamAdres;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -331,7 +378,7 @@ else
             (_tarih, _sevkTarihi, _sevkSaati) = (simdi.Date, simdi.Date, new TimeSpan(simdi.Hour, simdi.Minute, 0));
             if (DepoSevkMi)
             {
-                _hedefDepoId = _depolar.FirstOrDefault(d => !d.VarsayilanMi)?.Id;
+                HedefDepoSecildi(_depolar.FirstOrDefault(d => !d.VarsayilanMi)?.Id);
             }
         }
 
@@ -353,6 +400,7 @@ else
         (_paraBirimi, _kur, _kurElleGirildi) = (i.ParaBirimi, i.Kur, true);
         (_hedefDepoId, _teslimAdresi, _aracPlakasi, _soforAdi, _soforTckn) = (i.HedefDepoId, i.TeslimAdresi, i.AracPlakasi, i.SoforAdi, i.SoforTckn);
         (_tasiyiciUnvani, _tasiyiciVkn, _aciklama) = (i.TasiyiciUnvani, i.TasiyiciVkn, i.Aciklama);
+        _tasiyiciIle = i.TasiyiciUnvani is not null && i.SoforTckn is null;
         if (i.CariHesapId is { } cariId)
         {
             _cari = new CariOzeti(cariId, i.CariKodu ?? "", i.CariUnvan, CariTuru.Musteri, null, i.ParaBirimi, null, true, 0m, 0m, null);

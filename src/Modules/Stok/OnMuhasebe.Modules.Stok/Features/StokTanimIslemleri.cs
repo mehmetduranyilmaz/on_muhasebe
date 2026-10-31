@@ -39,7 +39,13 @@ internal static class StokTanimIslemleri
 
     internal sealed class DepoDogrulayici : AbstractValidator<DepoKaydetIstegi>
     {
-        public DepoDogrulayici() => RuleFor(x => x.Ad).NotEmpty().MaximumLength(100);
+        public DepoDogrulayici()
+        {
+            RuleFor(x => x.Ad).NotEmpty().MaximumLength(100);
+            RuleFor(x => x.Adres).MaximumLength(500);
+            RuleFor(x => x.Il).MaximumLength(50);
+            RuleFor(x => x.Ilce).MaximumLength(50);
+        }
     }
 
     internal sealed class GrupDogrulayici : AbstractValidator<GrupKaydetIstegi>
@@ -52,7 +58,7 @@ internal static class StokTanimIslemleri
         await depoServisi.VarsayilanAsync(cancellationToken);
         return TypedResults.Ok(await db.Depolar.AsNoTracking()
             .OrderByDescending(d => d.VarsayilanMi).ThenBy(d => d.Ad)
-            .Select(d => new DepoDto(d.Id, d.Ad, d.VarsayilanMi, d.AktifMi))
+            .Select(d => new DepoDto(d.Id, d.Ad, d.VarsayilanMi, d.AktifMi, d.Adres, d.Il, d.Ilce))
             .ToListAsync(cancellationToken));
     }
 
@@ -66,9 +72,11 @@ internal static class StokTanimIslemleri
         }
 
         var depo = Domain.Depo.Olustur(ad);
+        depo.AdresDegistir(istek.Adres, istek.Il, istek.Ilce);
         db.Depolar.Add(depo);
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Created($"/api/stok/depolar/{depo.Id}", new DepoDto(depo.Id, depo.Ad, depo.VarsayilanMi, depo.AktifMi));
+        return TypedResults.Created($"/api/stok/depolar/{depo.Id}",
+            new DepoDto(depo.Id, depo.Ad, depo.VarsayilanMi, depo.AktifMi, depo.Adres, depo.Il, depo.Ilce));
     }
 
     private static async Task<IResult> DepoGuncelleAsync(Guid id, DepoKaydetIstegi istek, StokDbContext db, CancellationToken cancellationToken)
@@ -86,6 +94,7 @@ internal static class StokTanimIslemleri
         }
 
         depo.AdDegistir(ad);
+        depo.AdresDegistir(istek.Adres, istek.Il, istek.Ilce);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
     }

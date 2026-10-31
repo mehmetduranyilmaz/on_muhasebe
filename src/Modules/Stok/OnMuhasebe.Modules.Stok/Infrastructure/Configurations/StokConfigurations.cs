@@ -86,6 +86,9 @@ internal sealed class DepoConfiguration : IEntityTypeConfiguration<Depo>
     {
         builder.ToTable("depo");
         builder.Property(x => x.Ad).HasMaxLength(100);
+        builder.Property(x => x.Adres).HasMaxLength(500);
+        builder.Property(x => x.Il).HasMaxLength(50);
+        builder.Property(x => x.Ilce).HasMaxLength(50);
         builder.HasIndex(x => new { x.FirmaId, x.Ad }).IsUnique();
     }
 }

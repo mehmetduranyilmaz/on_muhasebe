@@ -19,12 +19,19 @@
                 <MudListItem T="string">
                     <div class="d-flex align-center gap-2">
                         <MudIcon Icon="@Icons.Material.Filled.Warehouse" Size="Size.Small" Color="Color.Secondary" />
-                        <MudText>@depo.Ad</MudText>
+                        <div style="min-width:0">
+                            <MudText>@depo.Ad</MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.7">@(depo.TamAdres ?? "Adres girilmedi")</MudText>
+                        </div>
                         @if (depo.VarsayilanMi)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">Varsayılan</MudChip>
                         }
                         <MudSpacer />
+                        @if (!Oturum.SaltOkunurMu)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="() => DuzenlemeyiAc(depo)" />
+                        }
                         @if (!Oturum.SaltOkunurMu && !depo.VarsayilanMi)
                         {
                             <MudTooltip Text="Varsayılan yap">
@@ -33,10 +40,26 @@
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Sil" OnClick="() => SilAsync(depo)" />
                         }
                     </div>
+                    @if (_duzenlenen == depo.Id)
+                    {
+                        <MudGrid Spacing="1" Class="mt-2">
+                            <MudItem xs="12"><MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Depo adı" MaxLength="100" /></MudItem>
+                            <MudItem xs="12"><MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_adres" Label="Açık adres" MaxLength="500" /></MudItem>
+                            <MudItem xs="6"><MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ilce" Label="İlçe" MaxLength="50" /></MudItem>
+                            <MudItem xs="6"><MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_il" Label="İl" MaxLength="50" /></MudItem>
+                            <MudItem xs="12" Class="d-flex justify-end gap-2">
+                                <MudButton Size="Size.Small" OnClick="() => _duzenlenen = null">Vazgeç</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="string.IsNullOrWhiteSpace(_ad)"
+                                           OnClick="() => GuncelleAsync(depo)">Kaydet</MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    }
                 </MudListItem>
             }
         </MudList>
-        <MudText Typo="Typo.caption" Class="mt-2 d-block" Style="opacity:.7">Hareket girilirken depo seçilmezse varsayılan depo kullanılır.</MudText>
+        <MudText Typo="Typo.caption" Class="mt-2 d-block" Style="opacity:.7">
+            Hareket girilirken depo seçilmezse varsayılan depo kullanılır. Depo adresi, depolar arası sevk irsaliyesinde teslim adresi olarak kullanılır.
+        </MudText>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => MudDialog.Close()">Kapat</MudButton>
@@ -49,7 +72,25 @@
 
     private List<Depo> _depolar = [];
     private string _yeniAd = "";
+    private Guid? _duzenlenen;
+    private string? _ad;
+    private string? _adres;
+    private string? _il;
+    private string? _ilce;
     private ApiHatasi? _hata;
+
+    private void DuzenlemeyiAc(Depo depo) => (_duzenlenen, _ad, _adres, _il, _ilce) = (depo.Id, depo.Ad, depo.Adres, depo.Il, depo.Ilce);
+
+    private async Task GuncelleAsync(Depo depo)
+    {
+        var sonuc = await Api.PutAsync($"api/stok/depolar/{depo.Id}", new DepoKaydetIstegi(_ad!, _adres, _il, _ilce));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            _duzenlenen = null;
+            await YukleAsync();
+        }
+    }
 
     // Yazarken butonun anlık güncellenmesi için Immediate; yalnızca boşluk yazılırsa alan temizlenir (buton pasif kalır).
     private string YeniAd

@@ -35,6 +35,11 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("ad");
 
+                    b.Property<string>("Adres")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("adres");
+
                     b.Property<bool>("AktifMi")
                         .HasColumnType("boolean")
                         .HasColumnName("aktif_mi");
@@ -50,6 +55,16 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                     b.Property<Guid?>("GuncelleyenId")
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("Il")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("il");
+
+                    b.Property<string>("Ilce")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ilce");
 
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")

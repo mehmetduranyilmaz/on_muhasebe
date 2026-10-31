@@ -177,6 +177,13 @@ internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
             return IrsaliyeHatalari.MaliyetGerekli;
         }
 
+        // Bizim düzenlediğimiz irsaliyede malı kimin taşıdığı belli olmalı: kendi aracımızla plaka + şoför, ya da
+        // taşıyıcı firmayla (kargo/nakliye) unvan + VKN. Gelen irsaliyede bu bilgi karşı tarafın belgesindedir.
+        if (IrsaliyeTurleri.GidenMi(b.Tur) && !TasimaBilgisiTamMi(b))
+        {
+            return IrsaliyeHatalari.TasimaBilgisiGerekli;
+        }
+
         Tarih = b.Tarih;
         SevkTarihi = b.SevkTarihi;
         SevkSaati = b.SevkSaati;
@@ -214,6 +221,11 @@ internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
 
         return Sonuc.Basarili();
     }
+
+    private static bool TasimaBilgisiTamMi(IrsaliyeBilgileri b) =>
+        (Dolu(b.AracPlakasi) && Dolu(b.SoforAdi) && Dolu(b.SoforTckn)) || (Dolu(b.TasiyiciUnvani) && Dolu(b.TasiyiciVkn));
+
+    private static bool Dolu(string? deger) => !string.IsNullOrWhiteSpace(deger);
 }
 
 internal sealed class IrsaliyeSatiri : BaseEntity

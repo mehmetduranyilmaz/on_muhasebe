@@ -166,9 +166,18 @@ internal sealed class Depo : FirmaEntity
     public bool VarsayilanMi { get; private set; }
     public bool AktifMi { get; private set; } = true;
 
+    // Depolar arası sevk irsaliyesinde teslim adresi ve yazdırmada gönderen/teslim yeri olarak kullanılır.
+    public string? Adres { get; private set; }
+    public string? Il { get; private set; }
+    public string? Ilce { get; private set; }
+
     public static Depo Olustur(string ad, bool varsayilanMi = false) => new() { Ad = ad.Trim(), VarsayilanMi = varsayilanMi };
 
     public void AdDegistir(string ad) => Ad = ad.Trim();
+
+    public void AdresDegistir(string? adres, string? il, string? ilce) => (Adres, Il, Ilce) = (Bos(adres), Bos(il), Bos(ilce));
+
+    private static string? Bos(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 
     public void VarsayilanYap(bool varsayilanMi) => VarsayilanMi = varsayilanMi;
 }
