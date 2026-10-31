@@ -1,0 +1,118 @@
+@* Teklif/sipariş A4 yazdırma görünümü; ekranda gizlidir. Taslak ve iptalde filigran basılır. *@
+<div class="sadece-yazdir fatura-kagidi">
+    @if (Belge.Durum is TeklifSiparisDurumu.Taslak or TeklifSiparisDurumu.Iptal)
+    {
+        <div class="filigran">@(Belge.Durum == TeklifSiparisDurumu.Taslak ? "TASLAK" : "İPTAL")</div>
+    }
+
+    <header class="fk-ust">
+        <div class="fk-firma">
+            <div class="fk-firma-unvan">@(Firma?.Unvan ?? "")</div>
+            @if (Firma is { } firma)
+            {
+                @if (firma.Adres is not null)
+                {
+                    <div>@firma.Adres</div>
+                }
+                @if (firma.Telefon is not null || firma.Eposta is not null)
+                {
+                    <div>@string.Join(" · ", new[] { firma.Telefon, firma.Eposta }.Where(x => x is not null))</div>
+                }
+                @if (firma.VergiNo is not null)
+                {
+                    <div>@(firma.VergiDairesi is null ? "" : $"{firma.VergiDairesi} V.D. · ")@(firma.VergiNo.Length == 11 ? "TCKN" : "VKN") @firma.VergiNo</div>
+                }
+            }
+        </div>
+        <div class="fk-baslik">
+            <div class="fk-tur">@TeklifSiparisMetinleri.Tur(Belge.Tur).ToUpper(_tr)</div>
+            <table class="fk-bilgi">
+                <tr><th>No</th><td>@(Belge.Numara ?? "—")</td></tr>
+                <tr><th>Tarih</th><td>@Bicim.Tarih(Belge.Tarih)</td></tr>
+                @if (Belge.GecerlilikTarihi is { } g)
+                {
+                    <tr><th>Geçerlilik</th><td>@Bicim.Tarih(g)</td></tr>
+                }
+                @if (Belge.TerminTarihi is { } t)
+                {
+                    <tr><th>Termin</th><td>@Bicim.Tarih(t)</td></tr>
+                }
+                @if (Belge.ParaBirimi != ParaBirimleri.Tl)
+                {
+                    <tr><th>Döviz</th><td>@Belge.ParaBirimi</td></tr>
+                }
+            </table>
+        </div>
+    </header>
+
+    <section class="fk-alici">
+        <div class="fk-etiket">SAYIN</div>
+        <div class="fk-alici-unvan">@Belge.CariUnvan</div>
+        @if (Belge.Adres is not null)
+        {
+            <div>@Belge.Adres @(string.Join("/", new[] { Belge.Ilce, Belge.Il }.Where(x => x is not null)))</div>
+        }
+    </section>
+
+    <table class="fk-satirlar">
+        <thead>
+            <tr><th>Sıra</th><th class="sol">Mal / Hizmet</th><th>Miktar</th><th>Birim Fiyat</th><th>İskonto</th><th>KDV %</th><th>Tutar</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Belge.Satirlar)
+            {
+                <tr>
+                    <td>@s.Sira</td>
+                    <td class="sol">@s.Ad@(s.StokKodu is null ? "" : $" ({s.StokKodu})")</td>
+                    <td>@Bicim.Miktar(s.Miktar, s.Birim)</td>
+                    <td>@Bicim.Tutar(s.BirimFiyat)@(s.KdvDahilMi ? "*" : "")</td>
+                    <td>@(new[] { s.Iskonto1, s.Iskonto2, s.Iskonto3 }.Any(i => i > 0) ? string.Join("+", new[] { s.Iskonto1, s.Iskonto2, s.Iskonto3 }.Where(i => i > 0).Select(i => $"%{i:0.##}")) : "")</td>
+                    <td>%@s.KdvOrani</td>
+                    <td>@Bicim.Tutar(s.Matrah)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="fk-alt">
+        <div class="fk-sol">
+            @if (Belge.OdemeKosulu is not null)
+            {
+                <div class="fk-aciklama"><b>Ödeme koşulu:</b> @Belge.OdemeKosulu</div>
+            }
+            @if (Belge.TeslimKosulu is not null)
+            {
+                <div class="fk-aciklama"><b>Teslim koşulu:</b> @Belge.TeslimKosulu</div>
+            }
+            @if (Belge.Aciklama is not null)
+            {
+                <div class="fk-aciklama"><b>Açıklama:</b> @Belge.Aciklama</div>
+            }
+            @if (TeklifSiparisTurleri.TeklifMi(Belge.Tur) && Belge.GecerlilikTarihi is { } gecerlilik)
+            {
+                <div class="fk-aciklama">Bu teklif @Bicim.Tarih(gecerlilik) tarihine kadar geçerlidir. Fiyatlara KDV dahil değildir; KDV ayrıca gösterilmiştir.</div>
+            }
+        </div>
+        <table class="fk-toplamlar">
+            <tr><th>Mal / Hizmet Toplamı</th><td>@Bicim.Tutar(Belge.BrutToplam)</td></tr>
+            @if (Belge.SatirIskontoToplami + Belge.GenelIskontoTutari > 0)
+            {
+                <tr><th>Toplam İskonto</th><td>@Bicim.Tutar(Belge.SatirIskontoToplami + Belge.GenelIskontoTutari)</td></tr>
+            }
+            <tr><th>KDV Matrahı</th><td>@Bicim.Tutar(Belge.Matrah)</td></tr>
+            @foreach (var k in Belge.KdvDagilimi)
+            {
+                <tr><th>KDV (%@k.Oran)</th><td>@Bicim.Tutar(k.KdvTutari)</td></tr>
+            }
+            <tr class="fk-genel"><th>Genel Toplam</th><td>@Bicim.Tutar(Belge.GenelToplam, Belge.ParaBirimi)</td></tr>
+            <tr><th>@(TeklifSiparisTurleri.TeklifMi(Belge.Tur) ? "Teklifi veren" : "Onaylayan")</th><td style="height:48px"></td></tr>
+        </table>
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    [Parameter, EditorRequired] public TeklifSiparisDetayi Belge { get; set; } = null!;
+    [Parameter] public FirmaBilgileri? Firma { get; set; }
+}

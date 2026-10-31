@@ -32,6 +32,7 @@ public sealed class FaturaModulu : IModul
         services.AddScoped<FaturaKayitServisi>();
         services.AddScoped<IrsaliyeHazirlayici>();
         services.AddScoped<IrsaliyeKayitServisi>();
+        services.AddScoped<TeklifSiparisServisi>();
     }
 
     public void EndpointleriEkle(IEndpointRouteBuilder endpoints)
@@ -41,6 +42,7 @@ public sealed class FaturaModulu : IModul
         grup.MapDegisiklikGecmisi<FaturaDbContext>();
         FaturaIslemleri.Map(grup);
         IrsaliyeIslemleri.Map(grup);
+        TeklifSiparisIslemleri.Map(grup);
         FaturaAyarIslemleri.Map(grup);
         FaturaRaporlari.Map(grup);
     }

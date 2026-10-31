@@ -1,0 +1,273 @@
+@page "/teklif/{Id:guid}"
+@page "/siparis/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+@inject IJSRuntime Js
+
+<HataGosterimi Hata="_hata" />
+
+@if (_belge is { } b)
+{
+    var teklifMi = TeklifSiparisTurleri.TeklifMi(b.Tur);
+    var kok = TeklifSiparisMetinleri.Kok(b.Tur);
+    var karsilanmis = b.Satirlar.Any(s => s.KarsilananMiktar > 0);
+    var duzenlenebilir = !Oturum.SaltOkunurMu && (b.Durum == TeklifSiparisDurumu.Taslak || (b.Durum == TeklifSiparisDurumu.Acik && !karsilanmis));
+
+    <div class="yazdirma-gizle">
+        <SayfaBasligi Baslik="@($"{TeklifSiparisMetinleri.Tur(b.Tur)}{(b.Numara is null ? "" : $" {b.Numara}")}")" GeriAdres="@kok" Ikon="@TeklifSiparisMetinleri.Ikon(b.Tur)">
+            <AltIcerik>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="TeklifSiparisMetinleri.DurumRengi(b.Durum, b.SuresiDolduMu)">
+                    @TeklifSiparisMetinleri.Durum(b.Durum, teklifMi, b.SuresiDolduMu)
+                </MudChip>
+                @if (b.Karsilama is { } k && b.Durum == TeklifSiparisDurumu.Acik)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="TeklifSiparisMetinleri.KarsilamaRengi(k)">@TeklifSiparisMetinleri.Karsilama(k)</MudChip>
+                }
+                <span class="ml-1">@Bicim.Tarih(b.Tarih)</span>
+            </AltIcerik>
+            <Islemler>
+                <DegisiklikGecmisiDugmesi Modul="fatura" KayitId="Id" />
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+                @if (duzenlenebilir)
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"{kok}/{b.Id}/duzenle")">Düzenle</MudButton>
+                }
+                @if (!Oturum.SaltOkunurMu && b.Durum == TeklifSiparisDurumu.Taslak)
+                {
+                    <IslemDugmesi Islem="@(() => IslemAsync("onayla", teklifMi ? "Teklif verildi." : "Sipariş onaylandı."))" StartIcon="@Icons.Material.Filled.TaskAlt">
+                        @(teklifMi ? "Teklifi ver" : "Onayla")
+                    </IslemDugmesi>
+                }
+                @if (!Oturum.SaltOkunurMu && b.Durum != TeklifSiparisDurumu.Taslak && b.Durum != TeklifSiparisDurumu.Iptal)
+                {
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        @if (!teklifMi && b.Durum == TeklifSiparisDurumu.Acik)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.DoneAll" OnClick="KapatAsync">Siparişi kapat (kalanı bekleme)</MudMenuItem>
+                        }
+                        @if (!karsilanmis)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="IptalAsync">İptal et</MudMenuItem>
+                        }
+                    </MudMenu>
+                }
+                @if (!Oturum.SaltOkunurMu && b.Durum == TeklifSiparisDurumu.Taslak)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Taslağı sil" OnClick="SilAsync" />
+                }
+            </Islemler>
+        </SayfaBasligi>
+
+        @if (teklifMi && b.Durum is TeklifSiparisDurumu.Acik or TeklifSiparisDurumu.Kabul && !Oturum.SaltOkunurMu)
+        {
+            <div class="panel-kart kart belirme mb-3">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Color="Color.Secondary" /> Müşteri yanıtı</div>
+                <div class="d-flex flex-wrap gap-2 align-center">
+                    @if (b.CariHesapId is null && Oturum.ModulAcikMi(ModulKodlari.Cari))
+                    {
+                        <MudAutocomplete T="CariOzeti" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Siparişin carisi" @bind-Value="_donusumCari"
+                                         SearchFunc="CariAraAsync" ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")" DebounceInterval="300" Style="min-width:280px"
+                                         HelperText="Aday müşteri için önce cari kartı açıp burada seçin" />
+                    }
+                    <IslemDugmesi Islem="DonusturAsync" StartIcon="@Icons.Material.Filled.ShoppingBag" Disabled="@(b.CariHesapId is null && _donusumCari is null)">
+                        Siparişe dönüştür
+                    </IslemDugmesi>
+                    @if (b.Durum == TeklifSiparisDurumu.Acik)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Success" OnClick="@(() => YanitAsync(true))">Kabul edildi</MudButton>
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_redNedeni" Label="Red nedeni (isteğe bağlı)" Style="min-width:220px" />
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => YanitAsync(false))">Reddedildi</MudButton>
+                    }
+                </div>
+                @if (b.Siparisler.Count > 0)
+                {
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        @foreach (var s in b.Siparisler)
+                        {
+                            <MudChip T="string" Href="@($"siparis/{s.Id}")" Icon="@Icons.Material.Filled.ShoppingBag" Variant="Variant.Outlined" Color="Color.Secondary">@(s.Numara ?? "Taslak sipariş")</MudChip>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <MudGrid Spacing="3" Class="mb-3">
+            <MudItem xs="12" md="4">
+                <div class="fatura-tutar-karti kart belirme" style="--i:0; --vurgu:@TeklifSiparisMetinleri.Renk(b.Tur)">
+                    <div class="ozet-baslik">Genel toplam</div>
+                    <div class="fatura-tutar">@Bicim.Tutar(b.GenelToplam, b.ParaBirimi)</div>
+                    <div class="ozet-alt">KDV @Bicim.Tutar(b.KdvToplami, b.ParaBirimi) · matrah @Bicim.Tutar(b.Matrah, b.ParaBirimi)</div>
+                    <div class="ozet-isik"></div>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart belirme" style="--i:1">
+                    <div class="ozet-baslik mb-1">@(b.Tur == TeklifSiparisTuru.SatinalmaSiparisi ? "Tedarikçi" : "Müşteri")</div>
+                    @if (b.CariHesapId is { } cariId)
+                    {
+                        <a href="@($"cari/{cariId}")" class="baglanti"><b>@b.CariUnvan</b></a>
+                    }
+                    else
+                    {
+                        <b>@b.CariUnvan</b> <small style="opacity:.6">(aday)</small>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart belirme" style="--i:2">
+                    <div class="d-flex flex-wrap gap-6">
+                        @if (b.GecerlilikTarihi is { } g)
+                        {
+                            <div><div class="ozet-baslik">Geçerlilik</div><b class="@(b.SuresiDolduMu ? "bakiye-borclu" : "")">@Bicim.Tarih(g)</b></div>
+                        }
+                        <div><div class="ozet-baslik">@(teklifMi ? "Teslim" : "Termin")</div><b>@Bicim.Tarih(b.TerminTarihi)</b></div>
+                    </div>
+                    @if (b.OdemeKosulu is not null)
+                    {
+                        <div class="ozet-alt mt-2">Ödeme: @b.OdemeKosulu</div>
+                    }
+                    @if (b.TeslimKosulu is not null)
+                    {
+                        <div class="ozet-alt">Teslim: @b.TeslimKosulu</div>
+                    }
+                    @if (b.KaynakTeklifId is { } teklifId)
+                    {
+                        <div class="ozet-alt mt-1"><a class="baglanti" href="@($"teklif/{teklifId}")">Kaynak teklif</a></div>
+                    }
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        <VeriTablosu T="TeklifSiparisSatiriDetayi" Kayitlar="b.Satirlar" Dense="true">
+            <Basliklar>
+                <MudTh>#</MudTh>
+                <MudTh>Ürün / hizmet</MudTh>
+                <MudTh Class="sayi">Miktar</MudTh>
+                <MudTh Class="sayi">Birim fiyat</MudTh>
+                <MudTh Class="sayi">KDV</MudTh>
+                <MudTh Class="sayi">Tutar</MudTh>
+                @if (!teklifMi)
+                {
+                    <MudTh Class="sayi">Karşılanan</MudTh>
+                    <MudTh Class="sayi">Kalan</MudTh>
+                }
+            </Basliklar>
+            <Satir>
+                <MudTd DataLabel="#">@context.Sira</MudTd>
+                <MudTd DataLabel="Ürün / hizmet"><b>@context.Ad</b> <span class="mobil-alt-bilgi">@context.StokKodu</span></MudTd>
+                <MudTd DataLabel="Miktar" Class="sayi">@Bicim.Miktar(context.Miktar, context.Birim)</MudTd>
+                <MudTd DataLabel="Birim fiyat" Class="sayi">@Bicim.Tutar(context.BirimFiyat)</MudTd>
+                <MudTd DataLabel="KDV" Class="sayi">%@context.KdvOrani</MudTd>
+                <MudTd DataLabel="Tutar" Class="sayi"><b>@Bicim.Tutar(context.Toplam)</b></MudTd>
+                @if (!teklifMi)
+                {
+                    <MudTd DataLabel="Karşılanan" Class="sayi">@Bicim.Miktar(context.KarsilananMiktar)</MudTd>
+                    <MudTd DataLabel="Kalan" Class="sayi"><b>@Bicim.Miktar(context.KalanMiktar)</b></MudTd>
+                }
+            </Satir>
+        </VeriTablosu>
+        @if (b.Aciklama is not null)
+        {
+            <div class="ozet-alt mt-2" style="white-space:pre-line">@b.Aciklama</div>
+        }
+    </div>
+
+    <TeklifSiparisKagidi Belge="b" Firma="_firma" />
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private TeklifSiparisDetayi? _belge;
+    private FirmaBilgileri? _firma;
+    private CariOzeti? _donusumCari;
+    private string? _redNedeni;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var sonuc = await Api.GetAsync<TeklifSiparisDetayi>($"api/fatura/teklif-siparis/{Id}");
+        _hata = sonuc.Hata;
+        _belge = sonuc.BasariliMi ? sonuc.Deger : null;
+        var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
+        _firma = firma.BasariliMi ? firma.Deger : null;
+    }
+
+    private async Task<IEnumerable<CariOzeti>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>($"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task IslemAsync(string islem, string mesaj, object? govde = null) =>
+        Sonuc(await Api.PostAsync<TeklifSiparisDetayi>($"api/fatura/teklif-siparis/{Id}/{islem}", govde ?? new { }), mesaj);
+
+    private Task YanitAsync(bool kabul) => IslemAsync("yanit", kabul ? "Teklif kabul edildi." : "Teklif reddedildi.", new TeklifYanitiIstegi(kabul, _redNedeni));
+
+    private async Task DonusturAsync()
+    {
+        var adres = $"api/fatura/teklif-siparis/{Id}/siparise-donustur" + (_donusumCari is { } c ? $"?cariId={c.Id}" : "");
+        var sonuc = await Api.PostAsync<TeklifSiparisDetayi>(adres, new { });
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add("Taslak sipariş oluşturuldu; termini kontrol edip onaylayın.", Severity.Success);
+        Navigasyon.NavigateTo($"siparis/{sonuc.Deger.Id}/duzenle");
+    }
+
+    private async Task KapatAsync()
+    {
+        if (await Onay.SorAsync("Siparişi kapat", "Karşılanmamış kalan miktar artık beklenmeyecek (rezerv/beklenen stoktan düşer).", "Kapat"))
+        {
+            await IslemAsync("kapat", "Sipariş kapatıldı.");
+        }
+    }
+
+    private async Task IptalAsync()
+    {
+        if (await Onay.SorAsync("İptal et", "Belge iptal edilecek.", "İptal et", tehlikeli: true))
+        {
+            await IslemAsync("iptal", "İptal edildi.");
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Taslağı sil", "Taslak silinecek.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/fatura/teklif-siparis/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Navigasyon.NavigateTo(TeklifSiparisMetinleri.Kok(_belge!.Tur));
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private void Sonuc(ApiSonucu<TeklifSiparisDetayi> sonuc, string mesaj)
+    {
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        _belge = sonuc.Deger;
+        Snackbar.Add(mesaj, Severity.Success);
+    }
+}

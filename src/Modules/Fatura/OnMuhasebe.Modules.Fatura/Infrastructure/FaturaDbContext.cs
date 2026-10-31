@@ -18,4 +18,6 @@ internal sealed class FaturaDbContext(DbContextOptions<FaturaDbContext> options,
     public DbSet<FaturaSeriSayaci> SeriSayaclari => Set<FaturaSeriSayaci>();
     public DbSet<Irsaliye> Irsaliyeler => Set<Irsaliye>();
     public DbSet<IrsaliyeSatiri> IrsaliyeSatirlari => Set<IrsaliyeSatiri>();
+    public DbSet<TeklifSiparis> TeklifSiparisler => Set<TeklifSiparis>();
+    public DbSet<TeklifSiparisSatiri> TeklifSiparisSatirlari => Set<TeklifSiparisSatiri>();
 }

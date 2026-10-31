@@ -114,6 +114,59 @@ internal sealed class IrsaliyeSatiriConfiguration : IEntityTypeConfiguration<Irs
     }
 }
 
+internal sealed class TeklifSiparisConfiguration : IEntityTypeConfiguration<TeklifSiparis>
+{
+    public void Configure(EntityTypeBuilder<TeklifSiparis> builder)
+    {
+        builder.ToTable("teklif_siparis");
+        builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(20);
+        builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.Numara).HasMaxLength(30);
+        builder.Property(x => x.CariKodu).HasMaxLength(20);
+        builder.Property(x => x.CariUnvan).HasMaxLength(250);
+        builder.Property(x => x.VergiNo).HasMaxLength(11);
+        builder.Property(x => x.VergiDairesi).HasMaxLength(100);
+        builder.Property(x => x.Il).HasMaxLength(50);
+        builder.Property(x => x.Ilce).HasMaxLength(50);
+        builder.Property(x => x.Adres).HasMaxLength(500);
+        builder.Property(x => x.ParaBirimi).HasMaxLength(3);
+        builder.Property(x => x.Kur).HasPrecision(19, FaturaBelgesi.KurOndalik);
+        builder.Property(x => x.GenelIskontoTuru).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.GenelIskonto).HasPrecision(18, 4);
+        builder.Property(x => x.OdemeKosulu).HasMaxLength(500);
+        builder.Property(x => x.TeslimKosulu).HasMaxLength(500);
+        builder.Property(x => x.Aciklama).HasMaxLength(1000);
+        builder.Ignore(x => x.TeklifMi);
+        builder.Ignore(x => x.KarsilanmisMi);
+        builder.Ignore(x => x.Karsilama);
+        builder.HasIndex(x => new { x.FirmaId, x.Numara }).IsUnique().HasFilter("numara IS NOT NULL");
+        builder.HasIndex(x => new { x.FirmaId, x.Tarih });
+        builder.HasIndex(x => new { x.FirmaId, x.CariHesapId });
+        builder.HasIndex(x => x.KaynakTeklifId);
+        builder.HasMany(x => x.Satirlar).WithOne().HasForeignKey(x => x.TeklifSiparisId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Satirlar).HasField("_satirlar");
+    }
+}
+
+internal sealed class TeklifSiparisSatiriConfiguration : IEntityTypeConfiguration<TeklifSiparisSatiri>
+{
+    public void Configure(EntityTypeBuilder<TeklifSiparisSatiri> builder)
+    {
+        builder.ToTable("teklif_siparis_satiri");
+        builder.Property(x => x.StokKodu).HasMaxLength(30);
+        builder.Property(x => x.Ad).HasMaxLength(250);
+        builder.Property(x => x.Birim).HasMaxLength(10);
+        builder.Property(x => x.Miktar).HasPrecision(18, 4);
+        builder.Property(x => x.BirimFiyat).HasPrecision(18, 4);
+        builder.Property(x => x.Iskonto1).HasPrecision(5, 2);
+        builder.Property(x => x.Iskonto2).HasPrecision(5, 2);
+        builder.Property(x => x.Iskonto3).HasPrecision(5, 2);
+        builder.Property(x => x.KarsilananMiktar).HasPrecision(18, 4);
+        builder.Ignore(x => x.KalanMiktar);
+        builder.HasIndex(x => x.StokKartiId);
+    }
+}
+
 internal sealed class FaturaAyariConfiguration : IEntityTypeConfiguration<FaturaAyari>
 {
     public void Configure(EntityTypeBuilder<FaturaAyari> builder)

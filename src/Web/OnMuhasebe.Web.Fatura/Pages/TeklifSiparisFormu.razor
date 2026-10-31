@@ -1,0 +1,308 @@
+@page "/teklif/yeni"
+@page "/siparis/yeni/{TurYolu}"
+@page "/teklif/{Id:guid}/duzenle"
+@page "/siparis/{Id:guid}/duzenle"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? TeklifSiparisMetinleri.Kok(_tur) : $"{TeklifSiparisMetinleri.Kok(_tur)}/{Id}")" Ikon="@TeklifSiparisMetinleri.Ikon(_tur)" />
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="480px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else
+{
+    var hesap = Hesap;
+    <MudGrid Spacing="3">
+        <MudItem xs="12" lg="8">
+            <FormBolumu Baslik="Belge bilgileri" Ikon="@Icons.Material.Filled.Description" Sira="0">
+                @if (TeklifMi && Oturum.ModulAcikMi(ModulKodlari.Cari))
+                {
+                    <MudItem xs="12" Class="pb-0">
+                        <MudSwitch T="bool" @bind-Value="_aday" Color="Color.Secondary" Label="Aday müşteri (cari kartı henüz yok)" />
+                    </MudItem>
+                }
+                @if (Aday)
+                {
+                    <MudItem xs="12" md="8">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_adayUnvan" Label="Müşteri unvanı" MaxLength="250" Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_paraBirimi" ValueChanged="ParaBirimiDegistiAsync" Label="Para birimi">
+                            @foreach (var p in ParaBirimleri.Tumu)
+                            {
+                                <MudSelectItem Value="p.Kod">@p.Kod</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="12">
+                        <MudAutocomplete T="CariOzeti" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Cari" Value="_cari" ValueChanged="CariSecildiAsync"
+                                         SearchFunc="CariAraAsync" ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")" DebounceInterval="300"
+                                         ResetValueOnEmptyText="true" Clearable="true" Required="true" Adornment="Adornment.Start"
+                                         AdornmentIcon="@Icons.Material.Filled.People" MaxItems="10" />
+                    </MudItem>
+                }
+                <MudItem xs="6" md="3">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tarih" @bind-Date="_tarih" DateFormat="dd.MM.yyyy" Required="true" />
+                </MudItem>
+                @if (TeklifMi)
+                {
+                    <MudItem xs="6" md="3">
+                        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Geçerlilik" @bind-Date="_gecerlilik" DateFormat="dd.MM.yyyy" MinDate="_tarih" Clearable="true" />
+                    </MudItem>
+                }
+                <MudItem xs="6" md="3">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(TeklifMi ? "Teslim (tahmini)" : "Termin")" @bind-Date="_termin"
+                                   DateFormat="dd.MM.yyyy" MinDate="_tarih" Clearable="true" />
+                </MudItem>
+                @if (Dovizli)
+                {
+                    <MudItem xs="6" md="3">
+                        <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@($"{_paraBirimi} kuru")" @bind-Value="_kur" Format="0.######" HideSpinButtons="true" />
+                    </MudItem>
+                }
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_odemeKosulu" Label="Ödeme koşulu" MaxLength="500" Placeholder="ör. %50 peşin, kalanı teslimde" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimKosulu" Label="Teslim koşulu" MaxLength="500" Placeholder="ör. Fabrika teslim, 15 iş günü" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" Lines="2" />
+                </MudItem>
+            </FormBolumu>
+
+            <FormBolumu Baslik="Satırlar" Ikon="@Icons.Material.Filled.FormatListNumbered" Sira="1">
+                <BelgeSatirlari Satirlar="_satirlar" Hesap="hesap" Depolar="_depolar" ParaSimgesi="@ParaSimgesi" StokAcik="StokAcik"
+                                VarsayilanKdvDahil="false" KartEkle="KartEkleAsync" />
+            </FormBolumu>
+        </MudItem>
+
+        <MudItem xs="12" lg="4">
+            <div class="fatura-toplam-paneli kart belirme">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Calculate" Size="Size.Small" Color="Color.Secondary" /> Toplamlar</div>
+                <div class="d-flex gap-2 align-center mb-3">
+                    <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_genelIskonto" Label="Genel iskonto" HideSpinButtons="true" Min="0" Immediate="true" />
+                    <MudSelect T="GenelIskontoTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_genelIskontoTuru" Style="max-width:110px">
+                        <MudSelectItem Value="GenelIskontoTuru.Yuzde">%</MudSelectItem>
+                        <MudSelectItem Value="GenelIskontoTuru.Tutar">@ParaSimgesi</MudSelectItem>
+                    </MudSelect>
+                </div>
+                <dl class="toplam-listesi">
+                    <dt>Ara toplam</dt><dd>@Bicim.Tutar(hesap.BrutToplam)</dd>
+                    @if (hesap.SatirIskontoToplami + hesap.GenelIskontoTutari > 0)
+                    {
+                        <dt>İskontolar</dt><dd class="bakiye-borclu">−@Bicim.Tutar(hesap.SatirIskontoToplami + hesap.GenelIskontoTutari)</dd>
+                    }
+                    <dt>KDV matrahı</dt><dd>@Bicim.Tutar(hesap.Matrah)</dd>
+                    <dt>KDV</dt><dd>@Bicim.Tutar(hesap.KdvToplami)</dd>
+                </dl>
+                <div class="genel-toplam"><span>Genel toplam</span><b>@Bicim.Tutar(hesap.GenelToplam, _paraBirimi)</b></div>
+                <div class="ozet-alt mt-2">@(TeklifMi ? "Teklif stoğu ve cariyi etkilemez." : "Sipariş stoğu ve cariyi etkilemez; irsaliye/fatura ile karşılanır.")</div>
+                @if (!Oturum.SaltOkunurMu)
+                {
+                    <div class="d-flex flex-column gap-2 mt-4">
+                        @if (_durum == TeklifSiparisDurumu.Taslak)
+                        {
+                            <IslemDugmesi Islem="() => KaydetAsync(onayla: true)" StartIcon="@Icons.Material.Filled.TaskAlt" FullWidth="true" Disabled="!KaydedilebilirMi">
+                                @(TeklifMi ? "Kaydet ve teklifi ver" : "Kaydet ve onayla")
+                            </IslemDugmesi>
+                        }
+                        <IslemDugmesi Islem="() => KaydetAsync(onayla: false)" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Save" FullWidth="true" Disabled="!KaydedilebilirMi">
+                            @(_durum == TeklifSiparisDurumu.Taslak ? "Taslak olarak kaydet" : "Değişiklikleri kaydet")
+                        </IslemDugmesi>
+                    </div>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private readonly IslemAnahtari _anahtar = new();
+
+    [Parameter] public string? TurYolu { get; set; }
+    [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name = "cari")] public Guid? CariParametresi { get; set; }
+
+    private TeklifSiparisTuru _tur;
+    private TeklifSiparisDurumu _durum = TeklifSiparisDurumu.Taslak;
+    private CariOzeti? _cari;
+    private bool _aday;
+    private string? _adayUnvan;
+    private DateTime? _tarih;
+    private DateTime? _gecerlilik;
+    private DateTime? _termin;
+    private string _paraBirimi = ParaBirimleri.Tl;
+    private decimal? _kur;
+    private string? _odemeKosulu;
+    private string? _teslimKosulu;
+    private string? _aciklama;
+    private GenelIskontoTuru _genelIskontoTuru = GenelIskontoTuru.Yuzde;
+    private decimal _genelIskonto;
+    private readonly List<FaturaSatirModeli> _satirlar = [];
+    private List<Depo> _depolar = [];
+    private uint _surum;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    private bool TeklifMi => TeklifSiparisTurleri.TeklifMi(_tur);
+    private bool Aday => TeklifMi && (_aday || !Oturum.ModulAcikMi(ModulKodlari.Cari));
+    private bool StokAcik => Oturum.ModulAcikMi(ModulKodlari.Stok);
+    private bool Dovizli => _paraBirimi != ParaBirimleri.Tl;
+    private string ParaSimgesi => Dovizli ? _paraBirimi : "TL";
+    private string Baslik => Id is null ? $"Yeni {TeklifSiparisMetinleri.Tur(_tur)}" : $"{TeklifSiparisMetinleri.Tur(_tur)} Düzenle";
+    private FaturaHesabi Hesap => FaturaHesaplayici.Hesapla(_satirlar.Select(s => s.Hesap()).ToList(), _genelIskontoTuru, _genelIskonto);
+    private bool KaydedilebilirMi => _satirlar.Count > 0 && (Aday ? !string.IsNullOrWhiteSpace(_adayUnvan) : _cari is not null) && (!Dovizli || _kur > 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (StokAcik)
+        {
+            var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
+            _depolar = depolar.BasariliMi ? depolar.Deger.Where(d => d.AktifMi).ToList() : [];
+        }
+
+        if (Id is { } id)
+        {
+            await YukleAsync(id);
+        }
+        else
+        {
+            _tur = Navigasyon.ToBaseRelativePath(Navigasyon.Uri).StartsWith("teklif") ? TeklifSiparisTuru.SatisTeklifi
+                : TurYolu == "satinalma" ? TeklifSiparisTuru.SatinalmaSiparisi : TeklifSiparisTuru.SatisSiparisi;
+            var bugun = Zaman.GetLocalNow().Date;
+            (_tarih, _gecerlilik) = (bugun, TeklifMi ? bugun.AddDays(15) : null);
+            if (CariParametresi is { } cariId && await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{cariId}") is { BasariliMi: true } c)
+            {
+                var d = c.Deger;
+                await CariSecildiAsync(new CariOzeti(d.Id, d.Kod, d.Unvan, d.Tur, d.GrupAdi, d.ParaBirimi, d.Telefon, d.AktifMi, d.Bakiye, d.BakiyeTl, d.RiskLimiti));
+            }
+        }
+
+        _yukleniyor = false;
+    }
+
+    private async Task YukleAsync(Guid id)
+    {
+        var sonuc = await Api.GetAsync<TeklifSiparisDetayi>($"api/fatura/teklif-siparis/{id}");
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        var b = sonuc.Deger;
+        (_tur, _durum, _surum, _paraBirimi, _kur) = (b.Tur, b.Durum, b.Surum, b.ParaBirimi, b.Kur);
+        (_tarih, _gecerlilik, _termin) = (Bicim.Takvim(b.Tarih), Bicim.Takvim(b.GecerlilikTarihi), Bicim.Takvim(b.TerminTarihi));
+        (_odemeKosulu, _teslimKosulu, _aciklama, _genelIskontoTuru, _genelIskonto) = (b.OdemeKosulu, b.TeslimKosulu, b.Aciklama, b.GenelIskontoTuru, b.GenelIskonto);
+        if (b.CariHesapId is { } cariId)
+        {
+            _cari = new CariOzeti(cariId, b.CariKodu ?? "", b.CariUnvan, CariTuru.Musteri, null, b.ParaBirimi, null, true, 0m, 0m, null);
+        }
+        else
+        {
+            (_aday, _adayUnvan) = (true, b.CariUnvan);
+        }
+
+        _satirlar.AddRange(b.Satirlar.Select(FaturaSatirModeli.TeklifSiparistan));
+        foreach (var kartId in _satirlar.Where(s => s.KartliMi).Select(s => s.StokKartiId!.Value).Distinct().ToList())
+        {
+            if (await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{kartId}") is { BasariliMi: true } kart)
+            {
+                _satirlar.Where(s => s.StokKartiId == kartId).ToList().ForEach(s => s.BirimleriAta(kart.Deger));
+            }
+        }
+    }
+
+    private async Task<IEnumerable<CariOzeti>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>($"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task CariSecildiAsync(CariOzeti? cari)
+    {
+        _cari = cari;
+        if (cari is not null && cari.ParaBirimi != _paraBirimi)
+        {
+            await ParaBirimiDegistiAsync(cari.ParaBirimi);
+        }
+    }
+
+    private async Task ParaBirimiDegistiAsync(string paraBirimi)
+    {
+        _paraBirimi = paraBirimi;
+        _kur = null;
+        if (Dovizli && Bicim.Gun(_tarih) is { } gun
+            && await Api.GetAsync<KurBilgisi>($"api/doviz/islem-kuru?paraBirimi={paraBirimi}&tarih={Bicim.Iso(gun)}") is { BasariliMi: true } kur)
+        {
+            _kur = kur.Deger.DovizAlis;
+        }
+    }
+
+    private async Task KartEkleAsync(Guid kartId, string? birim)
+    {
+        var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{kartId}");
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        var satir = new FaturaSatirModeli { KdvDahilMi = false };
+        satir.KartAta(sonuc.Deger);
+        satir.BirimFiyat = await new FiyatOnerici(Api).OnerAsync(sonuc.Deger, TeklifSiparisTurleri.SatisMi(_tur), false, false, _paraBirimi,
+            _kur, Bicim.Gun(_tarih) ?? DateOnly.FromDateTime(DateTime.Today)) ?? 0m;
+        if (birim is not null)
+        {
+            satir.BirimDegistir(birim);
+        }
+
+        _satirlar.Add(satir);
+    }
+
+    private async Task KaydetAsync(bool onayla)
+    {
+        _hata = null;
+        var istek = new TeklifSiparisKaydetIstegi(_tur, Aday ? null : _cari?.Id, Aday ? _adayUnvan : null, Bicim.Gun(_tarih)!.Value,
+            TeklifMi ? Bicim.Gun(_gecerlilik) : null, Bicim.Gun(_termin), _paraBirimi, Dovizli ? _kur : null, _genelIskontoTuru, _genelIskonto,
+            _odemeKosulu, _teslimKosulu, _aciklama, _satirlar.Select(s => s.Istek()).ToList(), _surum);
+
+        var sonuc = Id is { } id
+            ? await Api.PutAsync<TeklifSiparisDetayi>($"api/fatura/teklif-siparis/{id}", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PostAsync<TeklifSiparisDetayi>("api/fatura/teklif-siparis", istek, islemAnahtari: _anahtar.Deger);
+        _anahtar.Sonuc(sonuc.Hata);
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        var belge = sonuc.Deger;
+        if (onayla && belge.Durum == TeklifSiparisDurumu.Taslak)
+        {
+            var onay = await Api.PostAsync<TeklifSiparisDetayi>($"api/fatura/teklif-siparis/{belge.Id}/onayla", new { });
+            if (onay.BasariliMi)
+            {
+                belge = onay.Deger;
+            }
+            else
+            {
+                Snackbar.Add($"Taslak kaydedildi ancak onaylanamadı: {onay.Hata.Baslik}", Severity.Error);
+            }
+        }
+
+        Snackbar.Add(belge.Numara is null ? "Taslak kaydedildi." : $"{belge.Numara} kaydedildi.", Severity.Success);
+        Navigasyon.NavigateTo($"{TeklifSiparisMetinleri.Kok(belge.Tur)}/{belge.Id}");
+    }
+}

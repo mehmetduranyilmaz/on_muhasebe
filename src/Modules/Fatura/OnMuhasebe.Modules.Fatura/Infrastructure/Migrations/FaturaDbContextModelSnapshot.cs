@@ -805,6 +805,340 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                     b.ToTable("irsaliye_satiri", "fatura");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.TeklifSiparis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<string>("Adres")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("adres");
+
+                    b.Property<decimal>("BrutToplam")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("brut_toplam");
+
+                    b.Property<Guid?>("CariHesapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cari_hesap_id");
+
+                    b.Property<string>("CariKodu")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("cari_kodu");
+
+                    b.Property<string>("CariUnvan")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("cari_unvan");
+
+                    b.Property<string>("Durum")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("durum");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateOnly?>("GecerlilikTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("gecerlilik_tarihi");
+
+                    b.Property<decimal>("GenelIskonto")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("genel_iskonto");
+
+                    b.Property<string>("GenelIskontoTuru")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("genel_iskonto_turu");
+
+                    b.Property<decimal>("GenelIskontoTutari")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("genel_iskonto_tutari");
+
+                    b.Property<decimal>("GenelToplam")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("genel_toplam");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("Il")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("il");
+
+                    b.Property<string>("Ilce")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ilce");
+
+                    b.Property<Guid?>("KaynakTeklifId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kaynak_teklif_id");
+
+                    b.Property<decimal>("KdvToplami")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("kdv_toplami");
+
+                    b.Property<decimal>("Kur")
+                        .HasPrecision(19, 6)
+                        .HasColumnType("numeric(19,6)")
+                        .HasColumnName("kur");
+
+                    b.Property<decimal>("Matrah")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("matrah");
+
+                    b.Property<string>("Numara")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("numara");
+
+                    b.Property<string>("OdemeKosulu")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("odeme_kosulu");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<DateTime?>("OnayTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("onay_tarihi");
+
+                    b.Property<string>("ParaBirimi")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("para_birimi");
+
+                    b.Property<decimal>("SatirIskontoToplami")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("satir_iskonto_toplami");
+
+                    b.Property<bool>("SilindiMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("silindi_mi");
+
+                    b.Property<DateTime?>("SilinmeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("silinme_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateOnly>("Tarih")
+                        .HasColumnType("date")
+                        .HasColumnName("tarih");
+
+                    b.Property<DateOnly?>("TerminTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("termin_tarihi");
+
+                    b.Property<string>("TeslimKosulu")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("teslim_kosulu");
+
+                    b.Property<string>("Tur")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tur");
+
+                    b.Property<string>("VergiDairesi")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("vergi_dairesi");
+
+                    b.Property<string>("VergiNo")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("vergi_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_teklif_siparis");
+
+                    b.HasIndex("KaynakTeklifId")
+                        .HasDatabaseName("ix_teklif_siparis_kaynak_teklif_id");
+
+                    b.HasIndex("FirmaId", "CariHesapId")
+                        .HasDatabaseName("ix_teklif_siparis_firma_id_cari_hesap_id");
+
+                    b.HasIndex("FirmaId", "Numara")
+                        .IsUnique()
+                        .HasDatabaseName("ix_teklif_siparis_firma_id_numara")
+                        .HasFilter("numara IS NOT NULL");
+
+                    b.HasIndex("FirmaId", "Tarih")
+                        .HasDatabaseName("ix_teklif_siparis_firma_id_tarih");
+
+                    b.ToTable("teklif_siparis", "fatura");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.TeklifSiparisSatiri", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("ad");
+
+                    b.Property<string>("Birim")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("birim");
+
+                    b.Property<decimal>("BirimFiyat")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("birim_fiyat");
+
+                    b.Property<Guid?>("DepoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depo_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<decimal>("Iskonto1")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("iskonto1");
+
+                    b.Property<decimal>("Iskonto2")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("iskonto2");
+
+                    b.Property<decimal>("Iskonto3")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("iskonto3");
+
+                    b.Property<decimal>("KarsilananMiktar")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("karsilanan_miktar");
+
+                    b.Property<bool>("KdvDahilMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("kdv_dahil_mi");
+
+                    b.Property<int>("KdvOrani")
+                        .HasColumnType("integer")
+                        .HasColumnName("kdv_orani");
+
+                    b.Property<decimal>("KdvTutari")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("kdv_tutari");
+
+                    b.Property<decimal>("Matrah")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("matrah");
+
+                    b.Property<decimal>("Miktar")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("miktar");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("integer")
+                        .HasColumnName("sira");
+
+                    b.Property<Guid?>("StokKartiId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stok_karti_id");
+
+                    b.Property<string>("StokKodu")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("stok_kodu");
+
+                    b.Property<bool>("StokluMu")
+                        .HasColumnType("boolean")
+                        .HasColumnName("stoklu_mu");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("TeklifSiparisId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("teklif_siparis_id");
+
+                    b.Property<decimal>("Toplam")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("toplam");
+
+                    b.HasKey("Id")
+                        .HasName("pk_teklif_siparis_satiri");
+
+                    b.HasIndex("StokKartiId")
+                        .HasDatabaseName("ix_teklif_siparis_satiri_stok_karti_id");
+
+                    b.HasIndex("TeklifSiparisId")
+                        .HasDatabaseName("ix_teklif_siparis_satiri_teklif_siparis_id");
+
+                    b.ToTable("teklif_siparis_satiri", "fatura");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Shared.Infrastructure.Persistence.DegisiklikKaydi", b =>
                 {
                     b.Property<Guid>("Id")
@@ -907,12 +1241,27 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasConstraintName("fk_irsaliye_satiri_irsaliye_irsaliye_id");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.TeklifSiparisSatiri", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.Fatura.Domain.TeklifSiparis", null)
+                        .WithMany("Satirlar")
+                        .HasForeignKey("TeklifSiparisId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_teklif_siparis_satiri_teklif_siparis_teklif_siparis_id");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.FaturaBelgesi", b =>
                 {
                     b.Navigation("Satirlar");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.Irsaliye", b =>
+                {
+                    b.Navigation("Satirlar");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.TeklifSiparis", b =>
                 {
                     b.Navigation("Satirlar");
                 });

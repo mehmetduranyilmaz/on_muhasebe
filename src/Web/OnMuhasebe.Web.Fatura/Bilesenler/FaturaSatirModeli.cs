@@ -123,6 +123,25 @@ public sealed class FaturaSatirModeli
         IrsaliyeSatiriId = s.IrsaliyeSatiriId
     };
 
+    public static FaturaSatirModeli TeklifSiparistan(TeklifSiparisSatiriDetayi s) => new()
+    {
+        StokKartiId = s.StokKartiId,
+        StokKodu = s.StokKodu,
+        KartTuru = s.StokKartiId is null ? null : s.StokluMu ? StokTuru.Urun : StokTuru.Hizmet,
+        TemelBirim = s.Birim,
+        Ad = s.Ad,
+        DepoId = s.DepoId,
+        Birim = s.Birim,
+        Miktar = s.Miktar,
+        BirimFiyat = s.BirimFiyat,
+        KdvDahilMi = s.KdvDahilMi,
+        KdvOrani = s.KdvOrani,
+        Iskonto1 = s.Iskonto1,
+        Iskonto2 = s.Iskonto2,
+        Iskonto3 = s.Iskonto3,
+        EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0
+    };
+
     // İrsaliye fiyatı KDV hariçtir; fiyat yoksa çağıran taraf önerilen fiyatı verir.
     public static FaturaSatirModeli Irsaliyeden(AktarilacakIrsaliyeSatiri a, decimal miktar, StokKartiDetayi kart) => new()
     {

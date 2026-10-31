@@ -19,6 +19,8 @@ public static class ModulMenusu
     public static IReadOnlyList<ModulMenuOgesi> MenuOgeleri { get; } =
     [
         .. Tumu,
+        new(ModulKodlari.Fatura, "Teklifler", "teklif", Icons.Material.Filled.RequestPage, "Satış teklifleri: geçerlilik, kabul/red, siparişe dönüşüm"),
+        new(ModulKodlari.Fatura, "Siparişler", "siparis", Icons.Material.Filled.ShoppingBag, "Müşteri ve satınalma siparişleri, termin ve karşılama takibi"),
         new(ModulKodlari.Fatura, "İrsaliyeler", "irsaliye", Icons.Material.Filled.LocalShipping, "Sevk irsaliyeleri, depolar arası sevk ve faturalanmamış irsaliye takibi"),
         new(ModulKodlari.KasaBanka, "Nakit Akış", "nakit-akis", Icons.Material.Filled.Timeline, "13 haftalık nakit planı: beklenen tahsilat ve ödemeler, nakit açığı uyarısı"),
         new(ModulKodlari.KasaBanka, "Krediler", "krediler", Icons.Material.Filled.AccountBalance, "Nakdi banka kredileri, ödeme planları ve taksit ödemeleri"),

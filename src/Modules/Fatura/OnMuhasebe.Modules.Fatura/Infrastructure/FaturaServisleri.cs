@@ -126,23 +126,7 @@ internal sealed class FaturaHazirlayici(
     {
         if (istek.CariHesapId is { } cariId)
         {
-            if (!moduller.Contains(ModulKodlari.Cari))
-            {
-                return FaturaHatalari.CariLisansiYok;
-            }
-
-            var c = await cariSorgusu.GetirAsync(cariId, cancellationToken);
-            if (c is null)
-            {
-                return FaturaHatalari.CariBulunamadi;
-            }
-
-            if (!c.AktifMi)
-            {
-                return FaturaHatalari.PasifCari;
-            }
-
-            return (new FaturaCarisi(c.Id, c.Kod, c.Unvan, c.VergiNo, c.VergiDairesi, c.Il, c.Ilce, c.Adres), c.ParaBirimi);
+            return await KayitliCariAsync(cariId, moduller, cancellationToken);
         }
 
         // Perakende satış nihai tüketiciye; gider pusulası/SMM cari seçilmezse serbest kişiye (ad+TCKN) kesilebilir.
@@ -158,7 +142,33 @@ internal sealed class FaturaHazirlayici(
         return (new FaturaCarisi(null, null, unvan, tckn, null, null, null, null), ParaBirimleri.Tl);
     }
 
-    private async Task<Sonuc<IReadOnlyList<FaturaSatiriBilgisi>>> SatirlarAsync(
+    // Teklif/sipariş de aynı çözümlemeyi kullanır (aynı modül).
+    internal async Task<IReadOnlyList<string>> ModullerAsync(CancellationToken cancellationToken) =>
+        (await lisansSorgusu.GetirAsync(mevcutKullanici.FirmaId!.Value, cancellationToken))?.Moduller ?? [];
+
+    internal async Task<Sonuc<(FaturaCarisi Cari, string ParaBirimi)>> KayitliCariAsync(
+        Guid cariId, IReadOnlyList<string> moduller, CancellationToken cancellationToken)
+    {
+        if (!moduller.Contains(ModulKodlari.Cari))
+        {
+            return FaturaHatalari.CariLisansiYok;
+        }
+
+        var c = await cariSorgusu.GetirAsync(cariId, cancellationToken);
+        if (c is null)
+        {
+            return FaturaHatalari.CariBulunamadi;
+        }
+
+        if (!c.AktifMi)
+        {
+            return FaturaHatalari.PasifCari;
+        }
+
+        return (new FaturaCarisi(c.Id, c.Kod, c.Unvan, c.VergiNo, c.VergiDairesi, c.Il, c.Ilce, c.Adres), c.ParaBirimi);
+    }
+
+    internal async Task<Sonuc<IReadOnlyList<FaturaSatiriBilgisi>>> SatirlarAsync(
         IReadOnlyList<FaturaSatiriIstegi> istekler, IReadOnlyList<string> moduller, CancellationToken cancellationToken)
     {
         var kartIdleri = istekler.Where(s => s.StokKartiId is not null).Select(s => s.StokKartiId!.Value).Distinct().ToList();

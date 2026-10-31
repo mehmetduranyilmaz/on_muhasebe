@@ -1,0 +1,128 @@
+@page "/teklif"
+@page "/siparis"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="@(_teklifMi ? "Teklifler" : "Siparişler")"
+              AltBaslik="@(_teklifMi ? "Satış teklifleri: geçerlilik, kabul/red ve siparişe dönüşüm" : "Müşteri ve satınalma siparişleri, termin ve karşılama")"
+              Ikon="@(_teklifMi ? Icons.Material.Filled.RequestPage : Icons.Material.Filled.ShoppingBag)">
+    <Islemler>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            @if (_teklifMi)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="teklif/yeni">Yeni Teklif</MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AddShoppingCart" Href="siparis/yeni/satinalma">Satınalma Siparişi</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="siparis/yeni/satis">Müşteri Siparişi</MudButton>
+            }
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (!_teklifMi)
+{
+    <div class="tur-sekmeleri belirme">
+        @foreach (var (etiket, tur) in new (string, TeklifSiparisTuru?)[] { ("Tümü", null), ("Müşteri", TeklifSiparisTuru.SatisSiparisi), ("Satınalma", TeklifSiparisTuru.SatinalmaSiparisi) })
+        {
+            <button type="button" class="tur-sekmesi @(_tur == tur ? "secili" : "")" style="--vurgu:@(tur is { } t ? TeklifSiparisMetinleri.Renk(t) : UygulamaTemasi.Turkuaz)"
+                    @onclick="() => FiltreAsync(() => _tur = tur)">@etiket</button>
+        }
+    </div>
+}
+
+<FiltreCubugu>
+    <MudItem xs="12" md="5">
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="a => FiltreAsync(() => _arama = a)"
+                      Placeholder="Cari unvanı veya belge no" DebounceInterval="400" Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudSwitch T="bool" Value="_acik" ValueChanged="a => FiltreAsync(() => _acik = a)" Color="Color.Secondary"
+                   Label="@(_teklifMi ? "Yalnızca yanıt bekleyenler" : "Yalnızca açık (karşılanmamış) siparişler")" />
+    </MudItem>
+</FiltreCubugu>
+
+<VeriTablosu T="TeklifSiparisOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+             SayfaDegisti="SayfaAsync" SatirTiklandi="@(b => Navigasyon.NavigateTo($"{TeklifSiparisMetinleri.Kok(b.Tur)}/{b.Id}"))"
+             BosIkon="@(_teklifMi ? Icons.Material.Outlined.RequestPage : Icons.Material.Outlined.ShoppingBag)" BosBaslik="@(_teklifMi ? "Teklif yok" : "Sipariş yok")">
+    <Basliklar>
+        <MudTh>Tarih</MudTh>
+        <MudTh>No</MudTh>
+        @if (!_teklifMi)
+        {
+            <MudTh>Tür</MudTh>
+        }
+        <MudTh>Cari</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh>@(_teklifMi ? "Geçerlilik" : "Termin")</MudTh>
+        <MudTh Class="sayi">Tutar</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+        <MudTd DataLabel="No">@(context.Numara is { } n ? n : "Taslak")</MudTd>
+        @if (!_teklifMi)
+        {
+            <MudTd DataLabel="Tür"><span class="tur-rozeti" style="--vurgu:@TeklifSiparisMetinleri.Renk(context.Tur)">@(context.Tur == TeklifSiparisTuru.SatisSiparisi ? "Müşteri" : "Satınalma")</span></MudTd>
+        }
+        <MudTd DataLabel="Cari"><b>@context.CariUnvan</b>@(context.CariHesapId is null ? " (aday)" : "")</MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="TeklifSiparisMetinleri.DurumRengi(context.Durum, context.SuresiDolduMu)">
+                @TeklifSiparisMetinleri.Durum(context.Durum, _teklifMi, context.SuresiDolduMu)
+            </MudChip>
+            @if (context.Karsilama is { } k && context.Durum == TeklifSiparisDurumu.Acik)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="TeklifSiparisMetinleri.KarsilamaRengi(k)">@TeklifSiparisMetinleri.Karsilama(k)</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="@(_teklifMi ? "Geçerlilik" : "Termin")">@Bicim.Tarih(_teklifMi ? context.GecerlilikTarihi : context.TerminTarihi)</MudTd>
+        <MudTd DataLabel="Tutar" Class="sayi"><b>@Bicim.Tutar(context.GenelToplam, context.ParaBirimi)</b></MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private bool _teklifMi;
+    private TeklifSiparisTuru? _tur;
+    private string? _arama;
+    private bool _acik;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private SayfaliSonuc<TeklifSiparisOzeti>? _sonuc;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _teklifMi = Navigasyon.ToBaseRelativePath(Navigasyon.Uri).StartsWith("teklif");
+        (_tur, _sayfa) = (_teklifMi ? TeklifSiparisTuru.SatisTeklifi : null, 1);
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var turFiltresi = _tur is { } t ? $"&tur={t}" : "";
+        var adres = $"api/fatura/teklif-siparis?sayfa={_sayfa}&teklif={(_teklifMi ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}{turFiltresi}"
+                    + (_teklifMi && _acik ? "&durum=Acik" : !_teklifMi && _acik ? "&acik=true" : "");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<TeklifSiparisOzeti>>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}
