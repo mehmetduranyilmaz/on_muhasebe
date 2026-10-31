@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.Fatura.Domain;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Birimler;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Dogrulama;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -23,6 +24,7 @@ internal static class IrsaliyeIslemleri
     public static void Map(RouteGroupBuilder grup)
     {
         grup.MapGet("/irsaliyeler", ListeleAsync);
+        grup.MapGet("/irsaliyeler/aktarim", AktarimAsync);
         grup.MapGet("/irsaliyeler/{id:guid}", GetirAsync);
         grup.MapPost("/irsaliyeler", OlusturAsync).Dogrula<IrsaliyeKaydetIstegi>();
         grup.MapPut("/irsaliyeler/{id:guid}", GuncelleAsync).Dogrula<IrsaliyeKaydetIstegi>();
@@ -136,6 +138,32 @@ internal static class IrsaliyeIslemleri
         }).ToList();
 
         return TypedResults.Ok(new SayfaliSonuc<IrsaliyeOzeti>(kayitlar, sonuc.Sayfa, sonuc.Boyut, sonuc.ToplamKayit));
+    }
+
+    // Faturaya aktarılabilecek satırlar: carinin, fatura türüne karşılık gelen onaylı irsaliyelerindeki faturalanmamış kalan.
+    // Sevk sırasıyla gelir (en eski irsaliye önce faturalanmalı); bugüne göre 7 günü geçenler işaretlenir.
+    private static async Task<IResult> AktarimAsync(
+        FaturaDbContext db, TimeProvider zaman, Guid cariId, FaturaTuru faturaTuru, CancellationToken cancellationToken)
+    {
+        if (IrsaliyeTurleri.Tur(faturaTuru) is not { } tur)
+        {
+            return TypedResults.Ok(Array.Empty<AktarilacakIrsaliyeSatiri>());
+        }
+
+        var bugun = TurkiyeSaati.Bugun(zaman);
+        var satirlar = await (
+                from s in db.IrsaliyeSatirlari
+                join i in db.Irsaliyeler on s.IrsaliyeId equals i.Id
+                where i.CariHesapId == cariId && i.Tur == tur && i.Durum == IrsaliyeDurumu.Onayli && s.FaturalananMiktar < s.Miktar
+                orderby i.SevkTarihi, i.Numara, s.Sira
+                select new { i.Id, i.Numara, i.SevkTarihi, SatirId = s.Id, s.StokKartiId, s.StokKodu, s.Ad, s.DepoId, s.Birim,
+                    s.Miktar, s.FaturalananMiktar, s.BirimFiyat, s.KdvOrani })
+            .ToListAsync(cancellationToken);
+
+        return TypedResults.Ok(satirlar.Select(s => new AktarilacakIrsaliyeSatiri(
+            s.Id, s.Numara, s.SevkTarihi, s.SatirId, s.StokKartiId, s.StokKodu, s.Ad, s.DepoId, s.Birim,
+            IrsaliyeHesaplari.Kalan(s.Miktar, s.FaturalananMiktar), s.BirimFiyat, s.KdvOrani,
+            IrsaliyeHesaplari.FaturaSuresiGectiMi(s.SevkTarihi, bugun))).ToList());
     }
 
     private static async Task<IResult> GetirAsync(Guid id, FaturaDbContext db, CancellationToken cancellationToken)

@@ -140,27 +140,29 @@ internal static class FaturaIslemleri
         var fatura = await db.Faturalar.AsNoTracking().Include(f => f.Satirlar).SingleOrDefaultAsync(f => f.Id == id, cancellationToken);
         return fatura is null
             ? FaturaHatalari.FaturaBulunamadi.Problem()
-            : TypedResults.Ok(Detay(fatura, await KalanAsync(fatura, cariSorgusu, cancellationToken)));
+            : TypedResults.Ok(Detay(fatura, await KalanAsync(fatura, cariSorgusu, cancellationToken), await BagliIrsaliyelerAsync(db, fatura, cancellationToken)));
     }
 
     private static async Task<IResult> OlusturAsync(
-        FaturaKaydetIstegi istek, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, CancellationToken cancellationToken)
+        FaturaKaydetIstegi istek, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, FaturaDbContext db, CancellationToken cancellationToken)
     {
         var sonuc = await servis.OlusturAsync(istek, cancellationToken);
         return sonuc.BasariliMi
-            ? TypedResults.Created($"/api/fatura/faturalar/{sonuc.Deger.Fatura.Id}", await CevapAsync(sonuc.Deger, cariSorgusu, cancellationToken))
+            ? TypedResults.Created($"/api/fatura/faturalar/{sonuc.Deger.Fatura.Id}", await CevapAsync(sonuc.Deger, cariSorgusu, db, cancellationToken))
             : sonuc.HttpSonucu();
     }
 
     private static async Task<IResult> GuncelleAsync(
-        Guid id, FaturaKaydetIstegi istek, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, CancellationToken cancellationToken) =>
-        await IslemSonucuAsync(await servis.GuncelleAsync(id, istek, cancellationToken), cariSorgusu, cancellationToken);
+        Guid id, FaturaKaydetIstegi istek, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, FaturaDbContext db, CancellationToken cancellationToken) =>
+        await IslemSonucuAsync(await servis.GuncelleAsync(id, istek, cancellationToken), cariSorgusu, db, cancellationToken);
 
-    private static async Task<IResult> OnaylaAsync(Guid id, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, CancellationToken cancellationToken) =>
-        await IslemSonucuAsync(await servis.OnaylaAsync(id, cancellationToken), cariSorgusu, cancellationToken);
+    private static async Task<IResult> OnaylaAsync(
+        Guid id, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, FaturaDbContext db, CancellationToken cancellationToken) =>
+        await IslemSonucuAsync(await servis.OnaylaAsync(id, cancellationToken), cariSorgusu, db, cancellationToken);
 
-    private static async Task<IResult> IptalEtAsync(Guid id, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, CancellationToken cancellationToken) =>
-        await IslemSonucuAsync(await servis.IptalEtAsync(id, cancellationToken), cariSorgusu, cancellationToken);
+    private static async Task<IResult> IptalEtAsync(
+        Guid id, FaturaKayitServisi servis, ICariSorgusu cariSorgusu, FaturaDbContext db, CancellationToken cancellationToken) =>
+        await IslemSonucuAsync(await servis.IptalEtAsync(id, cancellationToken), cariSorgusu, db, cancellationToken);
 
     private static async Task<IResult> SilAsync(Guid id, FaturaDbContext db, CancellationToken cancellationToken)
     {
@@ -180,11 +182,30 @@ internal static class FaturaIslemleri
         return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> IslemSonucuAsync(Sonuc<FaturaIslemSonucu> sonuc, ICariSorgusu cariSorgusu, CancellationToken cancellationToken) =>
-        sonuc.BasariliMi ? TypedResults.Ok(await CevapAsync(sonuc.Deger, cariSorgusu, cancellationToken)) : sonuc.HttpSonucu();
+    private static async Task<IResult> IslemSonucuAsync(
+        Sonuc<FaturaIslemSonucu> sonuc, ICariSorgusu cariSorgusu, FaturaDbContext db, CancellationToken cancellationToken) =>
+        sonuc.BasariliMi ? TypedResults.Ok(await CevapAsync(sonuc.Deger, cariSorgusu, db, cancellationToken)) : sonuc.HttpSonucu();
 
-    private static async Task<FaturaCevabi> CevapAsync(FaturaIslemSonucu sonuc, ICariSorgusu cariSorgusu, CancellationToken cancellationToken) =>
-        new(Detay(sonuc.Fatura, await KalanAsync(sonuc.Fatura, cariSorgusu, cancellationToken)), sonuc.Uyari);
+    private static async Task<FaturaCevabi> CevapAsync(
+        FaturaIslemSonucu sonuc, ICariSorgusu cariSorgusu, FaturaDbContext db, CancellationToken cancellationToken) =>
+        new(Detay(sonuc.Fatura, await KalanAsync(sonuc.Fatura, cariSorgusu, cancellationToken), await BagliIrsaliyelerAsync(db, sonuc.Fatura, cancellationToken)),
+            sonuc.Uyari);
+
+    // Faturanın satırlarının aktarıldığı irsaliyeler; tarih olarak fiili sevk tarihi verilir (kâğıda basılır).
+    private static async Task<IReadOnlyList<BagliBelge>> BagliIrsaliyelerAsync(FaturaDbContext db, FaturaBelgesi f, CancellationToken cancellationToken)
+    {
+        var satirIdleri = f.Satirlar.Where(s => s.IrsaliyeSatiriId is not null).Select(s => s.IrsaliyeSatiriId!.Value).ToList();
+        if (satirIdleri.Count == 0)
+        {
+            return [];
+        }
+
+        return await db.Irsaliyeler.AsNoTracking()
+            .Where(i => i.Satirlar.Any(s => satirIdleri.Contains(s.Id)))
+            .OrderBy(i => i.SevkTarihi)
+            .Select(i => new BagliBelge(i.Id, i.Numara, i.SevkTarihi))
+            .ToListAsync(cancellationToken);
+    }
 
     // Kalan: faturanın kapanmamış tutarı (cari dövizinde = fatura dövizinde). Taslak, iptal ve carisiz faturada yoktur.
     private static async Task<decimal?> KalanAsync(FaturaBelgesi f, ICariSorgusu cariSorgusu, CancellationToken cancellationToken) =>
@@ -200,7 +221,7 @@ internal static class FaturaIslemleri
         return faturalar.Select(f => idler.Contains(f.Id) ? f with { Kalan = kalanlar.GetValueOrDefault(f.Id) } : f).ToList();
     }
 
-    internal static FaturaDetayi Detay(FaturaBelgesi f, decimal? kalan)
+    internal static FaturaDetayi Detay(FaturaBelgesi f, decimal? kalan, IReadOnlyList<BagliBelge> irsaliyeler)
     {
         var satirlar = f.Satirlar.OrderBy(s => s.Sira).ToList();
         var dagilim = satirlar
@@ -219,7 +240,7 @@ internal static class FaturaIslemleri
             satirlar.Select(s => new FaturaSatiriDetayi(
                 s.Id, s.Sira, s.StokKartiId, s.StokKodu, s.Ad, s.StokluMu, s.DepoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvDahilMi,
                 s.Iskonto1, s.Iskonto2, s.Iskonto3, s.KdvOrani, s.BrutTutar, s.IskontoTutari, s.GenelIskontoPayi, s.Matrah,
-                s.KdvTutari, s.Toplam, s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda, s.TevkifEdilenKdv)).ToList(),
-            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan);
+                s.KdvTutari, s.Toplam, s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda, s.TevkifEdilenKdv, s.IrsaliyeSatiriId)).ToList(),
+            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler);
     }
 }

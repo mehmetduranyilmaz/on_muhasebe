@@ -153,8 +153,24 @@ public sealed record IrsaliyeDetayi(
     DateTime? IptalTarihi,
     uint Surum);
 
-// İrsaliye ile fatura arasındaki bağ (iki yönde de gösterilir).
+// İrsaliye ile fatura arasındaki bağ (iki yönde de gösterilir). Tarih, irsaliyede fiili sevk tarihidir.
 public sealed record BagliBelge(Guid Id, string? Numara, DateOnly Tarih);
+
+// Faturaya aktarılabilecek (onaylı, faturalanmamış kalanı olan) irsaliye satırı. Fiyat irsaliyede yoksa boş gelir.
+public sealed record AktarilacakIrsaliyeSatiri(
+    Guid IrsaliyeId,
+    string? IrsaliyeNo,
+    DateOnly SevkTarihi,
+    Guid IrsaliyeSatiriId,
+    Guid StokKartiId,
+    string StokKodu,
+    string Ad,
+    Guid DepoId,
+    string Birim,
+    decimal KalanMiktar,
+    decimal? BirimFiyat,
+    int KdvOrani,
+    bool SuresiGectiMi);
 
 public sealed record IrsaliyeCevabi(IrsaliyeDetayi Irsaliye, string? Uyari);
 

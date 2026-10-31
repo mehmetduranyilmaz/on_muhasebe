@@ -33,6 +33,8 @@ internal static class FaturaHatalari
     public static readonly Hata PesinHesapDovizi = Hata.IsKurali("pesin_doviz", "Peşin tahsilat/ödeme hesabının dövizi faturanın dövizi ile aynı olmalıdır.");
     public static readonly Hata PesinHesapTuru = Hata.IsKurali("pesin_hesap_turu", "Kredi kartı hesabına tahsilat, POS hesabından ödeme yapılamaz.");
 
+    public static readonly Hata IrsaliyeBagiGecersiz = Hata.IsKurali("irsaliye_bagi_gecersiz",
+        "İrsaliyeden aktarılan satır, aynı carinin onaylı ve faturanın türüne uygun irsaliyesine ait olmalı; ürün, birim ve depo değiştirilemez.");
     // Aynı seride numaralar tarih sırasını izlemelidir (VUK; e-Arşiv/e-Fatura da reddeder).
     public static Hata TarihSirasi(DateOnly sinir, bool oncekiMi) => Hata.IsKurali("tarih_sirasi", oncekiMi
         ? $"Bu seride {sinir:dd.MM.yyyy} tarihli daha önce numaralanmış fatura var; fatura tarihi bundan önce olamaz."

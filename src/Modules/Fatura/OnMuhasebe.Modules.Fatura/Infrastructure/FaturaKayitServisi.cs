@@ -22,6 +22,7 @@ internal sealed class FaturaKayitServisi(
     ICariHareketYazici cariYazici,
     IStokHareketYazici stokYazici,
     IKasaBankaYazici kasaYazici,
+    IrsaliyeKayitServisi irsaliyeServisi,
     IIslemKapsami islemKapsami,
     TimeProvider zaman)
 {
@@ -74,6 +75,8 @@ internal sealed class FaturaKayitServisi(
             return bilgiler.Hata;
         }
 
+        // Düzenleme satırları yeniden kurar; eski irsaliye bağları da yeniden hesaplanabilsin diye önce alınır.
+        var eskiBaglar = IrsaliyeBaglari(fatura);
         var guncelleme = fatura.Guncelle(bilgiler.Deger);
         if (!guncelleme.BasariliMi)
         {
@@ -102,7 +105,13 @@ internal sealed class FaturaKayitServisi(
             }
 
             var yazim = await HareketleriYazAsync(fatura, ct);
-            return yazim.BasariliMi ? new FaturaIslemSonucu(fatura, yazim.Deger) : yazim.Hata;
+            if (!yazim.BasariliMi)
+            {
+                return yazim.Hata;
+            }
+
+            var irsaliye = await IrsaliyeleriEsitleAsync(fatura, eskiBaglar, ct);
+            return irsaliye.BasariliMi ? new FaturaIslemSonucu(fatura, Birlestir(yazim.Deger, irsaliye.Deger)) : irsaliye.Hata;
         }, cancellationToken);
     }
 
@@ -141,7 +150,14 @@ internal sealed class FaturaKayitServisi(
         {
             await db.SaveChangesAsync(ct);
             var iptal = await HareketleriIptalEtAsync(fatura.Id, ct);
-            return iptal.BasariliMi ? new FaturaIslemSonucu(fatura, null) : iptal.Hata;
+            if (!iptal.BasariliMi)
+            {
+                return iptal.Hata;
+            }
+
+            // İptal edilen faturanın irsaliye bağları düşer; irsaliyeler yeniden faturalanabilir hale gelir.
+            var irsaliye = await IrsaliyeleriEsitleAsync(fatura, [], ct);
+            return irsaliye.BasariliMi ? new FaturaIslemSonucu(fatura, null) : irsaliye.Hata;
         }, cancellationToken);
     }
 
@@ -165,7 +181,125 @@ internal sealed class FaturaKayitServisi(
 
         await db.SaveChangesAsync(cancellationToken);
         var yazim = await HareketleriYazAsync(fatura, cancellationToken);
-        return yazim.BasariliMi ? new FaturaIslemSonucu(fatura, yazim.Deger) : yazim.Hata;
+        if (!yazim.BasariliMi)
+        {
+            return yazim.Hata;
+        }
+
+        var irsaliye = await IrsaliyeleriEsitleAsync(fatura, [], cancellationToken);
+        return irsaliye.BasariliMi ? new FaturaIslemSonucu(fatura, Birlestir(yazim.Deger, irsaliye.Deger)) : irsaliye.Hata;
+    }
+
+    private static List<Guid> IrsaliyeBaglari(FaturaBelgesi f) =>
+        f.Satirlar.Where(s => s.IrsaliyeSatiriId is not null).Select(s => s.IrsaliyeSatiriId!.Value).Distinct().ToList();
+
+    private static string? Birlestir(string? a, string? b) => a is null ? b : b is null ? a : $"{a} {b}";
+
+    // Faturanın (ve düzenlemede eski hâlinin) bağlı olduğu irsaliye satırlarının faturalanan miktarı, onaylı faturalardaki
+    // bağlı satırların toplamından yeniden hesaplanır. Onaylı faturada bağların geçerliliği denetlenir; alış irsaliyesinin
+    // stok maliyeti fatura tutarıyla ağırlıklandırılıp yeniden yazılır. Sevkten 7 gün geçmişse uyarı döner (VUK 231/5).
+    private async Task<Sonuc<string?>> IrsaliyeleriEsitleAsync(FaturaBelgesi f, IReadOnlyList<Guid> ekBaglar, CancellationToken cancellationToken)
+    {
+        var idler = IrsaliyeBaglari(f).Concat(ekBaglar).Distinct().ToList();
+        if (idler.Count == 0)
+        {
+            return (string?)null;
+        }
+
+        var irsaliyeler = await db.Irsaliyeler.Include(i => i.Satirlar)
+            .Where(i => i.Satirlar.Any(s => idler.Contains(s.Id)))
+            .ToListAsync(cancellationToken);
+        var satirlar = irsaliyeler
+            .SelectMany(i => i.Satirlar.Select(s => (Irsaliye: i, Satir: s)))
+            .Where(x => idler.Contains(x.Satir.Id))
+            .ToDictionary(x => x.Satir.Id);
+
+        var faturaBaglari = f.Durum == FaturaDurumu.Onayli ? f.Satirlar.Where(s => s.IrsaliyeSatiriId is not null).ToList() : [];
+        foreach (var fs in faturaBaglari)
+        {
+            if (!satirlar.TryGetValue(fs.IrsaliyeSatiriId!.Value, out var x)
+                || x.Irsaliye.Durum != IrsaliyeDurumu.Onayli
+                || IrsaliyeTurleri.Tur(f.Tur) != x.Irsaliye.Tur
+                || x.Irsaliye.CariHesapId != f.CariHesapId
+                || x.Satir.StokKartiId != fs.StokKartiId || x.Satir.Birim != fs.Birim || x.Satir.DepoId != fs.DepoId)
+            {
+                return FaturaHatalari.IrsaliyeBagiGecersiz;
+            }
+        }
+
+        var toplamlar = await db.FaturaSatirlari
+            .Where(s => s.IrsaliyeSatiriId != null && idler.Contains(s.IrsaliyeSatiriId.Value)
+                        && db.Faturalar.Any(fa => fa.Id == s.FaturaId && fa.Durum == FaturaDurumu.Onayli))
+            .GroupBy(s => s.IrsaliyeSatiriId!.Value)
+            .Select(g => new { Id = g.Key, Miktar = g.Sum(s => s.Miktar) })
+            .ToDictionaryAsync(g => g.Id, g => g.Miktar, cancellationToken);
+
+        foreach (var (id, x) in satirlar)
+        {
+            var ayar = x.Irsaliye.FaturalananAyarla(id, toplamlar.GetValueOrDefault(id));
+            if (!ayar.BasariliMi)
+            {
+                return ayar.Hata;
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var maliyet = await AlisMaliyetleriniYenileAsync(irsaliyeler, cancellationToken);
+        if (!maliyet.BasariliMi)
+        {
+            return maliyet.Hata;
+        }
+
+        var gecikenler = faturaBaglari
+            .Select(fs => satirlar[fs.IrsaliyeSatiriId!.Value].Irsaliye)
+            .Distinct()
+            .Where(i => IrsaliyeHesaplari.FaturaSuresiGectiMi(i.SevkTarihi, f.Tarih))
+            .Select(i => i.Numara)
+            .ToList();
+        return gecikenler.Count == 0
+            ? (string?)null
+            : $"{string.Join(", ", gecikenler)} numaralı irsaliyenin sevkinden bu yana {IrsaliyeHesaplari.FaturaSuresiGun} günlük fatura süresi geçmiş (VUK 231/5).";
+    }
+
+    // Alış irsaliyesi stoğa tahmini maliyetle girmişti; bağlı onaylı faturaların gerçek maliyeti (iskontolu, KDV hariç TL)
+    // faturalanan miktar kadar, kalanı tahmini maliyetle ağırlıklandırılır ve irsaliyenin stok hareketleri yeniden yazılır.
+    private async Task<Sonuc> AlisMaliyetleriniYenileAsync(IReadOnlyList<Irsaliye> irsaliyeler, CancellationToken cancellationToken)
+    {
+        var alislar = irsaliyeler.Where(i => i.Tur == IrsaliyeTuru.Alis && i.Durum == IrsaliyeDurumu.Onayli).ToList();
+        if (alislar.Count == 0)
+        {
+            return Sonuc.Basarili();
+        }
+
+        var satirIdleri = alislar.SelectMany(i => i.Satirlar).Select(s => s.Id).ToList();
+        var parcalar = await (
+                from s in db.FaturaSatirlari
+                join fa in db.Faturalar on s.FaturaId equals fa.Id
+                where fa.Durum == FaturaDurumu.Onayli && s.IrsaliyeSatiriId != null && satirIdleri.Contains(s.IrsaliyeSatiriId.Value)
+                select new { Id = s.IrsaliyeSatiriId!.Value, s.Miktar, BirimMaliyet = s.Matrah * fa.Kur / s.Miktar })
+            .ToListAsync(cancellationToken);
+
+        foreach (var i in alislar)
+        {
+            var maliyetler = i.Satirlar.ToDictionary(s => s.Id, s => IrsaliyeHesaplari.AgirlikliMaliyet(
+                s.Miktar, IrsaliyeKayitServisi.TahminiMaliyet(i, s),
+                parcalar.Where(p => p.Id == s.Id).Select(p => (p.Miktar, p.BirimMaliyet))));
+
+            var iptal = await stokYazici.IptalEtAsync(i.Id, cancellationToken);
+            if (!iptal.BasariliMi)
+            {
+                return iptal;
+            }
+
+            var yazim = await irsaliyeServisi.StokuYazAsync(i, maliyetler, cancellationToken);
+            if (!yazim.BasariliMi)
+            {
+                return yazim.Hata;
+            }
+        }
+
+        return Sonuc.Basarili();
     }
 
     // Gelen faturanın numarası karşı tarafındır; aynı carinin aynı türde aynı numaralı ikinci faturası kabul edilmez.
@@ -222,8 +356,9 @@ internal sealed class FaturaKayitServisi(
         if (FaturaTurleri.StoklaIliskiliMi(f.Tur))
         {
             var stokTuru = StokEtkisi(f.Tur);
+            // İrsaliyeden aktarılan satırın stok hareketi irsaliyededir; fatura yalnızca irsaliyesiz ürün satırları için stok yazar.
             var stokHareketleri = f.Satirlar
-                .Where(s => s.StokluMu)
+                .Where(s => s.StokluMu && s.IrsaliyeSatiriId is null)
                 .OrderBy(s => s.Sira)
                 .Select(s => new BelgeStokHareketi(
                     s.StokKartiId!.Value, s.DepoId!.Value, stokTuru, f.Tarih, s.Birim, s.Miktar, StokMaliyeti(f, s), f.Numara, aciklama))

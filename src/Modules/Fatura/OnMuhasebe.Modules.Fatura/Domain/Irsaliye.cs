@@ -116,18 +116,22 @@ internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
         return Sonuc.Basarili();
     }
 
-    public Sonuc Faturala(Guid satirId, decimal miktar)
+    // Faturalanan miktar, bu satıra bağlı onaylı fatura satırlarının toplamıdır; fatura onaylanınca, iptal edilince
+    // ya da düzenlenince bu toplamdan yeniden ayarlanır (tek doğru kaynak fatura satırlarıdır).
+    public Sonuc FaturalananAyarla(Guid satirId, decimal toplam)
     {
-        if (Durum != IrsaliyeDurumu.Onayli || !IrsaliyeTurleri.FaturalanirMi(Tur))
+        if (_satirlar.FirstOrDefault(s => s.Id == satirId) is not { } satir)
+        {
+            return IrsaliyeHatalari.SatirBulunamadi;
+        }
+
+        if (toplam > 0m && (Durum != IrsaliyeDurumu.Onayli || !IrsaliyeTurleri.FaturalanirMi(Tur)))
         {
             return IrsaliyeHatalari.FaturalanamazDurum;
         }
 
-        return _satirlar.FirstOrDefault(s => s.Id == satirId) is { } satir ? satir.Faturala(miktar) : IrsaliyeHatalari.SatirBulunamadi;
+        return satir.FaturalananAyarla(toplam);
     }
-
-    // Bağlı fatura iptal edilince ya da düzenlenince faturalanan miktar geri alınır.
-    public void FaturalamayiGeriAl(Guid satirId, decimal miktar) => _satirlar.FirstOrDefault(s => s.Id == satirId)?.FaturalamayiGeriAl(miktar);
 
     private Sonuc Ayarla(IrsaliyeBilgileri b)
     {
@@ -248,18 +252,16 @@ internal sealed class IrsaliyeSatiri : BaseEntity
         KdvOrani = b.KdvOrani
     };
 
-    public Sonuc Faturala(decimal miktar)
+    public Sonuc FaturalananAyarla(decimal toplam)
     {
-        if (miktar <= 0m || miktar > KalanMiktar)
+        if (toplam < 0m || toplam > Miktar)
         {
             return IrsaliyeHatalari.KalanAsildi;
         }
 
-        FaturalananMiktar += miktar;
+        FaturalananMiktar = toplam;
         return Sonuc.Basarili();
     }
-
-    public void FaturalamayiGeriAl(decimal miktar) => FaturalananMiktar = Math.Max(0m, FaturalananMiktar - miktar);
 }
 
 internal sealed record IrsaliyeSatiriBilgisi(
