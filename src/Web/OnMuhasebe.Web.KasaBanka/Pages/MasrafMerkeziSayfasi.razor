@@ -1,0 +1,181 @@
+@page "/kasabanka/masraf-merkezi"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject ISnackbar Snackbar
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Masraf Merkezleri" GeriAdres="kasabanka" Ikon="@Icons.Material.Filled.AccountTree"
+              AltBaslik="Proje, şube, departman ya da araç bazında gelir, gider ve net sonuç (KDV hariç)">
+    <Islemler>
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_baslangic" Label="Başlangıç" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RaporAsync">Göster</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="mb-3 sadece-yazdir">
+    <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+    <MudText Typo="Typo.h6">Masraf Merkezi Raporu · @Bicim.Tarih(Bicim.Gun(_baslangic)) – @Bicim.Tarih(Bicim.Gun(_bitis))</MudText>
+</div>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" lg="8">
+        <VeriTablosu T="Satir" Kayitlar="_satirlar" Yukleniyor="_yukleniyor" Dense="true"
+                     BosIkon="@Icons.Material.Outlined.AccountTree" BosBaslik="Bu dönemde kayıt yok"
+                     BosAciklama="Faturalara ve kasa/banka gelir-gider kayıtlarına masraf merkezi seçildikçe burada toplanır.">
+            <Basliklar>
+                <MudTh>Merkez</MudTh>
+                <MudTh Class="sayi">Gelir</MudTh>
+                <MudTh Class="sayi">Gider</MudTh>
+                <MudTh Class="sayi">Net</MudTh>
+                <MudTh Class="sayi">Kayıt</MudTh>
+            </Basliklar>
+            <Satir>
+                <MudTd DataLabel="Merkez">
+                    @if (context.Merkez is { } m)
+                    {
+                        <b>@m.Kod</b> <span>@m.Ad</span>
+                    }
+                    else
+                    {
+                        <span style="opacity:.7">Merkez atanmamış</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Gelir" Class="sayi"><span class="bakiye-alacakli">@Bicim.Tutar(context.Gelir)</span></MudTd>
+                <MudTd DataLabel="Gider" Class="sayi"><span class="bakiye-borclu">@Bicim.Tutar(context.Gider)</span></MudTd>
+                <MudTd DataLabel="Net" Class="sayi"><b class="@(context.Net < 0 ? "bakiye-borclu" : "")">@Bicim.Tutar(context.Net)</b></MudTd>
+                <MudTd DataLabel="Kayıt" Class="sayi">@context.Adet</MudTd>
+            </Satir>
+        </VeriTablosu>
+        @if (_satirlar is { Count: > 0 })
+        {
+            <div class="ozet-alt mt-2">
+                Toplam: gelir @Bicim.Tutar(_satirlar.Sum(s => s.Gelir), ParaBirimleri.Tl) · gider @Bicim.Tutar(_satirlar.Sum(s => s.Gider), ParaBirimleri.Tl)
+                · net @Bicim.Tutar(_satirlar.Sum(s => s.Net), ParaBirimleri.Tl).
+                @(FaturaAcik ? "Faturalar (satış gelir, alış/gider pusulası/SMM gider, iadeler düşülmüş) ve kasa/banka gelir-gider kayıtları dahildir."
+                             : "Yalnızca kasa/banka gelir-gider kayıtları (Fatura lisansı yok).")
+            </div>
+        }
+    </MudItem>
+
+    <MudItem xs="12" lg="4" Class="yazdirma-gizle">
+        <div class="panel-kart kart belirme">
+            <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" Color="Color.Secondary" /> Tanımlar</div>
+            @if (!Oturum.SaltOkunurMu)
+            {
+                <div class="d-flex gap-2 align-start mb-3">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kod" Label="Kod" MaxLength="20" Style="max-width:110px" />
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" MaxLength="100" />
+                    <MudIconButton Icon="@(_duzenlenen is null ? Icons.Material.Filled.Add : Icons.Material.Filled.Check)" Color="Color.Primary"
+                                   aria-label="Kaydet" Disabled="@(string.IsNullOrWhiteSpace(_kod) || string.IsNullOrWhiteSpace(_ad))" OnClick="KaydetAsync" />
+                </div>
+            }
+            @foreach (var m in _merkezler)
+            {
+                <div class="d-flex align-center gap-2 py-1" style="@(m.AktifMi ? "" : "opacity:.55")">
+                    <b style="min-width:70px">@m.Kod</b>
+                    <span style="flex:1">@m.Ad</span>
+                    @if (!Oturum.SaltOkunurMu)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="@(() => (_duzenlenen, _kod, _ad) = (m, m.Kod, m.Ad))" />
+                        <MudIconButton Icon="@(m.AktifMi ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)" Size="Size.Small"
+                                       aria-label="@(m.AktifMi ? "Pasifleştir" : "Aktifleştir")" OnClick="() => AktiflikAsync(m)" />
+                    }
+                </div>
+            }
+            <div class="ozet-alt mt-2">Kayıtlara bağlanan merkez silinmez; artık kullanılmayacaksa pasifleştirin.</div>
+        </div>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private List<MasrafMerkeziOzeti> _merkezler = [];
+    private List<Satir>? _satirlar;
+    private MasrafMerkeziOzeti? _duzenlenen;
+    private string? _kod;
+    private string? _ad;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    private bool FaturaAcik => Oturum.ModulAcikMi(ModulKodlari.Fatura);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow().Date;
+        (_baslangic, _bitis) = (new DateTime(bugun.Year, 1, 1), bugun);
+        await MerkezleriYukleAsync();
+        await RaporAsync();
+    }
+
+    private async Task MerkezleriYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<MasrafMerkeziOzeti>>("api/kasabanka/masraf-merkezleri");
+        _merkezler = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    // Kasa/banka ve fatura tutarları ayrı modüllerden gelir; merkez bazında toplanır.
+    private async Task RaporAsync()
+    {
+        _yukleniyor = true;
+        var aralik = $"?baslangic={Bicim.Iso(Bicim.Gun(_baslangic) ?? DateOnly.FromDateTime(DateTime.Today))}&bitis={Bicim.Iso(Bicim.Gun(_bitis) ?? DateOnly.FromDateTime(DateTime.Today))}";
+        var kalemler = new List<MerkezTutari>();
+        var kasa = await Api.GetAsync<MerkezTutarlari>($"api/kasabanka/raporlar/masraf-merkezi{aralik}");
+        _hata = kasa.Hata;
+        if (kasa.BasariliMi)
+        {
+            kalemler.AddRange(kasa.Deger.Kalemler);
+        }
+
+        if (FaturaAcik && await Api.GetAsync<MerkezTutarlari>($"api/fatura/raporlar/masraf-merkezi{aralik}") is { BasariliMi: true } fatura)
+        {
+            kalemler.AddRange(fatura.Deger.Kalemler);
+        }
+
+        _satirlar = kalemler.GroupBy(k => k.MasrafMerkeziId)
+            .Select(g => new Satir(g.Key is { } id ? _merkezler.FirstOrDefault(m => m.Id == id) : null, g.Sum(k => k.GelirTl), g.Sum(k => k.GiderTl), g.Sum(k => k.Adet)))
+            .OrderBy(s => s.Merkez is null).ThenBy(s => s.Merkez?.Kod)
+            .ToList();
+        _yukleniyor = false;
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new MasrafMerkeziKaydetIstegi(_kod!, _ad!);
+        var sonuc = _duzenlenen is { } d
+            ? await Api.PutAsync<MasrafMerkeziOzeti>($"api/kasabanka/masraf-merkezleri/{d.Id}", istek)
+            : await Api.PostAsync<MasrafMerkeziOzeti>("api/kasabanka/masraf-merkezleri", istek);
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        (_duzenlenen, _kod, _ad) = (null, null, null);
+        await MerkezleriYukleAsync();
+        await RaporAsync();
+    }
+
+    private async Task AktiflikAsync(MasrafMerkeziOzeti m)
+    {
+        var sonuc = await Api.PostAsync($"api/kasabanka/masraf-merkezleri/{m.Id}/{(m.AktifMi ? "pasiflestir" : "aktiflestir")}");
+        if (sonuc.BasariliMi)
+        {
+            await MerkezleriYukleAsync();
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private sealed record Satir(MasrafMerkeziOzeti? Merkez, decimal Gelir, decimal Gider, int Adet)
+    {
+        public decimal Net => Gelir - Gider;
+    }
+}

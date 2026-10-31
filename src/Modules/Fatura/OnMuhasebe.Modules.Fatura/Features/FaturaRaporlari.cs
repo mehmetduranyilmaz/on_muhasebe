@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
+using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;
@@ -21,6 +22,47 @@ internal static class FaturaRaporlari
         grup.MapGet("/raporlar/ozet", OzetAsync);
         grup.MapGet("/raporlar/karlilik", KarlilikAsync);
         grup.MapGet("/raporlar/kdv", KdvAsync);
+        grup.MapGet("/raporlar/masraf-merkezi", MasrafMerkeziAsync);
+    }
+
+    // Onaylı faturaların merkez bazında KDV hariç TL tutarı: satış gelir, alış/gider pusulası/SMM gider; iadeler düşülür.
+    // KDV ve stopaj gelir/gider değildir (vergi alacağı/borcu), bu yüzden matrah esas alınır.
+    private static async Task<IResult> MasrafMerkeziAsync(
+        FaturaDbContext db, TimeProvider zaman, DateOnly? baslangic, DateOnly? bitis, CancellationToken cancellationToken)
+    {
+        var bugun = TurkiyeSaati.Bugun(zaman);
+        var (bas, son) = (baslangic ?? new DateOnly(bugun.Year, 1, 1), bitis ?? bugun);
+        if (son < bas)
+        {
+            return Hata.Dogrulama("tarih_araligi", "Bitiş tarihi başlangıçtan önce olamaz.").Problem();
+        }
+
+        var faturalar = await db.Faturalar.AsNoTracking()
+            .Where(f => f.Durum == FaturaDurumu.Onayli && f.Tarih >= bas && f.Tarih <= son)
+            .Select(f => new { f.MasrafMerkeziId, f.Tur, f.Matrah, f.Kur })
+            .ToListAsync(cancellationToken);
+
+        var kalemler = faturalar
+            .GroupBy(f => f.MasrafMerkeziId)
+            .Select(g => new MerkezTutari(
+                g.Key,
+                g.Sum(f => f.Tur switch
+                {
+                    FaturaTuru.Satis => Tl(f.Matrah, f.Kur),
+                    FaturaTuru.SatistanIade => -Tl(f.Matrah, f.Kur),
+                    _ => 0m
+                }),
+                g.Sum(f => f.Tur switch
+                {
+                    FaturaTuru.Alis or FaturaTuru.GiderPusulasi or FaturaTuru.SerbestMeslekMakbuzu => Tl(f.Matrah, f.Kur),
+                    FaturaTuru.AlistanIade => -Tl(f.Matrah, f.Kur),
+                    _ => 0m
+                }),
+                g.Count()))
+            .ToList();
+        return TypedResults.Ok(new MerkezTutarlari(bas, son, kalemler));
+
+        static decimal Tl(decimal tutar, decimal kur) => Math.Round(tutar * kur, 2, MidpointRounding.AwayFromZero);
     }
 
     // Brüt kârlılık: onaylı satış ve satıştan iade faturaları. Net satış = satır matrahı (iskontolar düşülmüş, KDV hariç) × fatura kuru.

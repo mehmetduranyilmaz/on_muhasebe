@@ -264,13 +264,15 @@ internal sealed class GelirGiderKaydi : FirmaEntity, IDonemeTabi
     public Guid? CariHesapId { get; private set; }
     public string? BelgeNo { get; private set; }
     public string? Aciklama { get; private set; }
+    public Guid? MasrafMerkeziId { get; private set; }
     [DonemKilidiDisinda]
     public DateTime? IptalTarihi { get; private set; }
 
     public static GelirGiderKaydi Olustur(
         Guid islemId, GelirGiderTuru tur, GelirGiderBicimi bicim, Guid kategoriId, DateOnly tarih, string paraBirimi, decimal tutar, decimal kur,
-        Guid? hesapId, Guid? cariHesapId, string? belgeNo, string? aciklama) => new()
+        Guid? hesapId, Guid? cariHesapId, string? belgeNo, string? aciklama, Guid? masrafMerkeziId = null) => new()
     {
+        MasrafMerkeziId = masrafMerkeziId,
         IslemId = islemId,
         Tur = tur,
         Bicim = bicim,
@@ -287,6 +289,21 @@ internal sealed class GelirGiderKaydi : FirmaEntity, IDonemeTabi
     };
 
     public void IptalEt(DateTime simdi) => IptalTarihi ??= simdi;
+}
+
+internal sealed class MasrafMerkezi : FirmaEntity
+{
+    private MasrafMerkezi() { }
+
+    public string Kod { get; private set; } = null!;
+    public string Ad { get; private set; } = null!;
+    public bool AktifMi { get; private set; } = true;
+
+    public static MasrafMerkezi Olustur(string kod, string ad) => new() { Kod = kod.Trim().ToUpperInvariant(), Ad = ad.Trim() };
+
+    public void Guncelle(string kod, string ad) => (Kod, Ad) = (kod.Trim().ToUpperInvariant(), ad.Trim());
+
+    public void AktiflikAyarla(bool aktif) => AktifMi = aktif;
 }
 
 internal sealed class GelirGiderKategorisi : FirmaEntity

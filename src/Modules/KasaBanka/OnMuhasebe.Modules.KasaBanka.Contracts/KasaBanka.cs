@@ -207,7 +207,8 @@ public sealed record GelirGiderIstegi(
     decimal? Kur,
     decimal? CariKuru,
     string? BelgeNo,
-    string? Aciklama);
+    string? Aciklama,
+    Guid? MasrafMerkeziId = null);
 
 public sealed record IslemCevabi(Guid IslemId, IReadOnlyList<KasaHareketSatiri> Hareketler);
 

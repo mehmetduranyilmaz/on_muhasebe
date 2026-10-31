@@ -393,6 +393,16 @@ else
                             <MudSelectItem T="Guid?" Value="h.Id">@h.Ad · @Bicim.Tutar(h.Bakiye, h.ParaBirimi)</MudSelectItem>
                         }
                     </MudSelect>
+                    @if (_merkezler.Any(m => m.AktifMi || m.Id == _masrafMerkeziId))
+                    {
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_masrafMerkeziId" Clearable="true" Class="mt-3"
+                                   Label="Masraf merkezi / proje" AdornmentIcon="@Icons.Material.Filled.AccountTree">
+                            @foreach (var m in _merkezler.Where(m => m.AktifMi || m.Id == _masrafMerkeziId))
+                            {
+                                <MudSelectItem T="Guid?" Value="m.Id">@m.Kod · @m.Ad</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
                 }
 
                 @if (Oturum.SaltOkunurMu)
@@ -471,6 +481,8 @@ else
     private readonly List<FaturaSatirModeli> _satirlar = [];
     private List<Depo> _depolar = [];
     private List<HesapOzeti> _pesinHesaplar = [];
+    private List<MasrafMerkeziOzeti> _merkezler = [];
+    private Guid? _masrafMerkeziId;
     private Guid? _pesinHesapId;
     private int _stokAramaAnahtari;
     private string? _barkod;
@@ -546,12 +558,8 @@ else
         {
             var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?aktif=true");
             _pesinHesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
-        }
-
-        if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
-        {
-            var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?aktif=true");
-            _pesinHesaplar = hesaplar.BasariliMi ? hesaplar.Deger : [];
+            var merkezler = await Api.GetAsync<List<MasrafMerkeziOzeti>>("api/kasabanka/masraf-merkezleri");
+            _merkezler = merkezler.BasariliMi ? merkezler.Deger : [];
         }
 
         if (Id is { } id)
@@ -622,7 +630,7 @@ else
         (_tur, _durum, _satisSekli, _numara, _surum) = (f.Tur, f.Durum, f.SatisSekli ?? SatisSekli.Toptan, f.Numara, f.Surum);
         (_tarih, _vade, _paraBirimi, _kur, _kurElleGirildi) = (Bicim.Takvim(f.Tarih), Bicim.Takvim(f.VadeTarihi), f.ParaBirimi, f.Kur, true);
         (_aciklama, _genelIskontoTuru, _genelIskonto, _stopajOrani) = (f.Aciklama, f.GenelIskontoTuru, f.GenelIskonto, f.StopajOrani);
-        _pesinHesapId = f.PesinHesapId;
+        (_pesinHesapId, _masrafMerkeziId) = (f.PesinHesapId, f.MasrafMerkeziId);
         if (f.CariHesapId is { } cariId)
         {
             _cari = new CariOzeti(cariId, f.CariKodu ?? "", f.CariUnvan, CariTuru.Musteri, null, f.ParaBirimi, null, true, 0m, 0m, null);
@@ -986,7 +994,8 @@ else
             _satirlar.Select(s => s.Istek()).ToList(),
             _surum,
             UygunPesinHesaplar.Any(h => h.Id == _pesinHesapId) ? _pesinHesapId : null,
-            StopajliMi ? _stopajOrani : 0m);
+            StopajliMi ? _stopajOrani : 0m,
+            _masrafMerkeziId);
 
         var sonuc = Id is { } id
             ? await Api.PutAsync<FaturaCevabi>($"api/fatura/faturalar/{id}", istek, islemAnahtari: _anahtar.Deger)

@@ -35,6 +35,9 @@ internal sealed class KasaBankaSorgusu(KasaBankaDbContext db) : IKasaBankaSorgus
             .Where(h => h.Id == hesapId)
             .Select(h => new KasaHesapBilgisi(h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.AktifMi))
             .SingleOrDefaultAsync(cancellationToken);
+
+    public Task<bool> MasrafMerkeziAktifMiAsync(Guid masrafMerkeziId, CancellationToken cancellationToken = default) =>
+        db.MasrafMerkezleri.AnyAsync(m => m.Id == masrafMerkeziId && m.AktifMi, cancellationToken);
 }
 
 // Faturanın peşin tahsilatı/ödemesi. Carili belgede cari hareketi de yazılır ve önce belgenin kendi kalemini kapatır.

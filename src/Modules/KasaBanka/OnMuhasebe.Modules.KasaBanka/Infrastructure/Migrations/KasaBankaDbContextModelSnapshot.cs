@@ -1288,6 +1288,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("numeric(19,6)")
                         .HasColumnName("kur");
 
+                    b.Property<Guid?>("MasrafMerkeziId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("masraf_merkezi_id");
+
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
                         .HasColumnName("olusturan_id");
@@ -1337,6 +1341,9 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
 
                     b.HasIndex("KategoriId")
                         .HasDatabaseName("ix_gelir_gider_kaydi_kategori_id");
+
+                    b.HasIndex("MasrafMerkeziId")
+                        .HasDatabaseName("ix_gelir_gider_kaydi_masraf_merkezi_id");
 
                     b.HasIndex("FirmaId", "Tarih")
                         .HasDatabaseName("ix_gelir_gider_kaydi_firma_id_tarih");
@@ -1825,6 +1832,64 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                     b.ToTable("kredi_taksiti", "kasabanka");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.MasrafMerkezi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ad");
+
+                    b.Property<bool>("AktifMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("aktif_mi");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("Kod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kod");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_masraf_merkezi");
+
+                    b.HasIndex("FirmaId", "Kod")
+                        .IsUnique()
+                        .HasDatabaseName("ix_masraf_merkezi_firma_id_kod");
+
+                    b.ToTable("masraf_merkezi", "kasabanka");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Sube", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2205,6 +2270,12 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_gelir_gider_kaydi_gelir_gider_kategorisi_kategori_id");
+
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.MasrafMerkezi", null)
+                        .WithMany()
+                        .HasForeignKey("MasrafMerkeziId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_gelir_gider_kaydi_masraf_merkezleri_masraf_merkezi_id");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.KasaHareketi", b =>

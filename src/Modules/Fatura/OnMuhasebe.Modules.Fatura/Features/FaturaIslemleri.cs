@@ -241,6 +241,6 @@ internal static class FaturaIslemleri
                 s.Id, s.Sira, s.StokKartiId, s.StokKodu, s.Ad, s.StokluMu, s.DepoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvDahilMi,
                 s.Iskonto1, s.Iskonto2, s.Iskonto3, s.KdvOrani, s.BrutTutar, s.IskontoTutari, s.GenelIskontoPayi, s.Matrah,
                 s.KdvTutari, s.Toplam, s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda, s.TevkifEdilenKdv, s.IrsaliyeSatiriId, s.SiparisSatiriId)).ToList(),
-            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler);
+            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler, f.MasrafMerkeziId);
     }
 }

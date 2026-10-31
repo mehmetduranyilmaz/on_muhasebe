@@ -48,6 +48,17 @@ else
                             }
                         </MudSelect>
                     </MudItem>
+                    @if (_merkezler.Any(m => m.AktifMi))
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_masrafMerkeziId" Label="Masraf merkezi / proje" Clearable="true">
+                                @foreach (var m in _merkezler.Where(m => m.AktifMi))
+                                {
+                                    <MudSelectItem T="Guid?" Value="m.Id">@m.Kod · @m.Ad</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    }
                     @if (Oturum.ModulAcikMi(ModulKodlari.Cari))
                     {
                         <MudItem xs="12" md="6">
@@ -243,6 +254,8 @@ else
     private IslemTuru _tur;
     private List<HesapOzeti> _hesaplar = [];
     private List<Kategori> _kategoriler = [];
+    private List<MasrafMerkeziOzeti> _merkezler = [];
+    private Guid? _masrafMerkeziId;
     private Guid? _hesapId;
     private Guid? _hedefHesapId;
     private CariOzeti? _cari;
@@ -359,6 +372,8 @@ else
         {
             var kategoriler = await Api.GetAsync<List<Kategori>>("api/kasabanka/kategoriler");
             _kategoriler = kategoriler.BasariliMi ? kategoriler.Deger : [];
+            var merkezler = await Api.GetAsync<List<MasrafMerkeziOzeti>>("api/kasabanka/masraf-merkezleri");
+            _merkezler = merkezler.BasariliMi ? merkezler.Deger : [];
         }
 
         if (_kategoriler.All(k => k.Id != _kategoriId || k.Tur != GelirGiderTuru))
@@ -503,7 +518,8 @@ else
                 new AcilisIstegi(_hesapId!.Value, tarih, _borcBakiyesi ? -_tutar : _tutar, kur, _aciklama), islemAnahtari: _anahtar.Deger),
             _ => await Api.PostAsync<IslemCevabi>("api/kasabanka/islemler/gelir-gider",
                 new GelirGiderIstegi(GelirGiderTuru, _bicim, _kategoriId!.Value, HesapGerekli ? _hesapId : null, _cari?.Id, tarih,
-                    _bicim == GelirGiderBicimi.Tahakkuk ? Bicim.Gun(_vade) : null, _tutar, kur, cariKuru, _belgeNo, _aciklama), islemAnahtari: _anahtar.Deger)
+                    _bicim == GelirGiderBicimi.Tahakkuk ? Bicim.Gun(_vade) : null, _tutar, kur, cariKuru, _belgeNo, _aciklama, _masrafMerkeziId),
+                islemAnahtari: _anahtar.Deger)
         };
         _anahtar.Sonuc(sonuc.Hata);
 

@@ -221,6 +221,10 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("numeric(19,6)")
                         .HasColumnName("kur");
 
+                    b.Property<Guid?>("MasrafMerkeziId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("masraf_merkezi_id");
+
                     b.Property<decimal>("Matrah")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -323,6 +327,9 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_fatura");
+
+                    b.HasIndex("MasrafMerkeziId")
+                        .HasDatabaseName("ix_fatura_masraf_merkezi_id");
 
                     b.HasIndex("FirmaId", "CariHesapId")
                         .HasDatabaseName("ix_fatura_firma_id_cari_hesap_id");

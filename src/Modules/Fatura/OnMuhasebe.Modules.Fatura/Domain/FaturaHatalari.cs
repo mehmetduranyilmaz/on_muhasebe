@@ -32,6 +32,7 @@ internal static class FaturaHatalari
     public static readonly Hata PesinHesapBulunamadi = Hata.Bulunamadi("hesap_bulunamadi", "Peşin tahsilat/ödeme hesabı bulunamadı veya pasif.");
     public static readonly Hata PesinHesapDovizi = Hata.IsKurali("pesin_doviz", "Peşin tahsilat/ödeme hesabının dövizi faturanın dövizi ile aynı olmalıdır.");
     public static readonly Hata PesinHesapTuru = Hata.IsKurali("pesin_hesap_turu", "Kredi kartı hesabına tahsilat, POS hesabından ödeme yapılamaz.");
+    public static readonly Hata MasrafMerkeziGecersiz = Hata.Dogrulama("masraf_merkezi_gecersiz", "Masraf merkezi bulunamadı ya da pasif (Kasa/Banka lisansı gerekir).");
 
     public static readonly Hata IrsaliyeBagiGecersiz = Hata.IsKurali("irsaliye_bagi_gecersiz",
         "İrsaliyeden aktarılan satır, aynı carinin onaylı ve faturanın türüne uygun irsaliyesine ait olmalı; ürün, birim ve depo değiştirilemez.");

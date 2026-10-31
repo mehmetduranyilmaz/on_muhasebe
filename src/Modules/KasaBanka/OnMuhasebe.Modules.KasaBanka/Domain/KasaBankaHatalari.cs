@@ -28,7 +28,9 @@ internal static class KasaBankaHatalari
     public static readonly Hata HareketliHesapSilinemez = Hata.IsKurali("hareketli_hesap_silinemez", "Hareketi olan hesap silinemez; pasifleştirebilirsiniz.");
     public static readonly Hata HareketliHesapDegistirilemez = Hata.IsKurali("hareketli_hesap", "Hareketi olan hesabın türü ve para birimi değiştirilemez.");
     public static readonly Hata KullanilanKategoriSilinemez = Hata.IsKurali("kategori_kullaniliyor", "Bu kategoride kayıt var; pasifleştirebilirsiniz.");
-    public static readonly Hata TutarPozitifOlmali = Hata.Dogrulama("tutar_gecersiz", "Tutar sıfırdan büyük olmalıdır.");
+    public static readonly Hata MasrafMerkeziBulunamadi = Hata.Bulunamadi("masraf_merkezi_bulunamadi", "Masraf merkezi bulunamadı.");
+    public static readonly Hata MasrafMerkeziGecersiz = Hata.Dogrulama("masraf_merkezi_gecersiz", "Masraf merkezi bulunamadı ya da pasif.");
+    public static readonly Hata MasrafMerkeziKoduKullaniliyor = Hata.Cakisma("masraf_merkezi_kodu", "Bu kodda bir masraf merkezi zaten var.");    public static readonly Hata TutarPozitifOlmali = Hata.Dogrulama("tutar_gecersiz", "Tutar sıfırdan büyük olmalıdır.");
     public static readonly Hata KurGerekli = Hata.Dogrulama("kur_gerekli", "Bu tarih için TCMB kuru bulunamadı; kuru elle girin.");
     public static readonly Hata AyniHesap = Hata.Dogrulama("ayni_hesap", "Kaynak ve hedef hesap farklı olmalıdır.");
     public static readonly Hata FarkliDoviz = Hata.IsKurali("farkli_doviz", "Hesabın dövizi carinin dövizinden farklı. Cari kartında 'Farklı dövizde tahsilat/ödeme' açılmadıkça işlem yapılamaz.");

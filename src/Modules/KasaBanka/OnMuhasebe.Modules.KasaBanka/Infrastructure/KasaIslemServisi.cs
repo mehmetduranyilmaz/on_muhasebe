@@ -142,6 +142,11 @@ internal sealed class KasaIslemServisi(
                 return KasaBankaHatalari.KategoriTuruUyusmuyor;
             }
 
+            if (istek.MasrafMerkeziId is { } merkezId && !await db.MasrafMerkezleri.AnyAsync(m => m.Id == merkezId && m.AktifMi, ct))
+            {
+                return KasaBankaHatalari.MasrafMerkeziGecersiz;
+            }
+
             var odendi = istek.Bicim == GelirGiderBicimi.Odendi;
             if ((odendi && istek.HesapId is null) || (!odendi && (istek.CariHesapId is null || istek.HesapId is not null)))
             {
@@ -212,7 +217,7 @@ internal sealed class KasaIslemServisi(
         var hareket = KasaHareketi.Olustur(hesap, islemId, gider ? KasaHareketTuru.Gider : KasaHareketTuru.Gelir, !gider, istek.Tarih,
             istek.Tutar, kur.Deger, istek.BelgeNo, aciklama, istek.CariHesapId, kategori.Id);
         db.GelirGiderKayitlari.Add(GelirGiderKaydi.Olustur(islemId, istek.Tur, GelirGiderBicimi.Odendi, kategori.Id, istek.Tarih,
-            hesap.ParaBirimi, istek.Tutar, kur.Deger, hesap.Id, istek.CariHesapId, istek.BelgeNo, aciklama));
+            hesap.ParaBirimi, istek.Tutar, kur.Deger, hesap.Id, istek.CariHesapId, istek.BelgeNo, aciklama, istek.MasrafMerkeziId));
         var kayit = await KaydetAsync(islemId, ct, hareket);
         if (!kayit.BasariliMi || istek.CariHesapId is not { } cariId)
         {
@@ -258,7 +263,7 @@ internal sealed class KasaIslemServisi(
         }
 
         db.GelirGiderKayitlari.Add(GelirGiderKaydi.Olustur(islemId, istek.Tur, GelirGiderBicimi.Tahakkuk, kategori.Id, istek.Tarih,
-            cari.ParaBirimi, istek.Tutar, kur.Deger, null, cari.Id, istek.BelgeNo, aciklama));
+            cari.ParaBirimi, istek.Tutar, kur.Deger, null, cari.Id, istek.BelgeNo, aciklama, istek.MasrafMerkeziId));
         await db.SaveChangesAsync(ct);
 
         var yazim = await cariYazici.YazAsync(islemId, new BelgeCariHareketi(

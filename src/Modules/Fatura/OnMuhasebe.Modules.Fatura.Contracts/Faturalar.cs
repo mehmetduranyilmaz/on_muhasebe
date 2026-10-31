@@ -90,6 +90,7 @@ public sealed record FaturaSatiriIstegi(
 // PesinHesapId verilirse fatura kesinleşirken o kasa/banka/POS hesabından peşin tahsil edilir (ödenir).
 // Numara yalnızca gelen faturalarda (alış, satıştan iade) girilir; giden faturaların numarası otomatik verilir.
 // Kur boşsa dövizli faturada TCMB kuru kullanılır. Surum yalnızca güncellemede gönderilir.
+// MasrafMerkeziId, gelir/giderin ait olduğu proje/departmandır (Kasa/Banka modülünde tanımlı, aktif olmalı).
 public sealed record FaturaKaydetIstegi(
     FaturaTuru Tur,
     SatisSekli? SatisSekli,
@@ -105,7 +106,8 @@ public sealed record FaturaKaydetIstegi(
     IReadOnlyList<FaturaSatiriIstegi> Satirlar,
     uint Surum = 0,
     Guid? PesinHesapId = null,
-    decimal StopajOrani = 0m);
+    decimal StopajOrani = 0m,
+    Guid? MasrafMerkeziId = null);
 
 public sealed record FaturaOzeti(
     Guid Id,
@@ -192,7 +194,8 @@ public sealed record FaturaDetayi(
     uint Surum,
     Guid? PesinHesapId,
     decimal? Kalan,
-    IReadOnlyList<BagliBelge> Irsaliyeler);
+    IReadOnlyList<BagliBelge> Irsaliyeler,
+    Guid? MasrafMerkeziId);
 
 // Eksi stok ayarı "Uyar" ise kayıt yapılır ve uyarı döner.
 public sealed record FaturaCevabi(FaturaDetayi Fatura, string? Uyari);

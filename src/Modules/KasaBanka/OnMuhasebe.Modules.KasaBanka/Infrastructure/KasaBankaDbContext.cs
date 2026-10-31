@@ -20,6 +20,7 @@ internal sealed class KasaBankaDbContext(DbContextOptions<KasaBankaDbContext> op
     public DbSet<KasaHareketi> KasaHareketleri => Set<KasaHareketi>();
     public DbSet<GelirGiderKaydi> GelirGiderKayitlari => Set<GelirGiderKaydi>();
     public DbSet<GelirGiderKategorisi> Kategoriler => Set<GelirGiderKategorisi>();
+    public DbSet<MasrafMerkezi> MasrafMerkezleri => Set<MasrafMerkezi>();
     public DbSet<EkstreAktarimi> EkstreAktarimlari => Set<EkstreAktarimi>();
     public DbSet<EkstreSatiri> EkstreSatirlari => Set<EkstreSatiri>();
     public DbSet<EkstreSablonu> EkstreSablonlari => Set<EkstreSablonu>();

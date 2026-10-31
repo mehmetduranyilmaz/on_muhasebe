@@ -9,6 +9,9 @@ public sealed record KasaHesapBilgisi(Guid Id, string Kod, string Ad, HesapTuru 
 public interface IKasaBankaSorgusu
 {
     Task<KasaHesapBilgisi?> HesapGetirAsync(Guid hesapId, CancellationToken cancellationToken = default);
+
+    // Belgeye atanacak masraf merkezi firmanın aktif merkezi olmalıdır.
+    Task<bool> MasrafMerkeziAktifMiAsync(Guid masrafMerkeziId, CancellationToken cancellationToken = default);
 }
 
 // Faturanın peşin tahsilatı/ödemesi. Tutar ve kur hesabın (= faturanın) dövizindedir. Cari varsa cari hareketi de yazılır

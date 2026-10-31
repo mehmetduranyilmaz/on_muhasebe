@@ -90,11 +90,17 @@ internal sealed class FaturaHazirlayici(
             return pesinHatasi;
         }
 
+        if (istek.MasrafMerkeziId is { } merkezId
+            && (!moduller.Contains(ModulKodlari.KasaBanka) || !await kasaSorgusu.MasrafMerkeziAktifMiAsync(merkezId, cancellationToken)))
+        {
+            return FaturaHatalari.MasrafMerkeziGecersiz;
+        }
+
         return new FaturaBilgileri(
             istek.Tur, satisSekli, faturaCarisi, istek.Tarih, istek.VadeTarihi,
             FaturaTurleri.GidenMi(istek.Tur) ? null : Temiz(istek.Numara)?.ToUpperInvariant(),
             paraBirimi, kur, istek.GenelIskontoTuru, istek.GenelIskonto, Temiz(istek.Aciklama), satirlar.Deger, istek.PesinHesapId,
-            istek.StopajOrani);
+            istek.StopajOrani, istek.MasrafMerkeziId);
     }
 
     // Satış tarafında para hesaba girer (kredi kartına tahsilat olmaz), alış tarafında çıkar (POS'tan ödeme olmaz).

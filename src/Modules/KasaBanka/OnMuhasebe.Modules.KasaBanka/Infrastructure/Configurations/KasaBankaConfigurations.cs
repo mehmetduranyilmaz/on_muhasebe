@@ -114,6 +114,8 @@ internal sealed class GelirGiderKaydiConfiguration : IEntityTypeConfiguration<Ge
         builder.Property(x => x.Aciklama).HasMaxLength(500);
         builder.HasIndex(x => new { x.FirmaId, x.Tarih });
         builder.HasIndex(x => x.IslemId).IsUnique();
+        builder.HasIndex(x => x.MasrafMerkeziId);
+        builder.HasOne<MasrafMerkezi>().WithMany().HasForeignKey(x => x.MasrafMerkeziId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<GelirGiderKategorisi>().WithMany().HasForeignKey(x => x.KategoriId).OnDelete(DeleteBehavior.Restrict);
     }
 }
@@ -126,6 +128,17 @@ internal sealed class GelirGiderKategorisiConfiguration : IEntityTypeConfigurati
         builder.Property(x => x.Ad).HasMaxLength(100);
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(10);
         builder.HasIndex(x => new { x.FirmaId, x.Tur, x.Ad }).IsUnique();
+    }
+}
+
+internal sealed class MasrafMerkeziConfiguration : IEntityTypeConfiguration<MasrafMerkezi>
+{
+    public void Configure(EntityTypeBuilder<MasrafMerkezi> builder)
+    {
+        builder.ToTable("masraf_merkezi");
+        builder.Property(x => x.Kod).HasMaxLength(20);
+        builder.Property(x => x.Ad).HasMaxLength(100);
+        builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
     }
 }
 

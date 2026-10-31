@@ -34,6 +34,7 @@ internal sealed class FaturaBelgesiConfiguration : IEntityTypeConfiguration<Fatu
             .HasFilter("numara IS NOT NULL AND tur IN ('Satis', 'AlistanIade', 'GiderPusulasi')");
         builder.HasIndex(x => new { x.FirmaId, x.Tarih });
         builder.HasIndex(x => new { x.FirmaId, x.CariHesapId });
+        builder.HasIndex(x => x.MasrafMerkeziId);
         builder.HasMany(x => x.Satirlar).WithOne().HasForeignKey(x => x.FaturaId).OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(x => x.Satirlar).HasField("_satirlar");
     }
