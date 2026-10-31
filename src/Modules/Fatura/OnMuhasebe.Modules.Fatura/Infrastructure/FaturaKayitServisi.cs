@@ -206,8 +206,9 @@ internal sealed class FaturaKayitServisi(
         if (f.CariHesapId is { } cariId)
         {
             var (cariTuru, yon) = CariEtkisi(f.Tur);
+            // Cariye yansıyan tutar ödenecek tutardır: tevkif edilen KDV ve stopaj vergi dairesine gider, cariye değil.
             var cari = await cariYazici.YazAsync(f.Id,
-                new BelgeCariHareketi(cariId, cariTuru, yon, f.Tarih, f.VadeTarihi, f.GenelToplam, f.Kur, f.Numara, aciklama,
+                new BelgeCariHareketi(cariId, cariTuru, yon, f.Tarih, f.VadeTarihi, f.OdenecekTutar, f.Kur, f.Numara, aciklama,
                     OtomatikKapama: f.PesinHesapId is null),
                 cancellationToken);
             if (!cari.BasariliMi)
@@ -232,7 +233,7 @@ internal sealed class FaturaKayitServisi(
 
         // Peşin tahsilat/ödeme: cari varsa tahsilat önce bu faturayı kapatır; nihai tüketicide para doğrudan kasaya girer.
         var pesin = await kasaYazici.BelgeTahsilatiYazAsync(f.Id,
-            new BelgeTahsilati(hesapId, f.CariHesapId, FaturaTurleri.ParaGirisiMi(f.Tur), f.Tarih, f.GenelToplam, f.Kur, f.Numara, aciklama),
+            new BelgeTahsilati(hesapId, f.CariHesapId, FaturaTurleri.ParaGirisiMi(f.Tur), f.Tarih, f.OdenecekTutar, f.Kur, f.Numara, aciklama),
             cancellationToken);
         return pesin.BasariliMi ? stok : pesin.Hata;
     }

@@ -219,6 +219,11 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("numara");
 
+                    b.Property<decimal>("OdenecekTutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("odenecek_tutar");
+
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
                         .HasColumnName("olusturan_id");
@@ -259,6 +264,16 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("silinme_tarihi");
 
+                    b.Property<decimal>("StopajOrani")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("stopaj_orani");
+
+                    b.Property<decimal>("StopajTutari")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("stopaj_tutari");
+
                     b.Property<uint>("Surum")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -268,6 +283,11 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                     b.Property<DateOnly>("Tarih")
                         .HasColumnType("date")
                         .HasColumnName("tarih");
+
+                    b.Property<decimal>("TevkifEdilenKdvToplami")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tevkif_edilen_kdv_toplami");
 
                     b.Property<string>("Tur")
                         .IsRequired()
@@ -428,6 +448,24 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
+
+                    b.Property<decimal>("TevkifEdilenKdv")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tevkif_edilen_kdv");
+
+                    b.Property<string>("TevkifatKodu")
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("tevkifat_kodu");
+
+                    b.Property<int>("TevkifatPay")
+                        .HasColumnType("integer")
+                        .HasColumnName("tevkifat_pay");
+
+                    b.Property<int>("TevkifatPayda")
+                        .HasColumnType("integer")
+                        .HasColumnName("tevkifat_payda");
 
                     b.Property<decimal>("Toplam")
                         .HasPrecision(18, 2)

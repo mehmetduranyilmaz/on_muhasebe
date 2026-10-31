@@ -50,6 +50,7 @@ internal static class FaturaIslemleri
             RuleFor(x => x.GenelIskonto).GreaterThanOrEqualTo(0).LessThan(1_000_000_000_000m);
             RuleFor(x => x.GenelIskonto).LessThanOrEqualTo(100).When(x => x.GenelIskontoTuru == GenelIskontoTuru.Yuzde)
                 .WithMessage("Genel iskonto yüzdesi 100'ü aşamaz.");
+            RuleFor(x => x.StopajOrani).InclusiveBetween(0, 100);
             RuleFor(x => x.Kur).GreaterThan(0).When(x => x.Kur is not null);
             RuleFor(x => x.VadeTarihi).GreaterThanOrEqualTo(x => x.Tarih).When(x => x.VadeTarihi is not null)
                 .WithMessage("Vade tarihi fatura tarihinden önce olamaz.");
@@ -75,6 +76,14 @@ internal static class FaturaIslemleri
                 s.RuleFor(x => x.Iskonto1).InclusiveBetween(0, 100);
                 s.RuleFor(x => x.Iskonto2).InclusiveBetween(0, 100);
                 s.RuleFor(x => x.Iskonto3).InclusiveBetween(0, 100);
+                s.RuleFor(x => x.TevkifatKodu).MaximumLength(5);
+                // Oran açıkça verildiyse geçerli olmalı ve tevkifat yalnızca KDV'li satırda uygulanabilir;
+                // yalnızca kod verildiyse (oran boşsa) oran hazırlayıcıda referanstan çözülür.
+                s.RuleFor(x => x).Must(x => x.TevkifatPayda == 0
+                        ? x.TevkifatPay == 0
+                        : KdvOranlari.GecerliMi(x.KdvOrani) && x.KdvOrani > 0 && TevkifatKodlari.OranGecerliMi(x.TevkifatPay, x.TevkifatPayda))
+                    .OverridePropertyName("Tevkifat")
+                    .WithMessage("Tevkifat oranı geçersiz ya da KDV'siz satıra tevkifat uygulanamaz.");
             });
         }
     }

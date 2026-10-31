@@ -24,6 +24,7 @@ internal sealed class FaturaBelgesiConfiguration : IEntityTypeConfiguration<Fatu
         builder.Property(x => x.Kur).HasPrecision(19, FaturaBelgesi.KurOndalik);
         builder.Property(x => x.GenelIskontoTuru).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.GenelIskonto).HasPrecision(18, 4);
+        builder.Property(x => x.StopajOrani).HasPrecision(5, 2);
         builder.Property(x => x.Aciklama).HasMaxLength(1000);
         builder.Ignore(x => x.GidenMi);
 
@@ -51,6 +52,7 @@ internal sealed class FaturaSatiriConfiguration : IEntityTypeConfiguration<Fatur
         builder.Property(x => x.Iskonto1).HasPrecision(5, 2);
         builder.Property(x => x.Iskonto2).HasPrecision(5, 2);
         builder.Property(x => x.Iskonto3).HasPrecision(5, 2);
+        builder.Property(x => x.TevkifatKodu).HasMaxLength(5);
         builder.HasIndex(x => x.StokKartiId);
     }
 }
