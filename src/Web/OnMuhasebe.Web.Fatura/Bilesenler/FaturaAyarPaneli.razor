@@ -70,6 +70,7 @@
     private string _toptanSeri = "";
     private string _perakendeSeri = "";
     private string _iadeSeri = "";
+    private string _giderPusulasiSeri = "";
     private bool _toptanKdvDahil;
     private bool _perakendeKdvDahil;
     private int _vadeGunu;
@@ -78,15 +79,17 @@
     [
         ("Toptan satış", _toptanSeri, EventCallback.Factory.Create<string>(this, s => _toptanSeri = s ?? "")),
         ("Perakende satış", _perakendeSeri, EventCallback.Factory.Create<string>(this, s => _perakendeSeri = s ?? "")),
-        ("Alıştan iade", _iadeSeri, EventCallback.Factory.Create<string>(this, s => _iadeSeri = s ?? ""))
+        ("Alıştan iade", _iadeSeri, EventCallback.Factory.Create<string>(this, s => _iadeSeri = s ?? "")),
+        ("Gider pusulası", _giderPusulasiSeri, EventCallback.Factory.Create<string>(this, s => _giderPusulasiSeri = s ?? ""))
     ];
 
     private FaturaAyarlari Yeni => new(_akis, _toptanSeri.ToUpperInvariant(), _perakendeSeri.ToUpperInvariant(), _iadeSeri.ToUpperInvariant(),
-        _toptanKdvDahil, _perakendeKdvDahil, _vadeGunu);
+        _toptanKdvDahil, _perakendeKdvDahil, _vadeGunu, _giderPusulasiSeri.ToUpperInvariant());
 
     private bool DegistiMi => _ayar is not null && Yeni != _ayar;
 
-    private bool TumSerilerGecerliMi => SeriGecerliMi(_toptanSeri) && SeriGecerliMi(_perakendeSeri) && SeriGecerliMi(_iadeSeri);
+    private bool TumSerilerGecerliMi => SeriGecerliMi(_toptanSeri) && SeriGecerliMi(_perakendeSeri) && SeriGecerliMi(_iadeSeri)
+                                        && SeriGecerliMi(_giderPusulasiSeri);
 
     private static bool SeriGecerliMi(string seri) => seri.Length == 3 && seri.All(char.IsAsciiLetterOrDigit);
 
@@ -102,7 +105,7 @@
     private void Ayarla(FaturaAyarlari a)
     {
         _ayar = a;
-        (_akis, _toptanSeri, _perakendeSeri, _iadeSeri) = (a.KayitAkisi, a.ToptanSeri, a.PerakendeSeri, a.IadeSeri);
+        (_akis, _toptanSeri, _perakendeSeri, _iadeSeri, _giderPusulasiSeri) = (a.KayitAkisi, a.ToptanSeri, a.PerakendeSeri, a.IadeSeri, a.GiderPusulasiSeri);
         (_toptanKdvDahil, _perakendeKdvDahil, _vadeGunu) = (a.ToptanKdvDahil, a.PerakendeKdvDahil, a.VarsayilanVadeGunu);
     }
 

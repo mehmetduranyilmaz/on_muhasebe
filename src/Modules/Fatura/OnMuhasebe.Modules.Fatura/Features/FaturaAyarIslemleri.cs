@@ -27,6 +27,7 @@ internal static class FaturaAyarIslemleri
             RuleFor(x => x.ToptanSeri).NotEmpty().Matches("^[A-Za-z0-9]{3}$").WithMessage("Seri 3 harf/rakamdan oluşmalıdır.");
             RuleFor(x => x.PerakendeSeri).NotEmpty().Matches("^[A-Za-z0-9]{3}$").WithMessage("Seri 3 harf/rakamdan oluşmalıdır.");
             RuleFor(x => x.IadeSeri).NotEmpty().Matches("^[A-Za-z0-9]{3}$").WithMessage("Seri 3 harf/rakamdan oluşmalıdır.");
+            RuleFor(x => x.GiderPusulasiSeri).NotEmpty().Matches("^[A-Za-z0-9]{3}$").WithMessage("Seri 3 harf/rakamdan oluşmalıdır.");
             RuleFor(x => x.VarsayilanVadeGunu).InclusiveBetween(0, 365);
         }
     }

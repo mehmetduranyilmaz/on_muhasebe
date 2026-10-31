@@ -32,7 +32,7 @@
         <div class="fk-baslik">
             <div class="fk-tur">@FaturaMetinleri.Tur(Fatura.Tur).ToUpper(_tr)</div>
             <table class="fk-bilgi">
-                <tr><th>Fatura No</th><td>@(Fatura.Numara ?? "—")</td></tr>
+                <tr><th>@(FaturaTurleri.StopajliMi(Fatura.Tur) ? "Belge No" : "Fatura No")</th><td>@(Fatura.Numara ?? "—")</td></tr>
                 <tr><th>Tarih</th><td>@Bicim.Tarih(Fatura.Tarih)</td></tr>
                 @if (Fatura.VadeTarihi is { } vade)
                 {

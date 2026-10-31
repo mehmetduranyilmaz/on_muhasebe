@@ -24,7 +24,7 @@ else
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">
             <OzetKarti Baslik="Bu ay alış" Deger="o.BuAyAlis" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.ShoppingCart"
-                       Renk="#3B82F6" Href="fatura" Sira="1" AltMetin="KDV hariç, iadeler düşülmüş" />
+                       Renk="#3B82F6" Href="fatura" Sira="1" AltMetin="KDV hariç; gider pusulası ve SMM dahil" />
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">
             <OzetKarti Baslik="@(kdvFarki >= 0 ? "Ödenecek KDV" : "Devreden KDV")" Deger="Math.Abs(kdvFarki)" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))"

@@ -22,7 +22,7 @@ else
 
     <MudGrid Spacing="3">
         <MudItem xs="12" lg="8">
-            <FormBolumu Baslik="Fatura bilgileri" Aciklama="@(SatisTarafiMi ? "Satış şekli, cari ve tarihler" : "Cari, belge numarası ve tarihler")"
+            <FormBolumu Baslik="@(StopajliMi ? "Belge bilgileri" : "Fatura bilgileri")" Aciklama="@(SatisTarafiMi ? "Satış şekli, cari ve tarihler" : "Cari, belge numarası ve tarihler")"
                         Ikon="@Icons.Material.Filled.Description" Sira="0">
                 @if (SatisTarafiMi)
                 {
@@ -43,12 +43,23 @@ else
                 @if (NihaiTuketiciMi)
                 {
                     <MudItem xs="12" sm="7">
-                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_nihaiAd" Label="Ad soyad (isteğe bağlı)"
-                                      Placeholder="Nihai Tüketici" MaxLength="250" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_nihaiAd"
+                                      Label="@(StopajliMi ? KisiEtiketi : "Ad soyad (isteğe bağlı)")" Placeholder="@(StopajliMi ? null : "Nihai Tüketici")"
+                                      Required="StopajliMi" RequiredError="Belgenin kime düzenlendiği yazılmalı."
+                                      MaxLength="250" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
                     </MudItem>
                     <MudItem xs="12" sm="5">
-                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_nihaiTckn" Label="T.C. kimlik no (isteğe bağlı)" MaxLength="11" />
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_nihaiTckn"
+                                      Label="@(StopajliMi ? "T.C. kimlik no" : "T.C. kimlik no (isteğe bağlı)")" MaxLength="11"
+                                      HelperText="@(StopajliMi ? "Stopaj beyanı (muhtasar) için gerekir" : null)" />
                     </MudItem>
+                    @if (!GidenMi)
+                    {
+                        <MudItem xs="12" md="5">
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_numara" Label="@NumaraEtiketi" MaxLength="30"
+                                          HelperText="@NumaraAciklamasi" Required="true" RequiredError="Belge numarası gerekli." />
+                        </MudItem>
+                    }
                 }
                 else
                 {
@@ -68,16 +79,16 @@ else
                     @if (!GidenMi)
                     {
                         <MudItem xs="12" md="5">
-                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_numara" Label="Fatura numarası" MaxLength="30"
-                                          HelperText="Karşı tarafın düzenlediği faturadaki numara" Required="true" RequiredError="Fatura numarası gerekli." />
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_numara" Label="@NumaraEtiketi" MaxLength="30"
+                                          HelperText="@NumaraAciklamasi" Required="true" RequiredError="Belge numarası gerekli." />
                         </MudItem>
                     }
                 }
-                @if (Oturum.ModulAcikMi(ModulKodlari.Cari) && _satisSekli == SatisSekli.Perakende && SatisTarafiMi)
+                @if (Oturum.ModulAcikMi(ModulKodlari.Cari) && ((_satisSekli == SatisSekli.Perakende && SatisTarafiMi) || StopajliMi))
                 {
                     <MudItem xs="12" Class="pt-0">
                         <MudSwitch T="bool" Value="_nihaiTuketici" ValueChanged="NihaiDegisti" Color="Color.Secondary"
-                                   Label="Nihai tüketiciye kes (cari kartı açmadan)" />
+                                   Label="@(StopajliMi ? "Cari kartı açmadan kes (ad ve TCKN ile)" : "Nihai tüketiciye kes (cari kartı açmadan)")" />
                     </MudItem>
                 }
 
@@ -192,14 +203,21 @@ else
                                 }
                             </div>
                             <div class="fs-kdv">
-                                <MudSelect T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.KdvOrani" Label="KDV">
-                                    @foreach (var oran in KdvOranlari.Tumu)
-                                    {
-                                        <MudSelectItem Value="oran">%@oran</MudSelectItem>
-                                    }
-                                </MudSelect>
-                                <MudCheckBox T="bool" @bind-Value="s.KdvDahilMi" Size="Size.Small" Color="Color.Secondary" Label="Dahil" Dense="true" />
-                                @if (s.KdvOrani > 0 && !s.TevkifatAcik)
+                                @if (KdvsizMi)
+                                {
+                                    <span class="fs-hizmet mt-2" title="Gider pusulası KDV mükellefi olmayana düzenlenir">KDV yok</span>
+                                }
+                                else
+                                {
+                                    <MudSelect T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.KdvOrani" Label="KDV">
+                                        @foreach (var oran in KdvOranlari.Tumu)
+                                        {
+                                            <MudSelectItem Value="oran">%@oran</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudCheckBox T="bool" @bind-Value="s.KdvDahilMi" Size="Size.Small" Color="Color.Secondary" Label="Dahil" Dense="true" />
+                                }
+                                @if (!KdvsizMi && s.KdvOrani > 0 && !s.TevkifatAcik)
                                 {
                                     <button type="button" class="fs-tevkifat-ac" @onclick="() => s.TevkifatAcik = true">
                                         <MudIcon Icon="@Icons.Material.Filled.CallSplit" Size="Size.Small" /> Tevkifat
@@ -271,6 +289,26 @@ else
                     </MudSelect>
                 </div>
 
+                @if (StopajliMi)
+                {
+                    <div class="stopaj-girisi mb-3">
+                        <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_stopajOrani" Label="Gelir vergisi stopajı"
+                                         HideSpinButtons="true" Min="0" Max="100" Immediate="true" DebounceInterval="250"
+                                         Adornment="Adornment.End" AdornmentText="%" HelperText="Matrah üzerinden kesilir; muhtasarla beyan edilir" />
+                        <div class="d-flex gap-1 flex-wrap mt-1">
+                            @foreach (var (oran, aciklama) in HizliStopajOranlari)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="@(_stopajOrani == oran ? Variant.Filled : Variant.Outlined)"
+                                         OnClick="() => _stopajOrani = oran">%@oran · @aciklama</MudChip>
+                            }
+                        </div>
+                        @if (_stopajOrani == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">Stopaj oranı girilmedi; @FaturaMetinleri.Tur(_tur).ToLower(Bicim.Kultur) stopajsız kaydedilecek.</MudAlert>
+                        }
+                    </div>
+                }
+
                 <dl class="toplam-listesi">
                     <dt>Ara toplam</dt><dd>@Bicim.Tutar(hesap.BrutToplam)</dd>
                     @if (hesap.SatirIskontoToplami > 0)
@@ -289,6 +327,10 @@ else
                     @if (hesap.TevkifEdilenKdvToplami > 0)
                     {
                         <dt>Tevkif edilen KDV</dt><dd class="bakiye-borclu">−@Bicim.Tutar(hesap.TevkifEdilenKdvToplami)</dd>
+                    }
+                    @if (hesap.StopajTutari > 0)
+                    {
+                        <dt>Stopaj <small>(%@_stopajOrani.ToString("0.##"))</small></dt><dd class="bakiye-borclu">−@Bicim.Tutar(hesap.StopajTutari)</dd>
                     }
                 </dl>
                 <div class="genel-toplam">
@@ -379,6 +421,7 @@ else
     private string? _aciklama;
     private GenelIskontoTuru _genelIskontoTuru = GenelIskontoTuru.Yuzde;
     private decimal _genelIskonto;
+    private decimal _stopajOrani;
     private readonly List<FaturaSatirModeli> _satirlar = [];
     private List<Depo> _depolar = [];
     private List<HesapOzeti> _pesinHesaplar = [];
@@ -392,6 +435,19 @@ else
 
     private bool SatisTarafiMi => FaturaTurleri.SatisTarafiMi(_tur);
     private bool ParaGirisi => FaturaTurleri.ParaGirisiMi(_tur);
+    private bool KdvsizMi => FaturaTurleri.KdvsizMi(_tur);
+    private bool StopajliMi => FaturaTurleri.StopajliMi(_tur);
+
+    private string KisiEtiketi => _tur == FaturaTuru.GiderPusulasi ? "Satıcının adı soyadı" : "Serbest meslek erbabının adı soyadı";
+    private string NumaraEtiketi => _tur == FaturaTuru.SerbestMeslekMakbuzu ? "Makbuz numarası" : "Fatura numarası";
+    private string NumaraAciklamasi => _tur == FaturaTuru.SerbestMeslekMakbuzu
+        ? "Serbest meslek erbabının düzenlediği makbuzdaki numara"
+        : "Karşı tarafın düzenlediği faturadaki numara";
+
+    // GVK 94: gider pusulasında mal alımı %2 (havlu, çarşaf, hurda vb.) / %5 (diğer mal), hizmet %10; serbest meslek ödemesi %20.
+    private IReadOnlyList<(decimal Oran, string Aciklama)> HizliStopajOranlari => _tur == FaturaTuru.GiderPusulasi
+        ? [(2m, "ev üretimi mal, hurda"), (5m, "diğer mal"), (10m, "hizmet")]
+        : [(20m, "serbest meslek")];
 
     // Peşin hesap faturanın dövizinde olmalı; kredi kartına tahsilat, POS'tan ödeme yapılmaz.
     private IEnumerable<HesapOzeti> UygunPesinHesaplar => _pesinHesaplar.Where(h => h.ParaBirimi == _paraBirimi
@@ -406,13 +462,17 @@ else
     private bool Dovizli => _paraBirimi != ParaBirimleri.Tl;
     private string ParaSimgesi => _paraBirimi == ParaBirimleri.Tl ? "TL" : _paraBirimi;
 
-    // Cari modülü yoksa perakende satış her zaman nihai tüketiciye kesilir.
-    private bool NihaiTuketiciMi => SatisTarafiMi && _satisSekli == SatisSekli.Perakende && (_nihaiTuketici || !Oturum.ModulAcikMi(ModulKodlari.Cari));
+    // Cari modülü yoksa perakende satış her zaman nihai tüketiciye kesilir; gider pusulası/SMM de cari açmadan kişiye kesilebilir.
+    private bool NihaiTuketiciMi => (SatisTarafiMi && _satisSekli == SatisSekli.Perakende || StopajliMi)
+                                    && (_nihaiTuketici || !Oturum.ModulAcikMi(ModulKodlari.Cari));
 
-    private bool KaydedilebilirMi => _satirlar.Count > 0 && (NihaiTuketiciMi || _cari is not null) && (GidenMi || NihaiTuketiciMi || !string.IsNullOrWhiteSpace(_numara))
+    private bool KaydedilebilirMi => _satirlar.Count > 0 && (NihaiTuketiciMi || _cari is not null)
+                                     && (GidenMi || (NihaiTuketiciMi && !StopajliMi) || !string.IsNullOrWhiteSpace(_numara))
+                                     && (!StopajliMi || _cari is not null || !string.IsNullOrWhiteSpace(_nihaiAd))
                                      && (!Dovizli || _kur > 0);
 
-    private FaturaHesabi Hesap => FaturaHesaplayici.Hesapla(_satirlar.Select(s => s.Hesap()).ToList(), _genelIskontoTuru, _genelIskonto);
+    private FaturaHesabi Hesap => FaturaHesaplayici.Hesapla(_satirlar.Select(s => s.Hesap()).ToList(), _genelIskontoTuru, _genelIskonto,
+        StopajliMi ? _stopajOrani : 0m);
 
     private string Baslik => Id is null ? $"Yeni {FaturaMetinleri.Tur(_tur)}" : $"{FaturaMetinleri.Tur(_tur)} Düzenle";
 
@@ -453,6 +513,9 @@ else
         {
             _tur = FaturaMetinleri.YoldanTur(TurYolu) ?? FaturaTuru.Satis;
             _tarih = Zaman.GetLocalNow().Date;
+
+            // Serbest meslek ödemesinde GV stopajı %20'dir; gider pusulasında oran mal/hizmete göre seçilir.
+            _stopajOrani = _tur == FaturaTuru.SerbestMeslekMakbuzu ? 20m : 0m;
             _nihaiTuketici = !Oturum.ModulAcikMi(ModulKodlari.Cari);
             if (!Oturum.ModulAcikMi(ModulKodlari.Cari) && SatisTarafiMi)
             {
@@ -481,7 +544,7 @@ else
         var f = sonuc.Deger;
         (_tur, _durum, _satisSekli, _numara, _surum) = (f.Tur, f.Durum, f.SatisSekli ?? SatisSekli.Toptan, f.Numara, f.Surum);
         (_tarih, _vade, _paraBirimi, _kur, _kurElleGirildi) = (Bicim.Takvim(f.Tarih), Bicim.Takvim(f.VadeTarihi), f.ParaBirimi, f.Kur, true);
-        (_aciklama, _genelIskontoTuru, _genelIskonto) = (f.Aciklama, f.GenelIskontoTuru, f.GenelIskonto);
+        (_aciklama, _genelIskontoTuru, _genelIskonto, _stopajOrani) = (f.Aciklama, f.GenelIskontoTuru, f.GenelIskonto, f.StopajOrani);
         _pesinHesapId = f.PesinHesapId;
         if (f.CariHesapId is { } cariId)
         {
@@ -683,8 +746,18 @@ else
         }
 
         var kart = sonuc.Deger;
+        if (kart.Tur == StokTuru.Urun && !FaturaTurleri.StoklaIliskiliMi(_tur))
+        {
+            Snackbar.Add($"{FaturaMetinleri.Tur(_tur)} yalnızca hizmet içerir; ürün kartı eklenemez.", Severity.Warning);
+            return;
+        }
+
         var satir = new FaturaSatirModeli { Miktar = miktar, KdvDahilMi = VarsayilanKdvDahil };
         satir.KartAta(kart);
+        if (KdvsizMi)
+        {
+            satir.KdvOrani = 0;
+        }
         satir.BirimFiyat = await OnerilenFiyatAsync(kart, satir.KdvDahilMi) ?? 0m;
         if (birim is not null)
         {
@@ -695,11 +768,12 @@ else
     }
 
     private void SerbestSatirEkle() =>
-        _satirlar.Add(new FaturaSatirModeli { KdvDahilMi = VarsayilanKdvDahil, Birim = Birimler.Adet });
+        _satirlar.Add(new FaturaSatirModeli { KdvDahilMi = VarsayilanKdvDahil, Birim = Birimler.Adet, KdvOrani = KdvsizMi ? 0 : KdvOranlari.Genel });
 
-    private bool VarsayilanKdvDahil => SatisTarafiMi && _satisSekli == SatisSekli.Perakende
-        ? _ayar?.PerakendeKdvDahil ?? true
-        : _ayar?.ToptanKdvDahil ?? false;
+    private bool VarsayilanKdvDahil => KdvsizMi ? false
+        : SatisTarafiMi && _satisSekli == SatisSekli.Perakende
+            ? _ayar?.PerakendeKdvDahil ?? true
+            : _ayar?.ToptanKdvDahil ?? false;
 
     // Satışta toptan/perakende fiyatı, alışta alış fiyatı önerilir. Perakende fiyatı KDV dahil, diğerleri hariç tutulur;
     // satırın KDV dahil seçimine ve fatura dövizine çevrilir.
@@ -766,7 +840,8 @@ else
             _aciklama,
             _satirlar.Select(s => s.Istek()).ToList(),
             _surum,
-            UygunPesinHesaplar.Any(h => h.Id == _pesinHesapId) ? _pesinHesapId : null);
+            UygunPesinHesaplar.Any(h => h.Id == _pesinHesapId) ? _pesinHesapId : null,
+            StopajliMi ? _stopajOrani : 0m);
 
         var sonuc = Id is { } id
             ? await Api.PutAsync<FaturaCevabi>($"api/fatura/faturalar/{id}", istek, islemAnahtari: _anahtar.Deger)
