@@ -167,7 +167,8 @@ internal static class StokHareketIslemleri
             return StokHatalari.HareketBulunamadi.Problem();
         }
 
-        if (!StokHareket.ElleGirilebilirMi(hareket.Tur) && !StokHareket.TransferMi(hareket.Tur))
+        // Belgeye (fatura, irsaliye, depo sevki) bağlı hareket yalnızca kendi belgesinden iptal edilir.
+        if (hareket.KaynakBelgeId is not null || (!StokHareket.ElleGirilebilirMi(hareket.Tur) && !StokHareket.TransferMi(hareket.Tur)))
         {
             return StokHatalari.ElleIptalEdilemez.Problem();
         }

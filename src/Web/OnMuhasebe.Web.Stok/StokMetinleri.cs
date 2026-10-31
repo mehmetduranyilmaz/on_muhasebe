@@ -15,8 +15,9 @@ public static class StokMetinleri
         StokHareketTuru.Sarf => "Sarf",
         StokHareketTuru.TransferGiris => "Transfer girişi",
         StokHareketTuru.TransferCikis => "Transfer çıkışı",
-        StokHareketTuru.AlisFaturasi => "Alış faturası",
-        StokHareketTuru.SatisFaturasi => "Satış faturası",
+        // Fatura ve irsaliye aynı türü kullanır; belgenin hangisi olduğu belge no ve açıklamada görünür.
+        StokHareketTuru.AlisFaturasi => "Alış",
+        StokHareketTuru.SatisFaturasi => "Satış",
         StokHareketTuru.SatistanIade => "Satıştan iade",
         StokHareketTuru.AlistanIade => "Alıştan iade",
         _ => tur.ToString()

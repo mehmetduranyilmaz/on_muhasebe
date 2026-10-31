@@ -71,6 +71,8 @@ public sealed record IrsaliyeSatiriIstegi(
 
 // Sevk saati e-İrsaliye'de zorunludur; kâğıt irsaliyede de fiili sevk anı olarak tutulur.
 // Araç/şoför/taşıyıcı alanları kâğıt irsaliyede opsiyonel, e-İrsaliye'de (S5) zorunlu olacaktır.
+// Kur boşsa dövizli carinin irsaliyesinde sevk tarihinin TCMB kuru kullanılır (alış maliyetini TL'ye çevirmek için).
+// Depo sevkinde teslim adresi (hedef deponun adresi) zorunludur.
 public sealed record IrsaliyeKaydetIstegi(
     IrsaliyeTuru Tur,
     Guid? CariHesapId,
@@ -78,6 +80,7 @@ public sealed record IrsaliyeKaydetIstegi(
     DateOnly SevkTarihi,
     TimeOnly SevkSaati,
     string? Numara,
+    decimal? Kur,
     Guid? HedefDepoId,
     string? TeslimAdresi,
     string? AracPlakasi,
@@ -134,6 +137,7 @@ public sealed record IrsaliyeDetayi(
     string? Ilce,
     string? Adres,
     string ParaBirimi,
+    decimal Kur,
     Guid? HedefDepoId,
     string? TeslimAdresi,
     string? AracPlakasi,

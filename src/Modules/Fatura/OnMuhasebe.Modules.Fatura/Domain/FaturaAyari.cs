@@ -13,6 +13,7 @@ internal sealed class FaturaAyari : FirmaEntity
     public string PerakendeSeri { get; private set; } = "PRK";
     public string IadeSeri { get; private set; } = "IAD";
     public string GiderPusulasiSeri { get; private set; } = "GPS";
+    public string IrsaliyeSeri { get; private set; } = "IRS";
     public bool ToptanKdvDahil { get; private set; }
     public bool PerakendeKdvDahil { get; private set; } = true;
     public int VarsayilanVadeGunu { get; private set; }
@@ -26,6 +27,7 @@ internal sealed class FaturaAyari : FirmaEntity
         PerakendeSeri = a.PerakendeSeri.ToUpperInvariant();
         IadeSeri = a.IadeSeri.ToUpperInvariant();
         GiderPusulasiSeri = a.GiderPusulasiSeri.ToUpperInvariant();
+        IrsaliyeSeri = a.IrsaliyeSeri.ToUpperInvariant();
         ToptanKdvDahil = a.ToptanKdvDahil;
         PerakendeKdvDahil = a.PerakendeKdvDahil;
         VarsayilanVadeGunu = a.VarsayilanVadeGunu;
@@ -41,7 +43,7 @@ internal sealed class FaturaAyari : FirmaEntity
     };
 
     public FaturaAyarlari Sozlesme() =>
-        new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu, GiderPusulasiSeri);
+        new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu, GiderPusulasiSeri, IrsaliyeSeri);
 }
 
 // Seri + yıl başına son verilen sıra. Satır, numara alan transaction bitene kadar kilitli kalır; böylece

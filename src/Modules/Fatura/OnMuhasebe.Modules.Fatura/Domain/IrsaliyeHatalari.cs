@@ -10,6 +10,7 @@ internal static class IrsaliyeHatalari
     public static readonly Hata CariGerekli = Hata.Dogrulama("irsaliye_cari_gerekli", "İrsaliye için cari seçilmelidir.");
     public static readonly Hata DepoSevkindeCariOlmaz = Hata.Dogrulama("depo_sevk_cari", "Depolar arası sevk irsaliyesinde cari seçilmez.");
     public static readonly Hata HedefDepoGerekli = Hata.Dogrulama("hedef_depo_gerekli", "Depolar arası sevkte malın gideceği depo seçilmelidir.");
+    public static readonly Hata TeslimAdresiGerekli = Hata.Dogrulama("teslim_adresi_gerekli", "Depolar arası sevkte malın teslim edileceği deponun adresi yazılmalıdır.");
     public static readonly Hata HedefDepoAyni = Hata.Dogrulama("hedef_depo_ayni", "Malın çıktığı depo ile gideceği depo aynı olamaz.");
     public static readonly Hata SevkTarihtenOnceOlamaz = Hata.Dogrulama("sevk_tarihi_gecersiz", "Fiili sevk tarihi irsaliye düzenleme tarihinden önce olamaz.");
     public static readonly Hata MaliyetGerekli = Hata.Dogrulama("irsaliye_maliyet_gerekli",
@@ -26,6 +27,11 @@ internal static class IrsaliyeHatalari
         "Faturalanmış irsaliye düzenlenemez ve iptal edilemez; önce bağlı faturayı iptal edin.");
     public static readonly Hata FaturalanamazDurum = Hata.IsKurali("irsaliye_faturalanamaz", "Yalnızca onaylı alım/satım irsaliyesi faturalanabilir.");
     public static readonly Hata KalanAsildi = Hata.IsKurali("irsaliye_kalan_asildi", "Faturalanan miktar irsaliyenin faturalanmamış miktarını aşamaz.");
+    public static readonly Hata PasifCari = Hata.IsKurali("irsaliye_pasif_cari", "Pasif cariye irsaliye düzenlenemez.");
+    public static readonly Hata StokKartiBulunamadi = Hata.Bulunamadi("irsaliye_stok_karti", "İrsaliyedeki stok kartlarından biri bulunamadı.");
+    public static readonly Hata PasifStokKarti = Hata.IsKurali("irsaliye_pasif_kart", "Pasif stok kartı irsaliyeye eklenemez.");
+    public static readonly Hata StokLisansiYok = Hata.Yetki("irsaliye_stok_lisansi_yok", "İrsaliye stok hareketi oluşturduğu için Stok modülü lisansı gerekir.");
+    public static readonly Hata CariLisansiYok = Hata.Yetki("irsaliye_cari_lisansi_yok", "Cariye irsaliye düzenlemek için Cari modülü lisansı gerekir.");
     public static readonly Hata SatirBulunamadi = Hata.Bulunamadi("irsaliye_satiri_bulunamadi", "İrsaliye satırı bulunamadı.");
 
     public static Hata TarihSirasi(DateOnly sinir, bool oncekiMi) => Hata.IsKurali("irsaliye_tarih_sirasi", oncekiMi

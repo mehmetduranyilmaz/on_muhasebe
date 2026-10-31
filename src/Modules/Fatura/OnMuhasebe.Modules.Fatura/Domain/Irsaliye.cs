@@ -29,6 +29,7 @@ internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
     public string? Ilce { get; private set; }
     public string? Adres { get; private set; }
     public string ParaBirimi { get; private set; } = null!;
+    public decimal Kur { get; private set; }
 
     public Guid? HedefDepoId { get; private set; }
     public string? TeslimAdresi { get; private set; }
@@ -156,6 +157,11 @@ internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
             {
                 return IrsaliyeHatalari.HedefDepoAyni;
             }
+
+            if (string.IsNullOrWhiteSpace(b.TeslimAdresi))
+            {
+                return IrsaliyeHatalari.TeslimAdresiGerekli;
+            }
         }
         else if (b.Cari is null)
         {
@@ -185,6 +191,7 @@ internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
         Ilce = c?.Ilce;
         Adres = c?.Adres;
         ParaBirimi = b.ParaBirimi;
+        Kur = b.Kur;
 
         HedefDepoId = b.Tur == IrsaliyeTuru.DepoSevk ? b.HedefDepoId : null;
         TeslimAdresi = b.TeslimAdresi;
@@ -272,6 +279,7 @@ internal sealed record IrsaliyeBilgileri(
     FaturaCarisi? Cari,
     string? DepoSevkUnvani,
     string ParaBirimi,
+    decimal Kur,
     DateOnly Tarih,
     DateOnly SevkTarihi,
     TimeOnly SevkSaati,
