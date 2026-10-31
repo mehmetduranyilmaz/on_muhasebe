@@ -115,6 +115,14 @@ internal sealed class CariKapamaServisi(CariDbContext db, IIslemKapsami islemKap
             .Select(k => AcikKalem(k, tarih))
             .ToList();
 
+    // Firma geneli açık kalemler, carisiyle birlikte (yaşlandırma ve nakit akışı için).
+    public async Task<List<(Guid CariHesapId, AcikKalem Kalem)>> FirmaAcikKalemleriAsync(DateOnly tarih, CancellationToken cancellationToken) =>
+        (await KalemlerAsync(null, cancellationToken))
+            .Where(k => k.Kalan > 0)
+            .OrderBy(k => k.Vade ?? k.Tarih).ThenBy(k => k.Tarih)
+            .Select(k => (k.CariHesapId, AcikKalem(k, tarih)))
+            .ToList();
+
     public async Task<KapamaDetayi?> DetayAsync(Guid hareketId, CancellationToken cancellationToken)
     {
         var hareket = await db.CariHareketler.AsNoTracking().SingleOrDefaultAsync(h => h.Id == hareketId, cancellationToken);

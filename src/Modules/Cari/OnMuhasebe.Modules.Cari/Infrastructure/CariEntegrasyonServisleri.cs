@@ -30,6 +30,26 @@ internal sealed class CariSorgusu(CariDbContext db, CariKapamaServisi kapama) : 
             .Where(c => c.AktifMi)
             .Select(c => new CariEslestirmeAdayi(c.Id, c.Unvan, c.VergiNo, c.Iban, c.ParaBirimi))
             .ToListAsync(cancellationToken);
+
+    // Pasif carinin açık kalemi de gerçek alacak/borçtur; listeye alınır.
+    public async Task<IReadOnlyList<AcikCariKalemi>> AcikKalemlerAsync(CancellationToken cancellationToken = default)
+    {
+        var kalemler = await kapama.FirmaAcikKalemleriAsync(DateOnly.MinValue, cancellationToken);
+        var cariler = await db.CariHesaplar.AsNoTracking()
+            .IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi])
+            .Select(c => new { c.Id, c.Unvan, c.ParaBirimi })
+            .ToDictionaryAsync(c => c.Id, cancellationToken);
+
+        return kalemler
+            .Where(x => !CariHareketTurleri.AvansMi(x.Kalem.Tur, x.Kalem.Yon) && cariler.ContainsKey(x.CariHesapId))
+            .Select(x =>
+            {
+                var c = cariler[x.CariHesapId];
+                return new AcikCariKalemi(x.CariHesapId, c.Unvan, x.Kalem.Yon, x.Kalem.VadeTarihi ?? x.Kalem.Tarih, x.Kalem.Kalan, c.ParaBirimi,
+                    x.Kalem.Tur, x.Kalem.BelgeNo, x.Kalem.KaynakBelgeId);
+            })
+            .ToList();
+    }
 }
 
 // Yazılan her kalem açık kalemlerle eşleştirilir; iptalde kapamalar çözülür ve karşı kalemler yeniden eşleştirilir.

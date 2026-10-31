@@ -30,6 +30,9 @@ public interface ICariSorgusu
 
     // Banka ekstresi önerileri için firmanın aktif carileri (açıklamada VKN, IBAN veya unvan aranır).
     Task<IReadOnlyList<CariEslestirmeAdayi>> EslestirmeAdaylariAsync(CancellationToken cancellationToken = default);
+
+    // Nakit akışı için firma geneli açık kalemler (avanslar hariç), vade sırasıyla.
+    Task<IReadOnlyList<AcikCariKalemi>> AcikKalemlerAsync(CancellationToken cancellationToken = default);
 }
 
 // Tutar carinin para birimindedir; TL carilerde kur 1'dir.
