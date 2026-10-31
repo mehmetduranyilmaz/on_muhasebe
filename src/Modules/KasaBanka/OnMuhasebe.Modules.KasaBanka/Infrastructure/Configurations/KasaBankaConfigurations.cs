@@ -142,6 +142,26 @@ internal sealed class MasrafMerkeziConfiguration : IEntityTypeConfiguration<Masr
     }
 }
 
+internal sealed class DemirbasConfiguration : IEntityTypeConfiguration<Demirbas>
+{
+    public void Configure(EntityTypeBuilder<Demirbas> builder)
+    {
+        builder.ToTable("demirbas");
+        builder.Property(x => x.SicilNo).HasMaxLength(30);
+        builder.Property(x => x.Ad).HasMaxLength(200);
+        builder.Property(x => x.Grup).HasConversion<string>().HasMaxLength(20);
+        builder.Property(x => x.Yontem).HasConversion<string>().HasMaxLength(20);
+        builder.Property(x => x.ElCikarmaTuru).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.BelgeNo).HasMaxLength(50);
+        builder.Property(x => x.Zimmetli).HasMaxLength(100);
+        builder.Property(x => x.Konum).HasMaxLength(100);
+        builder.Property(x => x.Aciklama).HasMaxLength(500);
+        builder.Property(x => x.ElCikarmaAciklamasi).HasMaxLength(500);
+        builder.HasIndex(x => new { x.FirmaId, x.SicilNo }).IsUnique();
+        builder.HasOne<MasrafMerkezi>().WithMany().HasForeignKey(x => x.MasrafMerkeziId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal sealed class KrediConfiguration : IEntityTypeConfiguration<Kredi>
 {
     public void Configure(EntityTypeBuilder<Kredi> builder)

@@ -809,6 +809,135 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                     b.ToTable("karne_yaprak_iptali", "kasabanka");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Demirbas", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("ad");
+
+                    b.Property<string>("BelgeNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("belge_no");
+
+                    b.Property<bool>("BinekOtomobilMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("binek_otomobil_mi");
+
+                    b.Property<decimal>("EdinmeBedeli")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("edinme_bedeli");
+
+                    b.Property<DateOnly>("EdinmeTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("edinme_tarihi");
+
+                    b.Property<string>("ElCikarmaAciklamasi")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("el_cikarma_aciklamasi");
+
+                    b.Property<decimal?>("ElCikarmaBedeli")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("el_cikarma_bedeli");
+
+                    b.Property<DateOnly?>("ElCikarmaTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("el_cikarma_tarihi");
+
+                    b.Property<string>("ElCikarmaTuru")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("el_cikarma_turu");
+
+                    b.Property<int>("FaydaliOmur")
+                        .HasColumnType("integer")
+                        .HasColumnName("faydali_omur");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<string>("Grup")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("grup");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("Konum")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("konum");
+
+                    b.Property<Guid?>("MasrafMerkeziId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("masraf_merkezi_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("SicilNo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("sicil_no");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Yontem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("yontem");
+
+                    b.Property<string>("Zimmetli")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("zimmetli");
+
+                    b.HasKey("Id")
+                        .HasName("pk_demirbas");
+
+                    b.HasIndex("MasrafMerkeziId")
+                        .HasDatabaseName("ix_demirbas_masraf_merkezi_id");
+
+                    b.HasIndex("FirmaId", "SicilNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_demirbas_firma_id_sicil_no");
+
+                    b.ToTable("demirbas", "kasabanka");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.EkstreAktarimi", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2240,6 +2369,15 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_karne_yaprak_iptali_evrak_karnesi_karne_id");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Demirbas", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.MasrafMerkezi", null)
+                        .WithMany()
+                        .HasForeignKey("MasrafMerkeziId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_demirbas_masraf_merkezleri_masraf_merkezi_id");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.EkstreAktarimi", b =>

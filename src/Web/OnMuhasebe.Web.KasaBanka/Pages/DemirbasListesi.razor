@@ -1,0 +1,103 @@
+@page "/demirbaslar"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Demirbaşlar" AltBaslik="Sabit kıymetler ve seçilen yılın amortisman listesi (yıl sonu envanteri)" Ikon="@Icons.Material.Filled.Chair">
+    <Islemler>
+        <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_yil" ValueChanged="y => FiltreAsync(() => _yil = y)" Label="Yıl"
+                         Style="max-width:110px" Min="2000" Max="2100" />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="demirbaslar/yeni">Yeni Demirbaş</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="mb-3 sadece-yazdir">
+    <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+    <MudText Typo="Typo.h6">@_yil Yılı Amortisman Listesi</MudText>
+</div>
+
+<FiltreCubugu>
+    <MudItem xs="12" md="5">
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="a => FiltreAsync(() => _arama = a)"
+                      Placeholder="Ad, sicil no ya da zimmetli" DebounceInterval="400" Clearable="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+    <MudItem xs="12" md="4" Class="d-flex align-center">
+        <MudSwitch T="bool" Value="_elCikarilanlar" ValueChanged="v => FiltreAsync(() => _elCikarilanlar = v)" Color="Color.Secondary" Label="Elden çıkarılanlar" />
+    </MudItem>
+</FiltreCubugu>
+
+@if (_liste is { } l)
+{
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" md="3"><OzetKarti Baslik="Edinme bedeli" Deger="l.ToplamBedel" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Chair" Sira="0" /></MudItem>
+        <MudItem xs="6" md="3"><OzetKarti Baslik="@($"{l.Yil} amortismanı")" Deger="l.ToplamYilAmortismani" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.TrendingDown" Renk="#EF4444" Sira="1" AltMetin="Yılın gideri" /></MudItem>
+        <MudItem xs="6" md="3"><OzetKarti Baslik="Birikmiş amortisman" Deger="l.ToplamBirikmis" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Layers" Renk="#F59E0B" Sira="2" /></MudItem>
+        <MudItem xs="6" md="3"><OzetKarti Baslik="Net defter değeri" Deger="l.ToplamNetDeger" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Balance" Renk="#3B82F6" Sira="3" /></MudItem>
+    </MudGrid>
+}
+
+<VeriTablosu T="DemirbasOzeti" Kayitlar="_liste?.Kalemler" Yukleniyor="_yukleniyor" SatirTiklandi="@(d => Navigasyon.NavigateTo($"demirbaslar/{d.Id}"))" Dense="true"
+             BosIkon="@Icons.Material.Outlined.Chair" BosBaslik="Demirbaş yok" BosAciklama="Taşıt, bilgisayar, mobilya gibi sabit kıymetlerinizi ekleyin; amortisman otomatik hesaplanır.">
+    <Basliklar>
+        <MudTh>Sicil</MudTh>
+        <MudTh>Ad</MudTh>
+        <MudTh>Edinme</MudTh>
+        <MudTh Class="sayi">Bedel</MudTh>
+        <MudTh>Ömür / yöntem</MudTh>
+        <MudTh Class="sayi">@_yil amortismanı</MudTh>
+        <MudTh Class="sayi">Birikmiş</MudTh>
+        <MudTh Class="sayi">Net değer</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Sicil"><span style="opacity:.75">@context.SicilNo</span></MudTd>
+        <MudTd DataLabel="Ad">
+            <b>@context.Ad</b>
+            <span class="mobil-alt-bilgi">@DemirbasMetinleri.Grup(context.Grup)@(context.Zimmetli is null ? "" : $" · {context.Zimmetli}")@(context.ElCikarmaTarihi is { } c ? $" · elden çıkarıldı {Bicim.Tarih(c)}" : "")</span>
+        </MudTd>
+        <MudTd DataLabel="Edinme">@Bicim.Tarih(context.EdinmeTarihi)</MudTd>
+        <MudTd DataLabel="Bedel" Class="sayi">@Bicim.Tutar(context.EdinmeBedeli)</MudTd>
+        <MudTd DataLabel="Ömür / yöntem">@context.FaydaliOmur yıl · @(context.Yontem == AmortismanYontemi.Normal ? "normal" : "azalan")</MudTd>
+        <MudTd DataLabel="Yıl amortismanı" Class="sayi"><b>@Bicim.Tutar(context.YilAmortismani)</b></MudTd>
+        <MudTd DataLabel="Birikmiş" Class="sayi">@Bicim.Tutar(context.Birikmis)</MudTd>
+        <MudTd DataLabel="Net değer" Class="sayi">@Bicim.Tutar(context.NetDeger)</MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private int _yil;
+    private string? _arama;
+    private bool _elCikarilanlar;
+    private bool _yukleniyor;
+    private AmortismanListesi? _liste;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _yil = Zaman.GetLocalNow().Year;
+        await YukleAsync();
+    }
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<AmortismanListesi>(
+            $"api/kasabanka/demirbaslar?yil={_yil}&elCikarilanlar={(_elCikarilanlar ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}");
+        _hata = sonuc.Hata;
+        _liste = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+}

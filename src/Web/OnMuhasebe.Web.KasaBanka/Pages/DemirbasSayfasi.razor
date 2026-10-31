@@ -1,0 +1,338 @@
+@page "/demirbaslar/yeni"
+@page "/demirbaslar/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="@(Id is null ? "Yeni Demirbaş" : _ad)" GeriAdres="demirbaslar" Ikon="@Icons.Material.Filled.Chair"
+              AltBaslik="@(_sicil ?? "Sicil numarası boş bırakılırsa otomatik verilir")">
+    <Islemler>
+        @if (Id is not null && !Oturum.SaltOkunurMu)
+        {
+            <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id.Value" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Sil" OnClick="SilAsync" />
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else
+{
+    var plan = Plan;
+    var duzenlenebilir = !Oturum.SaltOkunurMu && _detay?.ElCikarmaTarihi is null;
+    <MudGrid Spacing="3">
+        <MudItem xs="12" lg="7">
+            <FormBolumu Baslik="Kıymet bilgileri" Aciklama="Edinme bedeli KDV hariç TL (indirilemeyen KDV ve edinme giderleri dahil)" Ikon="@Icons.Material.Filled.Description" Sira="0">
+                <MudItem xs="12" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sicil" Label="Sicil no" MaxLength="30" Disabled="!duzenlenebilir" />
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" MaxLength="200" Required="true" Disabled="!duzenlenebilir"
+                                  Placeholder="ör. 34 ABC 123 Fiat Egea, Dell dizüstü bilgisayar" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="DemirbasGrubu" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_grup" ValueChanged="GrupDegisti" Label="Grup" Disabled="!duzenlenebilir">
+                        @foreach (var g in DemirbasMetinleri.Gruplar)
+                        {
+                            <MudSelectItem Value="g">@DemirbasMetinleri.Grup(g)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6" Class="d-flex align-center">
+                    @if (_grup == DemirbasGrubu.Tasitlar)
+                    {
+                        <MudSwitch T="bool" @bind-Value="_binek" Color="Color.Secondary" Label="Binek otomobil (ilk yıl kıst amortisman)" Disabled="!duzenlenebilir" />
+                    }
+                </MudItem>
+                <MudItem xs="6" md="4">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_edinme" Label="Edinme tarihi" DateFormat="dd.MM.yyyy" Required="true" Disabled="!duzenlenebilir" />
+                </MudItem>
+                <MudItem xs="6" md="4">
+                    <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_bedel" Label="Edinme bedeli" Format="N2" Min="0"
+                                     HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="TL" Disabled="!duzenlenebilir" />
+                </MudItem>
+                <MudItem xs="6" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeNo" Label="Fatura no" MaxLength="50" Disabled="!duzenlenebilir" />
+                </MudItem>
+                <MudItem xs="6" md="4">
+                    <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_omur" Label="Faydalı ömür (yıl)" Min="1" Max="50"
+                                     HelperText="333 Sıra No'lu listeye göre" Disabled="!duzenlenebilir" />
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudSelect T="AmortismanYontemi" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yontem" Label="Yöntem" Disabled="!duzenlenebilir"
+                               HelperText="@($"Oran %{AmortismanHesaplayici.Oran(Math.Max(_omur, 1), _yontem) * 100:0.##}{(_yontem == AmortismanYontemi.AzalanBakiyeler ? " (normalin 2 katı, en çok %50)" : "")}")">
+                        <MudSelectItem Value="AmortismanYontemi.Normal">@DemirbasMetinleri.Yontem(AmortismanYontemi.Normal)</MudSelectItem>
+                        <MudSelectItem Value="AmortismanYontemi.AzalanBakiyeler">@DemirbasMetinleri.Yontem(AmortismanYontemi.AzalanBakiyeler)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_zimmetli" Label="Zimmetli" MaxLength="100" Disabled="!duzenlenebilir" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_konum" Label="Konum" MaxLength="100" Disabled="!duzenlenebilir" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    @if (_merkezler.Any(m => m.AktifMi || m.Id == _merkezId))
+                    {
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_merkezId" Label="Masraf merkezi" Clearable="true" Disabled="!duzenlenebilir">
+                            @foreach (var m in _merkezler.Where(m => m.AktifMi || m.Id == _merkezId))
+                            {
+                                <MudSelectItem T="Guid?" Value="m.Id">@m.Kod · @m.Ad</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" Disabled="!duzenlenebilir" />
+                </MudItem>
+                @if (duzenlenebilir)
+                {
+                    <MudItem xs="12" Class="d-flex justify-end">
+                        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(string.IsNullOrWhiteSpace(_ad) || _bedel <= 0 || _edinme is null)">
+                            Kaydet
+                        </IslemDugmesi>
+                    </MudItem>
+                }
+            </FormBolumu>
+
+            @if (_detay is { } d)
+            {
+                <FormBolumu Baslik="Elden çıkarma" Aciklama="Satış ya da hurdaya ayırma; çıkarıldığı yılda amortisman ayrılmaz" Ikon="@Icons.Material.Filled.Logout" Sira="1">
+                    @if (d.ElCikarmaTarihi is { } c)
+                    {
+                        <MudItem xs="12">
+                            <div>
+                                <b>@(d.ElCikarmaTuru == ElCikarmaTuru.Satis ? "Satıldı" : "Hurdaya ayrıldı")</b> · @Bicim.Tarih(c)
+                                @if (d.ElCikarmaTuru == ElCikarmaTuru.Satis)
+                                {
+                                    <span> · satış bedeli @Bicim.Tutar(d.ElCikarmaBedeli ?? 0m, ParaBirimleri.Tl)</span>
+                                }
+                            </div>
+                            @if (d.ElCikarmaKarZarari is { } kz)
+                            {
+                                <div class="mt-1">
+                                    @(kz >= 0 ? "Satış kârı" : "Elden çıkarma zararı"): <b class="@(kz >= 0 ? "bakiye-alacakli" : "bakiye-borclu")">@Bicim.Tutar(Math.Abs(kz), ParaBirimleri.Tl)</b>
+                                    <span class="ozet-alt">(bedel − net defter değeri)</span>
+                                </div>
+                            }
+                            @if (!Oturum.SaltOkunurMu)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Warning" Class="mt-2" OnClick="GeriAlAsync">Elden çıkarmayı geri al</MudButton>
+                            }
+                        </MudItem>
+                    }
+                    else if (!Oturum.SaltOkunurMu)
+                    {
+                        <MudItem xs="6" md="3">
+                            <MudSelect T="ElCikarmaTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_cikisTuru" Label="Tür">
+                                <MudSelectItem Value="ElCikarmaTuru.Satis">Satış</MudSelectItem>
+                                <MudSelectItem Value="ElCikarmaTuru.Hurda">Hurda</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="6" md="3">
+                            <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_cikisTarihi" Label="Tarih" DateFormat="dd.MM.yyyy" />
+                        </MudItem>
+                        @if (_cikisTuru == ElCikarmaTuru.Satis)
+                        {
+                            <MudItem xs="6" md="3">
+                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_cikisBedeli" Label="Satış bedeli (KDV hariç)" Format="N2" Min="0" HideSpinButtons="true" />
+                            </MudItem>
+                        }
+                        <MudItem xs="6" md="3" Class="d-flex align-center">
+                            <IslemDugmesi Islem="ElCikarAsync" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Logout" Disabled="_cikisTarihi is null">Elden çıkar</IslemDugmesi>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <div class="ozet-alt">Satış faturasını Fatura modülünden ayrıca kesin; demirbaş satışında KDV oranı ve istisnaları için mali müşavirinize danışın.</div>
+                        </MudItem>
+                    }
+                </FormBolumu>
+            }
+        </MudItem>
+
+        <MudItem xs="12" lg="5">
+            <div class="panel-kart kart belirme" style="--i:2">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.TableChart" Size="Size.Small" Color="Color.Secondary" /> Amortisman planı</div>
+                @if (plan.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.TableChart" Baslik="Plan için bedel, tarih ve ömür girin" />
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                        <thead><tr><th>Yıl</th><th class="sayi">Amortisman</th><th class="sayi">Birikmiş</th><th class="sayi">Net değer</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in plan)
+                            {
+                                <tr style="@(p.Yil == _buYil ? "font-weight:700" : "")">
+                                    <td>@p.Yil</td>
+                                    <td class="sayi">@Bicim.Tutar(p.Tutar)</td>
+                                    <td class="sayi">@Bicim.Tutar(p.Birikmis)</td>
+                                    <td class="sayi">@Bicim.Tutar(p.NetDeger)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                    @if (_binek && _grup == DemirbasGrubu.Tasitlar && _edinme?.Month > 1)
+                    {
+                        <div class="ozet-alt mt-2">Binek otomobilde edinme yılı ay kıstıyla ayrılır; kalan kısım ömrü izleyen yılda gider yazılır.</div>
+                    }
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private DemirbasDetayi? _detay;
+    private string? _sicil;
+    private string? _ad;
+    private DemirbasGrubu _grup = DemirbasGrubu.Demirbaslar;
+    private bool _binek;
+    private DateTime? _edinme;
+    private decimal _bedel;
+    private int _omur = AmortismanHesaplayici.OnerilenOmur(DemirbasGrubu.Demirbaslar);
+    private AmortismanYontemi _yontem = AmortismanYontemi.Normal;
+    private string? _belgeNo;
+    private string? _zimmetli;
+    private string? _konum;
+    private Guid? _merkezId;
+    private string? _aciklama;
+    private List<MasrafMerkeziOzeti> _merkezler = [];
+    private ElCikarmaTuru _cikisTuru = ElCikarmaTuru.Satis;
+    private DateTime? _cikisTarihi;
+    private decimal _cikisBedeli;
+    private int _buYil;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    private IReadOnlyList<AmortismanYili> Plan => _detay?.ElCikarmaTarihi is not null ? _detay.Plan
+        : _edinme is { } e && _bedel > 0 && _omur > 0
+            ? AmortismanHesaplayici.Plan(_bedel, DateOnly.FromDateTime(e), _omur, _yontem, _binek && _grup == DemirbasGrubu.Tasitlar)
+            : [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _buYil = Zaman.GetLocalNow().Year;
+        _cikisTarihi = Zaman.GetLocalNow().Date;
+        var merkezler = await Api.GetAsync<List<MasrafMerkeziOzeti>>("api/kasabanka/masraf-merkezleri");
+        _merkezler = merkezler.BasariliMi ? merkezler.Deger : [];
+        if (Id is { } id)
+        {
+            var sonuc = await Api.GetAsync<DemirbasDetayi>($"api/kasabanka/demirbaslar/{id}");
+            if (sonuc.BasariliMi)
+            {
+                Yukle(sonuc.Deger);
+            }
+            else
+            {
+                _hata = sonuc.Hata;
+            }
+        }
+        else
+        {
+            _edinme = Zaman.GetLocalNow().Date;
+        }
+
+        _yukleniyor = false;
+    }
+
+    private void Yukle(DemirbasDetayi d)
+    {
+        _detay = d;
+        (_sicil, _ad, _grup, _binek, _edinme, _bedel, _omur, _yontem) =
+            (d.SicilNo, d.Ad, d.Grup, d.BinekOtomobilMi, d.EdinmeTarihi.ToDateTime(TimeOnly.MinValue), d.EdinmeBedeli, d.FaydaliOmur, d.Yontem);
+        (_belgeNo, _zimmetli, _konum, _merkezId, _aciklama) = (d.BelgeNo, d.Zimmetli, d.Konum, d.MasrafMerkeziId, d.Aciklama);
+    }
+
+    private void GrupDegisti(DemirbasGrubu grup)
+    {
+        // Ömür yalnızca kullanıcı değiştirmemişse (önceki grubun önerisindeyse) yeni grubun önerisine geçer.
+        if (_omur == AmortismanHesaplayici.OnerilenOmur(_grup))
+        {
+            _omur = AmortismanHesaplayici.OnerilenOmur(grup);
+        }
+
+        _grup = grup;
+        _binek &= grup == DemirbasGrubu.Tasitlar;
+    }
+
+    private async Task KaydetAsync()
+    {
+        _hata = null;
+        var istek = new DemirbasKaydetIstegi(_sicil, _ad!, _grup, _binek && _grup == DemirbasGrubu.Tasitlar, DateOnly.FromDateTime(_edinme!.Value), _bedel,
+            _omur, _yontem, _belgeNo, _zimmetli, _konum, _merkezId, _aciklama, _detay?.Surum ?? 0);
+        var sonuc = Id is { } id
+            ? await Api.PutAsync<DemirbasDetayi>($"api/kasabanka/demirbaslar/{id}", istek)
+            : await Api.PostAsync<DemirbasDetayi>("api/kasabanka/demirbaslar", istek);
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        Snackbar.Add("Demirbaş kaydedildi.", Severity.Success);
+        if (Id is null)
+        {
+            Navigasyon.NavigateTo($"demirbaslar/{sonuc.Deger.Id}");
+        }
+        else
+        {
+            Yukle(sonuc.Deger);
+        }
+    }
+
+    private async Task ElCikarAsync()
+    {
+        var sonuc = await Api.PostAsync<DemirbasDetayi>($"api/kasabanka/demirbaslar/{Id}/elden-cikar",
+            new ElCikarmaIstegi(_cikisTuru, DateOnly.FromDateTime(_cikisTarihi!.Value), _cikisTuru == ElCikarmaTuru.Satis ? _cikisBedeli : 0m, null));
+        Sonuc(sonuc, "Demirbaş elden çıkarıldı.");
+    }
+
+    private async Task GeriAlAsync()
+    {
+        if (await Onay.SorAsync("Elden çıkarmayı geri al", "Demirbaş yeniden aktif sayılacak ve amortisman planı devam edecek.", "Geri al"))
+        {
+            Sonuc(await Api.PostAsync<DemirbasDetayi>($"api/kasabanka/demirbaslar/{Id}/elden-cikarma-geri-al", new { }), "Elden çıkarma geri alındı.");
+        }
+    }
+
+    private void Sonuc(ApiSonucu<DemirbasDetayi> sonuc, string mesaj)
+    {
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        Yukle(sonuc.Deger);
+        Snackbar.Add(mesaj, Severity.Success);
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Demirbaşı sil", "Kart ve amortisman planı silinecek. Yanlış açılmadıysa silmek yerine elden çıkarın.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/kasabanka/demirbaslar/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Navigasyon.NavigateTo("demirbaslar");
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+}

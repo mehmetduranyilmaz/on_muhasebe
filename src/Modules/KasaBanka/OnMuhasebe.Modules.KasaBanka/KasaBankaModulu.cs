@@ -52,6 +52,7 @@ public sealed class KasaBankaModulu : IModul
         IslemIslemleri.Map(grup);
         KategoriIslemleri.Map(grup);
         MasrafMerkeziIslemleri.Map(grup);
+        DemirbasIslemleri.Map(grup);
         KasaBankaRaporlari.Map(grup);
         NakitAkisIslemleri.Map(grup);
         EkstreIslemleri.Map(grup);
