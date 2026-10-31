@@ -231,6 +231,11 @@ internal sealed class FaturaSatiri : BaseEntity
     // İrsaliyesiz satırın karşıladığı sipariş satırı; irsaliyeli satırda bağ irsaliye satırındadır.
     public Guid? SiparisSatiriId { get; private set; }
 
+    // Lot/seri izlenen üründe stok hareketine giden izlenebilirlik bilgisi (irsaliyeli satırda irsaliyededir).
+    public string? LotNo { get; private set; }
+    public DateOnly? SonKullanmaTarihi { get; private set; }
+    public List<string>? SeriNolari { get; private set; }
+
     public static FaturaSatiri Olustur(Guid faturaId, int sira, FaturaSatiriBilgisi b, SatirHesabi h) => new()
     {
         FaturaId = faturaId,
@@ -259,7 +264,10 @@ internal sealed class FaturaSatiri : BaseEntity
         TevkifatPayda = b.TevkifatPayda,
         TevkifEdilenKdv = h.TevkifEdilenKdv,
         IrsaliyeSatiriId = b.IrsaliyeSatiriId,
-        SiparisSatiriId = b.IrsaliyeSatiriId is null ? b.SiparisSatiriId : null
+        SiparisSatiriId = b.IrsaliyeSatiriId is null ? b.SiparisSatiriId : null,
+        LotNo = b.StokluMu && b.IrsaliyeSatiriId is null ? IzlemeAlanlari.Lot(b.LotNo) : null,
+        SonKullanmaTarihi = b.StokluMu && b.IrsaliyeSatiriId is null ? b.SonKullanmaTarihi : null,
+        SeriNolari = b.StokluMu && b.IrsaliyeSatiriId is null ? IzlemeAlanlari.Seriler(b.SeriNolari) : null
     };
 }
 
@@ -292,7 +300,10 @@ internal sealed record FaturaSatiriBilgisi(
     int TevkifatPay = 0,
     int TevkifatPayda = 0,
     Guid? IrsaliyeSatiriId = null,
-    Guid? SiparisSatiriId = null);
+    Guid? SiparisSatiriId = null,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // İstek, cari/stok/kur bilgileriyle çözümlendikten sonra entity'ye verilen hali.
 internal sealed record FaturaBilgileri(

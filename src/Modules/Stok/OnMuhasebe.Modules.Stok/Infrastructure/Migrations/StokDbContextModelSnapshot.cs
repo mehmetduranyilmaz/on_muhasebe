@@ -472,6 +472,11 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("kaynak_belge_id");
 
+                    b.Property<string>("LotNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("lot_no");
+
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
                         .HasColumnName("olusturan_id");
@@ -479,6 +484,10 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                     b.Property<DateTime>("OlusturmaTarihi")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("olusturma_tarihi");
+
+                    b.Property<DateOnly?>("SonKullanmaTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("son_kullanma_tarihi");
 
                     b.Property<Guid>("StokKartiId")
                         .HasColumnType("uuid")
@@ -522,12 +531,73 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                     b.HasIndex("FirmaId", "DepoId")
                         .HasDatabaseName("ix_stok_hareket_firma_id_depo_id");
 
+                    b.HasIndex("FirmaId", "StokKartiId", "LotNo")
+                        .HasDatabaseName("ix_stok_hareket_firma_id_stok_karti_id_lot_no")
+                        .HasFilter("lot_no IS NOT NULL");
+
                     b.HasIndex("FirmaId", "StokKartiId", "Tarih")
                         .HasDatabaseName("ix_stok_hareket_firma_id_stok_karti_id_tarih");
 
                     NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("FirmaId", "StokKartiId", "Tarih"), new[] { "DepoId", "GirisMiktari", "CikisMiktari", "BirimFiyat", "Tur" });
 
                     b.ToTable("stok_hareket", "stok");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Stok.Domain.StokHareketSeri", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid>("HareketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hareket_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("SeriNo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("seri_no");
+
+                    b.Property<Guid>("StokKartiId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stok_karti_id");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stok_hareket_seri");
+
+                    b.HasIndex("HareketId")
+                        .HasDatabaseName("ix_stok_hareket_seri_hareket_id");
+
+                    b.HasIndex("SeriNo")
+                        .HasDatabaseName("ix_stok_hareket_seri_seri_no");
+
+                    b.HasIndex("StokKartiId", "SeriNo")
+                        .HasDatabaseName("ix_stok_hareket_seri_stok_karti_id_seri_no");
+
+                    b.ToTable("stok_hareket_seri", "stok");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Stok.Domain.StokKarti", b =>
@@ -577,6 +647,12 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
 
+                    b.Property<string>("Izleme")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("izleme");
+
                     b.Property<int>("KdvOrani")
                         .HasColumnType("integer")
                         .HasColumnName("kdv_orani");
@@ -623,6 +699,10 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                     b.Property<DateTime?>("SilinmeTarihi")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("silinme_tarihi");
+
+                    b.Property<bool>("SktTakibi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("skt_takibi");
 
                     b.Property<uint>("Surum")
                         .IsConcurrencyToken()
@@ -848,6 +928,16 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasConstraintName("fk_stok_hareket_stok_kartlari_stok_karti_id");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Stok.Domain.StokHareketSeri", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.Stok.Domain.StokHareket", null)
+                        .WithMany("Seriler")
+                        .HasForeignKey("HareketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stok_hareket_seri_stok_hareket_hareket_id");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Stok.Domain.StokKarti", b =>
                 {
                     b.HasOne("OnMuhasebe.Modules.Stok.Domain.StokGrubu", "Grup")
@@ -874,6 +964,11 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                     b.Navigation("Atamalar");
 
                     b.Navigation("Satirlar");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Stok.Domain.StokHareket", b =>
+                {
+                    b.Navigation("Seriler");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Stok.Domain.StokKarti", b =>

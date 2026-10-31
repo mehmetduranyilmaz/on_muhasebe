@@ -244,7 +244,7 @@ internal static class IrsaliyeIslemleri
         i.HedefDepoId, i.TeslimAdresi, i.AracPlakasi, i.SoforAdi, i.SoforTckn, i.TasiyiciUnvani, i.TasiyiciVkn, i.Aciklama,
         i.Satirlar.OrderBy(s => s.Sira).Select(s => new IrsaliyeSatiriDetayi(
             s.Id, s.Sira, s.StokKartiId, s.StokKodu, s.Ad, s.DepoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvOrani,
-            s.FaturalananMiktar, s.KalanMiktar, s.SiparisSatiriId)).ToList(),
+            s.FaturalananMiktar, s.KalanMiktar, s.SiparisSatiriId, s.LotNo, s.SonKullanmaTarihi, s.SeriNolari)).ToList(),
         faturalar,
         FaturaSonGunu(i.Durum, i.FaturalamaDurumu, i.SevkTarihi),
         i.OnayTarihi, i.IptalTarihi, i.Surum);

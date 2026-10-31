@@ -166,7 +166,7 @@
 
         var barkod = _barkod.Trim();
         _barkod = null;
-        var sonuc = await Api.GetAsync<BarkodSonucu>($"api/stok/kartlar/barkod/{Uri.EscapeDataString(barkod)}");
+        var sonuc = await Api.GetAsync<BarkodSonucu>($"api/stok/kartlar/barkod?kod={Uri.EscapeDataString(barkod)}");
         if (!sonuc.BasariliMi)
         {
             Snackbar.Add(sonuc.Hata.Baslik, Severity.Warning);

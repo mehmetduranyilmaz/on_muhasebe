@@ -1,0 +1,109 @@
+@* Lot / SKT / seri girişi. Girişte lot serbest yazılır ve SKT girilir; çıkışta depodaki lotlar SKT sırasıyla (FEFO) önerilir,
+   seriler stoktakilerden seçilebilir. Seri takipte her temel birim için bir seri yazılır. *@
+@inject ApiIstemcisi Api
+
+@if (Model.VarMi)
+{
+    <div class="izleme-girisi">
+        <MudIcon Icon="@Icons.Material.Filled.QrCode2" Size="Size.Small" Color="Color.Secondary" />
+        @if (GirisMi)
+        {
+            <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="Model.LotNo" MaxLength="50" Style="max-width:170px"
+                          Label="@(Model.LotMu ? "Lot / parti no" : "Lot (isteğe bağlı)")" Required="Model.LotMu" RequiredError="Lot gerekli" />
+            @if (Model.SktTakibi)
+            {
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="Model.Skt" Label="Son kullanma" DateFormat="dd.MM.yyyy"
+                               Style="max-width:160px" Required="true" RequiredError="SKT gerekli" />
+            }
+        }
+        else if (KartId is not null)
+        {
+            <MudAutocomplete T="LotSecenegi" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@(Model.LotMu ? "Lot" : "Lot (isteğe bağlı)")"
+                             Value="@SeciliLot" ValueChanged="LotSecildi" SearchFunc="LotAraAsync" ToStringFunc="@(l => l?.LotNo ?? "")"
+                             Style="min-width:230px" ResetValueOnEmptyText="true" Clearable="true" Required="Model.LotMu" RequiredError="Lot seçin">
+                <ItemTemplate Context="l">
+                    <div class="d-flex justify-space-between gap-3" style="width:100%">
+                        <span><b>@l.LotNo</b> <small style="opacity:.65">@l.DepoAdi</small></span>
+                        <small class="@(l.SonKullanmaTarihi < DateOnly.FromDateTime(DateTime.Today) ? "bakiye-borclu" : "")">
+                            @(l.SonKullanmaTarihi is { } s ? $"SKT {Bicim.Tarih(s)} · " : "")@Bicim.Miktar(l.Miktar)
+                        </small>
+                    </div>
+                </ItemTemplate>
+            </MudAutocomplete>
+            @if (Model.Skt is { } skt)
+            {
+                <small style="opacity:.75">SKT @Bicim.Tarih(DateOnly.FromDateTime(skt))</small>
+            }
+        }
+
+        @if (Model.SeriMi)
+        {
+            <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="Model.SerilerMetni" Lines="2" Sizing="InputSizing.Auto" MaxLines="6"
+                          Label="Seri no (her satıra bir)" Style="min-width:220px; flex:1"
+                          HelperText="@SeriYardimi" Error="@(TemelMiktar > 0 && Model.Seriler.Count != TemelMiktar)" />
+            @if (!GirisMi && KartId is not null)
+            {
+                <MudMenu Icon="@Icons.Material.Filled.Inventory" aria-label="Stoktaki serilerden seç" Dense="true" OpenChanged="MenuAcildiAsync">
+                    @if (_seriler is null)
+                    {
+                        <MudMenuItem Disabled="true">Yükleniyor…</MudMenuItem>
+                    }
+                    else if (_seriler.Count == 0)
+                    {
+                        <MudMenuItem Disabled="true">Depoda seri yok</MudMenuItem>
+                    }
+                    else
+                    {
+                        @foreach (var s in _seriler.Where(s => !Model.Seriler.Contains(s.SeriNo)).Take(50))
+                        {
+                            <MudMenuItem OnClick="() => Model.SeriEkle(s.SeriNo)" AutoClose="false">@s.SeriNo <small style="opacity:.6">@s.DepoAdi</small></MudMenuItem>
+                        }
+                    }
+                </MudMenu>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IzlemeModeli Model { get; set; } = null!;
+    [Parameter] public Guid? KartId { get; set; }
+    [Parameter] public Guid? DepoId { get; set; }
+    [Parameter] public bool GirisMi { get; set; }
+
+    // Seri takipte beklenen seri sayısı (temel birimde miktar).
+    [Parameter] public decimal TemelMiktar { get; set; }
+
+    private List<SeriSecenegi>? _seriler;
+
+    private LotSecenegi? SeciliLot => Model.LotNo is { } lot ? new LotSecenegi(lot, null, "", 0m) : null;
+
+    private string SeriYardimi => TemelMiktar > 0 ? $"{Model.Seriler.Count} / {Bicim.Miktar(TemelMiktar)} seri" : $"{Model.Seriler.Count} seri";
+
+    private async Task<IEnumerable<LotSecenegi>> LotAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<List<LotSecenegi>>($"api/stok/kartlar/{KartId}/lotlar{(DepoId is { } d ? $"?depoId={d}" : "")}", cancellationToken);
+        var lotlar = sonuc.BasariliMi ? sonuc.Deger : [];
+        return string.IsNullOrWhiteSpace(arama) ? lotlar : lotlar.Where(l => l.LotNo.Contains(arama.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void LotSecildi(LotSecenegi? lot)
+    {
+        Model.LotNo = lot?.LotNo;
+        Model.Skt = lot?.SonKullanmaTarihi?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private async Task MenuAcildiAsync(bool acik)
+    {
+        if (acik)
+        {
+            var sonuc = await Api.GetAsync<List<SeriSecenegi>>($"api/stok/kartlar/{KartId}/seriler{(DepoId is { } d ? $"?depoId={d}" : "")}");
+            _seriler = sonuc.BasariliMi ? sonuc.Deger : [];
+        }
+    }
+
+    // Stok sözleşmesindeki LotBakiyesi / StoktakiSeri kayıtlarının seçim için gereken alanları.
+    private sealed record LotSecenegi(string LotNo, DateOnly? SonKullanmaTarihi, string DepoAdi, decimal Miktar);
+
+    private sealed record SeriSecenegi(string SeriNo, string DepoAdi);
+}

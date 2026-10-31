@@ -32,7 +32,21 @@ internal static class StokHatalari
     public static readonly Hata ZatenIptalEdilmis = Hata.IsKurali("zaten_iptal", "Bu hareket zaten iptal edilmiş.");
     public static readonly Hata IptalKaydiIptalEdilemez = Hata.IsKurali("iptal_kaydi", "İptal kaydı iptal edilemez.");
 
+    public static readonly Hata IzlemeDegistirilemez = Hata.IsKurali("izleme_degistirilemez", "Hareketi olan kartın izleme türü (lot/seri) değiştirilemez.");
+    public static readonly Hata IzlemeGecersiz = Hata.Dogrulama("izleme_gecersiz", "Hizmet kartı izlenmez; SKT takibi için lot ya da seri izlemesi seçilmelidir.");
+    public static readonly Hata LotGerekli = Hata.Dogrulama("lot_gerekli", "Bu ürün lot/parti ile izleniyor; lot numarası girilmelidir.");
+    public static readonly Hata SktGerekli = Hata.Dogrulama("skt_gerekli", "Bu ürünün girişinde son kullanma tarihi girilmelidir.");
+    public static readonly Hata SeriGerekli = Hata.Dogrulama("seri_gerekli", "Seri takipli üründe miktar tam sayı olmalı ve her adet için bir seri numarası girilmelidir.");
+    public static readonly Hata IzlemeAlaniUzun = Hata.Dogrulama("izleme_uzun", "Lot numarası en çok 50, seri numarası en çok 100 karakter olabilir.");
+
+    public static Hata SeriStoktaYok(string seri) => Hata.IsKurali("seri_stokta_yok", $"{seri} seri numaralı ürün bu depoda yok.");
+
+    public static Hata SeriZatenStokta(string seri) => Hata.IsKurali("seri_stokta", $"{seri} seri numaralı ürün zaten stokta.");
+
     private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    public static Hata YetersizLot(string lot, decimal mevcut, string birim) =>
+        Hata.IsKurali("yetersiz_lot", string.Create(_tr, $"{lot} lotunda yeterli stok yok (mevcut: {mevcut:#,0.####} {Birimler.Ad(birim)})."));
 
     public static Hata YetersizStok(decimal mevcut, string birim) =>
         Hata.IsKurali("yetersiz_stok", string.Create(_tr, $"Depoda yeterli stok yok (mevcut: {mevcut:#,0.####} {Birimler.Ad(birim)})."));

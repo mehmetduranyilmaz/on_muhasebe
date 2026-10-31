@@ -145,7 +145,8 @@ internal sealed class IrsaliyeHazirlayici(
                 return FaturaHatalari.DepoBulunamadi;
             }
 
-            sonuc.Add(new IrsaliyeSatiriBilgisi(kart.Id, kart.Kod, Temiz(s.Ad) ?? kart.Ad, depoId.Value, s.Birim, s.Miktar, s.BirimFiyat, kart.KdvOrani, s.SiparisSatiriId));
+            sonuc.Add(new IrsaliyeSatiriBilgisi(kart.Id, kart.Kod, Temiz(s.Ad) ?? kart.Ad, depoId.Value, s.Birim, s.Miktar, s.BirimFiyat, kart.KdvOrani, s.SiparisSatiriId,
+                s.LotNo, s.SonKullanmaTarihi, s.SeriNolari));
         }
 
         return sonuc;
@@ -308,8 +309,10 @@ internal sealed class IrsaliyeKayitServisi(
         {
             if (i.Tur == IrsaliyeTuru.DepoSevk)
             {
-                hareketler.Add(new BelgeStokHareketi(s.StokKartiId, s.DepoId, StokHareketTuru.TransferCikis, i.SevkTarihi, s.Birim, s.Miktar, null, i.Numara, aciklama));
-                hareketler.Add(new BelgeStokHareketi(s.StokKartiId, i.HedefDepoId!.Value, StokHareketTuru.TransferGiris, i.SevkTarihi, s.Birim, s.Miktar, null, i.Numara, aciklama));
+                hareketler.Add(new BelgeStokHareketi(s.StokKartiId, s.DepoId, StokHareketTuru.TransferCikis, i.SevkTarihi, s.Birim, s.Miktar, null, i.Numara, aciklama,
+                    s.LotNo, s.SonKullanmaTarihi, s.SeriNolari));
+                hareketler.Add(new BelgeStokHareketi(s.StokKartiId, i.HedefDepoId!.Value, StokHareketTuru.TransferGiris, i.SevkTarihi, s.Birim, s.Miktar, null, i.Numara, aciklama,
+                    s.LotNo, s.SonKullanmaTarihi, s.SeriNolari));
                 continue;
             }
 
@@ -319,7 +322,8 @@ internal sealed class IrsaliyeKayitServisi(
                 maliyet = alisMaliyetleri is not null && alisMaliyetleri.TryGetValue(s.Id, out var agirlikli) ? agirlikli : TahminiMaliyet(i, s);
             }
 
-            hareketler.Add(new BelgeStokHareketi(s.StokKartiId, s.DepoId, StokEtkisi(i.Tur), i.SevkTarihi, s.Birim, s.Miktar, maliyet, i.Numara, aciklama));
+            hareketler.Add(new BelgeStokHareketi(s.StokKartiId, s.DepoId, StokEtkisi(i.Tur), i.SevkTarihi, s.Birim, s.Miktar, maliyet, i.Numara, aciklama,
+                s.LotNo, s.SonKullanmaTarihi, s.SeriNolari));
         }
 
         return await stokYazici.YazAsync(i.Id, hareketler, cancellationToken);

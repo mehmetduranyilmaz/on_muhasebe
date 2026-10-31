@@ -293,6 +293,10 @@ else
                                     </MudSelect>
                                 </div>
                             }
+                            @if (s.StokluMu && !s.IrsaliyeliMi && s.Izleme.VarMi && FaturaTurleri.StoklaIliskiliMi(_tur))
+                            {
+                                <IzlemeGirisi Model="s.Izleme" KartId="s.StokKartiId" DepoId="s.DepoId" GirisMi="StokGirisiMi" TemelMiktar="s.TemelMiktar" />
+                            }
                             <div class="fs-toplam">
                                 <div class="fs-toplam-etiket">Tutar</div>
                                 <div class="fs-toplam-deger">@Bicim.Tutar(h?.Toplam ?? 0m)</div>
@@ -492,6 +496,7 @@ else
     private ApiHatasi? _hata;
 
     private bool SatisTarafiMi => FaturaTurleri.SatisTarafiMi(_tur);
+    private bool StokGirisiMi => _tur is FaturaTuru.Alis or FaturaTuru.SatistanIade or FaturaTuru.GiderPusulasi;
     private bool ParaGirisi => FaturaTurleri.ParaGirisiMi(_tur);
     private bool KdvsizMi => FaturaTurleri.KdvsizMi(_tur);
     private bool StopajliMi => FaturaTurleri.StopajliMi(_tur);
@@ -801,21 +806,38 @@ else
 
         var barkod = _barkod.Trim();
         _barkod = null;
-        var sonuc = await Api.GetAsync<BarkodSonucu>($"api/stok/kartlar/barkod/{Uri.EscapeDataString(barkod)}");
+        var sonuc = await Api.GetAsync<BarkodSonucu>($"api/stok/kartlar/barkod?kod={Uri.EscapeDataString(barkod)}");
         if (!sonuc.BasariliMi)
         {
             Snackbar.Add(sonuc.Hata.Baslik, Severity.Warning);
             return;
         }
 
+        // GS1 karekodda lot/SKT/seri de gelir: aynı lot satırına eklenir, aynı seri ikinci kez sayılmaz.
         var b = sonuc.Deger;
-        if (_satirlar.FirstOrDefault(s => s.StokKartiId == b.StokKartiId && s.Birim == b.Birim) is { } mevcut)
+        if (_satirlar.FirstOrDefault(s => s.StokKartiId == b.StokKartiId && s.Birim == b.Birim && !s.IrsaliyeliMi
+                                         && (b.LotNo is null || s.Izleme.LotNo == b.LotNo)) is { } mevcut)
         {
-            mevcut.MiktarDegistir(mevcut.Miktar + 1);
+            if (b.SeriNo is { } seri && mevcut.Izleme.Seriler.Contains(seri))
+            {
+                Snackbar.Add($"{seri} seri numarası zaten okutuldu.", Severity.Info);
+            }
+            else
+            {
+                mevcut.MiktarDegistir(mevcut.Miktar + 1);
+                if (b.SeriNo is { } yeniSeri)
+                {
+                    mevcut.Izleme.SeriEkle(yeniSeri);
+                }
+            }
         }
         else
         {
             await KartliSatirEkleAsync(b.StokKartiId, b.Birim, 1m);
+            if (b.LotNo is not null || b.SeriNo is not null)
+            {
+                _satirlar[^1].Izleme.Yukle(b.LotNo, b.SonKullanmaTarihi, b.SeriNo is { } s ? [s] : null);
+            }
         }
 
         await _barkodAlani.FocusAsync();

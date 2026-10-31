@@ -69,7 +69,10 @@ public sealed record IrsaliyeSatiriIstegi(
     string Birim,
     decimal Miktar,
     decimal? BirimFiyat,
-    Guid? SiparisSatiriId = null);
+    Guid? SiparisSatiriId = null,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // Sevk saati e-İrsaliye'de zorunludur; kâğıt irsaliyede de fiili sevk anı olarak tutulur.
 // Araç/şoför/taşıyıcı alanları kâğıt irsaliyede opsiyonel, e-İrsaliye'de (S5) zorunlu olacaktır.
@@ -120,7 +123,10 @@ public sealed record IrsaliyeSatiriDetayi(
     int KdvOrani,
     decimal FaturalananMiktar,
     decimal KalanMiktar,
-    Guid? SiparisSatiriId);
+    Guid? SiparisSatiriId,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 public sealed record IrsaliyeDetayi(
     Guid Id,

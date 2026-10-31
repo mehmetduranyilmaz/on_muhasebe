@@ -111,11 +111,25 @@ else
 
         @if (_tur == StokTuru.Urun)
         {
-            <FormBolumu Baslik="Stok takibi" Aciklama="Miktar bu seviyeye inince uyarı verilir" Ikon="@Icons.Material.Filled.NotificationImportant" Sira="3">
+            <FormBolumu Baslik="Stok takibi" Aciklama="Kritik seviye uyarısı ve lot/seri izlenebilirliği" Ikon="@Icons.Material.Filled.NotificationImportant" Sira="3">
                 <MudItem xs="12" sm="6" md="3">
                     <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kritikSeviye" Required="Z(StokZorunluAlanlari.KritikSeviye)" RequiredError="Bu alan zorunlu (firma ayarı)."
                                      Label="@($"Kritik seviye ({Birimler.Ad(_temelBirim)})")" Min="0" HideSpinButtons="true" />
                 </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSelect T="IzlemeTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_izleme" Label="İzleme" Disabled="_hareketVarMi"
+                               HelperText="@(_hareketVarMi ? "Hareketi olan kartta değiştirilemez" : "Lot: gıda, kimya, kozmetik · Seri: elektronik, garantili ürün")">
+                        <MudSelectItem Value="IzlemeTuru.Yok">İzleme yok</MudSelectItem>
+                        <MudSelectItem Value="IzlemeTuru.Lot">Lot / parti</MudSelectItem>
+                        <MudSelectItem Value="IzlemeTuru.Seri">Seri numarası</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                @if (_izleme != IzlemeTuru.Yok)
+                {
+                    <MudItem xs="12" sm="6" md="5" Class="d-flex align-center">
+                        <MudSwitch T="bool" @bind-Value="_sktTakibi" Color="Color.Secondary" Label="Son kullanma tarihi (SKT) takibi" />
+                    </MudItem>
+                }
             </FormBolumu>
         }
     </MudForm>
@@ -153,6 +167,8 @@ else
     private string _paraBirimi = ParaBirimleri.Tl;
     private Guid? _grupId;
     private decimal? _kritikSeviye;
+    private IzlemeTuru _izleme;
+    private bool _sktTakibi;
     private string? _aciklama;
     private uint _surum;
     private bool _hareketVarMi;
@@ -183,6 +199,7 @@ else
             (_kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani) = (k.Kod, k.Ad, k.Tur, k.TemelBirim, k.Barkod, k.KdvOrani);
             (_alisFiyati, _satisFiyati, _perakendeFiyati, _paraBirimi, _grupId, _kritikSeviye) = (k.AlisFiyati, k.SatisFiyati, k.PerakendeFiyati, k.ParaBirimi, k.GrupId, k.KritikSeviye);
             (_aciklama, _surum, _hareketVarMi) = (k.Aciklama, k.Surum, k.HareketVarMi);
+            (_izleme, _sktTakibi) = (k.Izleme, k.SktTakibi);
             _ekBirimler.AddRange(k.EkBirimler.Select(b => new EkBirimSatiri { BirimKodu = b.BirimKodu, Katsayi = b.Katsayi, Barkod = b.Barkod }));
         }
 
@@ -209,7 +226,8 @@ else
         var istek = new StokKartiKaydetIstegi(
             _kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani, _alisFiyati, _satisFiyati, _perakendeFiyati, _paraBirimi, _grupId,
             _tur == StokTuru.Urun ? _kritikSeviye : null, _aciklama,
-            _ekBirimler.Select(e => new EkBirim(e.BirimKodu, e.Katsayi, e.Barkod)).ToList(), _surum);
+            _ekBirimler.Select(e => new EkBirim(e.BirimKodu, e.Katsayi, e.Barkod)).ToList(), _surum,
+            _tur == StokTuru.Urun ? _izleme : IzlemeTuru.Yok, _tur == StokTuru.Urun && _izleme != IzlemeTuru.Yok && _sktTakibi);
         var sonuc = Id is { } id
             ? await Api.PutAsync<StokKartiDetayi>($"api/stok/kartlar/{id}", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PostAsync<StokKartiDetayi>("api/stok/kartlar", istek, islemAnahtari: _anahtar.Deger);

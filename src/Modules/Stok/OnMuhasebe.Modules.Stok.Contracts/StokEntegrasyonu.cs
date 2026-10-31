@@ -12,7 +12,9 @@ public sealed record StokKartiBilgisi(
     string TemelBirim,
     IReadOnlyList<EkBirim> EkBirimler,
     int KdvOrani,
-    bool AktifMi)
+    bool AktifMi,
+    IzlemeTuru Izleme = IzlemeTuru.Yok,
+    bool SktTakibi = false)
 {
     public bool BirimTanimliMi(string birim) => birim == TemelBirim || EkBirimler.Any(b => b.BirimKodu == birim);
 
@@ -49,7 +51,10 @@ public sealed record BelgeStokHareketi(
     decimal Miktar,
     decimal? BirimFiyat,
     string? BelgeNo,
-    string? Aciklama);
+    string? Aciklama,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // Kaynak belgeye bağlı hareketler yalnızca bu sözleşmeyle yazılır ve iptal edilir; elle iptal edilemez.
 public interface IStokHareketYazici

@@ -25,6 +25,8 @@ internal static class StokKartiIslemleri
         kartlar.MapGet("", ListeleAsync);
         kartlar.MapGet("/{id:guid}", DetayAsync);
         kartlar.MapGet("/barkod/{barkod}", BarkodlaBulAsync);
+        // GS1 karekodundaki GS ayıracı (0x1D) yol parçasında taşınamaz; okuyucu çıktısı sorgu parametresiyle gönderilir.
+        kartlar.MapGet("/barkod", (string kod, StokDbContext db, CancellationToken ct) => BarkodlaBulAsync(kod, db, ct));
         kartlar.MapPost("", EkleAsync).Dogrula<StokKartiKaydetIstegi>();
         kartlar.MapPut("/{id:guid}", GuncelleAsync).Dogrula<StokKartiKaydetIstegi>();
         kartlar.MapPost("/{id:guid}/pasiflestir", (Guid id, StokDbContext db, CancellationToken ct) => DurumAsync(id, db, k => k.Pasiflestir(), ct));
@@ -116,17 +118,21 @@ internal static class StokKartiIslemleri
         return detay is null ? StokHatalari.KartBulunamadi.Problem() : TypedResults.Ok(detay);
     }
 
+    // Düz barkod (EAN/UPC) ya da GS1 karekod/barkod: GS1'de GTIN ile kart bulunur, lot/SKT/seri de döner.
     private static async Task<IResult> BarkodlaBulAsync(string barkod, StokDbContext db, CancellationToken cancellationToken)
     {
+        var gs1 = Gs1Ayrastirici.Ayristir(barkod);
+        IReadOnlyList<string> adaylar = gs1 is null ? [barkod] : Gs1Ayrastirici.BarkodAdaylari(gs1.Gtin);
         var kart = await db.StokKartlari.AsNoTracking().Include(k => k.Birimler)
-            .FirstOrDefaultAsync(k => k.Barkod == barkod || k.Birimler.Any(b => b.Barkod == barkod), cancellationToken);
+            .FirstOrDefaultAsync(k => adaylar.Contains(k.Barkod!) || k.Birimler.Any(b => adaylar.Contains(b.Barkod!)), cancellationToken);
         if (kart is null)
         {
             return StokHatalari.BarkodBulunamadi.Problem();
         }
 
-        var birim = kart.Birimler.FirstOrDefault(b => b.Barkod == barkod);
-        return TypedResults.Ok(new BarkodSonucu(kart.Id, kart.Kod, kart.Ad, birim?.BirimKodu ?? kart.TemelBirim, birim?.Katsayi ?? 1m));
+        var birim = kart.Birimler.FirstOrDefault(b => b.Barkod is not null && adaylar.Contains(b.Barkod));
+        return TypedResults.Ok(new BarkodSonucu(kart.Id, kart.Kod, kart.Ad, birim?.BirimKodu ?? kart.TemelBirim, birim?.Katsayi ?? 1m,
+            gs1?.LotNo, gs1?.SonKullanmaTarihi, gs1?.SeriNo));
     }
 
     private static async Task<IResult> EkleAsync(
@@ -248,7 +254,9 @@ internal static class StokKartiIslemleri
             Math.Round(hesap?.Deger ?? 0m, 2),
             ayar.MaliyetYontemi,
             hesap is not null,
-            kart.Surum);
+            kart.Surum,
+            kart.Izleme,
+            kart.SktTakibi);
     }
 
     // Grup var mı, barkodlar (kart + ek birimler) firma içinde benzersiz mi.

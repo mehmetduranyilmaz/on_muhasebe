@@ -28,7 +28,10 @@ public sealed record StokHareketKaydetIstegi(
     decimal Miktar,
     decimal? BirimFiyat,
     string? BelgeNo,
-    string? Aciklama);
+    string? Aciklama,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 public sealed record TransferIstegi(
     Guid KaynakDepoId,
@@ -36,7 +39,9 @@ public sealed record TransferIstegi(
     DateOnly Tarih,
     string Birim,
     decimal Miktar,
-    string? Aciklama);
+    string? Aciklama,
+    string? LotNo = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // Miktarlar temel birimdedir; girilen birim ve miktar ayrıca gösterim için tutulur.
 public sealed record StokHareketSatiri(
@@ -54,7 +59,10 @@ public sealed record StokHareketSatiri(
     bool IptalEdildiMi,
     bool IptalKaydiMi,
     bool ElleIptalEdilebilirMi,
-    Guid? KaynakBelgeId);
+    Guid? KaynakBelgeId,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // Eksi stok ayarı "Uyar" ise kayıt yapılır ve uyarı döner.
 public sealed record StokHareketCevabi(IReadOnlyList<StokHareketSatiri> Hareketler, string? Uyari);

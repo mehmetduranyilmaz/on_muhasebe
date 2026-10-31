@@ -30,6 +30,7 @@ public sealed class StokModulu : IModul
         services.AddScoped<StokAyarServisi>();
         services.AddScoped<StokHesaplayici>();
         services.AddScoped<StokCikisKontrolu>();
+        services.AddScoped<IzlenebilirlikServisi>();
         services.AddScoped<IStokSorgusu, StokSorgusu>();
         services.AddScoped<IStokHareketYazici, StokHareketYazici>();
     }
@@ -44,5 +45,6 @@ public sealed class StokModulu : IModul
         StokTanimIslemleri.Map(grup);
         StokRaporlari.Map(grup);
         FiyatListesiIslemleri.Map(grup);
+        IzlenebilirlikIslemleri.Map(grup);
     }
 }

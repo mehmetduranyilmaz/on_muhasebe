@@ -223,6 +223,10 @@ else
                                     </MudSelect>
                                 </div>
                             }
+                            @if (s.Izleme.VarMi)
+                            {
+                                <IzlemeGirisi Model="s.Izleme" KartId="s.StokKartiId" DepoId="s.DepoId" GirisMi="StokGirisiMi" TemelMiktar="s.TemelMiktar" />
+                            }
                             @if (FiyatGorunur)
                             {
                                 <div class="fs-toplam">
@@ -536,21 +540,38 @@ else
 
         var barkod = _barkod.Trim();
         _barkod = null;
-        var sonuc = await Api.GetAsync<BarkodSonucu>($"api/stok/kartlar/barkod/{Uri.EscapeDataString(barkod)}");
+        var sonuc = await Api.GetAsync<BarkodSonucu>($"api/stok/kartlar/barkod?kod={Uri.EscapeDataString(barkod)}");
         if (!sonuc.BasariliMi)
         {
             Snackbar.Add(sonuc.Hata.Baslik, Severity.Warning);
             return;
         }
 
+        // GS1 karekodda lot/SKT/seri de gelir: aynı lot satırına eklenir, aynı seri ikinci kez sayılmaz.
         var b = sonuc.Deger;
-        if (_satirlar.FirstOrDefault(s => s.StokKartiId == b.StokKartiId && s.Birim == b.Birim) is { } mevcut)
+        if (_satirlar.FirstOrDefault(s => s.StokKartiId == b.StokKartiId && s.Birim == b.Birim
+                                         && (b.LotNo is null || s.Izleme.LotNo == b.LotNo)) is { } mevcut)
         {
-            mevcut.Miktar++;
+            if (b.SeriNo is { } seri && mevcut.Izleme.Seriler.Contains(seri))
+            {
+                Snackbar.Add($"{seri} seri numarası zaten okutuldu.", Severity.Info);
+            }
+            else
+            {
+                mevcut.Miktar++;
+                if (b.SeriNo is { } yeniSeri)
+                {
+                    mevcut.Izleme.SeriEkle(yeniSeri);
+                }
+            }
         }
         else
         {
             await SatirEkleAsync(b.StokKartiId, b.Birim);
+            if (b.LotNo is not null || b.SeriNo is not null)
+            {
+                _satirlar[^1].Izleme.Yukle(b.LotNo, b.SonKullanmaTarihi, b.SeriNo is { } s ? [s] : null);
+            }
         }
 
         await _barkodAlani.FocusAsync();

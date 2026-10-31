@@ -29,7 +29,9 @@ public sealed record StokKartiKaydetIstegi(
     decimal? KritikSeviye,
     string? Aciklama,
     IReadOnlyList<EkBirim>? EkBirimler,
-    uint Surum = 0);
+    uint Surum = 0,
+    IzlemeTuru Izleme = IzlemeTuru.Yok,
+    bool SktTakibi = false);
 
 public sealed record StokKartiOzeti(
     Guid Id,
@@ -76,10 +78,15 @@ public sealed record StokKartiDetayi(
     decimal StokDegeri,
     MaliyetYontemi MaliyetYontemi,
     bool HareketVarMi,
-    uint Surum);
+    uint Surum,
+    IzlemeTuru Izleme = IzlemeTuru.Yok,
+    bool SktTakibi = false);
 
 // Barkod okutma: barkod kartın kendisine ya da ek birimlerinden birine ait olabilir.
-public sealed record BarkodSonucu(Guid StokKartiId, string Kod, string Ad, string Birim, decimal Katsayi);
+// GS1 karekod okutulduysa lot, SKT ve seri de döner.
+public sealed record BarkodSonucu(
+    Guid StokKartiId, string Kod, string Ad, string Birim, decimal Katsayi,
+    string? LotNo = null, DateOnly? SonKullanmaTarihi = null, string? SeriNo = null);
 
 public sealed record Depo(Guid Id, string Ad, bool VarsayilanMi, bool AktifMi, string? Adres = null, string? Il = null, string? Ilce = null)
 {

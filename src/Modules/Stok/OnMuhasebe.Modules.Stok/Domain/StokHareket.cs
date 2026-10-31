@@ -12,6 +12,8 @@ internal sealed class StokHareket : FirmaEntity, IDonemeTabi
 {
     public const int MiktarOndalik = 4;
 
+    private readonly List<StokHareketSeri> _seriler = [];
+
     private StokHareket() { }
 
     public Guid StokKartiId { get; private set; }
@@ -30,6 +32,11 @@ internal sealed class StokHareket : FirmaEntity, IDonemeTabi
     public Guid? IptalEdilenHareketId { get; private set; }
     [DonemKilidiDisinda]
     public Guid? IptalHareketId { get; private set; }
+
+    // İzlenebilirlik: lot/parti, son kullanma tarihi ve (seri takipte) her temel birim için bir seri numarası.
+    public string? LotNo { get; private set; }
+    public DateOnly? SonKullanmaTarihi { get; private set; }
+    public IReadOnlyCollection<StokHareketSeri> Seriler => _seriler;
 
     public bool IptalEdildiMi => IptalHareketId is not null;
     public bool IptalKaydiMi => IptalEdilenHareketId is not null;
@@ -56,7 +63,8 @@ internal sealed class StokHareket : FirmaEntity, IDonemeTabi
         string? belgeNo,
         string? aciklama,
         Guid? transferId = null,
-        Guid? kaynakBelgeId = null)
+        Guid? kaynakBelgeId = null,
+        Izlenebilirlik? izleme = null)
     {
         if (kart.Tur == StokTuru.Hizmet)
         {
@@ -97,7 +105,14 @@ internal sealed class StokHareket : FirmaEntity, IDonemeTabi
 
         var miktar = Math.Round(girilenMiktar * katsayi, MiktarOndalik, MidpointRounding.AwayFromZero);
         var giris = GirisMi(tur);
-        return new StokHareket
+        var izlemeSonucu = IzlemeAyikla(kart, tur, miktar, izleme ?? Izlenebilirlik.Bos);
+        if (!izlemeSonucu.BasariliMi)
+        {
+            return izlemeSonucu.Hata;
+        }
+
+        var (lot, skt, seriler) = izlemeSonucu.Deger;
+        var hareket = new StokHareket
         {
             StokKartiId = kart.Id,
             DepoId = depoId,
@@ -111,8 +126,54 @@ internal sealed class StokHareket : FirmaEntity, IDonemeTabi
             BelgeNo = belgeNo,
             Aciklama = aciklama,
             TransferId = transferId,
-            KaynakBelgeId = kaynakBelgeId
+            KaynakBelgeId = kaynakBelgeId,
+            LotNo = lot,
+            SonKullanmaTarihi = skt
         };
+        hareket._seriler.AddRange(seriler.Select(s => new StokHareketSeri(hareket.Id, kart.Id, s)));
+        return hareket;
+    }
+
+    // Çıkışta SKT girilmez; lotun girişteki tarihi kaydedilir (izlenebilirlik raporu ve ileride iade girişi için).
+    public void LotSktAta(DateOnly? skt) => SonKullanmaTarihi ??= skt;
+
+    // Kartın izleme türüne göre gereken alanlar denetlenir; gerekmeyenler atılır. Transfer girişinde SKT kaynak lottan gelir.
+    private static Sonuc<(string? Lot, DateOnly? Skt, List<string> Seriler)> IzlemeAyikla(
+        StokKarti kart, StokHareketTuru tur, decimal temelMiktar, Izlenebilirlik izleme)
+    {
+        if (kart.Izleme == IzlemeTuru.Yok)
+        {
+            return (null, null, []);
+        }
+
+        var lot = string.IsNullOrWhiteSpace(izleme.LotNo) ? null : izleme.LotNo.Trim().ToUpperInvariant();
+        var seriler = izleme.SeriNolari?.Select(s => s.Trim()).Where(s => s.Length > 0).Distinct(StringComparer.Ordinal).ToList() ?? [];
+        if (lot?.Length > IzlenebilirlikKurallari.LotUzunlugu || seriler.Any(s => s.Length > IzlenebilirlikKurallari.SeriUzunlugu))
+        {
+            return StokHatalari.IzlemeAlaniUzun;
+        }
+
+        if (kart.Izleme == IzlemeTuru.Lot)
+        {
+            if (lot is null)
+            {
+                return StokHatalari.LotGerekli;
+            }
+
+            seriler = [];
+        }
+        else if (temelMiktar != decimal.Truncate(temelMiktar) || seriler.Count != (int)temelMiktar)
+        {
+            return StokHatalari.SeriGerekli;
+        }
+
+        var skt = kart.SktTakibi ? izleme.SonKullanmaTarihi : null;
+        if (kart.SktTakibi && skt is null && GirisMi(tur) && tur != StokHareketTuru.TransferGiris)
+        {
+            return StokHatalari.SktGerekli;
+        }
+
+        return (lot, skt, seriler);
     }
 
     // Ters kayıt aynı tarih, depo ve fiyatla atılır.
@@ -143,10 +204,25 @@ internal sealed class StokHareket : FirmaEntity, IDonemeTabi
             Aciklama = $"İptal: {Aciklama}".TrimEnd(' ', ':'),
             TransferId = TransferId,
             KaynakBelgeId = KaynakBelgeId,
-            IptalEdilenHareketId = Id
+            IptalEdilenHareketId = Id,
+            LotNo = LotNo,
+            SonKullanmaTarihi = SonKullanmaTarihi
         };
+        ters._seriler.AddRange(_seriler.Select(s => new StokHareketSeri(ters.Id, StokKartiId, s.SeriNo)));
 
         IptalHareketId = ters.Id;
         return ters;
     }
+}
+
+// Seri takipli hareketin her temel birimine ait seri numarası. Seri, girişte depoya girer, çıkışta çıkar; ters kayıt tersine işler.
+internal sealed class StokHareketSeri : BaseEntity
+{
+    private StokHareketSeri() { }
+
+    public StokHareketSeri(Guid hareketId, Guid stokKartiId, string seriNo) => (HareketId, StokKartiId, SeriNo) = (hareketId, stokKartiId, seriNo);
+
+    public Guid HareketId { get; private set; }
+    public Guid StokKartiId { get; private set; }
+    public string SeriNo { get; private set; } = null!;
 }

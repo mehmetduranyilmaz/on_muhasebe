@@ -1,3 +1,4 @@
+using OnMuhasebe.Web.Bilesenler;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Shared.Contracts.Birimler;
@@ -114,8 +115,14 @@ public sealed class FaturaSatirModeli
         Birim = yeni;
     }
 
+    // Lot/seri izlenen üründe stok hareketine giden lot, SKT ve seriler.
+    public IzlemeModeli Izleme { get; } = new();
+
+    public decimal TemelMiktar => Miktar * Katsayi(Birim);
+
     public void KartAta(StokKartiDetayi kart)
     {
+        Izleme.Ayarla(kart.Izleme.ToString(), kart.SktTakibi);
         StokKartiId = kart.Id;
         StokKodu = kart.Kod;
         KartTuru = kart.Tur;
@@ -129,6 +136,7 @@ public sealed class FaturaSatirModeli
     // Düzenlenen faturada satırın kendi değerleri korunur; yalnızca birim seçenekleri karttan alınır.
     public void BirimleriAta(StokKartiDetayi kart)
     {
+        Izleme.Ayarla(kart.Izleme.ToString(), kart.SktTakibi);
         TemelBirim = kart.TemelBirim;
         EkBirimler = kart.EkBirimler;
     }
@@ -137,9 +145,17 @@ public sealed class FaturaSatirModeli
 
     public FaturaSatiriIstegi Istek() =>
         new(StokKartiId, Ad, StokluMu ? DepoId : null, Birim, Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3,
-            TevkifatKodu, TevkifatPay, TevkifatPayda, IrsaliyeSatiriId, SiparisSatiriId);
+            TevkifatKodu, TevkifatPay, TevkifatPayda, IrsaliyeSatiriId, SiparisSatiriId,
+            IrsaliyeliMi ? null : Izleme.LotIstegi, IrsaliyeliMi ? null : Izleme.SktIstegi, IrsaliyeliMi ? null : Izleme.SeriIstegi);
 
-    public static FaturaSatirModeli Detaydan(FaturaSatiriDetayi s) => new()
+    public static FaturaSatirModeli Detaydan(FaturaSatiriDetayi s)
+    {
+        var satir = DetayModeli(s);
+        satir.Izleme.Yukle(s.LotNo, s.SonKullanmaTarihi, s.SeriNolari);
+        return satir;
+    }
+
+    private static FaturaSatirModeli DetayModeli(FaturaSatiriDetayi s) => new()
     {
         StokKartiId = s.StokKartiId,
         StokKodu = s.StokKodu,

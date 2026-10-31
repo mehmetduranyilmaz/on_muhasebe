@@ -27,6 +27,10 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
     public Guid? GrupId { get; private set; }
     public decimal? KritikSeviye { get; private set; }
     public string? Aciklama { get; private set; }
+    public IzlemeTuru Izleme { get; private set; }
+
+    // Son kullanma tarihi lot/seri girişinde zorunlu tutulur (gıda, ilaç, kozmetik).
+    public bool SktTakibi { get; private set; }
     public bool AktifMi { get; private set; } = true;
     public bool SilindiMi { get; private set; }
     public DateTime? SilinmeTarihi { get; private set; }
@@ -36,6 +40,11 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
 
     public static Sonuc<StokKarti> Olustur(string kod, StokKartiBilgileri bilgiler, IEnumerable<EkBirim> ekBirimler)
     {
+        if (IzlemeHatasi(bilgiler) is { } izlemeHatasi)
+        {
+            return izlemeHatasi;
+        }
+
         var kart = new StokKarti { Kod = kod, Tur = bilgiler.Tur, TemelBirim = bilgiler.TemelBirim };
         kart.BilgileriAyarla(bilgiler);
         var sonuc = kart.BirimleriAyarla(ekBirimler);
@@ -53,6 +62,16 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
         if (hareketVarMi && bilgiler.Tur != Tur)
         {
             return StokHatalari.TurDegistirilemez;
+        }
+
+        if (hareketVarMi && bilgiler.Izleme != Izleme)
+        {
+            return StokHatalari.IzlemeDegistirilemez;
+        }
+
+        if (IzlemeHatasi(bilgiler) is { } izlemeHatasi)
+        {
+            return izlemeHatasi;
         }
 
         var sonuc = BirimleriAyarla(ekBirimler, bilgiler.TemelBirim);
@@ -103,7 +122,13 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
         GrupId = b.GrupId;
         KritikSeviye = b.Tur == StokTuru.Hizmet ? null : b.KritikSeviye;
         Aciklama = b.Aciklama;
+        Izleme = b.Tur == StokTuru.Urun ? b.Izleme : IzlemeTuru.Yok;
+        SktTakibi = Izleme != IzlemeTuru.Yok && b.SktTakibi;
     }
+
+    // Hizmet izlenmez; SKT bir lota ya da seriye bağlı olduğundan izleme olmadan tutulamaz.
+    private static Hata? IzlemeHatasi(StokKartiBilgileri b) =>
+        (b.Tur == StokTuru.Hizmet && b.Izleme != IzlemeTuru.Yok) || (b.SktTakibi && b.Izleme == IzlemeTuru.Yok) ? StokHatalari.IzlemeGecersiz : null;
 }
 
 internal sealed record StokKartiBilgileri(
@@ -118,11 +143,13 @@ internal sealed record StokKartiBilgileri(
     string ParaBirimi,
     Guid? GrupId,
     decimal? KritikSeviye,
-    string? Aciklama)
+    string? Aciklama,
+    IzlemeTuru Izleme = IzlemeTuru.Yok,
+    bool SktTakibi = false)
 {
     public static StokKartiBilgileri Istekten(StokKartiKaydetIstegi i) => new(
         i.Ad.Trim(), i.Tur, i.TemelBirim, Temiz(i.Barkod), i.KdvOrani, i.AlisFiyati, i.SatisFiyati, i.PerakendeFiyati, i.ParaBirimi,
-        i.GrupId, i.KritikSeviye, Temiz(i.Aciklama));
+        i.GrupId, i.KritikSeviye, Temiz(i.Aciklama), i.Izleme, i.SktTakibi);
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

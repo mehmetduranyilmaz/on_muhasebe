@@ -48,6 +48,13 @@
                     <MudItem xs="4">
                         <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Tarih" Required="true" RequiredError="Tarih gerekli." />
                     </MudItem>
+                    @if (_izleme.VarMi)
+                    {
+                        <MudItem xs="12">
+                            <IzlemeGirisi Model="_izleme" KartId="Kart.Id" DepoId="_kaynak" GirisMi="false"
+                                          TemelMiktar="(_miktar ?? 0m) * (Kart.EkBirimler.FirstOrDefault(b => b.BirimKodu == _birim)?.Katsayi ?? 1m)" />
+                        </MudItem>
+                    }
                     <MudItem xs="12">
                         <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
                     </MudItem>
@@ -80,6 +87,7 @@
     private Guid? _hedef;
     private DateTime? _tarih;
     private string _birim = "";
+    private readonly IzlemeModeli _izleme = new();
     private decimal? _miktar;
     private string? _aciklama;
     private ApiHatasi? _hata;
@@ -88,6 +96,7 @@
     {
         _tarih = Zaman.GetLocalNow().Date;
         _birim = Kart.TemelBirim;
+        _izleme.Ayarla(Kart.Izleme.ToString(), Kart.SktTakibi);
         var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
         _depolar = depolar.BasariliMi ? depolar.Deger.Where(d => d.AktifMi).ToList() : [];
         _kaynak = _depolar.Find(d => d.VarsayilanMi)?.Id ?? _depolar.FirstOrDefault()?.Id;
@@ -102,7 +111,8 @@
             return;
         }
 
-        var istek = new TransferIstegi(_kaynak.Value, _hedef.Value, DateOnly.FromDateTime(_tarih!.Value), _birim, _miktar!.Value, _aciklama);
+        var istek = new TransferIstegi(_kaynak.Value, _hedef.Value, DateOnly.FromDateTime(_tarih!.Value), _birim, _miktar!.Value, _aciklama,
+            _izleme.LotIstegi, _izleme.SeriIstegi);
         var sonuc = await Api.PostAsync<StokHareketCevabi>($"api/stok/kartlar/{Kart.Id}/transferler", istek);
         if (sonuc.BasariliMi)
         {

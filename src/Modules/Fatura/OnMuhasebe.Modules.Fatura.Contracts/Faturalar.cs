@@ -85,7 +85,10 @@ public sealed record FaturaSatiriIstegi(
     int TevkifatPay = 0,
     int TevkifatPayda = 0,
     Guid? IrsaliyeSatiriId = null,
-    Guid? SiparisSatiriId = null);
+    Guid? SiparisSatiriId = null,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // PesinHesapId verilirse fatura kesinleşirken o kasa/banka/POS hesabından peşin tahsil edilir (ödenir).
 // Numara yalnızca gelen faturalarda (alış, satıştan iade) girilir; giden faturaların numarası otomatik verilir.
@@ -151,7 +154,10 @@ public sealed record FaturaSatiriDetayi(
     int TevkifatPayda,
     decimal TevkifEdilenKdv,
     Guid? IrsaliyeSatiriId,
-    Guid? SiparisSatiriId);
+    Guid? SiparisSatiriId,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // Cari bilgileri fatura anındaki kopyadır; cari kartı sonradan değişse de fatura değişmez.
 public sealed record FaturaDetayi(

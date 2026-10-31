@@ -248,6 +248,9 @@ internal sealed class IrsaliyeSatiri : BaseEntity
     public int KdvOrani { get; private set; }
     public decimal FaturalananMiktar { get; private set; }
     public Guid? SiparisSatiriId { get; private set; }
+    public string? LotNo { get; private set; }
+    public DateOnly? SonKullanmaTarihi { get; private set; }
+    public List<string>? SeriNolari { get; private set; }
 
     public decimal KalanMiktar => IrsaliyeHesaplari.Kalan(Miktar, FaturalananMiktar);
 
@@ -263,7 +266,10 @@ internal sealed class IrsaliyeSatiri : BaseEntity
         Miktar = b.Miktar,
         BirimFiyat = depoSevkMi ? null : b.BirimFiyat,
         KdvOrani = b.KdvOrani,
-        SiparisSatiriId = depoSevkMi ? null : b.SiparisSatiriId
+        SiparisSatiriId = depoSevkMi ? null : b.SiparisSatiriId,
+        LotNo = IzlemeAlanlari.Lot(b.LotNo),
+        SonKullanmaTarihi = b.SonKullanmaTarihi,
+        SeriNolari = IzlemeAlanlari.Seriler(b.SeriNolari)
     };
 
     public Sonuc FaturalananAyarla(decimal toplam)
@@ -287,7 +293,10 @@ internal sealed record IrsaliyeSatiriBilgisi(
     decimal Miktar,
     decimal? BirimFiyat,
     int KdvOrani,
-    Guid? SiparisSatiriId = null);
+    Guid? SiparisSatiriId = null,
+    string? LotNo = null,
+    DateOnly? SonKullanmaTarihi = null,
+    IReadOnlyList<string>? SeriNolari = null);
 
 // İstek, cari/stok/depo bilgileriyle çözümlendikten sonra entity'ye verilen hali. Depo sevkinde Cari boştur;
 // "alıcı" olarak hedef deponun adı yazılır.
@@ -310,3 +319,12 @@ internal sealed record IrsaliyeBilgileri(
     string? TasiyiciVkn,
     string? Aciklama,
     IReadOnlyList<IrsaliyeSatiriBilgisi> Satirlar);
+
+// Belge satırındaki lot/seri girdisinin saklanacak biçimi; kartın izleme kuralları stok hareketi yazılırken uygulanır.
+internal static class IzlemeAlanlari
+{
+    public static string? Lot(string? lot) => string.IsNullOrWhiteSpace(lot) ? null : lot.Trim().ToUpperInvariant();
+
+    public static List<string>? Seriler(IReadOnlyList<string>? seriler) =>
+        seriler?.Select(s => s.Trim()).Where(s => s.Length > 0).Distinct(StringComparer.Ordinal).ToList() is { Count: > 0 } liste ? liste : null;
+}

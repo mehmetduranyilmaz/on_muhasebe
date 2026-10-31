@@ -384,7 +384,8 @@ internal sealed class FaturaKayitServisi(
                 .Where(s => s.StokluMu && s.IrsaliyeSatiriId is null)
                 .OrderBy(s => s.Sira)
                 .Select(s => new BelgeStokHareketi(
-                    s.StokKartiId!.Value, s.DepoId!.Value, stokTuru, f.Tarih, s.Birim, s.Miktar, StokMaliyeti(f, s), f.Numara, aciklama))
+                    s.StokKartiId!.Value, s.DepoId!.Value, stokTuru, f.Tarih, s.Birim, s.Miktar, StokMaliyeti(f, s), f.Numara, aciklama,
+                    s.LotNo, s.SonKullanmaTarihi, s.SeriNolari))
                 .ToList();
 
             stok = await stokYazici.YazAsync(f.Id, stokHareketleri, cancellationToken);

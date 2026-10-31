@@ -1,3 +1,4 @@
+using OnMuhasebe.Web.Bilesenler;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
 
@@ -44,8 +45,13 @@ public sealed class IrsaliyeSatirModeli
         Birim = yeni;
     }
 
+    public IzlemeModeli Izleme { get; } = new();
+
+    public decimal TemelMiktar => Miktar * Katsayi(Birim);
+
     public void KartAta(StokKartiDetayi kart)
     {
+        Izleme.Ayarla(kart.Izleme.ToString(), kart.SktTakibi);
         StokKartiId = kart.Id;
         StokKodu = kart.Kod;
         TemelBirim = kart.TemelBirim;
@@ -56,11 +62,13 @@ public sealed class IrsaliyeSatirModeli
 
     public void BirimleriAta(StokKartiDetayi kart)
     {
+        Izleme.Ayarla(kart.Izleme.ToString(), kart.SktTakibi);
         TemelBirim = kart.TemelBirim;
         EkBirimler = kart.EkBirimler;
     }
 
-    public IrsaliyeSatiriIstegi Istek(bool fiyatli) => new(StokKartiId, Ad, DepoId, Birim, Miktar, fiyatli ? BirimFiyat : null, SiparisSatiriId);
+    public IrsaliyeSatiriIstegi Istek(bool fiyatli) => new(StokKartiId, Ad, DepoId, Birim, Miktar, fiyatli ? BirimFiyat : null, SiparisSatiriId,
+        Izleme.LotIstegi, Izleme.SktIstegi, Izleme.SeriIstegi);
 
     // İrsaliye fiyatı KDV hariçtir: siparişteki KDV dahil fiyat hariçe, iskontolar düşülerek çevrilir (döviz farkını çağıran çevirir).
     public static IrsaliyeSatirModeli Siparisten(AktarilacakSiparisSatiri a, decimal miktar, StokKartiDetayi kart)
@@ -79,7 +87,14 @@ public sealed class IrsaliyeSatirModeli
         return satir;
     }
 
-    public static IrsaliyeSatirModeli Detaydan(IrsaliyeSatiriDetayi s) => new()
+    public static IrsaliyeSatirModeli Detaydan(IrsaliyeSatiriDetayi s)
+    {
+        var satir = DetayModeli(s);
+        satir.Izleme.Yukle(s.LotNo, s.SonKullanmaTarihi, s.SeriNolari);
+        return satir;
+    }
+
+    private static IrsaliyeSatirModeli DetayModeli(IrsaliyeSatiriDetayi s) => new()
     {
         StokKartiId = s.StokKartiId,
         StokKodu = s.StokKodu,

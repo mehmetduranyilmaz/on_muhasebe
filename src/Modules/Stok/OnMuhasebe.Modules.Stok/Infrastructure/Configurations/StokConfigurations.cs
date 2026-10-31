@@ -9,6 +9,7 @@ internal sealed class StokKartiConfiguration : IEntityTypeConfiguration<StokKart
     public void Configure(EntityTypeBuilder<StokKarti> builder)
     {
         builder.ToTable("stok_karti");
+        builder.Property(x => x.Izleme).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Kod).HasMaxLength(30);
         builder.Property(x => x.Ad).HasMaxLength(250);
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(10);
@@ -67,6 +68,23 @@ internal sealed class StokHareketConfiguration : IEntityTypeConfiguration<StokHa
         builder.HasIndex(x => x.KaynakBelgeId);
         builder.HasOne<StokKarti>().WithMany().HasForeignKey(x => x.StokKartiId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Depo>().WithMany().HasForeignKey(x => x.DepoId).OnDelete(DeleteBehavior.Restrict);
+
+        // Lot bakiyesi (kart + depo + lot) ve SKT raporu bu index'ten okunur.
+        builder.Property(x => x.LotNo).HasMaxLength(50);
+        builder.HasIndex(x => new { x.FirmaId, x.StokKartiId, x.LotNo }).HasFilter("lot_no IS NOT NULL");
+        builder.HasMany(x => x.Seriler).WithOne().HasForeignKey(x => x.HareketId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Seriler).HasField("_seriler");
+    }
+}
+
+internal sealed class StokHareketSeriConfiguration : IEntityTypeConfiguration<StokHareketSeri>
+{
+    public void Configure(EntityTypeBuilder<StokHareketSeri> builder)
+    {
+        builder.ToTable("stok_hareket_seri");
+        builder.Property(x => x.SeriNo).HasMaxLength(100);
+        builder.HasIndex(x => new { x.StokKartiId, x.SeriNo });
+        builder.HasIndex(x => x.SeriNo);
     }
 }
 

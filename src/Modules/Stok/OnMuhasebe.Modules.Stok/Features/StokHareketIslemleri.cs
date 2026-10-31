@@ -68,7 +68,7 @@ internal static class StokHareketIslemleri
                     && (h.Tur == StokHareketTuru.Acilis || h.Tur == StokHareketTuru.SayimFazlasi || h.Tur == StokHareketTuru.SayimEksigi
                         || h.Tur == StokHareketTuru.Fire || h.Tur == StokHareketTuru.Sarf
                         || h.Tur == StokHareketTuru.TransferGiris || h.Tur == StokHareketTuru.TransferCikis),
-                    h.KaynakBelgeId))
+                    h.KaynakBelgeId, h.LotNo, h.SonKullanmaTarihi, h.Seriler.Select(s => s.SeriNo).ToList()))
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
 
         return TypedResults.Ok(sonuc);
@@ -76,7 +76,7 @@ internal static class StokHareketIslemleri
 
     private static async Task<IResult> EkleAsync(
         Guid kartId, StokHareketKaydetIstegi istek, StokDbContext db, DepoServisi depoServisi, StokCikisKontrolu cikisKontrolu,
-        CancellationToken cancellationToken)
+        IzlenebilirlikServisi izlenebilirlik, CancellationToken cancellationToken)
     {
         var kart = await db.StokKartlari.Include(k => k.Birimler).SingleOrDefaultAsync(k => k.Id == kartId, cancellationToken);
         if (kart is null)
@@ -91,14 +91,20 @@ internal static class StokHareketIslemleri
         }
 
         var sonuc = StokHareket.Olustur(kart, depoId, istek.Tur, istek.Tarih, istek.Birim, istek.Miktar, istek.BirimFiyat,
-            Temiz(istek.BelgeNo), Temiz(istek.Aciklama));
+            Temiz(istek.BelgeNo), Temiz(istek.Aciklama), izleme: new Izlenebilirlik(istek.LotNo, istek.SonKullanmaTarihi, istek.SeriNolari));
         if (!sonuc.BasariliMi)
         {
             return sonuc.HttpSonucu();
         }
 
         var hareket = sonuc.Deger;
-        string? uyari = null;
+        var izleme = await izlenebilirlik.KontrolEtAsync([hareket], new Dictionary<Guid, StokKarti> { [kart.Id] = kart }, cancellationToken);
+        if (!izleme.BasariliMi)
+        {
+            return izleme.HttpSonucu();
+        }
+
+        var uyari = izleme.Deger.Count == 0 ? null : string.Join(" ", izleme.Deger);
         if (hareket.CikisMiktari > 0)
         {
             var kontrol = await cikisKontrolu.KontrolEtAsync(kart, depoId, hareket.CikisMiktari, cancellationToken);
@@ -107,7 +113,7 @@ internal static class StokHareketIslemleri
                 return kontrol.HttpSonucu();
             }
 
-            uyari = kontrol.Deger;
+            uyari = kontrol.Deger ?? uyari;
         }
 
         db.StokHareketleri.Add(hareket);
@@ -117,7 +123,8 @@ internal static class StokHareketIslemleri
     }
 
     private static async Task<IResult> TransferAsync(
-        Guid kartId, TransferIstegi istek, StokDbContext db, StokCikisKontrolu cikisKontrolu, CancellationToken cancellationToken)
+        Guid kartId, TransferIstegi istek, StokDbContext db, StokCikisKontrolu cikisKontrolu, IzlenebilirlikServisi izlenebilirlik,
+        CancellationToken cancellationToken)
     {
         var kart = await db.StokKartlari.Include(k => k.Birimler).SingleOrDefaultAsync(k => k.Id == kartId, cancellationToken);
         if (kart is null)
@@ -131,19 +138,26 @@ internal static class StokHareketIslemleri
         }
 
         var transferId = Guid.CreateVersion7();
+        var izleme = new Izlenebilirlik(istek.LotNo, null, istek.SeriNolari);
         var aciklama = Temiz(istek.Aciklama);
         var cikis = StokHareket.Olustur(kart, istek.KaynakDepoId, StokHareketTuru.TransferCikis, istek.Tarih, istek.Birim, istek.Miktar,
-            null, null, aciklama, transferId);
+            null, null, aciklama, transferId, izleme: izleme);
         if (!cikis.BasariliMi)
         {
             return cikis.HttpSonucu();
         }
 
         var giris = StokHareket.Olustur(kart, istek.HedefDepoId, StokHareketTuru.TransferGiris, istek.Tarih, istek.Birim, istek.Miktar,
-            null, null, aciklama, transferId);
+            null, null, aciklama, transferId, izleme: izleme);
         if (!giris.BasariliMi)
         {
             return giris.HttpSonucu();
+        }
+
+        var izlemeKontrolu = await izlenebilirlik.KontrolEtAsync([cikis.Deger, giris.Deger], new Dictionary<Guid, StokKarti> { [kart.Id] = kart }, cancellationToken);
+        if (!izlemeKontrolu.BasariliMi)
+        {
+            return izlemeKontrolu.HttpSonucu();
         }
 
         var kontrol = await cikisKontrolu.KontrolEtAsync(kart, istek.KaynakDepoId, cikis.Deger.CikisMiktari, cancellationToken);
@@ -155,7 +169,8 @@ internal static class StokHareketIslemleri
         db.StokHareketleri.AddRange(cikis.Deger, giris.Deger);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Created($"/api/stok/kartlar/{kartId}/hareketler",
-            new StokHareketCevabi(await SatirlarAsync(db, [cikis.Deger.Id, giris.Deger.Id], cancellationToken), kontrol.Deger));
+            new StokHareketCevabi(await SatirlarAsync(db, [cikis.Deger.Id, giris.Deger.Id], cancellationToken),
+                string.Join(" ", izlemeKontrolu.Deger.Append(kontrol.Deger).OfType<string>()) is { Length: > 0 } u ? u : null));
     }
 
     // Transferin iki bacağı birlikte iptal edilir; orijinal ve ters kayıtlar tek SaveChanges'ta yazılır.
@@ -203,7 +218,8 @@ internal static class StokHareketIslemleri
                 where idler.Contains(h.Id)
                 select new StokHareketSatiri(
                     h.Id, h.Tarih, h.Tur, d.Ad, h.GirisMiktari, h.CikisMiktari, h.GirilenBirim, h.GirilenMiktar, h.BirimFiyat,
-                    h.BelgeNo, h.Aciklama, h.IptalHareketId != null, h.IptalEdilenHareketId != null, false, h.KaynakBelgeId))
+                    h.BelgeNo, h.Aciklama, h.IptalHareketId != null, h.IptalEdilenHareketId != null, false, h.KaynakBelgeId,
+                    h.LotNo, h.SonKullanmaTarihi, h.Seriler.Select(s => s.SeriNo).ToList()))
             .ToListAsync(cancellationToken);
 
         return satirlar.OrderBy(s => idler.IndexOf(s.Id)).ToList();

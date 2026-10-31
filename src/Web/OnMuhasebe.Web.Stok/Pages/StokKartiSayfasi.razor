@@ -131,6 +131,17 @@
 
     @if (urunMu)
     {
+        @if (kart.Izleme == IzlemeTuru.Lot && _lotlar is { Count: > 0 } lotlar)
+        {
+            <div class="panel-kart kart belirme mb-3" style="--i:4">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.QrCode2" Size="Size.Small" Color="Color.Secondary" /> Stoktaki lotlar (SKT sırasıyla)</div>
+                <CubukListesi Ogeler="@(lotlar.Select(l => new CubukOgesi($"{l.LotNo} · {l.DepoAdi}{(l.SonKullanmaTarihi is { } s ? $" · SKT {Bicim.Tarih(s)}" : "")}", l.Miktar, Bicim.Miktar(l.Miktar, kart.TemelBirim))).ToList())" />
+            </div>
+        }
+        else if (kart.Izleme == IzlemeTuru.Seri && _seriSayisi > 0)
+        {
+            <div class="ozet-alt mb-2">Stokta @_seriSayisi seri numaralı ürün var. <a class="baglanti" href="stok/lotlar">Seri sorgula</a></div>
+        }
         <div class="panel-baslik belirme" style="--i:4"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Hareketler</div>
         <VeriTablosu T="StokHareketSatiri" Kayitlar="_hareketler?.Kayitlar" Yukleniyor="_hareketlerYukleniyor" Dense="true"
                      Sayfa="_sayfa" ToplamSayfa="_hareketler?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
@@ -162,6 +173,10 @@
                 <MudTd DataLabel="Depo">@context.DepoAdi</MudTd>
                 <MudTd DataLabel="Açıklama">
                     @context.Aciklama
+                    @if (context.LotNo is not null || context.SeriNolari is { Count: > 0 })
+                    {
+                        <span class="mobil-alt-bilgi">@(context.LotNo is null ? "" : $"Lot {context.LotNo}")@(context.SonKullanmaTarihi is { } skt ? $" · SKT {Bicim.Tarih(skt)}" : "")@(context.SeriNolari is { Count: > 0 } sr ? $" · Seri: {string.Join(", ", sr.Take(5))}{(sr.Count > 5 ? $" +{sr.Count - 5}" : "")}" : "")</span>
+                    }
                     @if (StokMetinleri.FaturaHareketiMi(context.Tur))
                     {
                         <span class="mobil-alt-bilgi"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="true" Metin="@context.BelgeNo" /></span>
@@ -224,6 +239,8 @@ else if (_hata is null)
 
     private StokKartiDetayi? _kart;
     private SiparisBekleyenMiktari? _bekleyen;
+    private List<LotBakiyesi>? _lotlar;
+    private int _seriSayisi;
     private SayfaliSonuc<StokHareketSatiri>? _hareketler;
     private int _sayfa = 1;
     private bool _hareketlerYukleniyor;
@@ -240,6 +257,15 @@ else if (_hata is null)
         var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{Id}");
         _hata = sonuc.Hata;
         _kart = sonuc.BasariliMi ? sonuc.Deger : null;
+
+        if (_kart?.Izleme == IzlemeTuru.Lot && await Api.GetAsync<List<LotBakiyesi>>($"api/stok/kartlar/{Id}/lotlar") is { BasariliMi: true } lotlar)
+        {
+            _lotlar = lotlar.Deger;
+        }
+        else if (_kart?.Izleme == IzlemeTuru.Seri && await Api.GetAsync<List<StoktakiSeri>>($"api/stok/kartlar/{Id}/seriler") is { BasariliMi: true } seriler)
+        {
+            _seriSayisi = seriler.Deger.Count;
+        }
 
         // Açık siparişlerdeki rezerve/beklenen miktar Fatura modülündedir; lisans yoksa gösterilmez.
         if (_kart?.Tur == StokTuru.Urun && Oturum.ModulAcikMi(ModulKodlari.Fatura))

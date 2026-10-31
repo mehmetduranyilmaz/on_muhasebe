@@ -3428,3 +3428,17 @@ td.soluk {
 .bildirim-noktasi { flex: 0 0 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: var(--renk); box-shadow: 0 0 0 4px color-mix(in srgb, var(--renk) 20%, transparent); }
 .bildirim-listesi { overflow: hidden; }
 .bildirim-listesi .bildirim-satiri:last-child { border-bottom: 0; }
+
+/* Lot / SKT / seri girişi: belge satırında tam genişlikte şerit. */
+.izleme-girisi {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    margin-top: 2px;
+    border-radius: 10px;
+    background: color-mix(in srgb, #8B5CF6 8%, transparent);
+    border: 1px solid color-mix(in srgb, #8B5CF6 24%, transparent);
+}

@@ -56,7 +56,7 @@ internal sealed class StokSorgusu(StokDbContext db, DepoServisi depoServisi, Sto
 
         return kartlar.Select(k => new StokKartiBilgisi(
                 k.Id, k.Kod, k.Ad, k.Tur, k.TemelBirim,
-                k.Birimler.Select(b => new EkBirim(b.BirimKodu, b.Katsayi, b.Barkod)).ToList(), k.KdvOrani, k.AktifMi))
+                k.Birimler.Select(b => new EkBirim(b.BirimKodu, b.Katsayi, b.Barkod)).ToList(), k.KdvOrani, k.AktifMi, k.Izleme, k.SktTakibi))
             .ToList();
     }
 
@@ -72,7 +72,8 @@ internal sealed class StokSorgusu(StokDbContext db, DepoServisi depoServisi, Sto
 }
 
 internal sealed class StokHareketYazici(
-    StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi, StokCikisKontrolu cikisKontrolu) : IStokHareketYazici
+    StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi, StokCikisKontrolu cikisKontrolu,
+    IzlenebilirlikServisi izlenebilirlik) : IStokHareketYazici
 {
     public async Task<Sonuc<string?>> YazAsync(
         Guid kaynakBelgeId, IReadOnlyList<BelgeStokHareketi> hareketler, CancellationToken cancellationToken = default)
@@ -109,7 +110,7 @@ internal sealed class StokHareketYazici(
             }
 
             var sonuc = StokHareket.Olustur(kart, h.DepoId, h.Tur, h.Tarih, h.Birim, h.Miktar, birimFiyat, h.BelgeNo, h.Aciklama,
-                kaynakBelgeId: kaynakBelgeId);
+                kaynakBelgeId: kaynakBelgeId, izleme: new Izlenebilirlik(h.LotNo, h.SonKullanmaTarihi, h.SeriNolari));
             if (!sonuc.BasariliMi)
             {
                 return KartAdiyla(kart, sonuc.Hata);
@@ -118,8 +119,14 @@ internal sealed class StokHareketYazici(
             yeniler.Add(sonuc.Deger);
         }
 
+        var izleme = await izlenebilirlik.KontrolEtAsync(yeniler, kartlar, cancellationToken);
+        if (!izleme.BasariliMi)
+        {
+            return izleme.Hata;
+        }
+
         // Aynı ürün aynı depodan birden çok satırda çıkabilir; eksi stok kontrolü toplam miktarla yapılır.
-        var uyarilar = new List<string>();
+        var uyarilar = izleme.Deger;
         foreach (var cikis in yeniler.Where(h => h.CikisMiktari > 0).GroupBy(h => (h.StokKartiId, h.DepoId)))
         {
             var kart = kartlar[cikis.Key.StokKartiId];

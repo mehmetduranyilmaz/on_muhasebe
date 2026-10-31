@@ -46,6 +46,12 @@
                                          Required="true" RequiredError="Giriş hareketinde maliyet gerekli." HelperText="Stok değerlemesinde kullanılır" />
                     </MudItem>
                 }
+                @if (_izleme.VarMi)
+                {
+                    <MudItem xs="12">
+                        <IzlemeGirisi Model="_izleme" KartId="Kart.Id" DepoId="_depoId" GirisMi="StokMetinleri.GirisMi(_tur)" TemelMiktar="(_miktar ?? 0m) * Katsayi()" />
+                    </MudItem>
+                }
                 @if (_miktar is > 0 && Katsayi() != 1)
                 {
                     <MudItem xs="12">
@@ -75,6 +81,7 @@
     private List<Depo> _depolar = [];
     private StokHareketTuru _tur = StokHareketTuru.Acilis;
     private Guid? _depoId;
+    private readonly IzlemeModeli _izleme = new();
     private DateTime? _tarih;
     private string _birim = "";
     private decimal? _miktar;
@@ -85,6 +92,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _izleme.Ayarla(Kart.Izleme.ToString(), Kart.SktTakibi);
         _tarih = Zaman.GetLocalNow().Date;
         _birim = Kart.TemelBirim;
         if (Kart.HareketVarMi)
@@ -137,7 +145,8 @@
         }
 
         var istek = new StokHareketKaydetIstegi(_tur, _depoId, DateOnly.FromDateTime(_tarih!.Value), _birim, _miktar!.Value,
-            StokMetinleri.GirisMi(_tur) ? _birimFiyat : null, _belgeNo, _aciklama);
+            StokMetinleri.GirisMi(_tur) ? _birimFiyat : null, _belgeNo, _aciklama,
+            _izleme.LotIstegi, StokMetinleri.GirisMi(_tur) ? _izleme.SktIstegi : null, _izleme.SeriIstegi);
         var sonuc = await Api.PostAsync<StokHareketCevabi>($"api/stok/kartlar/{Kart.Id}/hareketler", istek);
         if (sonuc.BasariliMi)
         {
