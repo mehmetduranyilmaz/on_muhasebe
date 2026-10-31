@@ -81,7 +81,7 @@
                     <dt>Tolerans</dt><dd>@h.ToleransGun gün</dd>
                 </dl>
                 <div class="genel-toplam"><span>Vade farkı (KDV hariç)</span><b>@Bicim.Tutar(h.ToplamFaiz, h.ParaBirimi)</b></div>
-                @if (h.ToplamFaiz > 0 && Oturum.ModulAcikMi(ModulKodlari.Fatura) && !Oturum.SaltOkunurMu)
+                @if (h.ToplamFaiz > 0 && Oturum.ModulAcikMi(ModulKodlari.Fatura) && Oturum.YazabilirMi("fatura.belge.ekle"))
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-3" StartIcon="@Icons.Material.Filled.ReceiptLong"
                                Href="@FaturaAdresi(h)">Vade farkı faturası kes</MudButton>

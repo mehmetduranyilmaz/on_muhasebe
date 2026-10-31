@@ -1,0 +1,98 @@
+@* Ekran (kaynak) x işlem yetki tablosu. Referans verilirse (kullanıcının rolü) rolden farklı hücreler işaretlenir:
+   rolde olmayıp verilen "ek", rolde olup kaldırılan "yasak" olur. Bir satırda herhangi bir yetki seçilince Görüntüle de seçilir. *@
+
+@foreach (var grup in Kaynaklar.GroupBy(k => k.Grup))
+{
+    <div class="yetki-grubu">
+        <div class="yetki-grup-basligi">
+            <span>@grup.Key</span>
+            @if (!SaltOkunur)
+            {
+                var hepsi = grup.SelectMany(k => k.Yetkiler()).All(Secili.Contains);
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => GrubuDegistir(grup, !hepsi)">
+                    @(hepsi ? "Hiçbirini seçme" : "Tümünü seç")
+                </MudButton>
+            }
+        </div>
+        @foreach (var kaynak in grup)
+        {
+            <div class="yetki-satiri">
+                <div class="yetki-ekran">
+                    <div class="yetki-ekran-adi">@kaynak.Ad</div>
+                    @if (kaynak.Gerekenler.Count > 0)
+                    {
+                        <div class="yetki-gereken">Kendiliğinden görür: @string.Join(", ", kaynak.Gerekenler.Select(GerekenAdi).Distinct())</div>
+                    }
+                </div>
+                <div class="yetki-hucreler">
+                    @foreach (var islem in kaynak.Islemler)
+                    {
+                        var kod = kaynak.Yetki(islem);
+                        var secili = Secili.Contains(kod);
+                        var durum = Referans is null || secili == Referans.Contains(kod) ? "" : secili ? "ek" : "yasak";
+                        <button type="button" class="yetki-hucre @(secili ? "secili" : "") @durum" aria-pressed="@(secili ? "true" : "false")"
+                                disabled="@SaltOkunur" title="@Ipucu(durum)" @onclick="() => Degistir(kaynak, islem)">
+                            <MudIcon Icon="@(secili ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)" Size="Size.Small" />
+                            @YetkiIslemleri.Ad(islem)
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<YetkiKaynagi> Kaynaklar { get; set; } = [];
+    [Parameter, EditorRequired] public HashSet<string> Secili { get; set; } = [];
+    [Parameter] public IReadOnlySet<string>? Referans { get; set; }
+    [Parameter] public bool SaltOkunur { get; set; }
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private static string Ipucu(string durum) => durum switch
+    {
+        "ek" => "Role ek olarak bu kullanıcıya verildi",
+        "yasak" => "Rolde var, bu kullanıcı için kaldırıldı",
+        _ => ""
+    };
+
+    // "cari.hesap.goruntule" -> "Cari hesaplar"
+    private string GerekenAdi(string yetki) =>
+        Kaynaklar.FirstOrDefault(k => yetki.StartsWith(k.Kod + ".", StringComparison.Ordinal))?.Ad ?? yetki[..yetki.LastIndexOf('.')];
+
+    private async Task Degistir(YetkiKaynagi kaynak, string islem)
+    {
+        var kod = kaynak.Yetki(islem);
+        var gorme = kaynak.Yetki(YetkiIslemleri.Goruntule);
+        if (!Secili.Remove(kod))
+        {
+            Secili.Add(kod);
+            if (kaynak.Islemler.Contains(YetkiIslemleri.Goruntule))
+            {
+                Secili.Add(gorme);
+            }
+        }
+        else if (islem == YetkiIslemleri.Goruntule)
+        {
+            // Görmeden işlem yapılamaz: görüntüleme kalkınca satırın tüm yetkileri kalkar.
+            Secili.ExceptWith(kaynak.Yetkiler());
+        }
+
+        await Degisti.InvokeAsync();
+    }
+
+    private async Task GrubuDegistir(IEnumerable<YetkiKaynagi> grup, bool sec)
+    {
+        var kodlar = grup.SelectMany(k => k.Yetkiler()).ToList();
+        if (sec)
+        {
+            Secili.UnionWith(kodlar);
+        }
+        else
+        {
+            Secili.ExceptWith(kodlar);
+        }
+
+        await Degisti.InvokeAsync();
+    }
+}

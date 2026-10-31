@@ -6,7 +6,7 @@
     <Islemler>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DonutLarge" Href="kasabanka/gelir-gider">Gelir / Gider</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Href="kasabanka/masraf-merkezi">Masraf Merkezleri</MudButton>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Hesap, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AddCard" Href="kasabanka/yeni">Yeni Hesap</MudButton>
             <IslemMenusu Donus="kasabanka" />
@@ -54,7 +54,7 @@
 else if (_hesaplar.Count == 0)
 {
     <BosDurum Ikon="@Icons.Material.Outlined.AccountBalance" Baslik="Henüz hesap yok" Aciklama="Kasanızı ve banka hesaplarınızı ekleyerek başlayın.">
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Hesap, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCard" Href="kasabanka/yeni">İlk hesabınızı ekleyin</MudButton>
         }

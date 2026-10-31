@@ -1,4 +1,4 @@
-@* Lisans bandındaki "Aboneliği yenile" bağlantısı; abonelik ekranı yalnızca firma yöneticisine açıktır. *@
-<AuthorizeView Roles="@Roller.Yonetici">
+@* Lisans bandındaki "Aboneliği yenile" bağlantısı; abonelik ekranını görme yetkisi olana gösterilir. *@
+<Yetkili Kaynak="YonetimYetkileri.Abonelik">
     <a href="abonelik" class="baglanti lisans-yenile">Aboneliği yenile <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></a>
-</AuthorizeView>
+</Yetkili>

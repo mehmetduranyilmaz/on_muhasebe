@@ -39,7 +39,7 @@
                         </div>
                         <MudSpacer />
                         <span class="ozet-alt kural-kullanim">@(k.KullanimSayisi == 0 ? "Kullanılmadı" : $"{k.KullanimSayisi} kez")</span>
-                        @if (!Oturum.SaltOkunurMu)
+                        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Ekstre, YetkiIslemleri.Duzenle))
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="() => AcAsync(k)" />
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="() => SilAsync(k)" />
@@ -48,7 +48,7 @@
                 }
             </div>
         }
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Ekstre, YetkiIslemleri.Duzenle))
         {
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Class="mt-3" OnClick="() => AcAsync(null)">Kural ekle</MudButton>
         }

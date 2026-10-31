@@ -10,7 +10,7 @@
 <SayfaBasligi Baslik="@(Id is null ? "Yeni Demirbaş" : _ad)" GeriAdres="demirbaslar" Ikon="@Icons.Material.Filled.Chair"
               AltBaslik="@(_sicil ?? "Sicil numarası boş bırakılırsa otomatik verilir")">
     <Islemler>
-        @if (Id is not null && !Oturum.SaltOkunurMu)
+        @if (Id is not null)
         {
             <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id.Value" />
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Sil" OnClick="SilAsync" />
@@ -27,7 +27,7 @@
 else
 {
     var plan = Plan;
-    var duzenlenebilir = !Oturum.SaltOkunurMu && _detay?.ElCikarmaTarihi is null;
+    var duzenlenebilir = Oturum.YazabilirMi(KasaBankaYetkileri.Demirbas, YetkiIslemleri.Duzenle) && _detay?.ElCikarmaTarihi is null;
     <MudGrid Spacing="3">
         <MudItem xs="12" lg="7">
             <FormBolumu Baslik="Kıymet bilgileri" Aciklama="Edinme bedeli KDV hariç TL (indirilemeyen KDV ve edinme giderleri dahil)" Ikon="@Icons.Material.Filled.Description" Sira="0">
@@ -123,13 +123,13 @@ else
                                     <span class="ozet-alt">(bedel − net defter değeri)</span>
                                 </div>
                             }
-                            @if (!Oturum.SaltOkunurMu)
+                            @if (Oturum.YazabilirMi(KasaBankaYetkileri.Demirbas, YetkiIslemleri.Duzenle))
                             {
                                 <MudButton Variant="Variant.Text" Color="Color.Warning" Class="mt-2" OnClick="GeriAlAsync">Elden çıkarmayı geri al</MudButton>
                             }
                         </MudItem>
                     }
-                    else if (!Oturum.SaltOkunurMu)
+                    else if (Oturum.YazabilirMi(KasaBankaYetkileri.Demirbas, YetkiIslemleri.Duzenle))
                     {
                         <MudItem xs="6" md="3">
                             <MudSelect T="ElCikarmaTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_cikisTuru" Label="Tür">

@@ -35,21 +35,27 @@
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Percent" Href="@($"cari/{cari.Id}/vade-farki")">Vade Farkı</MudButton>
             }
-            @if (!Oturum.SaltOkunurMu && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.Fatura))
+            @if (Oturum.YazabilirMi("fatura.belge.ekle") && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.Fatura))
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ReceiptLong"
                            Href="@($"fatura/yeni/{(cari.Tur == CariTuru.Tedarikci ? "alis" : "satis")}?cari={cari.Id}")">Fatura Kes</MudButton>
             }
-            @if (!Oturum.SaltOkunurMu && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+            @if (Oturum.YazabilirMi("kasabanka.islem.ekle") && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CallReceived" Href="@KasaIslemAdresi("tahsilat", cari)">Tahsilat</MudButton>
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CallMade" Href="@KasaIslemAdresi("odeme", cari)">Ödeme</MudButton>
+            }
+            @if (Oturum.YazabilirMi("kasabanka.cek.ekle") && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+            {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RequestQuote" Href="@($"cek-senet/giris?cari={cari.Id}&donus=cari/{cari.Id}")">Çek/senet al</MudButton>
             }
-            @if (!Oturum.SaltOkunurMu)
+            @if (Oturum.YazabilirMi(CariYetkileri.Hareket, YetkiIslemleri.Ekle))
             {
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd"
                            Disabled="!cari.AktifMi" OnClick="HareketEkleAsync">Hareket Ekle</MudButton>
+            }
+            @if (Oturum.YazabilirMi(CariYetkileri.Hesap, YetkiIslemleri.Duzenle))
+            {
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                     <MudMenuItem Icon="@Icons.Material.Filled.Edit" Href="@($"cari/{cari.Id}/duzenle")">Düzenle</MudMenuItem>
                     @if (cari.AktifMi)
@@ -60,7 +66,7 @@
                     {
                         <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => DurumDegistirAsync(true)">Aktifleştir</MudMenuItem>
                     }
-                    @if (!cari.HareketVarMi)
+                    @if (!cari.HareketVarMi && Oturum.YazabilirMi(CariYetkileri.Hesap, YetkiIslemleri.Sil))
                     {
                         <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudMenuItem>
                     }
@@ -263,14 +269,14 @@
                 {
                     <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" aria-label="Kapamalar" OnClick="() => KapamaAcAsync(Kalem(context))" />
                 }
-                @if (context.ElleIptalEdilebilirMi && !Oturum.SaltOkunurMu)
+                @if (context.ElleIptalEdilebilirMi && Oturum.YazabilirMi(CariYetkileri.Hareket, YetkiIslemleri.Iptal))
                 {
                     <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => IptalEtAsync(context)">İptal</MudButton>
                 }
             </MudTd>
         </Satir>
         <BosIslemler>
-            @if (!Oturum.SaltOkunurMu && cari.AktifMi)
+            @if (Oturum.YazabilirMi(CariYetkileri.Hareket, YetkiIslemleri.Ekle) && cari.AktifMi)
             {
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd" OnClick="HareketEkleAsync">Hareket Ekle</MudButton>
             }

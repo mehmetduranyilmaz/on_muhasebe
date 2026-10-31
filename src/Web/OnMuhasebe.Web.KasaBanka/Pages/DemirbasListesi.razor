@@ -10,7 +10,7 @@
         <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_yil" ValueChanged="y => FiltreAsync(() => _yil = y)" Label="Yıl"
                          Style="max-width:110px" Min="2000" Max="2100" />
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Demirbas, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="demirbaslar/yeni">Yeni Demirbaş</MudButton>
         }

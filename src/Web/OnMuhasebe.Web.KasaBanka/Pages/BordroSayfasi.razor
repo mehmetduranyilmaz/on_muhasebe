@@ -14,7 +14,7 @@
             <Islemler>
                 <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id" />
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
-                @if (!Oturum.SaltOkunurMu && b.Islem is EvrakIslemi.Giris or EvrakIslemi.Cikis)
+                @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Iptal) && b.Islem is EvrakIslemi.Giris or EvrakIslemi.Cikis)
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                                Href="@(giris ? "cek-senet/giris" : "cek-senet/cikis")">Yeni bordro</MudButton>

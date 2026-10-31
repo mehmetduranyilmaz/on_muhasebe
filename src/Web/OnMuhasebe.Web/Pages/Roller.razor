@@ -1,0 +1,127 @@
+@page "/roller"
+@attribute [Authorize]
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Roller ve Yetkiler" AltBaslik="Kim hangi ekranda ne yapabilir; kullanıcıya rolü Kullanıcılar sayfasından verilir"
+             Ikon="@Icons.Material.Filled.AdminPanelSettings">
+    <Islemler>
+        <Yetkili Kaynak="YonetimYetkileri.Kullanici" Islem="@YetkiIslemleri.Ekle">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="() => AcAsync(null, false)"
+                       Disabled="_kaynaklar is null">Yeni Rol</MudButton>
+        </Yetkili>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<VeriTablosu T="RolCevabi" Kayitlar="_roller" Yukleniyor="_roller is null" BosBaslik="Rol yok" BosIkon="@Icons.Material.Outlined.AdminPanelSettings"
+             SatirTiklandi="r => AcAsync(r, false)">
+    <Basliklar>
+        <MudTh>Rol</MudTh>
+        <MudTh>Yetkiler</MudTh>
+        <MudTh>Kullanıcı</MudTh>
+        <MudTh></MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Rol">
+            <div class="d-flex align-center gap-2">
+                <b>@context.Ad</b>
+                @if (context.TamYetkiliMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">Tam yetki</MudChip>
+                }
+            </div>
+            @if (context.Aciklama is not null)
+            {
+                <div class="rol-karti-yetki">@context.Aciklama</div>
+            }
+        </MudTd>
+        <MudTd DataLabel="Yetkiler">@(context.TamYetkiliMi ? "Tümü" : $"{context.Yetkiler.Count} yetki")</MudTd>
+        <MudTd DataLabel="Kullanıcı">@context.KullaniciSayisi</MudTd>
+        <MudTd Style="text-align: right; white-space: nowrap;" @onclick:stopPropagation="true">
+            @if (!context.TamYetkiliMi)
+            {
+                <Yetkili Kaynak="YonetimYetkileri.Kullanici" Islem="@YetkiIslemleri.Ekle">
+                    <MudTooltip Text="Kopyasını oluştur">
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="() => AcAsync(context, true)" aria-label="Kopyala" />
+                    </MudTooltip>
+                </Yetkili>
+                <Yetkili Kaynak="YonetimYetkileri.Kullanici" Islem="@YetkiIslemleri.Sil">
+                    <MudTooltip Text="@(context.KullaniciSayisi > 0 ? "Role bağlı kullanıcı var" : "Sil")">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="context.KullaniciSayisi > 0"
+                                       OnClick="() => SilAsync(context)" aria-label="Sil" />
+                    </MudTooltip>
+                </Yetkili>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private List<RolCevabi>? _roller;
+    private IReadOnlyList<YetkiKaynagi>? _kaynaklar;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tanimlar = await Api.GetAsync<List<YetkiKaynagi>>("api/yonetim/yetki-tanimlari");
+        _kaynaklar = tanimlar.Deger;
+        _hata = tanimlar.Hata;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<RolCevabi>>("api/yonetim/roller");
+        _hata ??= sonuc.Hata;
+        _roller = sonuc.Deger ?? [];
+    }
+
+    // Yönetici rolü ve düzenleme yetkisi olmayan için tablo salt okunur açılır.
+    private async Task AcAsync(RolCevabi? rol, bool kopya)
+    {
+        if (_kaynaklar is null)
+        {
+            return;
+        }
+
+        if (rol is { TamYetkiliMi: true })
+        {
+            Snackbar.Add("Yönetici rolü tüm yetkilere sahiptir; değiştirilemez.", Severity.Info);
+            return;
+        }
+
+        var saltOkunur = rol is not null && !kopya && !Oturum.YazabilirMi(YonetimYetkileri.Kullanici, YetkiIslemleri.Duzenle);
+        var baslik = rol is null ? "Yeni Rol" : kopya ? "Rolü Kopyala" : saltOkunur ? rol.Ad : $"Rolü Düzenle: {rol.Ad}";
+        var parametreler = new DialogParameters<RolDuzenleDialog>
+        {
+            { d => d.Kaynaklar, _kaynaklar },
+            { d => d.Rol, rol },
+            { d => d.KopyaMi, kopya },
+            { d => d.SaltOkunur, saltOkunur }
+        };
+        var dialog = await DialogService.ShowAsync<RolDuzenleDialog>(baslik, parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add(rol is null || kopya ? "Rol eklendi." : "Rol güncellendi; değişiklik kullanıcılara hemen yansır.", Severity.Success);
+            await YukleAsync();
+        }
+    }
+
+    private async Task SilAsync(RolCevabi rol)
+    {
+        if (!await Onay.SorAsync("Rolü sil", $"\"{rol.Ad}\" rolü silinecek. Devam edilsin mi?", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/yonetim/roller/{rol.Id}");
+        Snackbar.Add(sonuc.BasariliMi ? "Rol silindi." : sonuc.Hata.Baslik, sonuc.BasariliMi ? Severity.Success : Severity.Error);
+        await YukleAsync();
+    }
+}

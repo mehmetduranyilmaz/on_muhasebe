@@ -1,9 +1,9 @@
-@* Kaydın değişiklik geçmişini (kim, ne zaman, hangi alan neyken ne oldu) açan düğme; yalnızca yöneticiye görünür. *@
+@* Kaydın değişiklik geçmişini (kim, ne zaman, hangi alan neyken ne oldu) açan düğme; yalnızca "Değişiklik geçmişi" yetkisi olana görünür. *@
 @using OnMuhasebe.Shared.Contracts.Kimlik
 @inject OturumYoneticisi Oturum
 @inject IDialogService DialogService
 
-@if (Oturum.Kullanici.IsInRole(Roller.Yonetici))
+@if (Oturum.YetkiVarMi(YonetimYetkileri.Degisiklik, YetkiIslemleri.Goruntule))
 {
     <MudTooltip Text="Değişiklik geçmişi">
         <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" Class="degisiklik-gecmisi-dugmesi" OnClick="AcAsync"

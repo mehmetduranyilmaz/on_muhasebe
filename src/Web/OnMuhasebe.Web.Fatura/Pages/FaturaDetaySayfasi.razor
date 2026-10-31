@@ -11,7 +11,7 @@
 @if (_fatura is { } f)
 {
     var renk = FaturaMetinleri.Renk(f.Tur);
-    var duzenlenebilirMi = !Oturum.SaltOkunurMu && (f.Durum == FaturaDurumu.Taslak
+    var duzenlenebilirMi = Y(YetkiIslemleri.Duzenle) && (f.Durum == FaturaDurumu.Taslak
                                                     || (f.Durum == FaturaDurumu.Onayli && _ayar?.KayitAkisi == KayitAkisi.DogrudanKayit));
 
     <div class="yazdirma-gizle">
@@ -35,11 +35,11 @@
                 {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"fatura/{f.Id}/duzenle")">Düzenle</MudButton>
                 }
-                @if (f.Durum == FaturaDurumu.Taslak && !Oturum.SaltOkunurMu)
+                @if (f.Durum == FaturaDurumu.Taslak && Y(YetkiIslemleri.Onayla))
                 {
                     <IslemDugmesi Islem="OnaylaAsync" StartIcon="@Icons.Material.Filled.TaskAlt">Onayla</IslemDugmesi>
                 }
-                @if (!Oturum.SaltOkunurMu && f.Durum != FaturaDurumu.Iptal)
+                @if (f.Durum != FaturaDurumu.Iptal && Y(f.Durum == FaturaDurumu.Onayli ? YetkiIslemleri.Iptal : YetkiIslemleri.Sil))
                 {
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                         @if (f.Durum == FaturaDurumu.Onayli)
@@ -68,7 +68,7 @@
             </MudAlert>
         }
 
-        @if (MahsupEdilebilirAvans(f) is > 0 and var avans && !Oturum.SaltOkunurMu)
+        @if (MahsupEdilebilirAvans(f) is > 0 and var avans && Oturum.YazabilirMi("cari.kapama.duzenle"))
         {
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.Savings">
                 <div class="d-flex align-center flex-wrap gap-2">
@@ -98,7 +98,7 @@
                     }
                     <div class="d-flex align-center flex-wrap gap-2 mt-2">
                         <OdemeDurumu Kalan="f.Kalan" Toplam="f.OdenecekTutar" Vade="f.VadeTarihi" ParaBirimi="@f.ParaBirimi" />
-                        @if (f.Kalan is > 0 && f.CariHesapId is { } odenecekCari && !Oturum.SaltOkunurMu && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+                        @if (f.Kalan is > 0 && f.CariHesapId is { } odenecekCari && Oturum.YazabilirMi("kasabanka.islem.ekle") && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
                         {
                             <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Payments"
                                        Href="@OdemeAdresi(f, odenecekCari)">@(FaturaTurleri.ParaGirisiMi(f.Tur) ? "Tahsilat yap" : "Ödeme yap")</MudButton>
@@ -263,6 +263,8 @@ else if (_hata is null)
 }
 
 @code {
+    private bool Y(string islem) => Oturum.YazabilirMi(FaturaYetkileri.Belge, islem);
+
     [Parameter] public Guid Id { get; set; }
 
     private FaturaDetayi? _fatura;

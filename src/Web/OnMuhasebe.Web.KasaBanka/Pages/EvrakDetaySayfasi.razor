@@ -17,7 +17,7 @@
         </AltIcerik>
         <Islemler>
             <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id" />
-            @if (e.GeriAlinabilirMi && !Oturum.SaltOkunurMu)
+            @if (e.GeriAlinabilirMi && Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Iptal))
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Undo" OnClick="GeriAlAsync">Son hareketi geri al</MudButton>
             }
@@ -86,7 +86,7 @@
                 {
                     <div class="ozet-alt mt-3">@e.Aciklama</div>
                 }
-                @if (e.UygunIslemler.Count > 0 && !Oturum.SaltOkunurMu)
+                @if (e.UygunIslemler.Count > 0 && Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle))
                 {
                     <div class="evrak-islemleri mt-4">
                         @foreach (var islem in e.UygunIslemler)

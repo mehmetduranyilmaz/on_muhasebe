@@ -6,7 +6,7 @@
 <MudDialog>
     <DialogContent>
         <HataGosterimi Hata="_hata" />
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(StokYetkileri.Tanim, YetkiIslemleri.Ekle))
         {
             <div class="d-flex gap-2 align-center mb-3">
                 <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="YeniAd" Immediate="true" Label="Yeni depo adı" MaxLength="100" OnKeyDown="TusAsync" />
@@ -28,11 +28,11 @@
                             <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">Varsayılan</MudChip>
                         }
                         <MudSpacer />
-                        @if (!Oturum.SaltOkunurMu)
+                        @if (Oturum.YazabilirMi(StokYetkileri.Tanim, YetkiIslemleri.Duzenle))
                         {
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="() => DuzenlemeyiAc(depo)" />
                         }
-                        @if (!Oturum.SaltOkunurMu && !depo.VarsayilanMi)
+                        @if (Oturum.YazabilirMi(StokYetkileri.Tanim, YetkiIslemleri.Duzenle) && !depo.VarsayilanMi)
                         {
                             <MudTooltip Text="Varsayılan yap">
                                 <MudIconButton Icon="@Icons.Material.Outlined.StarOutline" Size="Size.Small" aria-label="Varsayılan yap" OnClick="() => VarsayilanYapAsync(depo)" />

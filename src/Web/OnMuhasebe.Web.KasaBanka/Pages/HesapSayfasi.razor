@@ -22,16 +22,16 @@
         <Islemler>
             <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id" />
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"kasabanka/{h.Id}/ekstre")">Ekstre</MudButton>
-            @if (h.Tur != HesapTuru.Kasa && h.AktifMi && !Oturum.SaltOkunurMu)
+            @if (h.Tur != HesapTuru.Kasa && h.AktifMi && Oturum.YazabilirMi(KasaBankaYetkileri.Ekstre, YetkiIslemleri.Ekle))
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Href="@($"kasabanka/{h.Id}/ekstre-aktar")">Ekstre içe aktar</MudButton>
             }
-            @if (!Oturum.SaltOkunurMu)
+            @if (h.AktifMi && Oturum.YazabilirMi(KasaBankaYetkileri.Islem, YetkiIslemleri.Ekle))
             {
-                @if (h.AktifMi)
-                {
-                    <IslemMenusu HesapId="h.Id" Donus="@($"kasabanka/{h.Id}")" Turler="@IslemSecenekleri(h)" />
-                }
+                <IslemMenusu HesapId="h.Id" Donus="@($"kasabanka/{h.Id}")" Turler="@IslemSecenekleri(h)" />
+            }
+            @if (Oturum.YazabilirMi(KasaBankaYetkileri.Hesap, YetkiIslemleri.Duzenle))
+            {
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                     <MudMenuItem Icon="@Icons.Material.Filled.Edit" Href="@($"kasabanka/{h.Id}/duzenle")">Düzenle</MudMenuItem>
                     @if (h.AktifMi)
@@ -43,7 +43,7 @@
                     {
                         <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => DurumDegistirAsync(true)">Aktifleştir</MudMenuItem>
                     }
-                    @if (!h.HareketVarMi)
+                    @if (!h.HareketVarMi && Oturum.YazabilirMi(KasaBankaYetkileri.Hesap, YetkiIslemleri.Sil))
                     {
                         <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudMenuItem>
                     }
@@ -133,7 +133,7 @@
             <MudTd DataLabel="Giriş" Class="sayi"><span class="bakiye-alacakli">@(context.Giris > 0 ? Bicim.Tutar(context.Giris) : "")</span></MudTd>
             <MudTd DataLabel="Çıkış" Class="sayi"><span class="bakiye-borclu">@(context.Cikis > 0 ? Bicim.Tutar(context.Cikis) : "")</span></MudTd>
             <MudTd Style="text-align:right">
-                @if (context.IptalEdilebilirMi && !Oturum.SaltOkunurMu)
+                @if (context.IptalEdilebilirMi && Oturum.YazabilirMi(KasaBankaYetkileri.Islem, YetkiIslemleri.Iptal))
                 {
                     <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => IptalEtAsync(context)">İptal</MudButton>
                 }

@@ -44,8 +44,8 @@
                                 <td>
                                     <div class="d-flex align-center gap-1">
                                         <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Tutar" Min="0" Max="s.Azami" HideSpinButtons="true"
-                                                         Format="N2" Immediate="true" Disabled="Oturum.SaltOkunurMu" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.DoneAll" Size="Size.Small" aria-label="Tamamını kapat" Disabled="Oturum.SaltOkunurMu"
+                                                         Format="N2" Immediate="true" Disabled="!Oturum.YazabilirMi(CariYetkileri.Kapama, YetkiIslemleri.Duzenle)" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.DoneAll" Size="Size.Small" aria-label="Tamamını kapat" Disabled="!Oturum.YazabilirMi(CariYetkileri.Kapama, YetkiIslemleri.Duzenle)"
                                                        OnClick="() => s.Tutar = Math.Min(s.Azami, s.Tutar + d.Tutar - Dagitilan)" />
                                     </div>
                                 </td>
@@ -58,13 +58,13 @@
         }
     </DialogContent>
     <DialogActions>
-        @if (_detay is { ElleKapamaMi: true } && !Oturum.SaltOkunurMu)
+        @if (_detay is { ElleKapamaMi: true } && Oturum.YazabilirMi(CariYetkileri.Kapama, YetkiIslemleri.Duzenle))
         {
             <IslemDugmesi Islem="OtomatigeDonAsync" Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.AutoMode">Otomatiğe döndür</IslemDugmesi>
         }
         <MudSpacer />
         <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(CariYetkileri.Kapama, YetkiIslemleri.Duzenle))
         {
             <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_detay is null || Dagitilan > _detay.Tutar)">Elle kaydet</IslemDugmesi>
         }

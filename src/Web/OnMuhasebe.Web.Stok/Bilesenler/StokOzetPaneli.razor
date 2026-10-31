@@ -1,4 +1,5 @@
 @* Ana sayfadaki Stok özet paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject OturumYoneticisi Oturum
 @inject ApiIstemcisi Api
 
 <div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.Inventory2" Color="Color.Secondary" /> Stok özeti</div>
@@ -16,10 +17,13 @@ else
 {
     var o = _ozet;
     <MudGrid Spacing="3" Class="mb-4">
+        @if (MaliyetGorur)
+        {
         <MudItem xs="12" sm="6" lg="3">
             <OzetKarti Baslik="Stok değeri" Deger="o.ToplamDeger" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Inventory"
                        Renk="#3B82F6" Href="stok/durum" Sira="0" AltMetin="@StokMetinleri.MaliyetYontemi(o.MaliyetYontemi)" />
         </MudItem>
+        }
         <MudItem xs="12" sm="6" lg="3">
             <OzetKarti Baslik="Ürün sayısı" Deger="o.UrunSayisi" Bicimle="@(d => $"{d:0} ürün")" Ikon="@Icons.Material.Filled.Category"
                        Renk="#8B5CF6" Href="stok" Sira="1" AltMetin="Aktif stoklu ürün kartları" />
@@ -35,6 +39,8 @@ else
     </MudGrid>
 
     <MudGrid Spacing="3" Class="mb-6">
+        @if (MaliyetGorur)
+        {
         <MudItem xs="12" md="6" lg="4">
             <div class="panel-kart kart belirme" style="--i:4">
                 <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Warehouse" Size="Size.Small" Color="Color.Secondary" /> Depolara göre değer</div>
@@ -49,6 +55,7 @@ else
                 }
             </div>
         </MudItem>
+        }
         <MudItem xs="12" md="6" lg="4">
             <div class="panel-kart kart belirme" style="--i:5">
                 <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.NotificationImportant" Size="Size.Small" Color="Color.Warning" /> Kritik stoklar</div>
@@ -91,6 +98,9 @@ else
 }
 
 @code {
+    // Maliyet, alış fiyatı ve stok değeri yalnızca maliyet yetkisi olana gösterilir (API de gizler).
+    private bool MaliyetGorur => Oturum.YetkiVarMi(StokYetkileri.Maliyet, YetkiIslemleri.Goruntule);
+
     private StokOzetRaporu? _ozet;
 
     protected override async Task OnInitializedAsync()

@@ -13,9 +13,9 @@
 {
     var renk = IrsaliyeMetinleri.Renk(i.Tur);
     var faturalanmisMi = i.Satirlar.Any(s => s.FaturalananMiktar > 0);
-    var duzenlenebilirMi = !Oturum.SaltOkunurMu && !faturalanmisMi && (i.Durum == IrsaliyeDurumu.Taslak
+    var duzenlenebilirMi = Y(YetkiIslemleri.Duzenle) && !faturalanmisMi && (i.Durum == IrsaliyeDurumu.Taslak
                                                                         || (i.Durum == IrsaliyeDurumu.Onayli && _ayar?.KayitAkisi == KayitAkisi.DogrudanKayit));
-    var faturalanabilirMi = !Oturum.SaltOkunurMu && i.Durum == IrsaliyeDurumu.Onayli && i.FaturalamaDurumu is FaturalamaDurumu.Faturalanmadi or FaturalamaDurumu.KismenFaturalandi;
+    var faturalanabilirMi = Oturum.YazabilirMi(FaturaYetkileri.Belge, YetkiIslemleri.Ekle) && i.Durum == IrsaliyeDurumu.Onayli && i.FaturalamaDurumu is FaturalamaDurumu.Faturalanmadi or FaturalamaDurumu.KismenFaturalandi;
 
     <div class="yazdirma-gizle">
         <SayfaBasligi Baslik="@($"{IrsaliyeMetinleri.Tur(i.Tur)}{(i.Numara is null ? "" : $" {i.Numara}")}")" GeriAdres="irsaliye" Ikon="@IrsaliyeMetinleri.Ikon(i.Tur)">
@@ -39,11 +39,11 @@
                 {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"irsaliye/{i.Id}/duzenle")">Düzenle</MudButton>
                 }
-                @if (i.Durum == IrsaliyeDurumu.Taslak && !Oturum.SaltOkunurMu)
+                @if (i.Durum == IrsaliyeDurumu.Taslak && Y(YetkiIslemleri.Onayla))
                 {
                     <IslemDugmesi Islem="OnaylaAsync" StartIcon="@Icons.Material.Filled.TaskAlt">Onayla</IslemDugmesi>
                 }
-                @if (!Oturum.SaltOkunurMu && i.Durum != IrsaliyeDurumu.Iptal && !faturalanmisMi)
+                @if (i.Durum != IrsaliyeDurumu.Iptal && !faturalanmisMi && Y(i.Durum == IrsaliyeDurumu.Onayli ? YetkiIslemleri.Iptal : YetkiIslemleri.Sil))
                 {
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                         @if (i.Durum == IrsaliyeDurumu.Onayli)
@@ -222,6 +222,8 @@ else if (_hata is null)
 }
 
 @code {
+    private bool Y(string islem) => Oturum.YazabilirMi(FaturaYetkileri.Irsaliye, islem);
+
     [Parameter] public Guid Id { get; set; }
 
     private IrsaliyeDetayi? _irsaliye;

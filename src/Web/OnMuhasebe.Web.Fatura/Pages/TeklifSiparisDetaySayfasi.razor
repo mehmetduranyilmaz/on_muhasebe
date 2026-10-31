@@ -14,7 +14,7 @@
     var teklifMi = TeklifSiparisTurleri.TeklifMi(b.Tur);
     var kok = TeklifSiparisMetinleri.Kok(b.Tur);
     var karsilanmis = b.Satirlar.Any(s => s.KarsilananMiktar > 0);
-    var duzenlenebilir = !Oturum.SaltOkunurMu && (b.Durum == TeklifSiparisDurumu.Taslak || (b.Durum == TeklifSiparisDurumu.Acik && !karsilanmis));
+    var duzenlenebilir = Y(YetkiIslemleri.Duzenle) && (b.Durum == TeklifSiparisDurumu.Taslak || (b.Durum == TeklifSiparisDurumu.Acik && !karsilanmis));
 
     <div class="yazdirma-gizle">
         <SayfaBasligi Baslik="@($"{TeklifSiparisMetinleri.Tur(b.Tur)}{(b.Numara is null ? "" : $" {b.Numara}")}")" GeriAdres="@kok" Ikon="@TeklifSiparisMetinleri.Ikon(b.Tur)">
@@ -35,45 +35,51 @@
                 {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"{kok}/{b.Id}/duzenle")">Düzenle</MudButton>
                 }
-                @if (!Oturum.SaltOkunurMu && !teklifMi && b.Durum == TeklifSiparisDurumu.Acik && b.CariHesapId is { } siparisCarisi
+                @if (!teklifMi && b.Durum == TeklifSiparisDurumu.Acik && b.CariHesapId is { } siparisCarisi
                      && b.Karsilama != KarsilamaDurumu.Tamamlandi)
                 {
                     var sorgu = $"?cari={siparisCarisi}&siparis={b.Id}";
-                    @if (Oturum.ModulAcikMi(ModulKodlari.Stok) && b.Satirlar.Any(s => s.StokluMu && s.KalanMiktar > 0))
+                    @if (Oturum.ModulAcikMi(ModulKodlari.Stok) && b.Satirlar.Any(s => s.StokluMu && s.KalanMiktar > 0)
+                         && Oturum.YazabilirMi(FaturaYetkileri.Irsaliye, YetkiIslemleri.Ekle))
                     {
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.LocalShipping"
                                    Href="@($"irsaliye/yeni/{IrsaliyeMetinleri.Yol(TeklifSiparisTurleri.IrsaliyeTuru(b.Tur))}{sorgu}")">İrsaliye oluştur</MudButton>
                     }
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
-                               Href="@($"fatura/yeni/{FaturaMetinleri.Yol(TeklifSiparisTurleri.FaturaTuru(b.Tur))}{sorgu}")">Faturala</MudButton>
+                    @if (Oturum.YazabilirMi(FaturaYetkileri.Belge, YetkiIslemleri.Ekle))
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
+                                   Href="@($"fatura/yeni/{FaturaMetinleri.Yol(TeklifSiparisTurleri.FaturaTuru(b.Tur))}{sorgu}")">Faturala</MudButton>
+                    }
                 }
-                @if (!Oturum.SaltOkunurMu && b.Durum == TeklifSiparisDurumu.Taslak)
+                @if (Y(YetkiIslemleri.Onayla) && b.Durum == TeklifSiparisDurumu.Taslak)
                 {
                     <IslemDugmesi Islem="@(() => IslemAsync("onayla", teklifMi ? "Teklif verildi." : "Sipariş onaylandı."))" StartIcon="@Icons.Material.Filled.TaskAlt">
                         @(teklifMi ? "Teklifi ver" : "Onayla")
                     </IslemDugmesi>
                 }
-                @if (!Oturum.SaltOkunurMu && b.Durum != TeklifSiparisDurumu.Taslak && b.Durum != TeklifSiparisDurumu.Iptal)
+                @{ var kapatilabilir = !teklifMi && b.Durum == TeklifSiparisDurumu.Acik && Y(YetkiIslemleri.Duzenle);
+                   var iptalEdilebilir = !karsilanmis && Y(YetkiIslemleri.Iptal); }
+                @if (b.Durum != TeklifSiparisDurumu.Taslak && b.Durum != TeklifSiparisDurumu.Iptal && (kapatilabilir || iptalEdilebilir))
                 {
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                        @if (!teklifMi && b.Durum == TeklifSiparisDurumu.Acik)
+                        @if (kapatilabilir)
                         {
                             <MudMenuItem Icon="@Icons.Material.Filled.DoneAll" OnClick="KapatAsync">Siparişi kapat (kalanı bekleme)</MudMenuItem>
                         }
-                        @if (!karsilanmis)
+                        @if (iptalEdilebilir)
                         {
                             <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="IptalAsync">İptal et</MudMenuItem>
                         }
                     </MudMenu>
                 }
-                @if (!Oturum.SaltOkunurMu && b.Durum == TeklifSiparisDurumu.Taslak)
+                @if (Y(YetkiIslemleri.Sil) && b.Durum == TeklifSiparisDurumu.Taslak)
                 {
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Taslağı sil" OnClick="SilAsync" />
                 }
             </Islemler>
         </SayfaBasligi>
 
-        @if (teklifMi && b.Durum is TeklifSiparisDurumu.Acik or TeklifSiparisDurumu.Kabul && !Oturum.SaltOkunurMu)
+        @if (teklifMi && b.Durum is TeklifSiparisDurumu.Acik or TeklifSiparisDurumu.Kabul && Y(YetkiIslemleri.Duzenle))
         {
             <div class="panel-kart kart belirme mb-3">
                 <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Color="Color.Secondary" /> Müşteri yanıtı</div>
@@ -212,6 +218,8 @@ else if (_hata is null)
 }
 
 @code {
+    private bool Y(string islem) => Oturum.YazabilirMi(FaturaYetkileri.Teklif, islem);
+
     [Parameter] public Guid Id { get; set; }
 
     private TeklifSiparisDetayi? _belge;

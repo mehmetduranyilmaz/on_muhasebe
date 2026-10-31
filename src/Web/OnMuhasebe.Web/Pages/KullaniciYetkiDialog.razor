@@ -1,0 +1,89 @@
+@* Kullanıcının rolü ve role göre kendisine özel verilen/kaldırılan yetkiler. Tabloda rolden farklı hücreler renklenir. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudSelect T="Guid" Margin="Margin.Dense" Variant="Variant.Outlined" Value="_rolId" ValueChanged="RolDegisti" Label="Rol" Class="mb-3">
+            @foreach (var rol in Roller)
+            {
+                <MudSelectItem Value="@rol.Id">@rol.Ad</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (SeciliRol is { TamYetkiliMi: true })
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                Yönetici tüm yetkilere sahiptir; kiralanan yeni modüller de kendiliğinden dahil olur. Kişiye özel ayar yapılmaz.
+            </MudAlert>
+        }
+        else
+        {
+            <div class="d-flex align-center gap-3 mb-2 flex-wrap">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Rolden farklı seçimler bu kişiye özeldir:</MudText>
+                <span class="yetki-hucre secili ek">Ek: @Ek.Count</span>
+                <span class="yetki-hucre yasak">Kaldırılan: @Yasak.Count</span>
+                @if (Ek.Count + Yasak.Count > 0)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="RoleDon">Rolün yetkilerine dön</MudButton>
+                }
+            </div>
+            <div style="max-height: 58vh; overflow-y: auto; padding-right: 4px;">
+                <YetkiMatrisi Kaynaklar="Kaynaklar" Secili="_secili" Referans="_rolYetkileri" Degisti="StateHasChanged" />
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public FirmaKullanicisiCevabi Kullanici { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<RolCevabi> Roller { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<YetkiKaynagi> Kaynaklar { get; set; } = [];
+
+    private Guid _rolId;
+    private HashSet<string> _rolYetkileri = [];
+    private HashSet<string> _secili = [];
+    private ApiHatasi? _hata;
+
+    private RolCevabi? SeciliRol => Roller.FirstOrDefault(r => r.Id == _rolId);
+    private List<string> Ek => _secili.Except(_rolYetkileri).Order().ToList();
+    private List<string> Yasak => _rolYetkileri.Except(_secili).Order().ToList();
+
+    protected override void OnInitialized()
+    {
+        _rolId = Kullanici.RolId;
+        _rolYetkileri = [.. SeciliRol?.Yetkiler ?? []];
+        _secili = [.. _rolYetkileri.Union(Kullanici.EkYetkiler).Except(Kullanici.YasakYetkiler)];
+    }
+
+    // Rol değişince kişiye özel ayarlar sıfırlanır: yeni rolün yetkileriyle başlanır.
+    private void RolDegisti(Guid rolId)
+    {
+        _rolId = rolId;
+        RoleDon();
+    }
+
+    private void RoleDon()
+    {
+        _rolYetkileri = [.. SeciliRol?.Yetkiler ?? []];
+        _secili = [.. _rolYetkileri];
+    }
+
+    private async Task KaydetAsync()
+    {
+        var tam = SeciliRol?.TamYetkiliMi == true;
+        var sonuc = await Api.PutAsync($"api/yonetim/kullanicilar/{Kullanici.KullaniciId}/yetkiler",
+            new KullaniciYetkiIstegi(_rolId, tam ? [] : Ek, tam ? [] : Yasak));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}

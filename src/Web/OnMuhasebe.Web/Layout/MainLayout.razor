@@ -45,7 +45,16 @@
         <LisansBandi />
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
             <div class="sayfa-gecis" @key="_sayfaAnahtari">
-                @Body
+                @if (Oturum.Bilgi is not null && SayfaYetkileri.Gereken(Navigasyon.ToBaseRelativePath(Navigasyon.Uri)) is { } gereken
+                     && !Oturum.YetkiVarMi(gereken))
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.Lock" Baslik="Bu sayfaya erişim yetkiniz yok."
+                              Aciklama="Rolünüzde bu ekran için yetki tanımlı değil. Gerekirse firma yöneticinizden isteyin." />
+                }
+                else
+                {
+                    @Body
+                }
             </div>
         </MudContainer>
     </MudMainContent>

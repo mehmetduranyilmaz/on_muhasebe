@@ -9,7 +9,7 @@
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Assessment" Href="cari/bakiye-listesi">Bakiye Listesi</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.EventBusy" Href="cari/vade-analizi">Vade Analizi</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Label" OnClick="GruplariAcAsync">Gruplar</MudButton>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(CariYetkileri.Hesap, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cari/yeni">Yeni Cari</MudButton>
         }
@@ -86,7 +86,7 @@
         <MudTd DataLabel="Bakiye" Class="sayi"><BakiyeGosterimi Bakiye="context.Bakiye" ParaBirimi="@context.ParaBirimi" /></MudTd>
     </Satir>
     <BosIslemler>
-        @if (!FiltreVarMi && !Oturum.SaltOkunurMu)
+        @if (!FiltreVarMi && Oturum.YazabilirMi(CariYetkileri.Hesap, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cari/yeni">İlk carinizi ekleyin</MudButton>
         }

@@ -3452,3 +3452,63 @@ td.soluk {
 @media print {
     .mutabakat-kagidi { box-shadow: none !important; border: none !important; background: #fff !important; color: #000 !important; }
 }
+
+/* ---------- Roller ve yetkiler ---------- */
+.yetki-grubu { margin-bottom: 18px; }
+
+.yetki-grup-basligi {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 2px;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.yetki-satiri {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 10px 2px;
+    border-bottom: 1px dashed var(--mud-palette-lines-default);
+    transition: background .2s var(--om-yumusak);
+}
+
+.yetki-satiri:hover { background: color-mix(in srgb, var(--om-turkuaz) 5%, transparent); }
+
+.yetki-ekran { flex: 1 1 220px; min-width: 0; }
+.yetki-ekran-adi { font-size: .92rem; }
+.yetki-gereken { font-size: .76rem; color: var(--mud-palette-text-secondary); margin-top: 2px; }
+.yetki-hucreler { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.yetki-hucre {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--mud-palette-lines-default);
+    background: transparent;
+    color: var(--mud-palette-text-secondary);
+    font: inherit;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: transform .2s var(--om-yay), background .2s, border-color .2s, color .2s;
+}
+
+.yetki-hucre:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--om-turkuaz); }
+.yetki-hucre:disabled { cursor: default; opacity: .85; }
+
+.yetki-hucre.secili {
+    color: var(--om-turkuaz);
+    border-color: color-mix(in srgb, var(--om-turkuaz) 60%, transparent);
+    background: color-mix(in srgb, var(--om-turkuaz) 12%, transparent);
+}
+
+/* Kullanıcıya özel: rolden fazla verilen ve rolden kaldırılan yetki */
+.yetki-hucre.ek { color: var(--om-mavi); border-color: var(--om-mavi); background: color-mix(in srgb, var(--om-mavi) 14%, transparent); }
+.yetki-hucre.yasak { color: var(--mud-palette-error); border-color: var(--mud-palette-error); text-decoration: line-through; }
+
+.rol-karti-yetki { font-size: .8rem; color: var(--mud-palette-text-secondary); }

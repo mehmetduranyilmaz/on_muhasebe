@@ -65,7 +65,7 @@
     <MudItem xs="12" lg="4" Class="yazdirma-gizle">
         <div class="panel-kart kart belirme">
             <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" Color="Color.Secondary" /> Tanımlar</div>
-            @if (!Oturum.SaltOkunurMu)
+            @if (Oturum.YazabilirMi(KasaBankaYetkileri.Tanim, YetkiIslemleri.Ekle))
             {
                 <div class="d-flex gap-2 align-start mb-3">
                     <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kod" Label="Kod" MaxLength="20" Style="max-width:110px" />
@@ -79,7 +79,7 @@
                 <div class="d-flex align-center gap-2 py-1" style="@(m.AktifMi ? "" : "opacity:.55")">
                     <b style="min-width:70px">@m.Kod</b>
                     <span style="flex:1">@m.Ad</span>
-                    @if (!Oturum.SaltOkunurMu)
+                    @if (Oturum.YazabilirMi(KasaBankaYetkileri.Tanim, YetkiIslemleri.Duzenle))
                     {
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="@(() => (_duzenlenen, _kod, _ad) = (m, m.Kod, m.Ad))" />
                         <MudIconButton Icon="@(m.AktifMi ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)" Size="Size.Small"

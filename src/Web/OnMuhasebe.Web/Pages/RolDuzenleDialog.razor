@@ -1,0 +1,76 @@
+@* Rol ekleme / düzenleme: ad, açıklama ve yetki tablosu. Lisansı olmayan modüllerin yetkileri listelenmez, rolde varsa korunur. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2" Class="mb-2">
+            <MudItem xs="12" sm="5">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ad" Label="Rol adı" MaxLength="100"
+                              Disabled="SaltOkunur" Required="true" RequiredError="Rol adı gerekli." />
+            </MudItem>
+            <MudItem xs="12" sm="7">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" Disabled="SaltOkunur" />
+            </MudItem>
+        </MudGrid>
+        <div class="d-flex align-center gap-2 mb-2">
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@_secili.Count yetki seçili</MudChip>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Bir işlem seçilince o ekranın görüntülemesi de seçilir.</MudText>
+        </div>
+        <div style="max-height: 58vh; overflow-y: auto; padding-right: 4px;">
+            <YetkiMatrisi Kaynaklar="Kaynaklar" Secili="_secili" SaltOkunur="SaltOkunur" Degisti="StateHasChanged" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">@(SaltOkunur ? "Kapat" : "Vazgeç")</MudButton>
+        @if (!SaltOkunur)
+        {
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<YetkiKaynagi> Kaynaklar { get; set; } = [];
+    [Parameter] public RolCevabi? Rol { get; set; }
+
+    // Düzenlemeden kopya: yeni rol açılır, yetkiler kopyalanır.
+    [Parameter] public bool KopyaMi { get; set; }
+    [Parameter] public bool SaltOkunur { get; set; }
+
+    private string _ad = "";
+    private string? _aciklama;
+    private HashSet<string> _secili = [];
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        if (Rol is not null)
+        {
+            _ad = KopyaMi ? $"{Rol.Ad} (kopya)" : Rol.Ad;
+            _aciklama = Rol.Aciklama;
+            _secili = [.. Rol.Yetkiler];
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_ad))
+        {
+            _hata = new ApiHatasi("Rol adı gerekli.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var istek = new RolKaydetIstegi(_ad.Trim(), _aciklama, _secili.Order().ToList());
+        var sonuc = Rol is null || KopyaMi
+            ? await Api.PostAsync<RolCevabi>("api/yonetim/roller", istek)
+            : await Api.PutAsync<RolCevabi>($"api/yonetim/roller/{Rol.Id}", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

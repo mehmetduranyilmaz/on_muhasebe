@@ -11,14 +11,14 @@
         }
     }
 
-    <AuthorizeView Roles="@($"{Roller.Yonetici},{Roller.SistemYoneticisi}")">
+    @if (_yonetim.Count > 0 || Oturum.Bilgi?.SistemYoneticisiMi == true)
+    {
         <div class="menu-bolum-basligi">Yönetim</div>
-    </AuthorizeView>
-    <AuthorizeView Roles="@Roller.Yonetici">
-        <MudNavLink Href="kullanicilar" Icon="@Icons.Material.Filled.ManageAccounts">Kullanıcılar</MudNavLink>
-        <MudNavLink Href="abonelik" Icon="@Icons.Material.Filled.WorkspacePremium">Abonelik</MudNavLink>
-        <MudNavLink Href="ayarlar" Icon="@Icons.Material.Filled.Tune">Ayarlar</MudNavLink>
-    </AuthorizeView>
+    }
+    @foreach (var (yol, ikon, ad) in _yonetim)
+    {
+        <MudNavLink Href="@yol" Icon="@ikon">@ad</MudNavLink>
+    }
     <AuthorizeView Roles="@Roller.SistemYoneticisi">
         <MudNavLink Href="sistem/firmalar" Icon="@Icons.Material.Filled.AdminPanelSettings">Firmalar ve Lisanslar</MudNavLink>
         <MudNavLink Href="sistem/odeme-bildirimleri" Icon="@Icons.Material.Filled.AccountBalanceWallet">Ödeme Bildirimleri</MudNavLink>
@@ -28,21 +28,35 @@
 </MudNavMenu>
 
 @code {
+    private static readonly (string Yol, string Ikon, string Ad)[] _yonetimOgeleri =
+    [
+        ("kullanicilar", Icons.Material.Filled.ManageAccounts, "Kullanıcılar"),
+        ("roller", Icons.Material.Filled.AdminPanelSettings, "Roller ve Yetkiler"),
+        ("abonelik", Icons.Material.Filled.WorkspacePremium, "Abonelik"),
+        ("ayarlar", Icons.Material.Filled.Tune, "Ayarlar")
+    ];
+
     private List<ModulMenuOgesi> _acikModuller = [];
+    private List<(string Yol, string Ikon, string Ad)> _yonetim = [];
 
     protected override void OnInitialized()
     {
         Oturum.Degisti += OturumDegisti;
-        ModulleriGuncelle();
+        MenuyuGuncelle();
     }
 
     public void Dispose() => Oturum.Degisti -= OturumDegisti;
 
-    private void ModulleriGuncelle() => _acikModuller = ModulMenusu.MenuOgeleri.Where(m => Oturum.ModulAcikMi(m.Kod)).ToList();
+    // Lisansı olan ve ekranı görme yetkisi bulunan bölümler listelenir.
+    private void MenuyuGuncelle()
+    {
+        _acikModuller = ModulMenusu.MenuOgeleri.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(m.GorunumYetkisi)).ToList();
+        _yonetim = _yonetimOgeleri.Where(o => SayfaYetkileri.Gereken(o.Yol) is { } y && Oturum.YetkiVarMi(y)).ToList();
+    }
 
     private void OturumDegisti()
     {
-        ModulleriGuncelle();
+        MenuyuGuncelle();
         InvokeAsync(StateHasChanged);
     }
 }

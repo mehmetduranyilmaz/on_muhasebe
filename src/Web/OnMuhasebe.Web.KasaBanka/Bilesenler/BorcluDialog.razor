@@ -25,16 +25,16 @@
 
             <MudGrid Spacing="2">
                 <MudItem xs="12" sm="7">
-                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Ad / unvan" @bind-Value="_ad" MaxLength="200" ReadOnly="Oturum.SaltOkunurMu" />
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Ad / unvan" @bind-Value="_ad" MaxLength="200" ReadOnly="!Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle)" />
                 </MudItem>
                 <MudItem xs="12" sm="5">
-                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="VKN / TCKN" @bind-Value="_kimlik" MaxLength="11" ReadOnly="Oturum.SaltOkunurMu" />
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="VKN / TCKN" @bind-Value="_kimlik" MaxLength="11" ReadOnly="!Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle)" />
                 </MudItem>
                 <MudItem xs="12" sm="5">
-                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Telefon" @bind-Value="_telefon" MaxLength="30" ReadOnly="Oturum.SaltOkunurMu" />
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Telefon" @bind-Value="_telefon" MaxLength="30" ReadOnly="!Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle)" />
                 </MudItem>
                 <MudItem xs="12" sm="7">
-                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Adres" @bind-Value="_adres" MaxLength="500" ReadOnly="Oturum.SaltOkunurMu" />
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Adres" @bind-Value="_adres" MaxLength="500" ReadOnly="!Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle)" />
                 </MudItem>
             </MudGrid>
 
@@ -71,7 +71,7 @@
                 </MudSimpleTable>
             }
 
-            @if (!Oturum.SaltOkunurMu)
+            @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle))
             {
                 <div class="kural-hatirla mt-4">
                     <MudSwitch T="bool" @bind-Value="_karaListe" Color="Color.Error" Label="Kara listeye al" />
@@ -86,13 +86,13 @@
         }
     </DialogContent>
     <DialogActions>
-        @if (_detay is { Karsiliksizlar.Count: 0 } && !Oturum.SaltOkunurMu)
+        @if (_detay is { Karsiliksizlar.Count: 0 } && Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Sil))
         {
             <MudButton Color="Color.Error" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudButton>
         }
         <MudSpacer />
         <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle))
         {
             <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" Disabled="@(string.IsNullOrWhiteSpace(_ad))">Kaydet</IslemDugmesi>
         }

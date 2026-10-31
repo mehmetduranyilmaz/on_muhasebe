@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using OnMuhasebe.Modules.Yonetim.Contracts;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Web.Api;
 
 namespace OnMuhasebe.Web.Kimlik;
@@ -29,6 +30,16 @@ public sealed class OturumYoneticisi(IHttpClientFactory httpClientFactory, TimeP
 
     // Lisans süresi dolduysa kayıt ekranları gizlenir; asıl engel API'dedir.
     public bool SaltOkunurMu => Bilgi?.Lisans?.SaltOkunur == true;
+
+    // Menü, sayfa ve düğmeleri gizlemek içindir; asıl denetim API'dedir. Liste lisanslı modüllerle sınırlı gelir.
+    public bool YetkiVarMi(string yetki) => Bilgi?.Yetki is { } y && (y.TamYetkiliMi || y.Yetkiler.Contains(yetki));
+
+    public bool YetkiVarMi(YetkiKaynagi kaynak, string islem) => YetkiVarMi(kaynak.Yetki(islem));
+
+    // Kayıt değiştiren düğmeler için: yetki var ve lisans salt okunur değil.
+    public bool YazabilirMi(YetkiKaynagi kaynak, string islem) => !SaltOkunurMu && YetkiVarMi(kaynak, islem);
+
+    public bool YazabilirMi(string yetki) => !SaltOkunurMu && YetkiVarMi(yetki);
 
     public Task<ApiSonucu> GirisAsync(GirisIstegi istek) =>
         TokenAlAsync(istemci => istemci.PostAsJsonAsync("api/yonetim/giris", istek));

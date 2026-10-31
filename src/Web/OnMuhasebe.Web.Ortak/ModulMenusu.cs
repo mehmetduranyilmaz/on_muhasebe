@@ -3,31 +3,35 @@ using OnMuhasebe.Shared.Contracts.Moduller;
 
 namespace OnMuhasebe.Web;
 
-public sealed record ModulMenuOgesi(string Kod, string Ad, string Yol, string Ikon, string Aciklama);
+// Kaynak: ekranın yetki kaynağı; menüde ve adres girişinde "kaynak.goruntule" yetkisi aranır.
+public sealed record ModulMenuOgesi(string Kod, string Ad, string Yol, string Ikon, string Aciklama, string Kaynak)
+{
+    public string GorunumYetkisi => $"{Kaynak}.goruntule";
+}
 
 public static class ModulMenusu
 {
     public static IReadOnlyList<ModulMenuOgesi> Tumu { get; } =
     [
-        new(ModulKodlari.Cari, "Cari Hesaplar", "cari", Icons.Material.Filled.People, "Müşteri ve tedarikçi hesapları, ekstreler"),
-        new(ModulKodlari.Stok, "Stok", "stok", Icons.Material.Filled.Inventory2, "Ürünler ve stok hareketleri"),
-        new(ModulKodlari.Fatura, "Fatura", "fatura", Icons.Material.Filled.ReceiptLong, "Alış ve satış faturaları"),
-        new(ModulKodlari.KasaBanka, "Kasa / Banka", "kasabanka", Icons.Material.Filled.AccountBalance, "Tahsilat, ödeme, kasa ve banka hareketleri")
+        new(ModulKodlari.Cari, "Cari Hesaplar", "cari", Icons.Material.Filled.People, "Müşteri ve tedarikçi hesapları, ekstreler", "cari.hesap"),
+        new(ModulKodlari.Stok, "Stok", "stok", Icons.Material.Filled.Inventory2, "Ürünler ve stok hareketleri", "stok.kart"),
+        new(ModulKodlari.Fatura, "Fatura", "fatura", Icons.Material.Filled.ReceiptLong, "Alış ve satış faturaları", "fatura.belge"),
+        new(ModulKodlari.KasaBanka, "Kasa / Banka", "kasabanka", Icons.Material.Filled.AccountBalance, "Tahsilat, ödeme, kasa ve banka hareketleri", "kasabanka.hesap")
     ];
 
     // Menüde modül altındaki ek bölümler; aynı lisans ve aynı lazy paketle açılır (adres -> modül eşlemesi de bunu kullanır).
     public static IReadOnlyList<ModulMenuOgesi> MenuOgeleri { get; } =
     [
         .. Tumu,
-        new(ModulKodlari.Stok, "Fiyat Listeleri", "fiyat-listesi", Icons.Material.Filled.PriceChange, "Cariye ve cari grubuna özel, tarihli ve kademeli satış/alış fiyatları"),
-        new(ModulKodlari.Fatura, "Teklifler", "teklif", Icons.Material.Filled.RequestPage, "Satış teklifleri: geçerlilik, kabul/red, siparişe dönüşüm"),
-        new(ModulKodlari.Fatura, "Siparişler", "siparis", Icons.Material.Filled.ShoppingBag, "Müşteri ve satınalma siparişleri, termin ve karşılama takibi"),
-        new(ModulKodlari.Fatura, "İrsaliyeler", "irsaliye", Icons.Material.Filled.LocalShipping, "Sevk irsaliyeleri, depolar arası sevk ve faturalanmamış irsaliye takibi"),
-        new(ModulKodlari.KasaBanka, "Nakit Akış", "nakit-akis", Icons.Material.Filled.Timeline, "13 haftalık nakit planı: beklenen tahsilat ve ödemeler, nakit açığı uyarısı"),
-        new(ModulKodlari.KasaBanka, "Krediler", "krediler", Icons.Material.Filled.AccountBalance, "Nakdi banka kredileri, ödeme planları ve taksit ödemeleri"),
-        new(ModulKodlari.KasaBanka, "Çek / Senet", "cek-senet", Icons.Material.Filled.RequestQuote, "Alınan ve verilen çek/senetler, portföy ve vade takvimi"),
-        new(ModulKodlari.KasaBanka, "Demirbaşlar", "demirbaslar", Icons.Material.Filled.Chair, "Sabit kıymetler, amortisman planı ve yıllık amortisman listesi"),
-        new(ModulKodlari.KasaBanka, "Teminatlar", "teminatlar", Icons.Material.Filled.Shield, "Alınan ve verilen teminatlar: teminat mektubu, ipotek, rehin, kefalet")
+        new(ModulKodlari.Stok, "Fiyat Listeleri", "fiyat-listesi", Icons.Material.Filled.PriceChange, "Cariye ve cari grubuna özel, tarihli ve kademeli satış/alış fiyatları", "stok.fiyat"),
+        new(ModulKodlari.Fatura, "Teklifler", "teklif", Icons.Material.Filled.RequestPage, "Satış teklifleri: geçerlilik, kabul/red, siparişe dönüşüm", "fatura.teklif"),
+        new(ModulKodlari.Fatura, "Siparişler", "siparis", Icons.Material.Filled.ShoppingBag, "Müşteri ve satınalma siparişleri, termin ve karşılama takibi", "fatura.teklif"),
+        new(ModulKodlari.Fatura, "İrsaliyeler", "irsaliye", Icons.Material.Filled.LocalShipping, "Sevk irsaliyeleri, depolar arası sevk ve faturalanmamış irsaliye takibi", "fatura.irsaliye"),
+        new(ModulKodlari.KasaBanka, "Nakit Akış", "nakit-akis", Icons.Material.Filled.Timeline, "13 haftalık nakit planı: beklenen tahsilat ve ödemeler, nakit açığı uyarısı", "kasabanka.rapor"),
+        new(ModulKodlari.KasaBanka, "Krediler", "krediler", Icons.Material.Filled.AccountBalance, "Nakdi banka kredileri, ödeme planları ve taksit ödemeleri", "kasabanka.kredi"),
+        new(ModulKodlari.KasaBanka, "Çek / Senet", "cek-senet", Icons.Material.Filled.RequestQuote, "Alınan ve verilen çek/senetler, portföy ve vade takvimi", "kasabanka.cek"),
+        new(ModulKodlari.KasaBanka, "Demirbaşlar", "demirbaslar", Icons.Material.Filled.Chair, "Sabit kıymetler, amortisman planı ve yıllık amortisman listesi", "kasabanka.demirbas"),
+        new(ModulKodlari.KasaBanka, "Teminatlar", "teminatlar", Icons.Material.Filled.Shield, "Alınan ve verilen teminatlar: teminat mektubu, ipotek, rehin, kefalet", "kasabanka.teminat")
     ];
 
     public static string Ad(string kod) => Tumu.FirstOrDefault(m => m.Kod == kod)?.Ad ?? kod;

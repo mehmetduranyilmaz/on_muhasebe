@@ -11,7 +11,7 @@
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CalendarMonth" Href="cek-senet/vade-takvimi">Vade takvimi</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Badge" Href="cek-senet/kesideciler">Keşideciler</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.MenuBook" Href="cek-senet/karneler">Karneler</MudButton>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Outbox" Href="cek-senet/cikis">Evrak ver</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Inventory" Href="cek-senet/giris">Evrak al</MudButton>
@@ -102,7 +102,7 @@
              BosIkon="@Icons.Material.Outlined.RequestQuote" BosBaslik="@(_yon == EvrakYonu.Alinan ? "Portföyde evrak yok" : "Verilmiş evrak yok")"
              BosAciklama="@(_yon == EvrakYonu.Alinan ? "Müşteriden aldığınız çek ve senetleri giriş bordrosuyla portföye ekleyin." : "Tedarikçiye verdiğiniz çek ve senetleri çıkış bordrosuyla kaydedin.")">
     <Basliklar>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Ekle))
         {
             <MudTh Style="width:44px">
                 <MudCheckBox T="bool" Value="SayfaSeciliMi" ValueChanged="SayfayiSec" Size="Size.Small" Color="Color.Secondary" />
@@ -117,7 +117,7 @@
     </Basliklar>
     <Satir>
         @{ var e = context; }
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Ekle))
         {
             <MudTd>
                 @if (e.UygunIslemler.Count > 0)

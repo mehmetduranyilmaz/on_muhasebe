@@ -1,5 +1,6 @@
 @* Kullanıcı daveti: kişiye e-postayla bağlantı gider; kişi kabul edince firmaya katılır. *@
 @inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
 
 <MudDialog>
     <DialogContent>
@@ -40,7 +41,8 @@
     {
         var sonuc = await Api.GetAsync<List<RolCevabi>>("api/yonetim/roller");
         _hata = sonuc.Hata;
-        _roller = sonuc.Deger ?? [];
+        // Yönetici rolünü yalnızca yönetici verebilir.
+        _roller = (sonuc.Deger ?? []).Where(r => !r.TamYetkiliMi || Oturum.Bilgi?.Yetki?.TamYetkiliMi == true).ToList();
         _rolId = (_roller.Find(r => r.Ad == "Kullanıcı") ?? _roller.Find(r => !r.TamYetkiliMi))?.Id ?? Guid.Empty;
     }
 

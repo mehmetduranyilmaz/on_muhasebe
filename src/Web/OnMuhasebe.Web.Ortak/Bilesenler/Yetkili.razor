@@ -1,0 +1,30 @@
+@* İçeriği yalnızca yetkisi olana gösterir (yazma işlemlerinde salt okunur lisansı da dikkate alır). Asıl denetim API'dedir. *@
+@implements IDisposable
+@inject OturumYoneticisi Oturum
+
+@if (Gorunur)
+{
+    @ChildContent
+}
+else
+{
+    @Yoksa
+}
+
+@code {
+    [Parameter] public string? Yetki { get; set; }
+    [Parameter] public YetkiKaynagi? Kaynak { get; set; }
+    [Parameter] public string Islem { get; set; } = YetkiIslemleri.Goruntule;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Yoksa { get; set; }
+
+    private bool Gorunur => Kaynak is not null
+        ? Islem == YetkiIslemleri.Goruntule ? Oturum.YetkiVarMi(Kaynak, Islem) : Oturum.YazabilirMi(Kaynak, Islem)
+        : Yetki is not null && Oturum.YetkiVarMi(Yetki);
+
+    protected override void OnInitialized() => Oturum.Degisti += Degisti;
+
+    private void Degisti() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Oturum.Degisti -= Degisti;
+}

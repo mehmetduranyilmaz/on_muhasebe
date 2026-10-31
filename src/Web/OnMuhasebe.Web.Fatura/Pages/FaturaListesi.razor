@@ -5,10 +5,14 @@
 
 <SayfaBasligi Baslik="Faturalar" AltBaslik="Satış, alış ve iade faturalarınız" Ikon="@Icons.Material.Filled.ReceiptLong">
     <Islemler>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.TrendingUp" Href="fatura/karlilik">Kârlılık</MudButton>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountBalance" Href="fatura/kdv-ozeti">KDV Özeti</MudButton>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FactCheck" Href="fatura/ba-bs">Ba / Bs</MudButton>
-        @if (!Oturum.SaltOkunurMu)
+        <Yetkili Kaynak="StokYetkileri.Maliyet">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.TrendingUp" Href="fatura/karlilik">Kârlılık</MudButton>
+        </Yetkili>
+        <Yetkili Kaynak="FaturaYetkileri.Rapor">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountBalance" Href="fatura/kdv-ozeti">KDV Özeti</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.FactCheck" Href="fatura/ba-bs">Ba / Bs</MudButton>
+        </Yetkili>
+        @if (Oturum.YazabilirMi(FaturaYetkileri.Belge, YetkiIslemleri.Ekle))
         {
             <YeniFaturaMenusu />
         }
@@ -98,7 +102,7 @@
         </MudTd>
     </Satir>
     <BosIslemler>
-        @if (!FiltreVarMi && !Oturum.SaltOkunurMu)
+        @if (!FiltreVarMi && Oturum.YazabilirMi(FaturaYetkileri.Belge, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="fatura/yeni/satis">İlk faturanızı kesin</MudButton>
         }

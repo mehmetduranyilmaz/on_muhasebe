@@ -72,7 +72,7 @@ else if (_hata is null)
 @code {
     private RenderFragment DosyaAdimi(HesapDetayi h) => __builder =>
     {
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Ekstre, YetkiIslemleri.Ekle))
         {
             <label class="dosya-birakma kart belirme @(_surukleniyor ? "surukleniyor" : "") @(_yukleniyor ? "yukleniyor" : "")" style="--i:2"
                    @ondragenter="() => _surukleniyor = true" @ondragleave="() => _surukleniyor = false" @ondrop="() => _surukleniyor = false">
@@ -131,7 +131,7 @@ else if (_hata is null)
                 <MudTd DataLabel="Durum"><MudChip T="string" Size="Size.Small" Color="renk" Variant="Variant.Text">@metin</MudChip></MudTd>
                 <MudTd DataLabel="Satır" Class="sayi">@context.AktarilanSayisi / @context.SatirSayisi</MudTd>
                 <MudTd Style="text-align:right">
-                    @if (context.Durum != AktarimDurumu.Tamamlandi && !Oturum.SaltOkunurMu)
+                    @if (context.Durum != AktarimDurumu.Tamamlandi && Oturum.YazabilirMi(KasaBankaYetkileri.Ekstre, YetkiIslemleri.Sil))
                     {
                         <span @onclick:stopPropagation="true">
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Aktarımı sil"
@@ -229,7 +229,7 @@ else if (_hata is null)
             </table>
         </div>
         <HataGosterimi Hata="_islemHatasi" />
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Ekstre, YetkiIslemleri.Ekle))
         {
             <div class="d-flex justify-end gap-2">
                 <IslemDugmesi Islem="EslemeUygulaAsync" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowForward" Disabled="!EslemeTamamMi">
@@ -254,7 +254,7 @@ else if (_hata is null)
 
     private RenderFragment OnayAdimi(AktarimDetayi a) => __builder =>
     {
-        var salt = Oturum.SaltOkunurMu || a.Durum == AktarimDurumu.Tamamlandi;
+        var salt = !Oturum.YazabilirMi(KasaBankaYetkileri.Ekstre, YetkiIslemleri.Duzenle) || a.Durum == AktarimDurumu.Tamamlandi;
         var gorunen = Filtreli(a).ToList();
         var sayfaSayisi = Math.Max(1, (gorunen.Count + SayfaBoyutu - 1) / SayfaBoyutu);
         var sayfa = gorunen.Skip((Math.Min(_sayfa, sayfaSayisi) - 1) * SayfaBoyutu).Take(SayfaBoyutu).ToList();

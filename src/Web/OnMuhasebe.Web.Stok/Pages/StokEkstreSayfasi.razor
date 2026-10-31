@@ -53,8 +53,11 @@
                     <th class="sayi">Giriş</th>
                     <th class="sayi">Çıkış</th>
                     <th class="sayi">Bakiye</th>
+        @if (MaliyetGorur)
+        {
                     <th class="sayi">Birim maliyet</th>
                     <th class="sayi">Tutar</th>
+        }
                 </tr>
             </thead>
             <tbody>
@@ -74,8 +77,11 @@
                         <td class="sayi bakiye-alacakli">@(s.Giris > 0 ? Bicim.Miktar(s.Giris) : "")</td>
                         <td class="sayi bakiye-borclu">@(s.Cikis > 0 ? Bicim.Miktar(s.Cikis) : "")</td>
                         <td class="sayi"><b>@Bicim.Miktar(s.Bakiye)</b></td>
+        @if (MaliyetGorur)
+        {
                         <td class="sayi">@(s.BirimMaliyet > 0 ? Bicim.Tutar(s.BirimMaliyet) : "")</td>
                         <td class="sayi">@(s.Tutar > 0 ? Bicim.Tutar(s.Tutar) : "")</td>
+        }
                     </tr>
                 }
             </tbody>
@@ -85,8 +91,11 @@
                     <td class="sayi">@Bicim.Miktar(e.ToplamGiris)</td>
                     <td class="sayi">@Bicim.Miktar(e.ToplamCikis)</td>
                     <td class="sayi">@Bicim.Miktar(e.SonMiktar, e.TemelBirim)</td>
+        @if (MaliyetGorur)
+        {
                     <td class="sayi">@Bicim.Tutar(e.SonBirimMaliyet)</td>
                     <td class="sayi">@Bicim.Tutar(e.SonDeger, ParaBirimleri.Tl)</td>
+        }
                 </tr>
             </tfoot>
         </MudSimpleTable>
@@ -101,6 +110,9 @@ else if (_hata is null)
 }
 
 @code {
+    // Maliyet, alış fiyatı ve stok değeri yalnızca maliyet yetkisi olana gösterilir (API de gizler).
+    private bool MaliyetGorur => Oturum.YetkiVarMi(StokYetkileri.Maliyet, YetkiIslemleri.Goruntule);
+
     [Parameter] public Guid Id { get; set; }
 
     private DateTime? _baslangic;

@@ -9,7 +9,7 @@
 <SayfaBasligi Baslik="@(Id is null ? "Yeni Fiyat Listesi" : _ad)" GeriAdres="fiyat-listesi" Ikon="@Icons.Material.Filled.PriceChange"
               AltBaslik="Fiyatlar ve kademe eşikleri ürünün temel birimindedir">
     <Islemler>
-        @if (Id is not null && !Oturum.SaltOkunurMu)
+        @if (Id is not null && Oturum.YazabilirMi(StokYetkileri.Fiyat, YetkiIslemleri.Sil))
         {
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Listeyi sil" OnClick="SilAsync" />
         }
@@ -148,9 +148,9 @@ else
                     }
                 </div>
 
-                @if (Oturum.SaltOkunurMu)
+                @if (!Oturum.YazabilirMi(StokYetkileri.Fiyat, Id is null ? YetkiIslemleri.Ekle : YetkiIslemleri.Duzenle))
                 {
-                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">Lisans süreniz dolduğu için kayıt yapılamaz.</MudAlert>
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">@(Oturum.SaltOkunurMu ? "Lisans süreniz dolduğu için kayıt yapılamaz." : "Fiyat listesini değiştirme yetkiniz yok.")</MudAlert>
                 }
                 else
                 {

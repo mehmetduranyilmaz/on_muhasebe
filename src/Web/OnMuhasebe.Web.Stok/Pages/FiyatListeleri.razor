@@ -6,7 +6,7 @@
 <SayfaBasligi Baslik="Fiyat Listeleri" AltBaslik="Belgeye ürün eklenirken carinin listesindeki fiyat ve iskonto önerilir; listede olmayan üründe kart fiyatı geçerlidir"
               Ikon="@Icons.Material.Filled.PriceChange">
     <Islemler>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(StokYetkileri.Fiyat, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="fiyat-listesi/yeni">Yeni Liste</MudButton>
         }

@@ -32,13 +32,13 @@
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"stok/{kart.Id}/ekstre")">Ekstre</MudButton>
             }
-            @if (!Oturum.SaltOkunurMu)
+            @if (urunMu && Oturum.YazabilirMi(StokYetkileri.Hareket, YetkiIslemleri.Ekle))
             {
-                @if (urunMu)
-                {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.SwapHoriz" Disabled="!kart.AktifMi" OnClick="TransferAsync">Transfer</MudButton>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd" Disabled="!kart.AktifMi" OnClick="HareketEkleAsync">Hareket Ekle</MudButton>
-                }
+            }
+            @if (Oturum.YazabilirMi(StokYetkileri.Kart, YetkiIslemleri.Duzenle))
+            {
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                     <MudMenuItem Icon="@Icons.Material.Filled.Edit" Href="@($"stok/{kart.Id}/duzenle")">Düzenle</MudMenuItem>
                     @if (kart.AktifMi)
@@ -49,7 +49,7 @@
                     {
                         <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => DurumDegistirAsync(true)">Aktifleştir</MudMenuItem>
                     }
-                    @if (!kart.HareketVarMi)
+                    @if (!kart.HareketVarMi && Oturum.YazabilirMi(StokYetkileri.Kart, YetkiIslemleri.Sil))
                     {
                         <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Sil</MudMenuItem>
                     }
@@ -88,6 +88,8 @@
                     }
                 </div>
             </MudItem>
+        @if (MaliyetGorur)
+        {
             <MudItem xs="12" sm="6" md="4">
                 <div class="panel-kart kart kart-hover belirme" style="--i:1; --vurgu:#3B82F6">
                     <div class="ozet-baslik mb-2">Stok değeri</div>
@@ -96,6 +98,7 @@
                     <div class="ozet-alt">Yöntem: @StokMetinleri.MaliyetYontemi(kart.MaliyetYontemi)</div>
                 </div>
             </MudItem>
+        }
             <MudItem xs="12" md="4">
                 <div class="panel-kart kart belirme" style="--i:2">
                     <div class="ozet-baslik mb-3">Depolara göre</div>
@@ -113,7 +116,10 @@
         <MudItem xs="12" md="@(urunMu ? 12 : 6)">
             <div class="panel-kart kart belirme" style="--i:3">
                 <div class="d-flex flex-wrap gap-6">
+        @if (MaliyetGorur)
+        {
                     <div><div class="ozet-baslik">Alış fiyatı</div><b>@(kart.AlisFiyati is { } a ? Bicim.Tutar(a, kart.ParaBirimi) : "—")</b></div>
+        }
                     <div><div class="ozet-baslik">Satış fiyatı</div><b>@(kart.SatisFiyati is { } s ? Bicim.Tutar(s, kart.ParaBirimi) : "—")</b></div>
                     <div><div class="ozet-baslik">Barkod</div><b>@(kart.Barkod ?? "—")</b></div>
                     @foreach (var ek in kart.EkBirimler)
@@ -154,7 +160,10 @@
                 <MudTh>Açıklama</MudTh>
                 <MudTh Class="sayi">Giriş</MudTh>
                 <MudTh Class="sayi">Çıkış</MudTh>
+        @if (MaliyetGorur)
+        {
                 <MudTh Class="sayi">Birim maliyet</MudTh>
+        }
                 <MudTh></MudTh>
             </Basliklar>
             <Satir>
@@ -202,16 +211,19 @@
                         }
                     }
                 </MudTd>
+        @if (MaliyetGorur)
+        {
                 <MudTd DataLabel="Birim maliyet" Class="sayi">@(context.BirimFiyat is { } f ? Bicim.Tutar(f) : "")</MudTd>
+        }
                 <MudTd Style="text-align:right">
-                    @if (context.ElleIptalEdilebilirMi && !Oturum.SaltOkunurMu)
+                    @if (context.ElleIptalEdilebilirMi && Oturum.YazabilirMi(StokYetkileri.Hareket, YetkiIslemleri.Iptal))
                     {
                         <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => IptalEtAsync(context)">İptal</MudButton>
                     }
                 </MudTd>
             </Satir>
             <BosIslemler>
-                @if (!Oturum.SaltOkunurMu && kart.AktifMi)
+                @if (Oturum.YazabilirMi(StokYetkileri.Hareket, YetkiIslemleri.Ekle) && kart.AktifMi)
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PostAdd" OnClick="HareketEkleAsync">Hareket Ekle</MudButton>
                 }
@@ -235,6 +247,9 @@ else if (_hata is null)
 }
 
 @code {
+    // Maliyet, alış fiyatı ve stok değeri yalnızca maliyet yetkisi olana gösterilir (API de gizler).
+    private bool MaliyetGorur => Oturum.YetkiVarMi(StokYetkileri.Maliyet, YetkiIslemleri.Goruntule);
+
     [Parameter] public Guid Id { get; set; }
 
     private StokKartiDetayi? _kart;

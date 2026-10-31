@@ -8,7 +8,7 @@
               AltBaslik="@(_teklifMi ? "Satış teklifleri: geçerlilik, kabul/red ve siparişe dönüşüm" : "Müşteri ve satınalma siparişleri, termin ve karşılama")"
               Ikon="@(_teklifMi ? Icons.Material.Filled.RequestPage : Icons.Material.Filled.ShoppingBag)">
     <Islemler>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(FaturaYetkileri.Teklif, YetkiIslemleri.Ekle))
         {
             @if (_teklifMi)
             {

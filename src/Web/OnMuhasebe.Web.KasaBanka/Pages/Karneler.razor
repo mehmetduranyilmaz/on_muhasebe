@@ -8,7 +8,7 @@
 <SayfaBasligi Baslik="Çek Karneleri ve Senet Defterleri" GeriAdres="cek-senet" Ikon="@Icons.Material.Filled.MenuBook">
     <AltIcerik><span>Verdiğiniz çek ve senetlerin yaprak takibi: sıradaki yaprak, kullanılan, yırtık/kayıp</span></AltIcerik>
     <Islemler>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="YeniAsync">
                 @(_tur == EvrakTuru.Cek ? "Yeni çek karnesi" : "Yeni senet defteri")
@@ -92,7 +92,7 @@ else
             <div class="d-flex flex-wrap align-center gap-2 mb-3">
                 <MudText Typo="Typo.h6">@(d.Ozet.HesapAdi ?? "Senet defteri") · @d.Ozet.BaslangicSeri – @d.Ozet.BitisSeri</MudText>
                 <MudSpacer />
-                @if (!Oturum.SaltOkunurMu)
+                @if (Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle))
                 {
                     @if (d.Ozet.Kullanilan == 0)
                     {
@@ -116,7 +116,7 @@ else
                     else
                     {
                         <button type="button" class="yaprak @(y.Durum == YaprakDurumu.Iptal ? "iptal" : "bos") @(y.SeriNo == d.Ozet.SiradakiSeri ? "siradaki" : "")"
-                                disabled="@Oturum.SaltOkunurMu" title="@(y.IptalNedeni ?? (y.SeriNo == d.Ozet.SiradakiSeri ? "Sıradaki yaprak" : "Boş"))"
+                                disabled="@(!Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Duzenle))" title="@(y.IptalNedeni ?? (y.SeriNo == d.Ozet.SiradakiSeri ? "Sıradaki yaprak" : "Boş"))"
                                 @onclick="() => YaprakAsync(d.Ozet, y)">
                             <span class="yaprak-no">@y.SeriNo</span>
                             <span class="yaprak-alt">@(y.Durum == YaprakDurumu.Iptal ? y.IptalNedeni : y.SeriNo == d.Ozet.SiradakiSeri ? "sıradaki" : "boş")</span>

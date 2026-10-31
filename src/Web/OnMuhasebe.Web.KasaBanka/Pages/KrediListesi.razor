@@ -6,7 +6,7 @@
 
 <SayfaBasligi Baslik="Krediler" AltBaslik="Nakdi banka kredileri, ödeme planları ve kalan anapara" Ikon="@Icons.Material.Filled.AccountBalance">
     <Islemler>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(KasaBankaYetkileri.Kredi, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="krediler/yeni">Yeni Kredi</MudButton>
         }

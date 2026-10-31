@@ -59,8 +59,8 @@ else
     // Her lisanslı modülün kendi özet paneli, modülün lazy paketinden yüklenip gösterilir.
     protected override async Task OnInitializedAsync()
     {
-        _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)).ToList();
-        foreach (var modul in _acikModuller)
+        _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(m.GorunumYetkisi)).ToList();
+        foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(SayfaYetkileri.OzetPaneli[m.Kod])))
         {
             if (await Yukleyici.OzetPaneliAsync(modul.Kod) is { } panel)
             {

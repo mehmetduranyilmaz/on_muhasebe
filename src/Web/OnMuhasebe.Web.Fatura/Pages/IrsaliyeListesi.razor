@@ -6,7 +6,7 @@
 
 <SayfaBasligi Baslik="İrsaliyeler" AltBaslik="Sevk irsaliyeleri, depolar arası sevk ve faturalanmamış irsaliye takibi" Ikon="@Icons.Material.Filled.LocalShipping">
     <Islemler>
-        @if (!Oturum.SaltOkunurMu)
+        @if (Oturum.YazabilirMi(FaturaYetkileri.Irsaliye, YetkiIslemleri.Ekle))
         {
             <YeniIrsaliyeMenusu />
         }
@@ -92,7 +92,7 @@
         <MudTd DataLabel="Fatura son günü"><SonGunRozeti SonGun="context.FaturaSonGunu" Bugun="Bugun" /></MudTd>
     </Satir>
     <BosIslemler>
-        @if (!FiltreVarMi && !Oturum.SaltOkunurMu)
+        @if (!FiltreVarMi && Oturum.YazabilirMi(FaturaYetkileri.Irsaliye, YetkiIslemleri.Ekle))
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="irsaliye/yeni/satis">İlk irsaliyenizi düzenleyin</MudButton>
         }
