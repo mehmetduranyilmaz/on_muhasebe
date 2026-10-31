@@ -6,6 +6,7 @@
 @inject OturumYoneticisi Oturum
 @inject TimeProvider Zaman
 @inject IDialogService DialogService
+@inject IsyeriYoneticisi Isyerleri
 
 <SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? "irsaliye" : $"irsaliye/{Id}")" Ikon="@IrsaliyeMetinleri.Ikon(_tur)"
              AltBaslik="@(_numara is not null && Id is not null ? _numara : IrsaliyeMetinleri.TurAciklamasi(_tur))" />
@@ -63,6 +64,10 @@ else
                     </MudItem>
                 }
 
+                 (Isyerleri.CokluMu)
+                {
+                    <MudItem xs="12" md="3"><IsyeriAlani @bind-Deger="_isyeriId" /></MudItem>
+                }
                 <MudItem xs="6" md="3">
                     <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Düzenleme tarihi" Date="_tarih" DateChanged="TarihDegisti"
                                    DateFormat="dd.MM.yyyy" Required="true" />
@@ -333,6 +338,7 @@ else
     private string? _tasiyiciUnvani;
     private string? _tasiyiciVkn;
     private string? _aciklama;
+    private Guid? _isyeriId;
     private bool _fiyatli;
     private bool _tasiyiciIle;
     private readonly List<IrsaliyeSatirModeli> _satirlar = [];
@@ -386,6 +392,9 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Yeni belge üst çubukta seçili işyerine açılır (düzenlemede kaydın işyeri yüklenir).
+        _isyeriId = Isyerleri.Secili;
+        await Isyerleri.YukleAsync();
         var ayar = await Api.GetAsync<FaturaAyarlari>("api/fatura/ayarlar");
         _ayar = ayar.BasariliMi ? ayar.Deger : null;
         var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
@@ -433,7 +442,7 @@ else
         }
 
         var i = sonuc.Deger;
-        (_tur, _durum, _numara, _surum) = (i.Tur, i.Durum, i.Numara, i.Surum);
+        (_tur, _durum, _numara, _surum, _isyeriId) = (i.Tur, i.Durum, i.Numara, i.Surum, i.IsyeriId);
         (_tarih, _sevkTarihi, _sevkSaati) = (Bicim.Takvim(i.Tarih), Bicim.Takvim(i.SevkTarihi), i.SevkSaati.ToTimeSpan());
         (_paraBirimi, _kur, _kurElleGirildi) = (i.ParaBirimi, i.Kur, true);
         (_hedefDepoId, _teslimAdresi, _aracPlakasi, _soforAdi, _soforTckn) = (i.HedefDepoId, i.TeslimAdresi, i.AracPlakasi, i.SoforAdi, i.SoforTckn);
@@ -716,7 +725,8 @@ else
             _tasiyiciVkn,
             _aciklama,
             _satirlar.Select(s => s.Istek(FiyatGorunur)).ToList(),
-            _surum);
+            _surum,
+            _isyeriId);
 
         var sonuc = Id is { } id
             ? await Api.PutAsync<IrsaliyeCevabi>($"api/fatura/irsaliyeler/{id}", istek, islemAnahtari: _anahtar.Deger)

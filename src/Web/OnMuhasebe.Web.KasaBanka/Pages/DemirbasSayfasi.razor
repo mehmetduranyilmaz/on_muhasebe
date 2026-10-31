@@ -6,6 +6,7 @@
 @inject ISnackbar Snackbar
 @inject TimeProvider Zaman
 @inject OturumYoneticisi Oturum
+@inject IsyeriYoneticisi Isyerleri
 
 <SayfaBasligi Baslik="@(Id is null ? "Yeni Demirbaş" : _ad)" GeriAdres="demirbaslar" Ikon="@Icons.Material.Filled.Chair"
               AltBaslik="@(_sicil ?? "Sicil numarası boş bırakılırsa otomatik verilir")">
@@ -79,6 +80,10 @@ else
                 <MudItem xs="12" md="4">
                     <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_konum" Label="Konum" MaxLength="100" Disabled="!duzenlenebilir" />
                 </MudItem>
+                @if (Isyerleri.CokluMu)
+                {
+                    <MudItem xs="12" md="4"><IsyeriAlani @bind-Deger="_isyeriId" Disabled="!duzenlenebilir" /></MudItem>
+                }
                 <MudItem xs="12" md="4">
                     @if (_merkezler.Any(m => m.AktifMi || m.Id == _merkezId))
                     {
@@ -205,6 +210,7 @@ else
     private string? _belgeNo;
     private string? _zimmetli;
     private string? _konum;
+    private Guid? _isyeriId;
     private Guid? _merkezId;
     private string? _aciklama;
     private List<MasrafMerkeziOzeti> _merkezler = [];
@@ -222,6 +228,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _isyeriId = Isyerleri.Secili;
+        await Isyerleri.YukleAsync();
         _buYil = Zaman.GetLocalNow().Year;
         _cikisTarihi = Zaman.GetLocalNow().Date;
         var merkezler = await Api.GetAsync<List<MasrafMerkeziOzeti>>("api/kasabanka/masraf-merkezleri");
@@ -251,7 +259,7 @@ else
         _detay = d;
         (_sicil, _ad, _grup, _binek, _edinme, _bedel, _omur, _yontem) =
             (d.SicilNo, d.Ad, d.Grup, d.BinekOtomobilMi, d.EdinmeTarihi.ToDateTime(TimeOnly.MinValue), d.EdinmeBedeli, d.FaydaliOmur, d.Yontem);
-        (_belgeNo, _zimmetli, _konum, _merkezId, _aciklama) = (d.BelgeNo, d.Zimmetli, d.Konum, d.MasrafMerkeziId, d.Aciklama);
+        (_belgeNo, _zimmetli, _konum, _merkezId, _aciklama, _isyeriId) = (d.BelgeNo, d.Zimmetli, d.Konum, d.MasrafMerkeziId, d.Aciklama, d.IsyeriId);
     }
 
     private void GrupDegisti(DemirbasGrubu grup)
@@ -270,7 +278,7 @@ else
     {
         _hata = null;
         var istek = new DemirbasKaydetIstegi(_sicil, _ad!, _grup, _binek && _grup == DemirbasGrubu.Tasitlar, DateOnly.FromDateTime(_edinme!.Value), _bedel,
-            _omur, _yontem, _belgeNo, _zimmetli, _konum, _merkezId, _aciklama, _detay?.Surum ?? 0);
+            _omur, _yontem, _belgeNo, _zimmetli, _konum, _merkezId, _aciklama, _detay?.Surum ?? 0, _isyeriId);
         var sonuc = Id is { } id
             ? await Api.PutAsync<DemirbasDetayi>($"api/kasabanka/demirbaslar/{id}", istek)
             : await Api.PostAsync<DemirbasDetayi>("api/kasabanka/demirbaslar", istek);

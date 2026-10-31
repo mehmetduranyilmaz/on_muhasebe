@@ -1,0 +1,118 @@
+@* İşyeri kartı. Fatura modülü açıksa işyerine özel belge serileri de burada girilir (boş: firma serisi). *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="4" sm="3">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kod" Label="Kod" MaxLength="20" Required="true" RequiredError="Kod gerekli." />
+            </MudItem>
+            <MudItem xs="8" sm="9">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" MaxLength="150" Required="true" RequiredError="Ad gerekli." />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_adres" Label="Adres" MaxLength="500" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ilce" Label="İlçe" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_il" Label="İl" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_telefon" Label="Telefon" MaxLength="30" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sgk" Label="SGK işyeri sicil no" MaxLength="26"
+                              HelperText="26 hane; personel bildirgeleri bu numarayla verilir" />
+            </MudItem>
+            @if (_seriAcik)
+            {
+                <MudItem xs="12"><div class="ayar-baslik mt-2">Belge serileri <span class="ozet-alt">(boş: firma serisi; 3 harf/rakam)</span></div></MudItem>
+                @foreach (var (etiket, deger) in _seriAlanlari)
+                {
+                    var ad = etiket;
+                    <MudItem xs="6" sm="4">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" Value="@_seriler[ad]" ValueChanged="@((string? v) => _seriler[ad] = v)"
+                                      Label="@ad" MaxLength="3" Placeholder="@deger" />
+                    </MudItem>
+                }
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // Fatura modülünün sözleşmesine derleme zamanında bağlanmamak için aynı biçimde yerel kayıt.
+    private sealed record Seriler(Guid IsyeriId, string? ToptanSeri, string? PerakendeSeri, string? IadeSeri, string? GiderPusulasiSeri, string? IrsaliyeSeri);
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public IsyeriOzeti? Isyeri { get; set; }
+
+    private static readonly (string Etiket, string Varsayilan)[] _seriAlanlari =
+        [("Toptan satış", "TPT"), ("Perakende satış", "PRK"), ("Alıştan iade", "IAD"), ("Gider pusulası", "GPS"), ("İrsaliye", "IRS")];
+
+    private string _kod = "";
+    private string _ad = "";
+    private string? _adres, _il, _ilce, _telefon, _sgk;
+    private bool _seriAcik;
+    private readonly Dictionary<string, string?> _seriler = _seriAlanlari.ToDictionary(s => s.Etiket, _ => (string?)null);
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Isyeri is { } i)
+        {
+            (_kod, _ad, _adres, _il, _ilce, _telefon, _sgk) = (i.Kod, i.Ad, i.Adres, i.Il, i.Ilce, i.Telefon, i.SgkSicilNo);
+        }
+
+        _seriAcik = Oturum.ModulAcikMi(ModulKodlari.Fatura);
+        if (_seriAcik && Isyeri is not null)
+        {
+            var sonuc = await Api.GetAsync<List<Seriler>>("api/fatura/isyeri-serileri");
+            if (sonuc.Deger?.Find(s => s.IsyeriId == Isyeri.Id) is { } s)
+            {
+                string?[] degerler = [s.ToptanSeri, s.PerakendeSeri, s.IadeSeri, s.GiderPusulasiSeri, s.IrsaliyeSeri];
+                for (var k = 0; k < _seriAlanlari.Length; k++)
+                {
+                    _seriler[_seriAlanlari[k].Etiket] = degerler[k];
+                }
+            }
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new IsyeriKaydetIstegi(_kod.Trim(), _ad.Trim(), _adres, _il, _ilce, _telefon, _sgk);
+        var sonuc = Isyeri is null
+            ? await Api.PostAsync<IsyeriOzeti>("api/yonetim/isyerleri", istek)
+            : await Api.PutAsync<IsyeriOzeti>($"api/yonetim/isyerleri/{Isyeri.Id}", istek);
+        _hata = sonuc.Hata;
+        if (!sonuc.BasariliMi)
+        {
+            return;
+        }
+
+        if (_seriAcik)
+        {
+            string? S(int k) => _seriler[_seriAlanlari[k].Etiket];
+            var id = sonuc.Deger.Id;
+            var seri = await Api.PutAsync($"api/fatura/isyeri-serileri/{id}", new Seriler(id, S(0), S(1), S(2), S(3), S(4)));
+            _hata = seri.Hata;
+            if (!seri.BasariliMi)
+            {
+                Isyeri = sonuc.Deger;
+                return;
+            }
+        }
+
+        MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+    }
+}

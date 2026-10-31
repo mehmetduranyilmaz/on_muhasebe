@@ -1,5 +1,6 @@
 @* Kullanıcının rolü ve role göre kendisine özel verilen/kaldırılan yetkiler. Tabloda rolden farklı hücreler renklenir. *@
 @inject ApiIstemcisi Api
+@inject IsyeriYoneticisi Isyerleri
 
 <MudDialog>
     <DialogContent>
@@ -10,6 +11,31 @@
                 <MudSelectItem Value="@rol.Id">@rol.Ad</MudSelectItem>
             }
         </MudSelect>
+
+        @if (Isyerleri.Aktifler.Count > 1 && SeciliRol is not { TamYetkiliMi: true })
+        {
+            <MudGrid Spacing="2" Class="mb-3">
+                <MudItem xs="12" md="8">
+                    <MudSelect T="Guid" MultiSelection="true" SelectedValues="_isyerleri" SelectedValuesChanged="IsyerleriDegisti" Label="Girebildiği işyerleri"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="Boş: tüm işyerleri. Seçilirse yalnız bu işyerlerinin belge, kasa ve depolarını görür."
+                               MultiSelectionTextFunc="@(_ => string.Join(", ", _isyerleri.Select(i => Isyerleri.Ad(i))))">
+                        @foreach (var isyeri in Isyerleri.Tumu)
+                        {
+                            <MudSelectItem T="Guid" Value="@isyeri.Id">@isyeri.Ad@(isyeri.AktifMi ? "" : " (kapalı)")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="Guid?" @bind-Value="_varsayilan" Label="Varsayılan işyeri" Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true"
+                               HelperText="Yeni belge bu işyerine açılır (boş: merkez)">
+                        @foreach (var isyeri in Isyerleri.Aktifler.Where(i => _isyerleri.Count == 0 || _isyerleri.Contains(i.Id)))
+                        {
+                            <MudSelectItem T="Guid?" Value="@isyeri.Id">@isyeri.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        }
 
         @if (SeciliRol is { TamYetkiliMi: true })
         {
@@ -49,17 +75,36 @@
     private Guid _rolId;
     private HashSet<string> _rolYetkileri = [];
     private HashSet<string> _secili = [];
+    private HashSet<Guid> _isyerleri = [];
+    private Guid? _varsayilan;
     private ApiHatasi? _hata;
 
     private RolCevabi? SeciliRol => Roller.FirstOrDefault(r => r.Id == _rolId);
     private List<string> Ek => _secili.Except(_rolYetkileri).Order().ToList();
     private List<string> Yasak => _rolYetkileri.Except(_secili).Order().ToList();
 
-    protected override void OnInitialized()
+    protected override Task OnInitializedAsync()
+    {
+        Baslat();
+        return Isyerleri.YukleAsync();
+    }
+
+    private void Baslat()
     {
         _rolId = Kullanici.RolId;
         _rolYetkileri = [.. SeciliRol?.Yetkiler ?? []];
         _secili = [.. _rolYetkileri.Union(Kullanici.EkYetkiler).Except(Kullanici.YasakYetkiler)];
+        _isyerleri = [.. Kullanici.Isyerleri ?? []];
+        _varsayilan = Kullanici.VarsayilanIsyeriId;
+    }
+
+    private void IsyerleriDegisti(IEnumerable<Guid> secilen)
+    {
+        _isyerleri = [.. secilen];
+        if (_varsayilan is { } v && _isyerleri.Count > 0 && !_isyerleri.Contains(v))
+        {
+            _varsayilan = null;
+        }
     }
 
     // Rol değişince kişiye özel ayarlar sıfırlanır: yeni rolün yetkileriyle başlanır.
@@ -79,7 +124,7 @@
     {
         var tam = SeciliRol?.TamYetkiliMi == true;
         var sonuc = await Api.PutAsync($"api/yonetim/kullanicilar/{Kullanici.KullaniciId}/yetkiler",
-            new KullaniciYetkiIstegi(_rolId, tam ? [] : Ek, tam ? [] : Yasak));
+            new KullaniciYetkiIstegi(_rolId, tam ? [] : Ek, tam ? [] : Yasak, tam ? [] : [.. _isyerleri], _varsayilan));
         _hata = sonuc.Hata;
         if (sonuc.BasariliMi)
         {

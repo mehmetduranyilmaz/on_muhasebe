@@ -1,4 +1,5 @@
 @page "/irsaliye/{Id:guid}"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject OnayServisi Onay
@@ -20,6 +21,10 @@
     <div class="yazdirma-gizle">
         <SayfaBasligi Baslik="@($"{IrsaliyeMetinleri.Tur(i.Tur)}{(i.Numara is null ? "" : $" {i.Numara}")}")" GeriAdres="irsaliye" Ikon="@IrsaliyeMetinleri.Ikon(i.Tur)">
             <AltIcerik>
+                @if (Isyerleri.CokluMu && Isyerleri.Ad(i.IsyeriId) is { } isyeriAdi)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Store">@isyeriAdi</MudChip>
+                }
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="IrsaliyeMetinleri.DurumRengi(i.Durum)">@IrsaliyeMetinleri.Durum(i.Durum)</MudChip>
                 @if (i.FaturalamaDurumu is { } fd && i.Durum == IrsaliyeDurumu.Onayli)
                 {
@@ -236,6 +241,7 @@ else if (_hata is null)
 
     protected override async Task OnParametersSetAsync()
     {
+        await Isyerleri.YukleAsync();
         _irsaliye = null;
         var sonuc = await Api.GetAsync<IrsaliyeDetayi>($"api/fatura/irsaliyeler/{Id}");
         _hata = sonuc.Hata;

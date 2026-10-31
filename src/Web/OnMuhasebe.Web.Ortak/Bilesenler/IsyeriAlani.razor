@@ -1,0 +1,36 @@
+@* Belge/kart formundaki işyeri seçimi. Tek işyerli firmada görünmez (değer boş kalır, API varsayılan işyerini kullanır).
+   Boş seçim "Varsayılan işyerim" demektir. Düzenlenen kaydın işyeri kapatılmışsa listede yine gösterilir. *@
+@implements IDisposable
+@inject IsyeriYoneticisi Isyerleri
+
+@if (Isyerleri.CokluMu)
+{
+    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="İşyeri" Value="Deger" ValueChanged="DegerChanged"
+               Disabled="Disabled" Clearable="!Zorunlu" Class="@Class" HelperText="@(Deger is null && !Zorunlu ? BosMetni : null)">
+        @foreach (var isyeri in Isyerleri.Tumu.Where(i => i.AktifMi || i.Id == Deger))
+        {
+            <MudSelectItem T="Guid?" Value="@isyeri.Id">@isyeri.Ad@(isyeri.MerkezMi ? " (merkez)" : "")@(isyeri.AktifMi ? "" : " (kapalı)")</MudSelectItem>
+        }
+    </MudSelect>
+}
+
+@code {
+    [Parameter] public Guid? Deger { get; set; }
+    [Parameter] public EventCallback<Guid?> DegerChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    // Banka hesabı gibi isteğe bağlı alanlarda boş "firma geneli" demektir; zorunlu alanda temizlenemez.
+    [Parameter] public bool Zorunlu { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string BosMetni { get; set; } = "Boş: varsayılan işyeriniz";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Isyerleri.Degisti += Yenile;
+        await Isyerleri.YukleAsync();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Isyerleri.Degisti -= Yenile;
+}

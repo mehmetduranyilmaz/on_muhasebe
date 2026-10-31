@@ -3,6 +3,7 @@
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject ISnackbar Snackbar
+@inject IsyeriYoneticisi Isyerleri
 
 <SayfaBasligi Baslik="@(Id is null ? "Yeni Hesap" : "Hesabı Düzenle")" GeriAdres="@(Id is null ? "kasabanka" : $"kasabanka/{Id}")"
              Ikon="@KasaMetinleri.HesapIkonu(_tur)" AltBaslik="@KasaMetinleri.HesapTuruAciklamasi(_tur)" />
@@ -47,6 +48,13 @@ else
                     }
                 </MudSelect>
             </MudItem>
+            @if (Isyerleri.CokluMu)
+            {
+                @* Kasa ve POS bir işyerinindir; banka ve kredi kartı boş bırakılırsa firma genelidir. *@
+                <MudItem xs="12" md="4">
+                    <IsyeriAlani @bind-Deger="_isyeriId" Zorunlu="@(_tur is HesapTuru.Kasa or HesapTuru.Pos)" BosMetni="Boş: firma geneli (tüm işyerleri)" />
+                </MudItem>
+            }
         </FormBolumu>
 
         @if (_tur != HesapTuru.Kasa)
@@ -201,6 +209,7 @@ else
     private string? _posBatchNo;
     private List<HesapOzeti> _bankaHesaplari = [];
     private string? _aciklama;
+    private Guid? _isyeriId;
     private uint _surum;
     private bool _hareketVarMi;
     private bool _yukleniyor = true;
@@ -234,6 +243,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _isyeriId = Isyerleri.Secili;
+        await Isyerleri.YukleAsync();
         // POS'ta "çözüldüğünde aktarılacak hesap" için banka hesapları.
         var hesaplar = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?tur=Banka&aktif=true");
         _bankaHesaplari = hesaplar.BasariliMi ? hesaplar.Deger : [];
@@ -250,7 +261,7 @@ else
 
             var h = sonuc.Deger;
             (_tur, _kod, _ad, _paraBirimi, _bankaAdi, _sube) = (h.Tur, h.Kod, h.Ad, h.ParaBirimi, h.BankaAdi, h.Sube);
-            (_hesapNo, _iban, _limit, _aciklama, _surum, _hareketVarMi) = (h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.Surum, h.HareketVarMi);
+            (_hesapNo, _iban, _limit, _aciklama, _surum, _hareketVarMi, _isyeriId) = (h.HesapNo, h.Iban, h.Limit, h.Aciklama, h.Surum, h.HareketVarMi, h.IsyeriId);
             _bankaHesapTuru = h.BankaHesapTuru ?? BankaHesapTuru.Vadesiz;
             (_subeId, _hesapKesimGunu, _sonOdemeGunu) = (h.SubeId, h.HesapKesimGunu, h.SonOdemeGunu);
             _posCalismaSekli = h.PosCalismaSekli ?? PosCalismaSekli.Komisyonlu;
@@ -299,7 +310,7 @@ else
         var istek = new HesapKaydetIstegi(_kod, _ad, _tur, _paraBirimi, _bankaAdi, _sube, _hesapNo, _iban, _limit, _aciklama, _bankaHesapTuru,
             SubeId: _subeId, HesapKesimGunu: _hesapKesimGunu, SonOdemeGunu: _sonOdemeGunu,
             PosCalismaSekli: _posCalismaSekli, PosKomisyonOrani: _posKomisyonOrani, PosGunSayisi: _posGunSayisi, PosGunTipi: _posGunTipi,
-            PosAktarilacakHesapId: _posAktarilacakHesapId, PosTerminalNo: _posTerminalNo, PosBatchNo: _posBatchNo, Surum: _surum);
+            PosAktarilacakHesapId: _posAktarilacakHesapId, PosTerminalNo: _posTerminalNo, PosBatchNo: _posBatchNo, Surum: _surum, IsyeriId: _isyeriId);
         var sonuc = Id is { } id
             ? await Api.PutAsync<HesapDetayi>($"api/kasabanka/hesaplar/{id}", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PostAsync<HesapDetayi>("api/kasabanka/hesaplar", istek, islemAnahtari: _anahtar.Deger);

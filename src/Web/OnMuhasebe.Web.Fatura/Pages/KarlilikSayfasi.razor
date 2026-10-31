@@ -1,4 +1,5 @@
 @page "/fatura/karlilik"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject IJSRuntime Js
@@ -171,7 +172,7 @@ else if (_hata is null)
         }
 
         _rapor = null;
-        var sonuc = await Api.GetAsync<KarlilikRaporu>($"api/fatura/raporlar/karlilik?baslangic={Bicim.Iso(bas)}&bitis={Bicim.Iso(son)}&kirilim={_kirilim}");
+        var sonuc = await Api.GetAsync<KarlilikRaporu>($"api/fatura/raporlar/karlilik?baslangic={Bicim.Iso(bas)}&bitis={Bicim.Iso(son)}&kirilim={_kirilim}{Isyerleri.Sorgu()}");
         _hata = sonuc.Hata;
         _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
     }

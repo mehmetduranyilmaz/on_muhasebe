@@ -1,0 +1,51 @@
+@* Üst çubukta seçili işyeri: listeler ve raporlar bu işyerine süzülür, yeni belgeye önerilir. Tek işyerli firmada görünmez. *@
+@implements IDisposable
+@inject IsyeriYoneticisi Isyerleri
+@inject OturumYoneticisi Oturum
+
+@if (Oturum.Bilgi?.AktifFirma is not null && Isyerleri.CokluMu)
+{
+    <MudMenu Label="@(Isyerleri.Ad(Isyerleri.Secili) ?? "Tüm işyerleri")" StartIcon="@Icons.Material.Filled.Store"
+             EndIcon="@Icons.Material.Filled.ArrowDropDown" Color="Color.Inherit" Class="isyeri-secici mr-2" Variant="Variant.Text"
+             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+        <MudMenuItem OnClick="() => Isyerleri.Sec(null)" Disabled="Isyerleri.Secili is null">Tüm işyerleri</MudMenuItem>
+        <MudDivider />
+        @foreach (var isyeri in Isyerleri.Aktifler)
+        {
+            <MudMenuItem OnClick="() => Isyerleri.Sec(isyeri.Id)" Disabled="@(isyeri.Id == Isyerleri.Secili)">
+                @isyeri.Ad@(isyeri.MerkezMi ? " (merkez)" : "")
+            </MudMenuItem>
+        }
+    </MudMenu>
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Isyerleri.Degisti += Yenile;
+        Oturum.Degisti += YukleVeYenile;
+        if (Oturum.Bilgi?.AktifFirma is not null)
+        {
+            await Isyerleri.YukleAsync();
+        }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    // Giriş/firma değişiminde işyerleri yeni firmadan okunur.
+    private void YukleVeYenile() => InvokeAsync(async () =>
+    {
+        if (Oturum.Bilgi?.AktifFirma is not null)
+        {
+            await Isyerleri.YukleAsync();
+        }
+
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        Isyerleri.Degisti -= Yenile;
+        Oturum.Degisti -= YukleVeYenile;
+    }
+}

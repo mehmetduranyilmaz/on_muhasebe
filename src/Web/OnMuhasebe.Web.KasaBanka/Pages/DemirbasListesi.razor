@@ -1,4 +1,5 @@
 @page "/demirbaslar"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject IJSRuntime Js
@@ -95,7 +96,7 @@
     {
         _yukleniyor = true;
         var sonuc = await Api.GetAsync<AmortismanListesi>(
-            $"api/kasabanka/demirbaslar?yil={_yil}&elCikarilanlar={(_elCikarilanlar ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}");
+            $"api/kasabanka/demirbaslar?yil={_yil}&elCikarilanlar={(_elCikarilanlar ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}{Isyerleri.Sorgu()}");
         _hata = sonuc.Hata;
         _liste = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

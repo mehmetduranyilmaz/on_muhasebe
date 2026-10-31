@@ -1,5 +1,6 @@
 @page "/teklif/{Id:guid}"
 @page "/siparis/{Id:guid}"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject OnayServisi Onay
@@ -19,6 +20,10 @@
     <div class="yazdirma-gizle">
         <SayfaBasligi Baslik="@($"{TeklifSiparisMetinleri.Tur(b.Tur)}{(b.Numara is null ? "" : $" {b.Numara}")}")" GeriAdres="@kok" Ikon="@TeklifSiparisMetinleri.Ikon(b.Tur)">
             <AltIcerik>
+                @if (Isyerleri.CokluMu && Isyerleri.Ad(b.IsyeriId) is { } isyeriAdi)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Store">@isyeriAdi</MudChip>
+                }
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="TeklifSiparisMetinleri.DurumRengi(b.Durum, b.SuresiDolduMu)">
                     @TeklifSiparisMetinleri.Durum(b.Durum, teklifMi, b.SuresiDolduMu)
                 </MudChip>
@@ -230,6 +235,7 @@ else if (_hata is null)
 
     protected override async Task OnParametersSetAsync()
     {
+        await Isyerleri.YukleAsync();
         var sonuc = await Api.GetAsync<TeklifSiparisDetayi>($"api/fatura/teklif-siparis/{Id}");
         _hata = sonuc.Hata;
         _belge = sonuc.BasariliMi ? sonuc.Deger : null;

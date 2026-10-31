@@ -25,6 +25,7 @@ public static class OrtakServisler
         services.AddScoped<ApiIstemcisi>();
         services.AddScoped<OnayServisi>();
         services.AddScoped<ZorunluAlanServisi>();
+        services.AddScoped<IsyeriYoneticisi>();
         services.AddSingleton<TemaYoneticisi>();
         services.AddAuthorizationCore();
         services.AddCascadingAuthenticationState();

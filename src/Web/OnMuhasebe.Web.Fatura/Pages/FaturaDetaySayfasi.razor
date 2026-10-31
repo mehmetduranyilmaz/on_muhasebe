@@ -1,4 +1,5 @@
 @page "/fatura/{Id:guid}"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject OnayServisi Onay
@@ -17,6 +18,10 @@
     <div class="yazdirma-gizle">
         <SayfaBasligi Baslik="@($"{FaturaMetinleri.Tur(f.Tur)}{(f.Numara is null ? "" : $" {f.Numara}")}")" GeriAdres="fatura" Ikon="@FaturaMetinleri.Ikon(f.Tur)">
             <AltIcerik>
+                @if (Isyerleri.CokluMu && Isyerleri.Ad(f.IsyeriId) is { } isyeriAdi)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Store">@isyeriAdi</MudChip>
+                }
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="FaturaMetinleri.DurumRengi(f.Durum)">@FaturaMetinleri.Durum(f.Durum)</MudChip>
                 @if (f.SatisSekli is { } sekil)
                 {
@@ -276,6 +281,7 @@ else if (_hata is null)
 
     protected override async Task OnParametersSetAsync()
     {
+        await Isyerleri.YukleAsync();
         _fatura = null;
         var sonuc = await Api.GetAsync<FaturaDetayi>($"api/fatura/faturalar/{Id}");
         _hata = sonuc.Hata;

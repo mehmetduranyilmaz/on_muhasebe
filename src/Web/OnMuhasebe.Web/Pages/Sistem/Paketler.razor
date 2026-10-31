@@ -17,6 +17,7 @@
         <MudTh>Paket</MudTh>
         <MudTh>Modüller</MudTh>
         <MudTh>Kullanıcı</MudTh>
+        <MudTh>İşyeri</MudTh>
         <MudTh Class="sayi">Aylık</MudTh>
         <MudTh Class="sayi">Yıllık</MudTh>
         <MudTh>Satışta</MudTh>
@@ -29,6 +30,7 @@
         </MudTd>
         <MudTd DataLabel="Modüller">@(context.TumModullerMi ? "Tümü" : string.Join(", ", context.Moduller.Select(ModulMenusu.Ad)))</MudTd>
         <MudTd DataLabel="Kullanıcı">@(context.KullaniciLimiti?.ToString() ?? "Sınırsız")</MudTd>
+        <MudTd DataLabel="İşyeri">@(context.IsyeriLimiti?.ToString() ?? "Sınırsız")</MudTd>
         <MudTd DataLabel="Aylık" Class="sayi">@Ucret(context.AylikUcret)</MudTd>
         <MudTd DataLabel="Yıllık" Class="sayi">@Ucret(context.YillikUcret)</MudTd>
         <MudTd DataLabel="Satışta">

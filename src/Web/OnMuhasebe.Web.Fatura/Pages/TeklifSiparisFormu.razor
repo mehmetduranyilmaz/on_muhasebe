@@ -7,6 +7,7 @@
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
 @inject TimeProvider Zaman
+@inject IsyeriYoneticisi Isyerleri
 
 <SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? TeklifSiparisMetinleri.Kok(_tur) : $"{TeklifSiparisMetinleri.Kok(_tur)}/{Id}")" Ikon="@TeklifSiparisMetinleri.Ikon(_tur)" />
 
@@ -50,6 +51,10 @@ else
                                          ResetValueOnEmptyText="true" Clearable="true" Required="true" Adornment="Adornment.Start"
                                          AdornmentIcon="@Icons.Material.Filled.People" MaxItems="10" />
                     </MudItem>
+                }
+                 (Isyerleri.CokluMu)
+                {
+                    <MudItem xs="12" md="3"><IsyeriAlani @bind-Deger="_isyeriId" /></MudItem>
                 }
                 <MudItem xs="6" md="3">
                     <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tarih" @bind-Date="_tarih" DateFormat="dd.MM.yyyy" Required="true" />
@@ -147,6 +152,7 @@ else
     private string? _odemeKosulu;
     private string? _teslimKosulu;
     private string? _aciklama;
+    private Guid? _isyeriId;
     private GenelIskontoTuru _genelIskontoTuru = GenelIskontoTuru.Yuzde;
     private decimal _genelIskonto;
     private readonly List<FaturaSatirModeli> _satirlar = [];
@@ -168,6 +174,9 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Yeni belge üst çubukta seçili işyerine açılır (düzenlemede kaydın işyeri yüklenir).
+        _isyeriId = Isyerleri.Secili;
+        await Isyerleri.YukleAsync();
         if (StokAcik)
         {
             var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
@@ -204,7 +213,7 @@ else
         }
 
         var b = sonuc.Deger;
-        (_tur, _durum, _surum, _paraBirimi, _kur) = (b.Tur, b.Durum, b.Surum, b.ParaBirimi, b.Kur);
+        (_tur, _durum, _surum, _paraBirimi, _kur, _isyeriId) = (b.Tur, b.Durum, b.Surum, b.ParaBirimi, b.Kur, b.IsyeriId);
         (_tarih, _gecerlilik, _termin) = (Bicim.Takvim(b.Tarih), Bicim.Takvim(b.GecerlilikTarihi), Bicim.Takvim(b.TerminTarihi));
         (_odemeKosulu, _teslimKosulu, _aciklama, _genelIskontoTuru, _genelIskonto) = (b.OdemeKosulu, b.TeslimKosulu, b.Aciklama, b.GenelIskontoTuru, b.GenelIskonto);
         if (b.CariHesapId is { } cariId)
@@ -292,7 +301,7 @@ else
         _hata = null;
         var istek = new TeklifSiparisKaydetIstegi(_tur, Aday ? null : _cari?.Id, Aday ? _adayUnvan : null, Bicim.Gun(_tarih)!.Value,
             TeklifMi ? Bicim.Gun(_gecerlilik) : null, Bicim.Gun(_termin), _paraBirimi, Dovizli ? _kur : null, _genelIskontoTuru, _genelIskonto,
-            _odemeKosulu, _teslimKosulu, _aciklama, _satirlar.Select(s => s.Istek()).ToList(), _surum);
+            _odemeKosulu, _teslimKosulu, _aciklama, _satirlar.Select(s => s.Istek()).ToList(), _surum, _isyeriId);
 
         var sonuc = Id is { } id
             ? await Api.PutAsync<TeklifSiparisDetayi>($"api/fatura/teklif-siparis/{id}", istek, islemAnahtari: _anahtar.Deger)

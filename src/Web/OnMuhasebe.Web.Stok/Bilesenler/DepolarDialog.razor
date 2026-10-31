@@ -1,3 +1,4 @@
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject ISnackbar Snackbar
 @inject OnayServisi Onay
@@ -118,7 +119,7 @@
 
     private async Task EkleAsync()
     {
-        var sonuc = await Api.PostAsync<Depo>("api/stok/depolar", new DepoKaydetIstegi(_yeniAd));
+        var sonuc = await Api.PostAsync<Depo>("api/stok/depolar", new DepoKaydetIstegi(_yeniAd, IsyeriId: Isyerleri.Secili));
         _hata = sonuc.Hata;
         if (sonuc.BasariliMi)
         {

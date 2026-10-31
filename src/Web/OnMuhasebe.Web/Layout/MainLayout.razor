@@ -4,6 +4,7 @@
 @inject TemaYoneticisi Tema
 @inject NavigationManager Navigasyon
 @inject IDialogService DialogService
+@inject IsyeriYoneticisi Isyerleri
 @inject ISnackbar Snackbar
 
 <MudLayout Class="@(Tema.KoyuMu ? "koyu-tema" : null)">
@@ -13,6 +14,7 @@
         <a href="" class="ml-2 d-flex"><Logo Boyut="32" Class="ust-logo" /></a>
         <MudSpacer />
         <FirmaSecici />
+        <IsyeriSecici />
         <BildirimZili />
         <MudTooltip Text="@(Tema.KoyuMu ? "Açık temaya geç" : "Koyu temaya geç")">
             <MudIconButton Icon="@(Tema.KoyuMu ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
@@ -71,6 +73,7 @@
         Oturum.Degisti += OturumDegisti;
         Tema.Degisti += YenidenCiz;
         Navigasyon.LocationChanged += AdresDegisti;
+        Isyerleri.Degisti += OturumDegisti;
         AnahtariGuncelle();
     }
 
@@ -79,11 +82,12 @@
         Oturum.Degisti -= OturumDegisti;
         Tema.Degisti -= YenidenCiz;
         Navigasyon.LocationChanged -= AdresDegisti;
+        Isyerleri.Degisti -= OturumDegisti;
     }
 
-    // Sayfa değişince ya da firma değişince içerik yeniden oluşturulur: geçiş animasyonu oynar, veriler yeni firmadan yüklenir.
+    // Sayfa, firma ya da seçili işyeri değişince içerik yeniden oluşturulur: geçiş animasyonu oynar, veriler yeni kapsamdan yüklenir.
     private void AnahtariGuncelle() =>
-        _sayfaAnahtari = $"{Navigasyon.ToBaseRelativePath(Navigasyon.Uri).Split('?')[0]}|{Oturum.Bilgi?.AktifFirma?.Id}";
+        _sayfaAnahtari = $"{Navigasyon.ToBaseRelativePath(Navigasyon.Uri).Split('?')[0]}|{Oturum.Bilgi?.AktifFirma?.Id}|{Isyerleri.Secili}";
 
     private void AdresDegisti(object? sender, LocationChangedEventArgs e)
     {

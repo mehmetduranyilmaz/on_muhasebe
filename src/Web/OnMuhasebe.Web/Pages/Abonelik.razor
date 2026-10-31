@@ -49,6 +49,10 @@ else
                 <MudProgressLinear Value="@Math.Min(100, d.KullaniciSayisi * 100.0 / limit)" Rounded="true" Size="Size.Small"
                                    Color="@(d.KullaniciSayisi >= limit ? Color.Warning : Color.Primary)" Class="abonelik-limit" />
             }
+            <div class="abonelik-satir">
+                <MudIcon Icon="@Icons.Material.Filled.Store" Size="Size.Small" />
+                İşyerleri: <b>@d.IsyeriSayisi</b> / @(d.IsyeriLimiti?.ToString() ?? "sınırsız")
+            </div>
         </div>
     </div>
 
@@ -95,6 +99,7 @@ else
                 </div>
                 <ul class="paket-ozellikleri">
                     <li><MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" /> @(p.KullaniciLimiti is { } l ? $"{l} kullanıcı" : "Sınırsız kullanıcı")</li>
+                    <li><MudIcon Icon="@Icons.Material.Filled.Store" Size="Size.Small" /> @(p.IsyeriLimiti is { } il ? (il == 1 ? "Tek işyeri" : $"{il} işyeri") : "Sınırsız işyeri")</li>
                     @foreach (var modul in p.TumModullerMi ? ModulMenusu.Tumu.Select(m => m.Kod) : p.Moduller)
                     {
                         <li><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /> @ModulMenusu.Ad(modul)</li>

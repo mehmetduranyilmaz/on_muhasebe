@@ -1,0 +1,104 @@
+@* Ayarlar > İşyerleri: merkez ve şubeler. Aktif işyeri sayısı paketin işyeri limitini aşamaz; merkez kapatılamaz, devredilir. *@
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+@inject IsyeriYoneticisi Isyerleri
+
+<FormBolumu Baslik="İşyerleri" Aciklama="Merkez ve şubeler; belge serisi, kasa ve depo işyerine bağlanır" Ikon="@Icons.Material.Filled.Store" Sira="Sira">
+    <MudItem xs="12">
+        <VeriTablosu T="IsyeriOzeti" Kayitlar="_isyerleri" Yukleniyor="_isyerleri is null" Dense="true" BosBaslik="İşyeri yok"
+                     SatirTiklandi="DuzenleAsync">
+            <Basliklar>
+                <MudTh>Kod</MudTh>
+                <MudTh>Ad</MudTh>
+                <MudTh>Adres</MudTh>
+                <MudTh>Durum</MudTh>
+                <MudTh></MudTh>
+            </Basliklar>
+            <Satir>
+                <MudTd DataLabel="Kod"><b>@context.Kod</b></MudTd>
+                <MudTd DataLabel="Ad">
+                    @context.Ad
+                    @if (context.MerkezMi)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">Merkez</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Adres">@context.TamAdres</MudTd>
+                <MudTd DataLabel="Durum">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.AktifMi ? Color.Success : Color.Default)">@(context.AktifMi ? "Açık" : "Kapalı")</MudChip>
+                </MudTd>
+                <MudTd Style="text-align: right; white-space: nowrap;" @onclick:stopPropagation="true">
+                    @if (!Oturum.SaltOkunurMu)
+                    {
+                        @if (context.AktifMi && !context.MerkezMi)
+                        {
+                            <MudButton Size="Size.Small" OnClick="@(() => IslemAsync(context, "merkez-yap", "Merkez yapıldı."))">Merkez yap</MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => KapatAsync(context)">Kapat</MudButton>
+                        }
+                        else if (!context.AktifMi)
+                        {
+                            <MudButton Size="Size.Small" OnClick="@(() => IslemAsync(context, "aktiflestir", "İşyeri açıldı."))">Aç</MudButton>
+                        }
+                    }
+                </MudTd>
+            </Satir>
+        </VeriTablosu>
+    </MudItem>
+    @if (!Oturum.SaltOkunurMu)
+    {
+        <MudItem xs="12" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddBusiness" OnClick="() => DuzenleAsync(null)">Yeni işyeri</MudButton>
+        </MudItem>
+    }
+</FormBolumu>
+
+@code {
+    [Parameter] public int Sira { get; set; }
+
+    private List<IsyeriOzeti>? _isyerleri;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<List<IsyeriOzeti>>("api/yonetim/isyerleri");
+        _isyerleri = sonuc.Deger ?? [];
+    }
+
+    private async Task DuzenleAsync(IsyeriOzeti? isyeri)
+    {
+        var dialog = await DialogService.ShowAsync<IsyeriDuzenleDialog>(isyeri is null ? "Yeni işyeri" : $"İşyeri: {isyeri.Ad}",
+            new DialogParameters<IsyeriDuzenleDialog> { { d => d.Isyeri, isyeri } }, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("İşyeri kaydedildi.", Severity.Success);
+            await TazeleAsync();
+        }
+    }
+
+    private async Task KapatAsync(IsyeriOzeti isyeri)
+    {
+        if (await Onay.SorAsync("İşyerini kapat", $"{isyeri.Ad} kapatılacak: yeni belge, kasa ve depo açılamaz; eski kayıtlar korunur. Devam edilsin mi?",
+                "Kapat", tehlikeli: true))
+        {
+            await IslemAsync(isyeri, "pasiflestir", "İşyeri kapatıldı.");
+        }
+    }
+
+    private async Task IslemAsync(IsyeriOzeti isyeri, string islem, string mesaj)
+    {
+        var sonuc = await Api.PostAsync($"api/yonetim/isyerleri/{isyeri.Id}/{islem}");
+        Snackbar.Add(sonuc.BasariliMi ? mesaj : sonuc.Hata.Baslik, sonuc.BasariliMi ? Severity.Success : Severity.Error);
+        await TazeleAsync();
+    }
+
+    // Üst çubuktaki işyeri listesi de güncellenir.
+    private async Task TazeleAsync()
+    {
+        await YukleAsync();
+        await Isyerleri.YenileAsync();
+    }
+}

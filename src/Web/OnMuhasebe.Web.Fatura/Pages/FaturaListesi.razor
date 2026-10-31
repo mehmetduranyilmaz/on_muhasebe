@@ -1,4 +1,5 @@
 @page "/fatura"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject OturumYoneticisi Oturum
@@ -127,7 +128,7 @@
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var adres = $"api/fatura/faturalar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
+        var adres = $"api/fatura/faturalar?sayfa={_sayfa}{Isyerleri.Sorgu()}&arama={Uri.EscapeDataString(_arama ?? "")}"
                     + (_tur is { } t ? $"&tur={t}" : "")
                     + (_durum is { } d ? $"&durum={d}" : "")
                     + (Bicim.Gun(_baslangic) is { } b ? $"&baslangic={Bicim.Iso(b)}" : "")

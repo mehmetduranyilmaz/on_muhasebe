@@ -3512,3 +3512,5 @@ td.soluk {
 .yetki-hucre.yasak { color: var(--mud-palette-error); border-color: var(--mud-palette-error); text-decoration: line-through; }
 
 .rol-karti-yetki { font-size: .8rem; color: var(--mud-palette-text-secondary); }
+
+.isyeri-secici { text-transform: none; font-weight: 500; }

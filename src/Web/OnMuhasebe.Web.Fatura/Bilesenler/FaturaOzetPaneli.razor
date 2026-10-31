@@ -1,4 +1,5 @@
 @* Ana sayfadaki Fatura özet paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 
 <div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Fatura özeti</div>
@@ -89,7 +90,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var sonuc = await Api.GetAsync<FaturaOzetRaporu>("api/fatura/raporlar/ozet");
+        var sonuc = await Api.GetAsync<FaturaOzetRaporu>($"api/fatura/raporlar/ozet{Isyerleri.Sorgu('?')}");
         if (sonuc.BasariliMi)
         {
             _ozet = sonuc.Deger;

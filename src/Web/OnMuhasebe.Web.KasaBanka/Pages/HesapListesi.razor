@@ -1,4 +1,5 @@
 @page "/kasabanka"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject OturumYoneticisi Oturum
 
@@ -96,7 +97,7 @@ else
 
     private async Task YukleAsync()
     {
-        var sonuc = await Api.GetAsync<List<HesapOzeti>>($"api/kasabanka/hesaplar{(_pasifleriGoster ? "" : "?aktif=true")}");
+        var sonuc = await Api.GetAsync<List<HesapOzeti>>($"api/kasabanka/hesaplar?{(_pasifleriGoster ? "" : "aktif=true")}{Isyerleri.Sorgu()}");
         _hata = sonuc.Hata;
         _hesaplar = sonuc.BasariliMi ? sonuc.Deger : [];
     }

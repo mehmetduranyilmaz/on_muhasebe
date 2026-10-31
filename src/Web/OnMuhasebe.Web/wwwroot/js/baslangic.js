@@ -3,6 +3,11 @@ window.omTema = {
     oku: () => { try { return localStorage.getItem("om-tema"); } catch { return null; } },
     yaz: deger => { try { localStorage.setItem("om-tema", deger); } catch { } }
 };
+// Üst çubukta seçili işyeri (firma başına); depolama kapalıysa her açılışta "Tüm işyerleri" ile başlanır.
+window.omIsyeri = {
+    oku: firma => { try { return localStorage.getItem("om-isyeri:" + firma); } catch { return null; } },
+    yaz: (firma, deger) => { try { deger ? localStorage.setItem("om-isyeri:" + firma, deger) : localStorage.removeItem("om-isyeri:" + firma); } catch { } }
+};
 window.omHareketAzaltildiMi = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // PWA: yeni sürüm arka planda iner, uygulama bir sonraki açılışta sessizce güncellenir.

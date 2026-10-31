@@ -7,6 +7,7 @@
 @inject OturumYoneticisi Oturum
 @inject TimeProvider Zaman
 @inject IDialogService DialogService
+@inject IsyeriYoneticisi Isyerleri
 
 <SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? "fatura" : $"fatura/{Id}")" Ikon="@FaturaMetinleri.Ikon(_tur)"
              AltBaslik="@(_numara is not null && Id is not null ? _numara : FaturaMetinleri.TurAciklamasi(_tur))" />
@@ -93,6 +94,10 @@ else
                     </MudItem>
                 }
 
+                @if (Isyerleri.CokluMu)
+                {
+                    <MudItem xs="12" md="3"><IsyeriAlani @bind-Deger="_isyeriId" /></MudItem>
+                }
                 <MudItem xs="6" md="3">
                     <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Tarih" Date="_tarih" DateChanged="TarihDegistiAsync"
                                    DateFormat="dd.MM.yyyy" Required="true" />
@@ -487,6 +492,7 @@ else
     private List<HesapOzeti> _pesinHesaplar = [];
     private List<MasrafMerkeziOzeti> _merkezler = [];
     private Guid? _masrafMerkeziId;
+    private Guid? _isyeriId;
     private Guid? _pesinHesapId;
     private int _stokAramaAnahtari;
     private string? _barkod;
@@ -550,6 +556,9 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Yeni belge üst çubukta seçili işyerine açılır (düzenlemede kaydın işyeri yüklenir).
+        _isyeriId = Isyerleri.Secili;
+        await Isyerleri.YukleAsync();
         _zorunlu = await ZorunluAlanlar.SeciliAsync();
         var ayar = await Api.GetAsync<FaturaAyarlari>("api/fatura/ayarlar");
         _ayar = ayar.BasariliMi ? ayar.Deger : null;
@@ -635,7 +644,7 @@ else
         (_tur, _durum, _satisSekli, _numara, _surum) = (f.Tur, f.Durum, f.SatisSekli ?? SatisSekli.Toptan, f.Numara, f.Surum);
         (_tarih, _vade, _paraBirimi, _kur, _kurElleGirildi) = (Bicim.Takvim(f.Tarih), Bicim.Takvim(f.VadeTarihi), f.ParaBirimi, f.Kur, true);
         (_aciklama, _genelIskontoTuru, _genelIskonto, _stopajOrani) = (f.Aciklama, f.GenelIskontoTuru, f.GenelIskonto, f.StopajOrani);
-        (_pesinHesapId, _masrafMerkeziId) = (f.PesinHesapId, f.MasrafMerkeziId);
+        (_pesinHesapId, _masrafMerkeziId, _isyeriId) = (f.PesinHesapId, f.MasrafMerkeziId, f.IsyeriId);
         if (f.CariHesapId is { } cariId)
         {
             _cari = new CariOzeti(cariId, f.CariKodu ?? "", f.CariUnvan, CariTuru.Musteri, null, f.ParaBirimi, null, true, 0m, 0m, null);
@@ -1017,7 +1026,8 @@ else
             _surum,
             UygunPesinHesaplar.Any(h => h.Id == _pesinHesapId) ? _pesinHesapId : null,
             StopajliMi ? _stopajOrani : 0m,
-            _masrafMerkeziId);
+            _masrafMerkeziId,
+            _isyeriId);
 
         var sonuc = Id is { } id
             ? await Api.PutAsync<FaturaCevabi>($"api/fatura/faturalar/{id}", istek, islemAnahtari: _anahtar.Deger)

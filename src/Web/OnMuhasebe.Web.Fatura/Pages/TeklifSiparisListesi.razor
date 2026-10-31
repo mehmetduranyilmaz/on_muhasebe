@@ -1,5 +1,6 @@
 @page "/teklif"
 @page "/siparis"
+@inject IsyeriYoneticisi Isyerleri
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject OturumYoneticisi Oturum
@@ -105,7 +106,7 @@
     {
         _yukleniyor = true;
         var turFiltresi = _tur is { } t ? $"&tur={t}" : "";
-        var adres = $"api/fatura/teklif-siparis?sayfa={_sayfa}&teklif={(_teklifMi ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}{turFiltresi}"
+        var adres = $"api/fatura/teklif-siparis?sayfa={_sayfa}{Isyerleri.Sorgu()}&teklif={(_teklifMi ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}{turFiltresi}"
                     + (_teklifMi && _acik ? "&durum=Acik" : !_teklifMi && _acik ? "&acik=true" : "");
         var sonuc = await Api.GetAsync<SayfaliSonuc<TeklifSiparisOzeti>>(adres);
         _hata = sonuc.Hata;
