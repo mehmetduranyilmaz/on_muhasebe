@@ -103,7 +103,7 @@
 
     <div class="fk-alt">
         <div class="fk-sol">
-            <div class="fk-yaziyla"><b>Yalnız:</b> @FaturaMetinleri.Yaziyla(Fatura.GenelToplam, Fatura.ParaBirimi)</div>
+            <div class="fk-yaziyla"><b>Yalnız:</b> @FaturaMetinleri.Yaziyla(Fatura.OdenecekTutar, Fatura.ParaBirimi)</div>
             @if (Fatura.Aciklama is not null)
             {
                 <div class="fk-aciklama"><b>Açıklama:</b> @Fatura.Aciklama</div>
@@ -121,10 +121,22 @@
             {
                 <tr><th>Hesaplanan KDV (%@k.Oran)</th><td>@Bicim.Tutar(k.KdvTutari)</td></tr>
             }
-            <tr class="fk-genel"><th>Ödenecek Tutar</th><td>@Bicim.Tutar(Fatura.GenelToplam, Fatura.ParaBirimi)</td></tr>
+            @if (Fatura.TevkifEdilenKdvToplami > 0 || Fatura.StopajTutari > 0)
+            {
+                <tr><th>Vergiler Dahil Toplam</th><td>@Bicim.Tutar(Fatura.GenelToplam)</td></tr>
+                @if (Fatura.TevkifEdilenKdvToplami > 0)
+                {
+                    <tr><th>Tevkifata Tabi Tutulan KDV (−)</th><td>@Bicim.Tutar(Fatura.TevkifEdilenKdvToplami)</td></tr>
+                }
+                @if (Fatura.StopajTutari > 0)
+                {
+                    <tr><th>Gelir Vergisi Stopajı (−)</th><td>@Bicim.Tutar(Fatura.StopajTutari)</td></tr>
+                }
+            }
+            <tr class="fk-genel"><th>Ödenecek Tutar</th><td>@Bicim.Tutar(Fatura.OdenecekTutar, Fatura.ParaBirimi)</td></tr>
             @if (Fatura.ParaBirimi != ParaBirimleri.Tl)
             {
-                <tr><th>TL Karşılığı</th><td>@Bicim.Tutar(Fatura.GenelToplamTl, ParaBirimleri.Tl)</td></tr>
+                <tr><th>TL Karşılığı</th><td>@Bicim.Tutar(FaturaHesaplayici.Yuvarla(Fatura.OdenecekTutar * Fatura.Kur), ParaBirimleri.Tl)</td></tr>
             }
         </table>
     </div>

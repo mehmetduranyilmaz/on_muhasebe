@@ -80,8 +80,12 @@
                         <div class="ozet-alt">@Bicim.Tutar(f.GenelToplamTl, ParaBirimleri.Tl) · kur @Bicim.Kur(f.Kur)</div>
                     }
                     <div class="ozet-alt">KDV @Bicim.Tutar(f.KdvToplami, f.ParaBirimi) · matrah @Bicim.Tutar(f.Matrah, f.ParaBirimi)</div>
+                    @if (f.OdenecekTutar != f.GenelToplam)
+                    {
+                        <div class="ozet-alt">@(FaturaTurleri.ParaGirisiMi(f.Tur) ? "Tahsil edilecek" : "Ödenecek") <b>@Bicim.Tutar(f.OdenecekTutar, f.ParaBirimi)</b> · tevkifat/stopaj düşülmüş</div>
+                    }
                     <div class="d-flex align-center flex-wrap gap-2 mt-2">
-                        <OdemeDurumu Kalan="f.Kalan" Toplam="f.GenelToplam" Vade="f.VadeTarihi" ParaBirimi="@f.ParaBirimi" />
+                        <OdemeDurumu Kalan="f.Kalan" Toplam="f.OdenecekTutar" Vade="f.VadeTarihi" ParaBirimi="@f.ParaBirimi" />
                         @if (f.Kalan is > 0 && f.CariHesapId is { } odenecekCari && !Oturum.SaltOkunurMu && Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
                         {
                             <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Payments"
@@ -174,7 +178,13 @@
                         <span class="mobil-alt-bilgi">@IskontoMetni(context)</span>
                     }
                 </MudTd>
-                <MudTd DataLabel="KDV" Class="sayi">%@context.KdvOrani · @Bicim.Tutar(context.KdvTutari)</MudTd>
+                <MudTd DataLabel="KDV" Class="sayi">
+                    %@context.KdvOrani · @Bicim.Tutar(context.KdvTutari)
+                    @if (context.TevkifatPayda > 0)
+                    {
+                        <span class="mobil-alt-bilgi">tevkifat @context.TevkifatPay/@context.TevkifatPayda · −@Bicim.Tutar(context.TevkifEdilenKdv)</span>
+                    }
+                </MudTd>
                 <MudTd DataLabel="Tutar" Class="sayi"><b>@Bicim.Tutar(context.Toplam)</b></MudTd>
             </Satir>
         </VeriTablosu>
@@ -183,7 +193,7 @@
             <MudItem xs="12" md="6" lg="7">
                 <div class="panel-kart kart belirme yaziyla" style="--i:4">
                     <div class="ozet-baslik">Yalnız</div>
-                    <b>@FaturaMetinleri.Yaziyla(f.GenelToplam, f.ParaBirimi)</b>
+                    <b>@FaturaMetinleri.Yaziyla(f.OdenecekTutar, f.ParaBirimi)</b>
                 </div>
             </MudItem>
             <MudItem xs="12" md="6" lg="5">
@@ -204,8 +214,20 @@
                         {
                             <dt>KDV %@k.Oran <small>(@Bicim.Tutar(k.Matrah))</small></dt><dd>@Bicim.Tutar(k.KdvTutari)</dd>
                         }
+                        @if (f.TevkifEdilenKdvToplami > 0)
+                        {
+                            <dt>Tevkif edilen KDV</dt><dd class="bakiye-borclu">−@Bicim.Tutar(f.TevkifEdilenKdvToplami)</dd>
+                        }
+                        @if (f.StopajTutari > 0)
+                        {
+                            <dt>Stopaj@(f.StopajOrani > 0 ? $" (%{f.StopajOrani:0.##})" : "")</dt><dd class="bakiye-borclu">−@Bicim.Tutar(f.StopajTutari)</dd>
+                        }
                     </dl>
                     <div class="genel-toplam"><span>Genel toplam</span><b>@Bicim.Tutar(f.GenelToplam, f.ParaBirimi)</b></div>
+                    @if (f.OdenecekTutar != f.GenelToplam)
+                    {
+                        <div class="genel-toplam odenecek"><span>@(FaturaTurleri.ParaGirisiMi(f.Tur) ? "Tahsil edilecek" : "Ödenecek")</span><b>@Bicim.Tutar(f.OdenecekTutar, f.ParaBirimi)</b></div>
+                    }
                 </div>
             </MudItem>
         </MudGrid>

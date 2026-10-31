@@ -199,7 +199,36 @@ else
                                     }
                                 </MudSelect>
                                 <MudCheckBox T="bool" @bind-Value="s.KdvDahilMi" Size="Size.Small" Color="Color.Secondary" Label="Dahil" Dense="true" />
+                                @if (s.KdvOrani > 0 && !s.TevkifatAcik)
+                                {
+                                    <button type="button" class="fs-tevkifat-ac" @onclick="() => s.TevkifatAcik = true">
+                                        <MudIcon Icon="@Icons.Material.Filled.CallSplit" Size="Size.Small" /> Tevkifat
+                                    </button>
+                                }
                             </div>
+                            @if (s.TevkifatAcik)
+                            {
+                                <div class="fs-tevkifat">
+                                    <MudIcon Icon="@Icons.Material.Filled.CallSplit" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.TevkifatKodu" ValueChanged="k => s.TevkifatSec(k)"
+                                               Label="KDV tevkifat kodu" Clearable="true" Dense="true" Class="fs-tevkifat-kod">
+                                        @foreach (var t in TevkifatKodlari.Tumu)
+                                        {
+                                            <MudSelectItem T="string" Value="t.Kod">@t.Kod · @t.Aciklama (@t.Pay/@t.Payda)</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    @if (s.TevkifatliMi && h is { KdvTutari: > 0 })
+                                    {
+                                        <span class="fs-tevkifat-bilgi">@s.TevkifatPay/@s.TevkifatPayda · tevkif edilen KDV −@Bicim.Tutar(h.TevkifEdilenKdv)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fs-tevkifat-bilgi" style="opacity:.7">Kod seçin (oran kendiliğinden gelir)</span>
+                                    }
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Tevkifatı kaldır"
+                                                   OnClick="@(() => { s.TevkifatSec(null); s.TevkifatAcik = false; })" />
+                                </div>
+                            }
                             @if (s.StokluMu && _depolar.Count > 1)
                             {
                                 <div class="fs-depo">
@@ -257,14 +286,25 @@ else
                     {
                         <dt>KDV %@k.Oran <small>(@Bicim.Tutar(k.Matrah))</small></dt><dd>@Bicim.Tutar(k.KdvTutari)</dd>
                     }
+                    @if (hesap.TevkifEdilenKdvToplami > 0)
+                    {
+                        <dt>Tevkif edilen KDV</dt><dd class="bakiye-borclu">−@Bicim.Tutar(hesap.TevkifEdilenKdvToplami)</dd>
+                    }
                 </dl>
                 <div class="genel-toplam">
                     <span>Genel toplam</span>
                     <b><SayacDegeri Deger="hesap.GenelToplam" Bicimle="@(d => Bicim.Tutar(d, _paraBirimi))" SureMs="450" /></b>
                 </div>
+                @if (hesap.OdenecekTutar != hesap.GenelToplam)
+                {
+                    <div class="genel-toplam odenecek">
+                        <span>@(ParaGirisi ? "Tahsil edilecek" : "Ödenecek")</span>
+                        <b><SayacDegeri Deger="hesap.OdenecekTutar" Bicimle="@(d => Bicim.Tutar(d, _paraBirimi))" SureMs="450" /></b>
+                    </div>
+                }
                 @if (Dovizli && _kur is { } kur)
                 {
-                    <div class="ozet-alt mt-1" style="text-align:right">≈ @Bicim.Tutar(FaturaHesaplayici.Yuvarla(hesap.GenelToplam * kur), ParaBirimleri.Tl)</div>
+                    <div class="ozet-alt mt-1" style="text-align:right">≈ @Bicim.Tutar(FaturaHesaplayici.Yuvarla(hesap.OdenecekTutar * kur), ParaBirimleri.Tl)</div>
                 }
 
                 @if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka))

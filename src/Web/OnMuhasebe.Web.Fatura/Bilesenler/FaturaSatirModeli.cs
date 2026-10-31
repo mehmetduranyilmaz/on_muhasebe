@@ -25,8 +25,26 @@ public sealed class FaturaSatirModeli
     public decimal Iskonto2 { get; set; }
     public decimal Iskonto3 { get; set; }
 
+    public string? TevkifatKodu { get; set; }
+    public int TevkifatPay { get; set; }
+    public int TevkifatPayda { get; set; }
+
     // 2. ve 3. iskonto alanları yalnızca istenince (ya da doluysa) görünür.
     public bool EkIskontoAcik { get; set; }
+
+    // Tevkifat şeridi yalnızca istenince (ya da doluysa) görünür.
+    public bool TevkifatAcik { get; set; }
+
+    public bool TevkifatliMi => TevkifatPayda > 0;
+
+    // Kod listesinden seçince oran da dolar; temizleyince tevkifat kalkar.
+    public void TevkifatSec(string? kod)
+    {
+        var t = TevkifatKodlari.Bul(kod);
+        TevkifatKodu = t?.Kod;
+        TevkifatPay = t?.Pay ?? 0;
+        TevkifatPayda = t?.Payda ?? 0;
+    }
 
     public bool KartliMi => StokKartiId is not null;
     public bool StokluMu => KartliMi && KartTuru == StokTuru.Urun;
@@ -68,10 +86,11 @@ public sealed class FaturaSatirModeli
         EkBirimler = kart.EkBirimler;
     }
 
-    public HesapSatiri Hesap() => new(Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3);
+    public HesapSatiri Hesap() => new(Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3, TevkifatPay, TevkifatPayda);
 
     public FaturaSatiriIstegi Istek() =>
-        new(StokKartiId, Ad, StokluMu ? DepoId : null, Birim, Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3);
+        new(StokKartiId, Ad, StokluMu ? DepoId : null, Birim, Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3,
+            TevkifatKodu, TevkifatPay, TevkifatPayda);
 
     public static FaturaSatirModeli Detaydan(FaturaSatiriDetayi s) => new()
     {
@@ -89,6 +108,10 @@ public sealed class FaturaSatirModeli
         Iskonto1 = s.Iskonto1,
         Iskonto2 = s.Iskonto2,
         Iskonto3 = s.Iskonto3,
-        EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0
+        TevkifatKodu = s.TevkifatKodu,
+        TevkifatPay = s.TevkifatPay,
+        TevkifatPayda = s.TevkifatPayda,
+        EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0,
+        TevkifatAcik = s.TevkifatPayda > 0
     };
 }

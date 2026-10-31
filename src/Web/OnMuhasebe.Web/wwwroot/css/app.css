@@ -1221,7 +1221,8 @@ h1:focus {
     grid-template-areas:
         "sira ad ad ad ad toplam sil"
         ". miktar birim fiyat iskonto kdv ."
-        ". depo depo . . . .";
+        ". depo depo . . . ."
+        ". tevkifat tevkifat tevkifat tevkifat tevkifat .";
     align-items: start;
     gap: 8px;
     padding: 10px 10px 4px;
@@ -1262,9 +1263,49 @@ h1:focus {
 .fs-fiyat { grid-area: fiyat; }
 .fs-iskonto { grid-area: iskonto; display: flex; gap: 4px; align-items: start; }
 .fs-iskonto .mud-input-control { min-width: 62px; }
-.fs-kdv { grid-area: kdv; display: flex; flex-direction: column; }
+.fs-kdv { grid-area: kdv; display: flex; flex-direction: column; gap: 2px; }
 .fs-depo { grid-area: depo; }
 .fs-sil { grid-area: sil; padding-top: 4px; }
+
+.fs-tevkifat-ac {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border: 1px dashed color-mix(in srgb, var(--om-turkuaz) 55%, transparent);
+    border-radius: 999px;
+    background: none;
+    cursor: pointer;
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--om-turkuaz);
+    transition: background .2s;
+}
+
+.fs-tevkifat-ac:hover { background: color-mix(in srgb, var(--om-turkuaz) 12%, transparent); }
+
+.fs-tevkifat {
+    grid-area: tevkifat;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    margin-top: 2px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--om-turkuaz) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--om-turkuaz) 22%, transparent);
+}
+
+.fs-tevkifat-kod { flex: 1; min-width: 220px; }
+
+.fs-tevkifat-bilgi {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
 
 .fs-kart {
     display: flex;
@@ -1309,7 +1350,10 @@ h1:focus {
 @container (min-width: 1080px) {
     .fatura-satiri {
         grid-template-columns: 30px minmax(0, 2.6fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.1fr) auto minmax(0, 1fr) minmax(0, 1fr) 40px;
-        grid-template-areas: "sira ad miktar birim fiyat iskonto kdv toplam sil" ". depo depo depo . . . . .";
+        grid-template-areas:
+            "sira ad miktar birim fiyat iskonto kdv toplam sil"
+            ". depo depo depo . . . . ."
+            ". tevkifat tevkifat tevkifat tevkifat tevkifat tevkifat tevkifat .";
     }
 }
 
@@ -1323,6 +1367,7 @@ h1:focus {
             "fiyat fiyat"
             "iskonto kdv"
             "depo depo"
+            "tevkifat tevkifat"
             "toplam toplam";
     }
 
@@ -1377,6 +1422,15 @@ h1:focus {
     font-size: 1.45rem;
     font-variant-numeric: tabular-nums;
 }
+
+/* Tevkifat/stopaj varsa fatura brütünden farklı olan tahsil/ödenecek tutar. */
+.genel-toplam.odenecek {
+    margin-top: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(120deg, #0F766E, #14B8A6);
+}
+
+.genel-toplam.odenecek b { font-size: 1.2rem; }
 
 .fatura-tutar-karti {
     position: relative;
