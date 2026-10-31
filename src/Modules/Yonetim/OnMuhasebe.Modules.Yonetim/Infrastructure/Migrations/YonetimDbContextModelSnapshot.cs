@@ -411,6 +411,10 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
 
+                    b.Property<bool>("MaliMusavirMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("mali_musavir_mi");
+
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
                         .HasColumnName("olusturan_id");

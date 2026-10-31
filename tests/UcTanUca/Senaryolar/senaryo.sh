@@ -38,7 +38,7 @@ ALI_TOKEN=$(alan accessToken)
 grep -q om_yenile "$DIR/ali.jar" && echo "GECTI  Refresh token HttpOnly cerezde" && GECEN=$((GECEN+1)) || { echo "KALDI  Cerez yok"; KALAN=$((KALAN+1)); }
 
 istek GET /ben "$ALI_TOKEN"
-kontrol 200 "Ben: aktif firma A, deneme lisansi tum moduller" '"moduller":\["cari","stok","fatura","kasabanka"\]'
+kontrol 200 "Ben: aktif firma A, deneme lisansi tum moduller" '"moduller":\["cari","stok","fatura","kasabanka","muhasebe"]'
 FIRMA_A=$(echo "$GOVDE" | grep -o '"aktifFirma":{"id":"[^"]*"' | cut -d'"' -f6)
 
 istek POST /kayit "" "" '{"firmaUnvani":"X","ad":"A","soyad":"B","eposta":"'"$ALI"'","sifre":"Baska1234"}'
@@ -159,7 +159,7 @@ kontrol 204 "Firma A lisansi gecmis tarihli yapildi"
 istek GET /ben "$ALI_TOKEN"
 kontrol 200 "Onbellek temizlendi: lisans salt okunur" '"saltOkunur":true'
 
-istek PUT "/sistem/firmalar/$FIRMA_A/lisans" "$SYS_TOKEN" "" '{"paketKodu":"basic","bitisTarihi":"2027-12-31","ekModuller":["muhasebe"]}'
+istek PUT "/sistem/firmalar/$FIRMA_A/lisans" "$SYS_TOKEN" "" '{"paketKodu":"basic","bitisTarihi":"2027-12-31","ekModuller":["uydurma"]}'
 kontrol 400 "Gecersiz ek modul reddedildi"
 
 echo "--- Cikis ve hesap kilidi"

@@ -1,3 +1,4 @@
+using OnMuhasebe.Shared.Contracts.Muhasebe;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
@@ -30,6 +31,18 @@ internal sealed class KategoriServisi(KasaBankaDbContext db)
 
 internal sealed class KasaBankaSorgusu(KasaBankaDbContext db) : IKasaBankaSorgusu
 {
+    public async Task<IReadOnlyList<MuhasebeKarti>> HesapKartlariAsync(CancellationToken cancellationToken = default) =>
+        await db.Hesaplar.IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi, ModulDbContext.IsyeriFiltresi]).AsNoTracking()
+            .OrderBy(h => h.Kod)
+            .Select(h => new MuhasebeKarti(h.Id, h.Kod, h.Ad, h.Tur.ToString()))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<MuhasebeKarti>> KategoriKartlariAsync(CancellationToken cancellationToken = default) =>
+        await db.Kategoriler.AsNoTracking()
+            .OrderBy(k => k.Tur).ThenBy(k => k.Ad)
+            .Select(k => new MuhasebeKarti(k.Id, "", k.Ad, k.Tur.ToString()))
+            .ToListAsync(cancellationToken);
+
     public Task<KasaHesapBilgisi?> HesapGetirAsync(Guid hesapId, CancellationToken cancellationToken = default) =>
         db.Hesaplar.AsNoTracking()
             .Where(h => h.Id == hesapId)

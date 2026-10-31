@@ -41,6 +41,8 @@ internal static class YonetimHatalari
     public static Hata IsyeriLimiti(int limit) =>
         Hata.IsKurali("isyeri_limiti", $"Paketinizin işyeri limiti ({limit}) dolu. Bir işyerini kapatın ya da paketinizi yükseltin.");
     public static readonly Hata SonYonetici = Hata.IsKurali("son_yonetici", "Firmada en az bir aktif yönetici kalmalı.");
+    public static Hata MaliMusavirYetkisi(string yetki) =>
+        Hata.Dogrulama("mali_musavir_yetkisi", $"Mali müşavir rolü yalnız görüntüleme ve muhasebe aktarımı yetkisi taşıyabilir (\"{yetki}\").");
     public static Hata YetkiGecersiz(string yetki) => Hata.Dogrulama("yetki_gecersiz", $"\"{yetki}\" verilebilecek bir yetki değil.");
     public static Hata KullaniciLimiti(int limit) =>
         Hata.IsKurali("kullanici_limiti", $"Paketinizin kullanıcı limiti ({limit}) dolu. Bir kullanıcıyı pasifleştirin ya da paketinizi yükseltin.");

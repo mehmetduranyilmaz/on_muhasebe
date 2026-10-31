@@ -1,3 +1,4 @@
+using OnMuhasebe.Shared.Contracts.Muhasebe;
 using OnMuhasebe.Shared.Domain.Results;
 
 namespace OnMuhasebe.Modules.KasaBanka.Contracts;
@@ -8,6 +9,11 @@ public sealed record KasaHesapBilgisi(Guid Id, string Kod, string Ad, HesapTuru 
 
 public interface IKasaBankaSorgusu
 {
+    // Muhasebe aktarımı: kasa/banka/kart/POS hesapları ve gelir-gider kategorileri (pasifler dahil).
+    Task<IReadOnlyList<MuhasebeKarti>> HesapKartlariAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MuhasebeKarti>> KategoriKartlariAsync(CancellationToken cancellationToken = default);
+
     Task<KasaHesapBilgisi?> HesapGetirAsync(Guid hesapId, CancellationToken cancellationToken = default);
 
     // Belgeye atanacak masraf merkezi firmanın aktif merkezi olmalıdır.

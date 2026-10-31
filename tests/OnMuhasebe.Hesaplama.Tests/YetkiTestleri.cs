@@ -2,6 +2,7 @@ using OnMuhasebe.Modules.Cari;
 using OnMuhasebe.Modules.Fatura;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.KasaBanka;
+using OnMuhasebe.Modules.Muhasebe;
 using OnMuhasebe.Modules.Stok;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Yonetim;
@@ -15,7 +16,7 @@ namespace OnMuhasebe.Hesaplama.Tests;
 public class YetkiTestleri
 {
     // Kurucu, bağımlı yetkilerin katalogda olduğunu da denetler.
-    private static readonly YetkiKatalogu _katalog = new([new YonetimModulu(), new CariModulu(), new StokModulu(), new FaturaModulu(), new KasaBankaModulu()]);
+    private static readonly YetkiKatalogu _katalog = new([new YonetimModulu(), new CariModulu(), new StokModulu(), new FaturaModulu(), new KasaBankaModulu(), new MuhasebeModulu()]);
 
     private static IReadOnlyList<string> Hesapla(string[] rol, string[]? ek = null, string[]? yasak = null) =>
         YetkiHesaplayici.Hesapla(rol, ek ?? [], yasak ?? [], _katalog.Tumu);
@@ -88,7 +89,9 @@ public class YetkiTestleri
     {
         var saltOkur = RolSablonlari.Olustur(_katalog.Tumu, Guid.CreateVersion7()).Single(r => r.Ad.StartsWith("Salt Okur", StringComparison.Ordinal));
 
-        Assert.All(saltOkur.Yetkiler, y => Assert.EndsWith(".goruntule", y));
+        Assert.True(saltOkur.MaliMusavirMi);
+        Assert.All(saltOkur.Yetkiler, y => Assert.True(FirmaRolu.MaliMusavirYetkisiMi(y), y));
+        Assert.Contains("muhasebe.aktarim.ekle", saltOkur.Yetkiler);
         Assert.Contains(StokYetkileri.Maliyet.Yetki(YetkiIslemleri.Goruntule), saltOkur.Yetkiler);
         Assert.DoesNotContain(YonetimYetkileri.Kullanici.Yetki(YetkiIslemleri.Goruntule), saltOkur.Yetkiler);
     }

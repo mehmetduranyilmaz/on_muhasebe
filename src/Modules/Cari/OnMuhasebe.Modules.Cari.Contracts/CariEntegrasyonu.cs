@@ -1,3 +1,4 @@
+using OnMuhasebe.Shared.Contracts.Muhasebe;
 using OnMuhasebe.Shared.Domain.Results;
 
 namespace OnMuhasebe.Modules.Cari.Contracts;
@@ -21,6 +22,9 @@ public sealed record CariEslestirmeAdayi(Guid Id, string Unvan, string? VergiNo,
 
 public interface ICariSorgusu
 {
+    // Muhasebe aktarımı: tüm cariler (pasif ve silinmişler dahil; geçmiş belgeler onları gösterir).
+    Task<IReadOnlyList<MuhasebeKarti>> MuhasebeKartlariAsync(CancellationToken cancellationToken = default);
+
     Task<CariBilgisi?> GetirAsync(Guid cariId, CancellationToken cancellationToken = default);
 
     // Belgelerin (fatura vb.) kapanmamış tutarı, carinin para biriminde. Cari hareketi olmayan ya da iptal edilmiş belge listede yoktur.

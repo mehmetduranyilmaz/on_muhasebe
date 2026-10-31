@@ -7,5 +7,8 @@ public static class ModulKodlari
     public const string Fatura = "fatura";
     public const string KasaBanka = "kasabanka";
 
-    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka];
+    // Mali müşavir köprüsü: belgelerin Tek Düzen Hesap Planı fişlerine çevrilip paket programlara aktarılması.
+    public const string Muhasebe = "muhasebe";
+
+    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe];
 }

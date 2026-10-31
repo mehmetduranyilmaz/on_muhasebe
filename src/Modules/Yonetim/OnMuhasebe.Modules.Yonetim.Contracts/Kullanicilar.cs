@@ -22,6 +22,8 @@ public sealed record DavetBilgisi(string FirmaUnvani, string Eposta, string RolA
 
 public sealed record DavetKabulIstegi(string Kod, string? Ad, string? Soyad, string Sifre);
 
-public sealed record RolCevabi(Guid Id, string Ad, string? Aciklama, bool TamYetkiliMi, IReadOnlyList<string> Yetkiler, int KullaniciSayisi);
+public sealed record RolCevabi(
+    Guid Id, string Ad, string? Aciklama, bool TamYetkiliMi, IReadOnlyList<string> Yetkiler, int KullaniciSayisi, bool MaliMusavirMi = false);
 
-public sealed record RolKaydetIstegi(string Ad, string? Aciklama, IReadOnlyList<string> Yetkiler);
+// MaliMusavirMi: rol yalnız görüntüleme ve muhasebe aktarımı yetkisi taşıyabilir; bu roldeki kullanıcı limite sayılmaz.
+public sealed record RolKaydetIstegi(string Ad, string? Aciklama, IReadOnlyList<string> Yetkiler, bool MaliMusavirMi = false);

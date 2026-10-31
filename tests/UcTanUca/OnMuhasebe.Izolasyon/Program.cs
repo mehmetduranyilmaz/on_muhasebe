@@ -109,6 +109,7 @@ id["kredi"] = (await Post(a, "api/kasabanka/krediler", new
     taksitler = new[] { new { sira = 1, vade = "2026-11-01", anapara = 1000, faiz = 20, vergi = 1 } }
 }))["id"]!.GetValue<string>();
 id["krediSira"] = "1";
+id["muhasebeTur"] = "Cari";
 // Şube eklemesi yalnızca kimliği (JSON metni) döner.
 id["sube"] = (await Post(a, "api/kasabanka/subeler", new { bankaAdi = "SIZINTI Bank", ad = "SIZINTI Sube" })).GetValue<string>();
 id["teminat"] = (await Post(a, "api/kasabanka/teminatlar", new
@@ -198,6 +199,8 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/yonetim/roller/", "id", "rol"),
     ("/api/yonetim/isyerleri/", "id", "isyeri"),
     ("/api/fatura/isyeri-serileri/", "isyeriId", "isyeri"),
+    ("/api/muhasebe/eslemeler/", "tur", "muhasebeTur"),
+    ("/api/muhasebe/eslemeler/", "kartId", "cari"),
     ("/api/fatura/irsaliyeler/", "id", "irsaliye"),
     ("/api/fatura/teklif-siparis/", "id", "teklif"),
     ("/api/fatura/raporlar/ba-bs/cari/", "cariId", "cari"),
@@ -224,7 +227,7 @@ foreach (var (yol, metotlar) in openApi["paths"]!.AsObject())
     }
 }
 
-var aIdleri = id.Where(k => k.Key is not ("barkod" or "paket" or "krediSira")).Select(k => k.Value).ToHashSet();
+var aIdleri = id.Where(k => k.Key is not ("barkod" or "paket" or "krediSira" or "muhasebeTur")).Select(k => k.Value).ToHashSet();
 bool SizintiVar(string govde) => govde.Contains("SIZINTI", StringComparison.Ordinal) || aIdleri.Any(x => govde.Contains(x, StringComparison.OrdinalIgnoreCase));
 
 // Silmeler en sona: yanlışlıkla başarılı olursa diğer denemeleri etkilemesin.

@@ -45,7 +45,8 @@ internal static class AbonelikIslemleri
         var firmaId = mevcutKullanici.FirmaId!.Value;
         var simdi = zaman.GetUtcNow().UtcDateTime;
         var lisans = await db.FirmaLisanslari.AsNoTracking().Include(l => l.Paket).SingleOrDefaultAsync(ct);
-        var kullaniciSayisi = await db.FirmaKullanicilari.CountAsync(u => u.AktifMi, ct);
+        // Mali müşavir rolündekiler limite sayılmadığı için kullanım sayısına da girmez.
+        var kullaniciSayisi = await db.FirmaKullanicilari.CountAsync(u => u.AktifMi && !u.Rol.MaliMusavirMi, ct);
         var isyeriSayisi = await db.Isyerleri.CountAsync(i => i.AktifMi, ct);
         var paketler = await db.Paketler.AsNoTracking()
             .Where(p => p.SatistaMi)

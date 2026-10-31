@@ -49,7 +49,7 @@ internal static class RolIslemleri
         var roller = await db.Roller.AsNoTracking()
             .OrderByDescending(r => r.TamYetkiliMi).ThenBy(r => r.Ad)
             .Select(r => new RolCevabi(r.Id, r.Ad, r.Aciklama, r.TamYetkiliMi, r.Yetkiler,
-                db.FirmaKullanicilari.Count(u => u.RolId == r.Id && u.AktifMi)))
+                db.FirmaKullanicilari.Count(u => u.RolId == r.Id && u.AktifMi), r.MaliMusavirMi))
             .ToListAsync(ct);
         return TypedResults.Ok(roller);
     }
@@ -64,20 +64,25 @@ internal static class RolIslemleri
             return yetkiler.Hata.Problem();
         }
 
+        if (MaliMusavirHatasi(istek, yetkiler.Deger) is { } mmHatasi)
+        {
+            return mmHatasi.Problem();
+        }
+
         if (await AdKayitliMiAsync(db, istek.Ad, null, ct))
         {
             return YonetimHatalari.RolAdiKayitli.Problem();
         }
 
-        var rol = FirmaRolu.Olustur(istek.Ad, istek.Aciklama, yetkiler.Deger);
+        var rol = FirmaRolu.Olustur(istek.Ad, istek.Aciklama, yetkiler.Deger, maliMusavirMi: istek.MaliMusavirMi);
         db.Roller.Add(rol);
         await db.SaveChangesAsync(ct);
-        return TypedResults.Created($"/api/yonetim/roller/{rol.Id}", new RolCevabi(rol.Id, rol.Ad, rol.Aciklama, false, rol.Yetkiler, 0));
+        return TypedResults.Created($"/api/yonetim/roller/{rol.Id}", new RolCevabi(rol.Id, rol.Ad, rol.Aciklama, false, rol.Yetkiler, 0, rol.MaliMusavirMi));
     }
 
     private static async Task<IResult> GuncelleAsync(
         Guid id, RolKaydetIstegi istek, YonetimDbContext db, YetkiKatalogu katalog, ILisansSorgusu lisansSorgusu, IMevcutKullanici mevcutKullanici,
-        IYetkiSorgusu yetkiSorgusu, CancellationToken ct)
+        IYetkiSorgusu yetkiSorgusu, TimeProvider zaman, CancellationToken ct)
     {
         var rol = await db.Roller.SingleOrDefaultAsync(r => r.Id == id, ct);
         if (rol is null)
@@ -98,12 +103,25 @@ internal static class RolIslemleri
             return yetkiler.Hata.Problem();
         }
 
+        if (MaliMusavirHatasi(istek, yetkiler.Deger) is { } mmHatasi)
+        {
+            return mmHatasi.Problem();
+        }
+
         if (await AdKayitliMiAsync(db, istek.Ad, id, ct))
         {
             return YonetimHatalari.RolAdiKayitli.Problem();
         }
 
-        var sonuc = rol.Guncelle(istek.Ad, istek.Aciklama, yetkiler.Deger);
+        // Mali müşavir rolünden normal role geçiş, bu roldeki kullanıcıları limite katar: limit taşarsa reddedilir.
+        var roldekiler = await db.FirmaKullanicilari.CountAsync(u => u.RolId == rol.Id && u.AktifMi, ct);
+        if (rol.MaliMusavirMi && !istek.MaliMusavirMi
+            && await KullaniciLimiti.AsimAsync(db, rol.FirmaId, roldekiler, zaman.GetUtcNow().UtcDateTime, ct) is { } limitHatasi)
+        {
+            return limitHatasi.Problem();
+        }
+
+        var sonuc = rol.Guncelle(istek.Ad, istek.Aciklama, yetkiler.Deger, istek.MaliMusavirMi);
         if (!sonuc.BasariliMi)
         {
             return sonuc.HttpSonucu();
@@ -112,7 +130,7 @@ internal static class RolIslemleri
         await db.SaveChangesAsync(ct);
         await yetkiSorgusu.OnbellektenKaldirAsync(rol.FirmaId, ct);
         var kullaniciSayisi = await db.FirmaKullanicilari.CountAsync(u => u.RolId == rol.Id && u.AktifMi, ct);
-        return TypedResults.Ok(new RolCevabi(rol.Id, rol.Ad, rol.Aciklama, false, rol.Yetkiler, kullaniciSayisi));
+        return TypedResults.Ok(new RolCevabi(rol.Id, rol.Ad, rol.Aciklama, false, rol.Yetkiler, kullaniciSayisi, rol.MaliMusavirMi));
     }
 
     // Pasif üyelikler ve geçmiş davetler de rolü gösterir; yalnızca hiç bağlantısı olmayan rol silinir.
@@ -138,6 +156,12 @@ internal static class RolIslemleri
         await db.SaveChangesAsync(ct);
         return TypedResults.NoContent();
     }
+
+    // Mali müşavir rolü yalnız görüntüleme ve muhasebe aktarımı taşır; limit dışı tutulmasının karşılığıdır.
+    private static Hata? MaliMusavirHatasi(RolKaydetIstegi istek, IEnumerable<string> yetkiler) =>
+        istek.MaliMusavirMi && yetkiler.FirstOrDefault(y => !FirmaRolu.MaliMusavirYetkisiMi(y)) is { } yasak
+            ? YonetimHatalari.MaliMusavirYetkisi(yasak)
+            : null;
 
     // Verilebilecek yetkiler lisanslı modüllerinkilerdir. Rolde zaten olan lisanssız modül yetkileri korunur.
     private static async Task<Sonuc<List<string>>> YetkileriDenetleAsync(

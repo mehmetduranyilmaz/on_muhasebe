@@ -148,12 +148,11 @@ internal static class DavetIslemleri
             .SingleOrDefaultAsync(u => u.FirmaId == davet.FirmaId && u.KullaniciId == kullanici.Id, cancellationToken);
         if (uyelik is not { AktifMi: true })
         {
-            var limit = await db.FirmaLisanslari.IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
-                .Where(l => l.FirmaId == davet.FirmaId).Select(l => l.Paket.KullaniciLimiti).SingleOrDefaultAsync(cancellationToken);
-            if (limit is not null && await db.FirmaKullanicilari.IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
-                    .CountAsync(u => u.FirmaId == davet.FirmaId && u.AktifMi, cancellationToken) >= limit)
+            // Davet zaten koltuk saydığı için kabulde yalnız üyeler sayılır; mali müşavir daveti limite sayılmaz.
+            if (!davet.Rol.MaliMusavirMi
+                && await KullaniciLimiti.AsimAsync(db, davet.FirmaId, 1, simdi, cancellationToken, davetleriSay: false) is { } limitHatasi)
             {
-                return YonetimHatalari.KullaniciLimiti(limit.Value).Problem();
+                return limitHatasi.Problem();
             }
 
             if (uyelik is null)

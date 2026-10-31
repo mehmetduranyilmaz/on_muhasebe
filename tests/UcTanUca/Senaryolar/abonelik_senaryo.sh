@@ -44,7 +44,7 @@ KODU=kurumsal; SIRA=3; ACIKLAMA="Kurumsal test"; istek PUT $PK/kurumsal "$SYS" "
 kontrol 200 "Kurumsal ucretsiz (teklif usulu)" '"tumModullerMi":true,"moduller":\[\],"aciklama":"Kurumsal test","kullaniciLimiti":null,"aylikUcret":null'
 KODU=basic; SIRA=1; ACIKLAMA="Temel test"; istek PUT $PK/basic "$SYS" "$(paket Temel -1 5000 0)"
 kontrol 400 "Eksi ucret ve sifir limit reddedildi"
-istek POST $PK "$SYS" '{"kod":"Buyuk Paket","ad":"X","tumModullerMi":false,"moduller":["muhasebe"],"satistaMi":false,"sira":9}'
+istek POST $PK "$SYS" '{"kod":"Buyuk Paket","ad":"X","tumModullerMi":false,"moduller":["uydurma"],"satistaMi":false,"sira":9}'
 kontrol 400 "Gecersiz kod ve modul reddedildi" 'küçük harf.*Geçersiz modül kodu'
 istek POST $PK "$SYS" '{"kod":"basic","ad":"X","tumModullerMi":true,"moduller":[],"satistaMi":false,"sira":9}'
 kontrol 409 "Ayni kodla ikinci paket olmaz" paket_kodu_kayitli

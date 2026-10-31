@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Modules\KasaBanka\OnMuhasebe.Modules.KasaBanka\OnMuhasebe.Modules.KasaBanka.csproj" />
     <ProjectReference Include="..\..\src\Modules\Yonetim\OnMuhasebe.Modules.Yonetim\OnMuhasebe.Modules.Yonetim.csproj" />
     <ProjectReference Include="..\..\src\Modules\Bildirim\OnMuhasebe.Modules.Bildirim\OnMuhasebe.Modules.Bildirim.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Muhasebe\OnMuhasebe.Modules.Muhasebe\OnMuhasebe.Modules.Muhasebe.csproj" />
   </ItemGroup>
 
 </Project>

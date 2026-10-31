@@ -111,13 +111,11 @@ internal static class KullaniciIslemleri
             return YonetimHatalari.ZatenFirmaUyesi.Problem();
         }
 
-        // Bekleyen davetler de koltuk sayılır: limit, davetler kabul edilince aşılmasın.
-        if (await db.FirmaLisanslari.Select(l => l.Paket.KullaniciLimiti).SingleOrDefaultAsync(cancellationToken) is { } limit
-            && await db.FirmaKullanicilari.CountAsync(u => u.AktifMi, cancellationToken)
-                + await db.FirmaDavetleri.CountAsync(d => d.Eposta != eposta && d.KabulTarihi == null && d.IptalTarihi == null && d.BitisTarihi > simdi, cancellationToken)
-                >= limit)
+        // Bekleyen davetler de koltuk sayılır: limit, davetler kabul edilince aşılmasın. Mali müşavir daveti limite sayılmaz.
+        if (!rol.MaliMusavirMi
+            && await KullaniciLimiti.AsimAsync(db, mevcutKullanici.FirmaId!.Value, 1, simdi, cancellationToken, haricEposta: eposta) is { } limitHatasi)
         {
-            return YonetimHatalari.KullaniciLimiti(limit).Problem();
+            return limitHatasi.Problem();
         }
 
         // Aynı kişiye önceki bekleyen davetler geçersiz olur; geçerli olan yalnızca son gönderilen bağlantıdır.
@@ -243,6 +241,7 @@ internal static class KullaniciIslemleri
         YonetimDbContext db,
         IYetkiSorgusu yetkiSorgusu,
         YetkiKatalogu katalog,
+        TimeProvider zaman,
         CancellationToken cancellationToken)
     {
         if (kullaniciId == mevcutKullanici.KullaniciId)
@@ -273,6 +272,18 @@ internal static class KullaniciIslemleri
         if (ek.Concat(yasak).FirstOrDefault(y => !katalog.Yetkiler.Contains(y)) is { } gecersiz)
         {
             return YonetimHatalari.YetkiGecersiz(gecersiz).Problem();
+        }
+
+        // Mali müşavir rolündeki kişiye de yalnız görüntüleme/aktarım yetkisi eklenebilir; normal role geçişte limite sayılır.
+        if (rol.MaliMusavirMi && ek.FirstOrDefault(y => !FirmaRolu.MaliMusavirYetkisiMi(y)) is { } mmYasak)
+        {
+            return YonetimHatalari.MaliMusavirYetkisi(mmYasak).Problem();
+        }
+
+        if (uyelik.Rol.MaliMusavirMi && !rol.MaliMusavirMi
+            && await KullaniciLimiti.AsimAsync(db, uyelik.FirmaId, 1, zaman.GetUtcNow().UtcDateTime, cancellationToken) is { } limitHatasi)
+        {
+            return limitHatasi.Problem();
         }
 
         // Yönetici tüm işyerlerine girer; kısıtlı listede yalnız firmanın işyerleri olabilir.

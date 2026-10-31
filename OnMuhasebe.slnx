@@ -24,6 +24,10 @@
     <Project Path="src/Modules/KasaBanka/OnMuhasebe.Modules.KasaBanka.Contracts/OnMuhasebe.Modules.KasaBanka.Contracts.csproj" />
     <Project Path="src/Modules/KasaBanka/OnMuhasebe.Modules.KasaBanka/OnMuhasebe.Modules.KasaBanka.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Muhasebe/">
+    <Project Path="src/Modules/Muhasebe/OnMuhasebe.Modules.Muhasebe.Contracts/OnMuhasebe.Modules.Muhasebe.Contracts.csproj" />
+    <Project Path="src/Modules/Muhasebe/OnMuhasebe.Modules.Muhasebe/OnMuhasebe.Modules.Muhasebe.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Stok/">
     <Project Path="src/Modules/Stok/OnMuhasebe.Modules.Stok.Contracts/OnMuhasebe.Modules.Stok.Contracts.csproj" />
     <Project Path="src/Modules/Stok/OnMuhasebe.Modules.Stok/OnMuhasebe.Modules.Stok.csproj" />

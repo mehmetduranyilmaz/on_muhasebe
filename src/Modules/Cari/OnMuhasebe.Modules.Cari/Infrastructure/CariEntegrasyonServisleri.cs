@@ -1,3 +1,4 @@
+using OnMuhasebe.Shared.Contracts.Muhasebe;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
@@ -8,6 +9,12 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure;
 
 internal sealed class CariSorgusu(CariDbContext db, CariKapamaServisi kapama) : ICariSorgusu
 {
+    public async Task<IReadOnlyList<MuhasebeKarti>> MuhasebeKartlariAsync(CancellationToken cancellationToken = default) =>
+        await db.CariHesaplar.IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi]).AsNoTracking()
+            .OrderBy(c => c.Kod)
+            .Select(c => new MuhasebeKarti(c.Id, c.Kod, c.Unvan, c.Tur.ToString()))
+            .ToListAsync(cancellationToken);
+
     public Task<CariBilgisi?> GetirAsync(Guid cariId, CancellationToken cancellationToken = default) =>
         db.CariHesaplar.AsNoTracking()
             .Where(c => c.Id == cariId)
