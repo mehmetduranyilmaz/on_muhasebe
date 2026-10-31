@@ -5,10 +5,13 @@ public sealed record KullaniciDavetIstegi(string Eposta, Guid RolId);
 
 public sealed record FirmaKullanicisiCevabi(
     Guid KullaniciId, string Ad, string Soyad, string Eposta, Guid RolId, string RolAdi, bool TamYetkiliMi,
-    IReadOnlyList<string> EkYetkiler, IReadOnlyList<string> YasakYetkiler, bool AktifMi);
+    IReadOnlyList<string> EkYetkiler, IReadOnlyList<string> YasakYetkiler, bool AktifMi,
+    IReadOnlyList<Guid>? Isyerleri = null, Guid? VarsayilanIsyeriId = null);
 
-// Kullanıcının rolü ve rolün üzerine ona özel verilen (ek) ya da alınan (yasak) yetkiler.
-public sealed record KullaniciYetkiIstegi(Guid RolId, IReadOnlyList<string>? EkYetkiler, IReadOnlyList<string>? YasakYetkiler);
+// Kullanıcının rolü, rolün üzerine ona özel verilen (ek) ya da alınan (yasak) yetkiler ve girebildiği işyerleri (boş: tümü).
+public sealed record KullaniciYetkiIstegi(
+    Guid RolId, IReadOnlyList<string>? EkYetkiler, IReadOnlyList<string>? YasakYetkiler,
+    IReadOnlyList<Guid>? Isyerleri = null, Guid? VarsayilanIsyeriId = null);
 
 public sealed record DavetOzeti(Guid Id, string Eposta, Guid RolId, string RolAdi, DateTime SonGonderimTarihi, DateTime BitisTarihi);
 

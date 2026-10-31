@@ -59,7 +59,7 @@ internal static class KullaniciIslemleri
             .OrderBy(u => u.Kullanici.Ad).ThenBy(u => u.Kullanici.Soyad)
             .Select(u => new FirmaKullanicisiCevabi(
                 u.KullaniciId, u.Kullanici.Ad, u.Kullanici.Soyad, u.Kullanici.Eposta, u.RolId, u.Rol.Ad, u.Rol.TamYetkiliMi,
-                u.EkYetkiler, u.YasakYetkiler, u.AktifMi))
+                u.EkYetkiler, u.YasakYetkiler, u.AktifMi, u.Isyerleri, u.VarsayilanIsyeriId))
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(liste);
@@ -275,7 +275,20 @@ internal static class KullaniciIslemleri
             return YonetimHatalari.YetkiGecersiz(gecersiz).Problem();
         }
 
+        // Yönetici tüm işyerlerine girer; kısıtlı listede yalnız firmanın işyerleri olabilir.
+        var isyerleri = rol.TamYetkiliMi ? [] : (istek.Isyerleri ?? []).Distinct().ToList();
+        if (isyerleri.Count > 0 && await db.Isyerleri.CountAsync(i => isyerleri.Contains(i.Id), cancellationToken) != isyerleri.Count)
+        {
+            return IsyeriHatalari.Bulunamadi.Problem();
+        }
+
+        if (istek.VarsayilanIsyeriId is { } varsayilan && !await db.Isyerleri.AnyAsync(i => i.Id == varsayilan, cancellationToken))
+        {
+            return IsyeriHatalari.Bulunamadi.Problem();
+        }
+
         uyelik.YetkileriAta(rol.Id, rol.TamYetkiliMi ? [] : ek, rol.TamYetkiliMi ? [] : yasak);
+        uyelik.IsyerleriniAta(isyerleri, istek.VarsayilanIsyeriId);
         await db.SaveChangesAsync(cancellationToken);
         await yetkiSorgusu.OnbellektenKaldirAsync(uyelik.FirmaId, cancellationToken);
         return TypedResults.NoContent();

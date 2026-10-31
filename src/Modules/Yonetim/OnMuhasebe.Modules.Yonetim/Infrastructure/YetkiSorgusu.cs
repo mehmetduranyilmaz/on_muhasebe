@@ -35,14 +35,15 @@ internal sealed class YetkiSorgusu(YonetimDbContext db, HybridCache cache, Yetki
             .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
             .AsNoTracking()
             .Where(u => u.FirmaId == firmaId && u.KullaniciId == kullaniciId && u.AktifMi && u.Kullanici.AktifMi)
-            .Select(u => new { u.Rol.TamYetkiliMi, u.Rol.Yetkiler, u.EkYetkiler, u.YasakYetkiler })
+            .Select(u => new { u.Rol.TamYetkiliMi, u.Rol.Yetkiler, u.EkYetkiler, u.YasakYetkiler, u.Isyerleri, u.VarsayilanIsyeriId })
             .SingleOrDefaultAsync(cancellationToken);
 
         return uyelik switch
         {
             null => KullaniciYetkileri.Yok,
-            { TamYetkiliMi: true } => new KullaniciYetkileri(true, []),
-            _ => new KullaniciYetkileri(false, YetkiHesaplayici.Hesapla(uyelik.Yetkiler, uyelik.EkYetkiler, uyelik.YasakYetkiler, katalog.Tumu))
+            { TamYetkiliMi: true } => new KullaniciYetkileri(true, [], [], uyelik.VarsayilanIsyeriId),
+            _ => new KullaniciYetkileri(false, YetkiHesaplayici.Hesapla(uyelik.Yetkiler, uyelik.EkYetkiler, uyelik.YasakYetkiler, katalog.Tumu),
+                uyelik.Isyerleri, uyelik.VarsayilanIsyeriId)
         };
     }
 

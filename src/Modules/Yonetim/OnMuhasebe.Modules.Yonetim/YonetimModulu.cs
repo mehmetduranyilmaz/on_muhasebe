@@ -84,6 +84,7 @@ public sealed class YonetimModulu : IModul
         services.AddSingleton<GirisDenemeleri>();
         services.AddScoped<ILisansSorgusu, LisansSorgusu>();
         services.AddScoped<IYetkiSorgusu, YetkiSorgusu>();
+        services.AddScoped<IIsyeriSorgusu, IsyeriSorgusu>();
         services.AddScoped<ZorunluAlanSorgusu>();
         services.AddScoped<IZorunluAlanSorgusu>(sp => sp.GetRequiredService<ZorunluAlanSorgusu>());
         services.AddScoped<DonemKilidiSorgusu>();
@@ -110,6 +111,7 @@ public sealed class YonetimModulu : IModul
         FirmaBilgileriIslemleri.Map(grup);
         KullaniciIslemleri.Map(grup);
         RolIslemleri.Map(grup);
+        IsyeriIslemleri.Map(grup);
         SistemIslemleri.Map(grup);
         SistemAbonelikIslemleri.Map(grup);
         AbonelikIslemleri.Map(grup);

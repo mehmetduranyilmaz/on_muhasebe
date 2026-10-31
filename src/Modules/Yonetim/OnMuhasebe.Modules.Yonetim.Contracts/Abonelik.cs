@@ -46,7 +46,8 @@ public sealed record SatistakiPaket(
     IReadOnlyList<string> Moduller,
     int? KullaniciLimiti,
     decimal? AylikUcret,
-    decimal? YillikUcret);
+    decimal? YillikUcret,
+    int? IsyeriLimiti = null);
 
 public sealed record AbonelikDurumu(
     string? PaketKodu,
@@ -58,4 +59,6 @@ public sealed record AbonelikDurumu(
     int? KullaniciLimiti,
     IReadOnlyList<SatistakiPaket> Paketler,
     OdemeBilgileri? OdemeBilgileri,
-    IReadOnlyList<OdemeBildirimiOzeti> Bildirimler);
+    IReadOnlyList<OdemeBildirimiOzeti> Bildirimler,
+    int IsyeriSayisi = 0,
+    int? IsyeriLimiti = null);

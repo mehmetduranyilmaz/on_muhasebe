@@ -12,9 +12,12 @@ using OnMuhasebe.Shared.Infrastructure.Results;
 namespace OnMuhasebe.Shared.Infrastructure.Kimlik;
 
 // Kullanıcının firmadaki etkin yetkileri (rol + kullanıcıya özel ek/yasak + bağımlı yetkiler). Tam yetkili: firmanın yöneticisi.
-public sealed record KullaniciYetkileri(bool TamYetkiliMi, IReadOnlyList<string> Yetkiler)
+// Isyerleri: girebildiği işyerleri (boş: tümü; yöneticide her zaman boş). VarsayilanIsyeriId: yeni belgenin açılacağı işyeri.
+public sealed record KullaniciYetkileri(bool TamYetkiliMi, IReadOnlyList<string> Yetkiler, IReadOnlyList<Guid> Isyerleri, Guid? VarsayilanIsyeriId)
 {
-    public static KullaniciYetkileri Yok { get; } = new(false, []);
+    public static KullaniciYetkileri Yok { get; } = new(false, [], [], null);
+
+    public bool IsyerineGirebilirMi(Guid isyeriId) => Isyerleri.Count == 0 || Isyerleri.Contains(isyeriId);
 
     public bool VarMi(string yetki) => TamYetkiliMi || Yetkiler.Contains(yetki);
 }
@@ -31,22 +34,21 @@ public interface IYetkiSorgusu
 public interface IYetkiDenetimi
 {
     Task<bool> VarMiAsync(string yetki, CancellationToken cancellationToken = default);
+
+    Task<KullaniciYetkileri> GetirAsync(CancellationToken cancellationToken = default);
 }
 
 internal sealed class YetkiDenetimi(IMevcutKullanici mevcutKullanici, IYetkiSorgusu sorgu) : IYetkiDenetimi
 {
     private KullaniciYetkileri? _yetkiler;
 
-    public async Task<bool> VarMiAsync(string yetki, CancellationToken cancellationToken = default)
-    {
-        if (mevcutKullanici is not { FirmaId: { } firmaId, KullaniciId: { } kullaniciId })
-        {
-            return false;
-        }
+    public async Task<bool> VarMiAsync(string yetki, CancellationToken cancellationToken = default) =>
+        (await GetirAsync(cancellationToken)).VarMi(yetki);
 
-        _yetkiler ??= await sorgu.GetirAsync(firmaId, kullaniciId, cancellationToken);
-        return _yetkiler.VarMi(yetki);
-    }
+    public async Task<KullaniciYetkileri> GetirAsync(CancellationToken cancellationToken = default) =>
+        _yetkiler ??= mevcutKullanici is { FirmaId: { } firmaId, KullaniciId: { } kullaniciId }
+            ? await sorgu.GetirAsync(firmaId, kullaniciId, cancellationToken)
+            : KullaniciYetkileri.Yok;
 }
 
 // Modüllerin bildirdiği tüm yetki kaynakları. Çekirdek kaynaklar (Modul boş) her pakette, diğerleri modül lisansıyla görünür.
@@ -95,6 +97,11 @@ internal sealed class YetkiFiltresi : IEndpointFilter
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var http = context.HttpContext;
+        // İşyeri kapsamı her istekte (yetki gerekmeyen uçlarda da) yazılır; sorgu filtresi kısıtlı kullanıcıya yalnız izinli işyerlerini verir.
+        var denetim = http.RequestServices.GetRequiredService<IYetkiDenetimi>();
+        var yetkiler = await denetim.GetirAsync(http.RequestAborted);
+        http.RequestServices.GetRequiredService<IsyeriKapsami>().Ata(yetkiler.TamYetkiliMi ? null : yetkiler.Isyerleri);
+
         var gereken = YetkiCozucu.Coz(http.GetEndpoint()?.Metadata, http.Request.Method);
         if (gereken.GerekmezMi)
         {
@@ -106,7 +113,7 @@ internal sealed class YetkiFiltresi : IEndpointFilter
             return Hata.Yetki("yetki_tanimsiz", "Bu işlem için yetki tanımlanmamış.").Problem();
         }
 
-        if (!await http.RequestServices.GetRequiredService<IYetkiDenetimi>().VarMiAsync(gereken.Yetki, http.RequestAborted))
+        if (!yetkiler.VarMi(gereken.Yetki))
         {
             var ad = http.RequestServices.GetRequiredService<YetkiKatalogu>().Ad(gereken.Yetki);
             return Hata.Yetki("yetki_yok", $"Bu işlem için yetkiniz yok ({ad}).").Problem();

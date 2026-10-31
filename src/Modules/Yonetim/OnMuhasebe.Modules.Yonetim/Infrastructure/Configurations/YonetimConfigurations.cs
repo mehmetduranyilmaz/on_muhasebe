@@ -184,3 +184,21 @@ internal sealed class SistemAyariConfiguration : IEntityTypeConfiguration<Sistem
         builder.Property(x => x.OdemeNotu).HasMaxLength(500);
     }
 }
+
+internal sealed class IsyeriConfiguration : IEntityTypeConfiguration<Isyeri>
+{
+    public void Configure(EntityTypeBuilder<Isyeri> builder)
+    {
+        builder.ToTable("isyeri");
+        builder.Property(x => x.Kod).HasMaxLength(20);
+        builder.Property(x => x.Ad).HasMaxLength(150);
+        builder.Property(x => x.Adres).HasMaxLength(500);
+        builder.Property(x => x.Il).HasMaxLength(50);
+        builder.Property(x => x.Ilce).HasMaxLength(50);
+        builder.Property(x => x.Telefon).HasMaxLength(30);
+        builder.Property(x => x.SgkSicilNo).HasMaxLength(Isyeri.SgkSicilUzunlugu);
+        builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
+        builder.HasIndex(x => x.FirmaId).HasFilter("merkez_mi").IsUnique();
+        builder.HasOne<Firma>().WithMany().HasForeignKey(x => x.FirmaId).OnDelete(DeleteBehavior.Cascade);
+    }
+}

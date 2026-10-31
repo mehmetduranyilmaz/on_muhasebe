@@ -102,6 +102,7 @@ internal static class Kayit
             kullanici = Kullanici.Olustur(istek.Ad, istek.Soyad, istek.Eposta);
             db.AddRange(firma, kullanici);
             db.Roller.AddRange(roller);
+            db.Isyerleri.Add(Isyeri.MerkezOlustur(firma.Id));
             db.AddRange(
                 FirmaKullanicisi.Olustur(kullanici.Id, roller[0].Id, firma.Id),
                 FirmaLisansi.Olustur(firma.Id, denemePaketi, simdi, simdi.AddDays(DenemeSuresiGun)));

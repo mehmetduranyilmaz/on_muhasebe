@@ -105,7 +105,7 @@ public class YetkiTestleri
     [Fact]
     public void Tam_yetkili_her_yetkiye_sahiptir()
     {
-        var yetkiler = new KullaniciYetkileri(true, []);
+        var yetkiler = new KullaniciYetkileri(true, [], [], null);
 
         Assert.True(yetkiler.VarMi("fatura.belge.onayla"));
         Assert.False(KullaniciYetkileri.Yok.VarMi("fatura.belge.goruntule"));

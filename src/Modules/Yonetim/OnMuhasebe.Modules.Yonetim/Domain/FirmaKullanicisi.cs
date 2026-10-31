@@ -17,6 +17,10 @@ internal sealed class FirmaKullanicisi : FirmaEntity
     public List<string> EkYetkiler { get; private set; } = [];
     public List<string> YasakYetkiler { get; private set; } = [];
 
+    // Girebildiği işyerleri (boş: tümü) ve yeni belgelerin varsayılan işyeri.
+    public List<Guid> Isyerleri { get; private set; } = [];
+    public Guid? VarsayilanIsyeriId { get; private set; }
+
     public Firma Firma { get; private set; } = null!;
     public Kullanici Kullanici { get; private set; } = null!;
     public FirmaRolu Rol { get; private set; } = null!;
@@ -35,6 +39,7 @@ internal sealed class FirmaKullanicisi : FirmaEntity
     {
         AktifMi = true;
         YetkileriAta(rolId, [], []);
+        IsyerleriniAta([], null);
     }
 
     public void YetkileriAta(Guid rolId, IEnumerable<string> ek, IEnumerable<string> yasak)
@@ -42,6 +47,12 @@ internal sealed class FirmaKullanicisi : FirmaEntity
         RolId = rolId;
         EkYetkiler = ek.Distinct().Order().ToList();
         YasakYetkiler = yasak.Distinct().Except(EkYetkiler).Order().ToList();
+    }
+
+    public void IsyerleriniAta(IEnumerable<Guid> isyerleri, Guid? varsayilan)
+    {
+        Isyerleri = isyerleri.Distinct().ToList();
+        VarsayilanIsyeriId = varsayilan is { } v && (Isyerleri.Count == 0 || Isyerleri.Contains(v)) ? v : null;
     }
 
     public Sonuc Pasiflestir(Guid islemiYapanId)

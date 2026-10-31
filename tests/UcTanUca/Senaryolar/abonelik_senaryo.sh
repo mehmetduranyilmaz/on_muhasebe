@@ -64,7 +64,7 @@ kontrol 200 "IBAN bosluksuz ve buyuk harfle kaydedildi" '"iban":"TR3300061005197
 echo "--- Abonelik ekrani (firma)"
 istek GET /api/yonetim/abonelik "$T"
 kontrol 200 "Deneme paketi, 14 gun, 2 kullanici, sinirsiz" '"paketKodu":"deneme","paketAdi":"Deneme".*"kalanGun":14,"saltOkunur":false,"kullaniciSayisi":2,"kullaniciLimiti":null'
-kontrol 200 "Satistaki paketler ucretleriyle" '"paketler":\[\{"kod":"basic","ad":"Temel".*"aylikUcret":500(.00)?,"yillikUcret":5000(.00)?}.*"kod":"kurumsal"'
+kontrol 200 "Satistaki paketler ucretleriyle" '"paketler":\[\{"kod":"basic","ad":"Temel".*"aylikUcret":500(.00)?,"yillikUcret":5000(.00)?[,}].*"kod":"kurumsal"'
 kontrol 200 "IBAN gorunuyor" '"odemeBilgileri":\{"alici":"Ornek Yazilim AS","banka":"Ziraat Bankasi","iban":"TR330006100519786457841326"'
 if echo "$GOVDE" | grep -q '"kod":"deneme"'; then KOD=999; fi
 kontrol 200 "Deneme paketi satis listesinde yok"

@@ -21,3 +21,11 @@ public sealed class FirmaKapsami(IServiceScopeFactory scopeFactory)
         return await islem(scope.ServiceProvider);
     }
 }
+
+// İsteğin işyeri kapsamı: yetki filtresi kullanıcının izinli işyerlerini yazar, sorgu filtresi okur. Boş (null): kısıt yok.
+public sealed class IsyeriKapsami
+{
+    public List<Guid>? Izinli { get; private set; }
+
+    public void Ata(IReadOnlyCollection<Guid>? izinli) => Izinli = izinli is { Count: > 0 } ? [.. izinli] : null;
+}

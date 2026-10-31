@@ -46,10 +46,11 @@ internal static class AbonelikIslemleri
         var simdi = zaman.GetUtcNow().UtcDateTime;
         var lisans = await db.FirmaLisanslari.AsNoTracking().Include(l => l.Paket).SingleOrDefaultAsync(ct);
         var kullaniciSayisi = await db.FirmaKullanicilari.CountAsync(u => u.AktifMi, ct);
+        var isyeriSayisi = await db.Isyerleri.CountAsync(i => i.AktifMi, ct);
         var paketler = await db.Paketler.AsNoTracking()
             .Where(p => p.SatistaMi)
             .OrderBy(p => p.Sira).ThenBy(p => p.Ad)
-            .Select(p => new SatistakiPaket(p.Kod, p.Ad, p.Aciklama, p.TumModullerMi, p.Moduller, p.KullaniciLimiti, p.AylikUcret, p.YillikUcret))
+            .Select(p => new SatistakiPaket(p.Kod, p.Ad, p.Aciklama, p.TumModullerMi, p.Moduller, p.KullaniciLimiti, p.AylikUcret, p.YillikUcret, p.IsyeriLimiti))
             .ToListAsync(ct);
         var odeme = SistemAbonelikIslemleri.OdemeBilgileriOlustur(await db.SistemAyarlari.AsNoTracking().FirstOrDefaultAsync(ct));
         var bildirimler = await SistemAbonelikIslemleri
@@ -66,7 +67,9 @@ internal static class AbonelikIslemleri
             lisans?.Paket.KullaniciLimiti,
             paketler,
             odeme?.Iban is null ? null : odeme,
-            bildirimler));
+            bildirimler,
+            isyeriSayisi,
+            lisans?.Paket.IsyeriLimiti));
     }
 
     private static async Task<IResult> BildirAsync(

@@ -36,6 +36,10 @@ internal static class YonetimHatalari
     public static readonly Hata RolKullaniliyor = Hata.IsKurali("rol_kullaniliyor", "Bu role bağlı kullanıcı ya da bekleyen davet var; önce onları başka role alın.");
     public static readonly Hata YoneticiAtamaYetkisiYok = Hata.Yetki("yonetici_atama_yetkisi_yok", "Yönetici rolünü yalnızca bir yönetici verebilir ya da alabilir.");
     public static readonly Hata KendiYetkisiniDegistiremez = Hata.IsKurali("kendi_yetkisini_degistiremez", "Kendi rolünüzü ve yetkilerinizi değiştiremezsiniz.");
+    public static readonly Hata MerkezKapatilamaz = Hata.IsKurali("merkez_kapatilamaz", "Merkez işyeri kapatılamaz; önce başka bir işyerini merkez yapın.");
+    public static readonly Hata IsyeriKoduKayitli = Hata.Cakisma("isyeri_kodu_kayitli", "Bu kodla bir işyeri zaten var.");
+    public static Hata IsyeriLimiti(int limit) =>
+        Hata.IsKurali("isyeri_limiti", $"Paketinizin işyeri limiti ({limit}) dolu. Bir işyerini kapatın ya da paketinizi yükseltin.");
     public static readonly Hata SonYonetici = Hata.IsKurali("son_yonetici", "Firmada en az bir aktif yönetici kalmalı.");
     public static Hata YetkiGecersiz(string yetki) => Hata.Dogrulama("yetki_gecersiz", $"\"{yetki}\" verilebilecek bir yetki değil.");
     public static Hata KullaniciLimiti(int limit) =>

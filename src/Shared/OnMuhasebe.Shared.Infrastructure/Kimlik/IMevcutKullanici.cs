@@ -6,4 +6,7 @@ public interface IMevcutKullanici
     Guid? FirmaId { get; }
     string? KullaniciAdi { get; }
     bool SistemYoneticisiMi { get; }
+
+    // İşyeri kısıtlı kullanıcının izinli işyerleri; null: kısıt yok. Yetki filtresinden geçen isteklerde dolar.
+    List<Guid>? IzinliIsyerleri { get; }
 }

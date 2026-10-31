@@ -114,6 +114,7 @@ internal static class SistemIslemleri
         var (kod, ozet) = TekKullanimlikKod.Uret();
         db.Add(firma);
         db.Roller.AddRange(roller);
+        db.Isyerleri.Add(Isyeri.MerkezOlustur(firma.Id));
         db.AddRange(
             FirmaLisansi.Olustur(firma.Id, paket, simdi, GunSonu(istek.LisansBitisTarihi)),
             FirmaDaveti.Olustur(istek.YoneticiEposta, roller[0].Id, ozet, simdi, firma.Id));

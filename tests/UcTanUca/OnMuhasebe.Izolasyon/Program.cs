@@ -143,6 +143,7 @@ id["borclu"] = JsonNode.Parse(await a.GetStringAsync("api/kasabanka/cek-senet/bo
 var roller = JsonNode.Parse(await a.GetStringAsync("api/yonetim/roller"))!.AsArray();
 var kullaniciRolu = roller.First(r => r!["ad"]!.GetValue<string>() == "Kullanıcı")!["id"]!.GetValue<string>();
 var yoneticiRolu = roller.First(r => r!["tamYetkiliMi"]!.GetValue<bool>())!["id"]!.GetValue<string>();
+id["isyeri"] = (await Post(a, "api/yonetim/isyerleri", new { kod = "SZN", ad = "SIZINTI Sube" }))["id"]!.GetValue<string>();
 id["rol"] = (await Post(a, "api/yonetim/roller", new { ad = "SIZINTI Rol", yetkiler = (string[])["cari.hesap.goruntule"] }))["id"]!.GetValue<string>();
 var kullaniciEposta = $"izok{Guid.NewGuid():N}@ornek.com";
 await Post(a, "api/yonetim/kullanicilar", new { eposta = kullaniciEposta, rolId = kullaniciRolu });
@@ -195,6 +196,7 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/yonetim/kullanicilar/davetler/", "id", "davet"),
     ("/api/yonetim/kullanicilar/", "kullaniciId", "kullanici"),
     ("/api/yonetim/roller/", "id", "rol"),
+    ("/api/yonetim/isyerleri/", "id", "isyeri"),
     ("/api/fatura/irsaliyeler/", "id", "irsaliye"),
     ("/api/fatura/teklif-siparis/", "id", "teklif"),
     ("/api/fatura/raporlar/ba-bs/cari/", "cariId", "cari"),
