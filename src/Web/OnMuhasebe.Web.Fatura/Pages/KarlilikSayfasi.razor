@@ -1,0 +1,207 @@
+@page "/fatura/karlilik"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Brüt Kârlılık" AltBaslik="Net satış, satılan malın maliyeti (SMM) ve brüt kâr marjı" GeriAdres="fatura" Ikon="@Icons.Material.Filled.TrendingUp">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme yazdirma-gizle">
+    @foreach (var (etiket, kirilim, ikon) in _kirilimlar)
+    {
+        <button type="button" class="tur-sekmesi @(_kirilim == kirilim ? "secili" : "")" style="--vurgu:@UygulamaTemasi.Turkuaz" @onclick="() => KirilimAsync(kirilim)">
+            <MudIcon Icon="@ikon" Size="Size.Small" /> @etiket
+        </button>
+    }
+</div>
+
+<FiltreCubugu>
+    <MudItem xs="12" md="5" Class="d-flex gap-1 flex-wrap align-center">
+        @foreach (var (etiket, bas, son) in Hazirlar)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="@(Bicim.Gun(_baslangic) == bas && Bicim.Gun(_bitis) == son ? Variant.Filled : Variant.Outlined)"
+                     OnClick="() => DonemAsync(bas, son)">@etiket</MudChip>
+        }
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" Date="_baslangic" DateChanged="d => DonemAsync(Bicim.Gun(d), Bicim.Gun(_bitis))" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" Date="_bitis" DateChanged="d => DonemAsync(Bicim.Gun(_baslangic), Bicim.Gun(d))" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+</FiltreCubugu>
+
+@if (_rapor is { } r)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Brüt Kârlılık · @Bicim.Tarih(r.Baslangic) – @Bicim.Tarih(r.Bitis)</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Net satış" Deger="r.NetSatisTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.PointOfSale" Renk="#14B8A6" Sira="0" AltMetin="KDV hariç, iadeler düşülmüş" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Satılan malın maliyeti" Deger="r.MaliyetTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Inventory" Renk="#F59E0B" Sira="1" AltMetin="Firmanın maliyet yöntemiyle" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Brüt kâr" Deger="r.BrutKarTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.TrendingUp" Renk="@(r.BrutKarTl < 0 ? "#DC2626" : "#16A34A")" Sira="2" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Brüt kâr marjı" Deger="r.MarjYuzde ?? 0" Bicimle="@(d => r.MarjYuzde is null ? "—" : $"%{d:0.##}")" Ikon="@Icons.Material.Filled.Percent"
+                       Renk="#8B5CF6" Sira="3" AltMetin="Brüt kâr / net satış" />
+        </MudItem>
+    </MudGrid>
+
+    @if (r.MaliyetsizSatisTl != 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+            @Tl(r.MaliyetsizSatisTl) tutarındaki hizmet ve serbest satır satışının maliyeti stoktan izlenmez; brüt kâra tam yansır, marjı olduğundan yüksek gösterebilir.
+        </MudAlert>
+    }
+
+    <VeriTablosu T="KarlilikSatiri" Kayitlar="r.Satirlar" Dense="true" SatirTiklandi="Ac"
+                 BosIkon="@Icons.Material.Outlined.TrendingUp" BosBaslik="Bu dönemde onaylı satış faturası yok">
+        <Basliklar>
+            <MudTh>@KirilimBasligi</MudTh>
+            @if (_kirilim == KarlilikKirilimi.Urun)
+            {
+                <MudTh Class="sayi">Miktar</MudTh>
+            }
+            <MudTh Class="sayi">Net satış</MudTh>
+            <MudTh Class="sayi">Maliyet</MudTh>
+            <MudTh Class="sayi">Brüt kâr</MudTh>
+            <MudTh Class="sayi">Marj</MudTh>
+        </Basliklar>
+        <Satir>
+            <MudTd DataLabel="@KirilimBasligi">
+                <b>@context.Ad</b>
+                @if (context.Ek is not null)
+                {
+                    <span class="mobil-alt-bilgi">@context.Ek</span>
+                }
+                @if (context.MaliyetsizSatisTl != 0)
+                {
+                    <span class="mobil-alt-bilgi" title="Hizmet/serbest satır: maliyeti izlenmez">@Tl(context.MaliyetsizSatisTl) maliyeti izlenmeyen</span>
+                }
+            </MudTd>
+            @if (_kirilim == KarlilikKirilimi.Urun)
+            {
+                <MudTd DataLabel="Miktar" Class="sayi">@Bicim.Miktar(context.Miktar)</MudTd>
+            }
+            <MudTd DataLabel="Net satış" Class="sayi">@Tl(context.NetSatisTl)</MudTd>
+            <MudTd DataLabel="Maliyet" Class="sayi">@Tl(context.MaliyetTl)</MudTd>
+            <MudTd DataLabel="Brüt kâr" Class="sayi"><b class="@(context.BrutKarTl < 0 ? "bakiye-borclu" : "bakiye-alacakli")">@Tl(context.BrutKarTl)</b></MudTd>
+            <MudTd DataLabel="Marj" Class="sayi">
+                @if (context.MarjYuzde is { } m)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(m < 0 ? Color.Error : m < 10 ? Color.Warning : Color.Success)">%@m.ToString("0.##")</MudChip>
+                }
+                else
+                {
+                    <span style="opacity:.5">—</span>
+                }
+            </MudTd>
+        </Satir>
+    </VeriTablosu>
+    <div class="ozet-alt mt-2">
+        Onaylı satış ve satıştan iade faturaları; dövizli faturalar fatura kuruyla TL. Maliyet, Stok ayarlarındaki maliyet yöntemiyle hesaplanır;
+        irsaliyeyle sevk edilip faturalanan malın maliyeti irsaliyedeki çıkıştan alınır.
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly (string Etiket, KarlilikKirilimi Kirilim, string Ikon)[] _kirilimlar =
+    [
+        ("Ürün", KarlilikKirilimi.Urun, Icons.Material.Filled.Inventory2),
+        ("Müşteri", KarlilikKirilimi.Musteri, Icons.Material.Filled.People),
+        ("Fatura", KarlilikKirilimi.Fatura, Icons.Material.Filled.ReceiptLong)
+    ];
+
+    private KarlilikKirilimi _kirilim = KarlilikKirilimi.Urun;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private KarlilikRaporu? _rapor;
+    private ApiHatasi? _hata;
+
+    private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+
+    private IEnumerable<(string, DateOnly, DateOnly)> Hazirlar
+    {
+        get
+        {
+            var ayBasi = new DateOnly(Bugun.Year, Bugun.Month, 1);
+            yield return ("Bu ay", ayBasi, Bugun);
+            yield return ("Geçen ay", ayBasi.AddMonths(-1), ayBasi.AddDays(-1));
+            yield return ("Son 3 ay", ayBasi.AddMonths(-2), Bugun);
+            yield return ("Bu yıl", new DateOnly(Bugun.Year, 1, 1), Bugun);
+        }
+    }
+
+    private string KirilimBasligi => _kirilim switch
+    {
+        KarlilikKirilimi.Urun => "Ürün",
+        KarlilikKirilimi.Musteri => "Müşteri",
+        _ => "Fatura"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        (_baslangic, _bitis) = (Bicim.Takvim(new DateOnly(Bugun.Year, Bugun.Month, 1)), Bicim.Takvim(Bugun));
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        if (Bicim.Gun(_baslangic) is not { } bas || Bicim.Gun(_bitis) is not { } son)
+        {
+            return;
+        }
+
+        _rapor = null;
+        var sonuc = await Api.GetAsync<KarlilikRaporu>($"api/fatura/raporlar/karlilik?baslangic={Bicim.Iso(bas)}&bitis={Bicim.Iso(son)}&kirilim={_kirilim}");
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task KirilimAsync(KarlilikKirilimi kirilim)
+    {
+        _kirilim = kirilim;
+        await YukleAsync();
+    }
+
+    private async Task DonemAsync(DateOnly? bas, DateOnly? son)
+    {
+        (_baslangic, _bitis) = (Bicim.Takvim(bas), Bicim.Takvim(son));
+        await YukleAsync();
+    }
+
+    private void Ac(KarlilikSatiri s)
+    {
+        if (s.Id is not { } id)
+        {
+            return;
+        }
+
+        Navigasyon.NavigateTo(_kirilim switch
+        {
+            KarlilikKirilimi.Urun => $"stok/{id}",
+            KarlilikKirilimi.Musteri => $"cari/{id}",
+            _ => $"fatura/{id}"
+        });
+    }
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+}

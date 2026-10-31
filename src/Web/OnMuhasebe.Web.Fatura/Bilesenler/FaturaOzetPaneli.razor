@@ -28,7 +28,7 @@ else
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">
             <OzetKarti Baslik="@(kdvFarki >= 0 ? "Ödenecek KDV" : "Devreden KDV")" Deger="Math.Abs(kdvFarki)" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))"
-                       Ikon="@Icons.Material.Filled.AccountBalance" Renk="#F59E0B" Sira="2"
+                       Ikon="@Icons.Material.Filled.AccountBalance" Renk="#F59E0B" Href="fatura/kdv-ozeti" Sira="2"
                        AltMetin="@($"Hesaplanan {Bicim.Tutar(o.BuAyHesaplananKdv)} − indirilecek {Bicim.Tutar(o.BuAyIndirilecekKdv)}")" />
         </MudItem>
         <MudItem xs="12" sm="6" lg="3">

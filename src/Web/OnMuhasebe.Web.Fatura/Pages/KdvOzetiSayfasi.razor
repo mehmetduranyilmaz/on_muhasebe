@@ -1,0 +1,193 @@
+@page "/fatura/kdv-ozeti"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="KDV Beyan Özeti" AltBaslik="KDV1, KDV2 ve muhtasar (stopaj) beyannameleri için dönem özeti" GeriAdres="fatura" Ikon="@Icons.Material.Filled.AccountBalance">
+    <Islemler>
+        <div class="d-flex align-center gap-1">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Önceki ay" OnClick="() => AyDegistirAsync(-1)" />
+            <b style="min-width:130px; text-align:center">@_donem.ToString("MMMM yyyy", _tr)</b>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Sonraki ay" OnClick="() => AyDegistirAsync(1)" />
+        </div>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ozet is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_ozet is { } o)
+{
+    var odenecek = o.FarkTl - _devreden;
+
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">KDV Beyan Özeti · @_donem.ToString("MMMM yyyy", _tr)</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Hesaplanan KDV" Deger="o.HesaplananKdvTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.CallMade" Renk="#DC2626" Sira="0" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="İndirimler" Deger="o.IndirimlerToplamiTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.CallReceived" Renk="#16A34A" Sira="1" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="@(odenecek >= 0 ? "Ödenecek KDV (KDV1)" : "Sonraki döneme devreden")" Deger="Math.Abs(odenecek)" Bicimle="Tl"
+                       Ikon="@Icons.Material.Filled.AccountBalance" Renk="#F59E0B" Sira="2" AltMetin="@($"{o.FaturaSayisi} onaylı belge")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="KDV2 + muhtasar" Deger="o.Kdv2ToplamTl + o.MuhtasarToplamTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Gavel" Renk="#8B5CF6" Sira="3"
+                       AltMetin="@($"KDV2 {Tl(o.Kdv2ToplamTl)} · stopaj {Tl(o.MuhtasarToplamTl)}")" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3">
+        <MudItem xs="12" lg="7">
+            <div class="panel-kart kart belirme mb-3" style="--i:4">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Color="Color.Secondary" /> KDV1 · Matrah ve hesaplanan KDV</div>
+                <MudSimpleTable Dense="true">
+                    <thead><tr><th>İşlem</th><th class="sayi">Oran</th><th class="sayi">Matrah</th><th class="sayi">Vergi</th></tr></thead>
+                    <tbody>
+                        @if (o.TeslimVeHizmetler.Count == 0 && o.KismiTevkifatliSatislar.Count == 0 && o.AlistanIadeler.Count == 0)
+                        {
+                            <tr><td colspan="4" style="opacity:.6">Bu dönemde satış yok.</td></tr>
+                        }
+                        @foreach (var s in o.TeslimVeHizmetler)
+                        {
+                            <tr><td>Teslim ve hizmetler</td><td class="sayi">%@s.Oran</td><td class="sayi">@Tl(s.MatrahTl)</td><td class="sayi">@Tl(s.VergiTl)</td></tr>
+                        }
+                        @foreach (var s in o.KismiTevkifatliSatislar)
+                        {
+                            <tr>
+                                <td>Kısmi tevkifat @s.Kod <small style="opacity:.7">(@s.Pay/@s.Payda · KDV @Tl(s.KdvTl), tevkif @Tl(s.TevkifTl))</small></td>
+                                <td class="sayi">%@s.KdvOrani</td><td class="sayi">@Tl(s.MatrahTl)</td><td class="sayi">@Tl(s.BeyanEdilecekTl)</td>
+                            </tr>
+                        }
+                        @foreach (var s in o.AlistanIadeler)
+                        {
+                            <tr><td>Diğer işlemler: alıştan iade</td><td class="sayi">%@s.Oran</td><td class="sayi">@Tl(s.MatrahTl)</td><td class="sayi">@Tl(s.VergiTl)</td></tr>
+                        }
+                        <tr><td colspan="3"><b>Hesaplanan KDV</b></td><td class="sayi"><b>@Tl(o.HesaplananKdvTl)</b></td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            </div>
+
+            <div class="panel-kart kart belirme mb-3" style="--i:5">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.RemoveCircleOutline" Size="Size.Small" Color="Color.Secondary" /> KDV1 · İndirimler</div>
+                <dl class="toplam-listesi">
+                    <dt>Bu döneme ait indirilecek KDV <small>(alış, SMM)</small></dt><dd>@Tl(o.IndirilecekKdvTl)</dd>
+                    <dt>Sorumlu sıfatıyla beyan edilen KDV <small>(KDV2)</small></dt><dd>@Tl(o.SorumluSifatiylaOdenenKdvTl)</dd>
+                    <dt>Satıştan iade edilen malların KDV'si</dt><dd>@Tl(o.SatistanIadeKdvTl)</dd>
+                    <dt><b>İndirimler toplamı</b></dt><dd><b>@Tl(o.IndirimlerToplamiTl)</b></dd>
+                </dl>
+                <div class="d-flex align-center gap-2 mt-3">
+                    <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_devreden" Label="Önceki dönemden devreden KDV"
+                                     Min="0" HideSpinButtons="true" Format="N2" Adornment="Adornment.End" AdornmentText="TL" Immediate="true" DebounceInterval="300"
+                                     HelperText="Önceki ayın beyannamesinden girin" Style="max-width:280px" />
+                </div>
+                <div class="genel-toplam">
+                    <span>@(odenecek >= 0 ? "Ödenecek KDV" : "Sonraki döneme devreden KDV")</span>
+                    <b>@Tl(Math.Abs(odenecek))</b>
+                </div>
+            </div>
+        </MudItem>
+
+        <MudItem xs="12" lg="5">
+            <div class="panel-kart kart belirme mb-3" style="--i:6">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.CallSplit" Size="Size.Small" Color="Color.Secondary" /> KDV2 · Sorumlu sıfatıyla (tevkifatlı alışlar)</div>
+                @if (o.Kdv2.Count == 0)
+                {
+                    <div class="ozet-alt">Bu dönemde tevkifatlı alış yok.</div>
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true">
+                        <thead><tr><th>Kod</th><th class="sayi">Matrah</th><th class="sayi">Tevkifat</th><th class="sayi">Vergi</th></tr></thead>
+                        <tbody>
+                            @foreach (var s in o.Kdv2)
+                            {
+                                <tr>
+                                    <td>@s.Kod <small style="display:block; opacity:.7; white-space:normal">@(TevkifatKodlari.Bul(s.Kod)?.Aciklama)</small></td>
+                                    <td class="sayi">@Tl(s.MatrahTl)</td><td class="sayi">%@s.KdvOrani · @s.Pay/@s.Payda</td><td class="sayi">@Tl(s.BeyanEdilecekTl)</td>
+                                </tr>
+                            }
+                            <tr><td colspan="3"><b>KDV2 toplamı</b></td><td class="sayi"><b>@Tl(o.Kdv2ToplamTl)</b></td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            </div>
+
+            <div class="panel-kart kart belirme mb-3" style="--i:7">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Gavel" Size="Size.Small" Color="Color.Secondary" /> Muhtasar · Gelir vergisi stopajı</div>
+                @if (o.Muhtasar.Count == 0)
+                {
+                    <div class="ozet-alt">Bu dönemde stopajlı belge yok.</div>
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true">
+                        <thead><tr><th>Belge</th><th class="sayi">Oran</th><th class="sayi">Gayrisafi</th><th class="sayi">Stopaj</th></tr></thead>
+                        <tbody>
+                            @foreach (var s in o.Muhtasar)
+                            {
+                                <tr>
+                                    <td>@FaturaMetinleri.Tur(s.Tur) <small style="opacity:.7">(@s.BelgeSayisi)</small></td>
+                                    <td class="sayi">%@s.Oran.ToString("0.##")</td><td class="sayi">@Tl(s.MatrahTl)</td><td class="sayi">@Tl(s.StopajTl)</td>
+                                </tr>
+                            }
+                            <tr><td colspan="3"><b>Stopaj toplamı</b></td><td class="sayi"><b>@Tl(o.MuhtasarToplamTl)</b></td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            </div>
+
+            <MudAlert Severity="Severity.Info" Dense="true">
+                Bu özet beyanname hazırlığı içindir; beyannameyi mali müşavirinizle kontrol edin. Dönem fatura tarihine göredir, dövizli belgeler fatura kuruyla TL'dir.
+                Tevkifatlı alışta KDV2 ile beyan edilen kısım aynı dönem KDV1'de indirim olarak gösterilmiştir. Stopaj belge tarihine göre toplanır;
+                ödeme başka dönemde yapıldıysa muhtasar dönemi değişebilir.
+            </MudAlert>
+        </MudItem>
+    </MudGrid>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    [SupplyParameterFromQuery(Name = "yil")] public int? YilParametresi { get; set; }
+    [SupplyParameterFromQuery(Name = "ay")] public int? AyParametresi { get; set; }
+
+    private DateTime _donem;
+    private decimal _devreden;
+    private KdvBeyanOzeti? _ozet;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow();
+        _donem = new DateTime(YilParametresi ?? bugun.Year, AyParametresi is >= 1 and <= 12 ? AyParametresi.Value : bugun.Month, 1);
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _ozet = null;
+        var sonuc = await Api.GetAsync<KdvBeyanOzeti>($"api/fatura/raporlar/kdv?yil={_donem.Year}&ay={_donem.Month}");
+        _hata = sonuc.Hata;
+        _ozet = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task AyDegistirAsync(int fark)
+    {
+        _donem = _donem.AddMonths(fark);
+        _devreden = 0;
+        await YukleAsync();
+    }
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+}

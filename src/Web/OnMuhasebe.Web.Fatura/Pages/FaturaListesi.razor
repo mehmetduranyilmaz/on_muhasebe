@@ -5,6 +5,8 @@
 
 <SayfaBasligi Baslik="Faturalar" AltBaslik="Satış, alış ve iade faturalarınız" Ikon="@Icons.Material.Filled.ReceiptLong">
     <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.TrendingUp" Href="fatura/karlilik">Kârlılık</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountBalance" Href="fatura/kdv-ozeti">KDV Özeti</MudButton>
         @if (!Oturum.SaltOkunurMu)
         {
             <YeniFaturaMenusu />
