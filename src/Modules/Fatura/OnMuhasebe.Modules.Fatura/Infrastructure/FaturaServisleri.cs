@@ -145,14 +145,16 @@ internal sealed class FaturaHazirlayici(
             return (new FaturaCarisi(c.Id, c.Kod, c.Unvan, c.VergiNo, c.VergiDairesi, c.Il, c.Ilce, c.Adres), c.ParaBirimi);
         }
 
-        if (satisSekli != SatisSekli.Perakende)
+        // Perakende satış nihai tüketiciye; gider pusulası/SMM cari seçilmezse serbest kişiye (ad+TCKN) kesilebilir.
+        var serbestKisi = FaturaTurleri.StopajliMi(istek.Tur);
+        if (satisSekli != SatisSekli.Perakende && !serbestKisi)
         {
             return FaturaHatalari.CariVeyaNihaiTuketici;
         }
 
         var nihai = istek.NihaiTuketici;
-        var unvan = Temiz(nihai?.AdSoyad) ?? FaturaBelgesi.NihaiTuketiciUnvani;
-        var tckn = Temiz(nihai?.Tckn) ?? FaturaBelgesi.NihaiTuketiciTckn;
+        var unvan = Temiz(nihai?.AdSoyad) ?? (serbestKisi ? FaturaMetinleri.TurAdi(istek.Tur) : FaturaBelgesi.NihaiTuketiciUnvani);
+        var tckn = Temiz(nihai?.Tckn) ?? (serbestKisi ? null : FaturaBelgesi.NihaiTuketiciTckn);
         return (new FaturaCarisi(null, null, unvan, tckn, null, null, null, null), ParaBirimleri.Tl);
     }
 

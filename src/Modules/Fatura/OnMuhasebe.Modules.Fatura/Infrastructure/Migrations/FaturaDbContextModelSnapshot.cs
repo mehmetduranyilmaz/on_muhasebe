@@ -33,6 +33,12 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("firma_id");
 
+                    b.Property<string>("GiderPusulasiSeri")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("gider_pusulasi_seri");
+
                     b.Property<DateTime?>("GuncellemeTarihi")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("guncelleme_tarihi");
@@ -318,7 +324,7 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                     b.HasIndex("FirmaId", "Numara")
                         .IsUnique()
                         .HasDatabaseName("ix_fatura_firma_id_numara")
-                        .HasFilter("numara IS NOT NULL AND tur IN ('Satis', 'AlistanIade')");
+                        .HasFilter("numara IS NOT NULL AND tur IN ('Satis', 'AlistanIade', 'GiderPusulasi')");
 
                     b.HasIndex("FirmaId", "Tarih")
                         .HasDatabaseName("ix_fatura_firma_id_tarih");

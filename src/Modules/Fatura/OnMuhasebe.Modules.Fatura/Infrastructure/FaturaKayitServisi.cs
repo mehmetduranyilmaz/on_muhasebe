@@ -217,15 +217,21 @@ internal sealed class FaturaKayitServisi(
             }
         }
 
-        var stokTuru = StokEtkisi(f.Tur);
-        var stokHareketleri = f.Satirlar
-            .Where(s => s.StokluMu)
-            .OrderBy(s => s.Sira)
-            .Select(s => new BelgeStokHareketi(
-                s.StokKartiId!.Value, s.DepoId!.Value, stokTuru, f.Tarih, s.Birim, s.Miktar, StokMaliyeti(f, s), f.Numara, aciklama))
-            .ToList();
+        // Serbest meslek makbuzu yalnızca hizmettir; stokla ilişkili türlerde (satış/alış/iade/gider pusulası) ürün satırları hareket yaratır.
+        Sonuc<string?> stok = (string?)null;
+        if (FaturaTurleri.StoklaIliskiliMi(f.Tur))
+        {
+            var stokTuru = StokEtkisi(f.Tur);
+            var stokHareketleri = f.Satirlar
+                .Where(s => s.StokluMu)
+                .OrderBy(s => s.Sira)
+                .Select(s => new BelgeStokHareketi(
+                    s.StokKartiId!.Value, s.DepoId!.Value, stokTuru, f.Tarih, s.Birim, s.Miktar, StokMaliyeti(f, s), f.Numara, aciklama))
+                .ToList();
 
-        var stok = await stokYazici.YazAsync(f.Id, stokHareketleri, cancellationToken);
+            stok = await stokYazici.YazAsync(f.Id, stokHareketleri, cancellationToken);
+        }
+
         if (!stok.BasariliMi || f.PesinHesapId is not { } hesapId)
         {
             return stok;
@@ -252,16 +258,20 @@ internal sealed class FaturaKayitServisi(
 
     // Alışta stok maliyeti, satırın iskontolar ve genel iskonto payı düşülmüş KDV hariç TL tutarıdır (girilen birim başına).
     // Satıştan iade maliyetini stok modülü iade tarihindeki birim maliyetten bulur; çıkışların maliyeti rapor anında hesaplanır.
-    private static decimal? StokMaliyeti(FaturaBelgesi f, FaturaSatiri s) => f.Tur == FaturaTuru.Alis
+    // Alış ve gider pusulasında stok maliyeti, satırın iskontolu KDV hariç TL tutarıdır (girilen birim başına).
+    private static decimal? StokMaliyeti(FaturaBelgesi f, FaturaSatiri s) => f.Tur is FaturaTuru.Alis or FaturaTuru.GiderPusulasi
         ? Math.Round(s.Matrah * f.Kur / s.Miktar, 4, MidpointRounding.AwayFromZero)
         : null;
 
+    // Gider pusulası ve SMM cariyi alacaklandırır (biz borçlanırız), alış faturası gibi.
     private static (CariHareketTuru Tur, HareketYonu Yon) CariEtkisi(FaturaTuru tur) => tur switch
     {
         FaturaTuru.Satis => (CariHareketTuru.SatisFaturasi, HareketYonu.Borc),
         FaturaTuru.Alis => (CariHareketTuru.AlisFaturasi, HareketYonu.Alacak),
         FaturaTuru.SatistanIade => (CariHareketTuru.SatistanIadeFaturasi, HareketYonu.Alacak),
         FaturaTuru.AlistanIade => (CariHareketTuru.AlistanIadeFaturasi, HareketYonu.Borc),
+        FaturaTuru.GiderPusulasi => (CariHareketTuru.GiderPusulasi, HareketYonu.Alacak),
+        FaturaTuru.SerbestMeslekMakbuzu => (CariHareketTuru.SerbestMeslekMakbuzu, HareketYonu.Alacak),
         _ => throw new ArgumentOutOfRangeException(nameof(tur))
     };
 
@@ -271,6 +281,7 @@ internal sealed class FaturaKayitServisi(
         FaturaTuru.Alis => StokHareketTuru.AlisFaturasi,
         FaturaTuru.SatistanIade => StokHareketTuru.SatistanIade,
         FaturaTuru.AlistanIade => StokHareketTuru.AlistanIade,
+        FaturaTuru.GiderPusulasi => StokHareketTuru.AlisFaturasi,
         _ => throw new ArgumentOutOfRangeException(nameof(tur))
     };
 }

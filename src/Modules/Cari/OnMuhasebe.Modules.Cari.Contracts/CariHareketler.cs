@@ -20,7 +20,10 @@ public enum CariHareketTuru
     CekSenetGirisi,
     CekSenetCikisi,
     CekSenetIadesi,
-    KarsiliksizCekSenet
+    KarsiliksizCekSenet,
+    // Fatura modülünden: gider pusulası ve serbest meslek makbuzu (ikisi de cariyi alacaklandırır, biz borçlanırız).
+    GiderPusulasi,
+    SerbestMeslekMakbuzu
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<HareketYonu>))]

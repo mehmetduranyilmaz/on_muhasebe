@@ -206,7 +206,8 @@ public sealed record FaturaAyarlari(
     string IadeSeri,
     bool ToptanKdvDahil,
     bool PerakendeKdvDahil,
-    int VarsayilanVadeGunu);
+    int VarsayilanVadeGunu,
+    string GiderPusulasiSeri = "GPS");
 
 // Tutarlar TL ve KDV hariçtir; iadeler düşülmüştür.
 public sealed record AylikFaturaTutari(int Yil, int Ay, decimal Satis, decimal Alis);

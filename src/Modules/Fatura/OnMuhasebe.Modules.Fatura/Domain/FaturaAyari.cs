@@ -12,6 +12,7 @@ internal sealed class FaturaAyari : FirmaEntity
     public string ToptanSeri { get; private set; } = "TPT";
     public string PerakendeSeri { get; private set; } = "PRK";
     public string IadeSeri { get; private set; } = "IAD";
+    public string GiderPusulasiSeri { get; private set; } = "GPS";
     public bool ToptanKdvDahil { get; private set; }
     public bool PerakendeKdvDahil { get; private set; } = true;
     public int VarsayilanVadeGunu { get; private set; }
@@ -24,21 +25,23 @@ internal sealed class FaturaAyari : FirmaEntity
         ToptanSeri = a.ToptanSeri.ToUpperInvariant();
         PerakendeSeri = a.PerakendeSeri.ToUpperInvariant();
         IadeSeri = a.IadeSeri.ToUpperInvariant();
+        GiderPusulasiSeri = a.GiderPusulasiSeri.ToUpperInvariant();
         ToptanKdvDahil = a.ToptanKdvDahil;
         PerakendeKdvDahil = a.PerakendeKdvDahil;
         VarsayilanVadeGunu = a.VarsayilanVadeGunu;
     }
 
-    // Satış (toptan/perakende) ve alıştan iade numarayı biz veririz; diğer türlerin serisi yoktur.
+    // Satış (toptan/perakende), alıştan iade ve gider pusulası numarayı biz veririz; diğer türlerin serisi yoktur.
     public string Seri(FaturaTuru tur, SatisSekli? satisSekli) => tur switch
     {
         FaturaTuru.Satis => satisSekli == SatisSekli.Perakende ? PerakendeSeri : ToptanSeri,
         FaturaTuru.AlistanIade => IadeSeri,
-        _ => throw new InvalidOperationException($"{tur} faturasının numarasını karşı taraf verir.")
+        FaturaTuru.GiderPusulasi => GiderPusulasiSeri,
+        _ => throw new InvalidOperationException($"{tur} belgesinin numarasını karşı taraf verir.")
     };
 
     public FaturaAyarlari Sozlesme() =>
-        new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu);
+        new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu, GiderPusulasiSeri);
 }
 
 // Seri + yıl başına son verilen sıra. Satır, numara alan transaction bitene kadar kilitli kalır; böylece

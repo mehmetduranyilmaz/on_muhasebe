@@ -31,7 +31,7 @@ internal sealed class FaturaBelgesiConfiguration : IEntityTypeConfiguration<Fatu
         // Giden faturanın numarası firma içinde tekildir (seri + yıl + sıra). Gelen faturada numara karşı tarafındır
         // ve farklı tedarikçilerde aynı olabilir; o kontrol cari bazında uygulamada yapılır.
         builder.HasIndex(x => new { x.FirmaId, x.Numara }).IsUnique()
-            .HasFilter("numara IS NOT NULL AND tur IN ('Satis', 'AlistanIade')");
+            .HasFilter("numara IS NOT NULL AND tur IN ('Satis', 'AlistanIade', 'GiderPusulasi')");
         builder.HasIndex(x => new { x.FirmaId, x.Tarih });
         builder.HasIndex(x => new { x.FirmaId, x.CariHesapId });
         builder.HasMany(x => x.Satirlar).WithOne().HasForeignKey(x => x.FaturaId).OnDelete(DeleteBehavior.Cascade);
@@ -66,6 +66,7 @@ internal sealed class FaturaAyariConfiguration : IEntityTypeConfiguration<Fatura
         builder.Property(x => x.ToptanSeri).HasMaxLength(3);
         builder.Property(x => x.PerakendeSeri).HasMaxLength(3);
         builder.Property(x => x.IadeSeri).HasMaxLength(3);
+        builder.Property(x => x.GiderPusulasiSeri).HasMaxLength(3);
         builder.HasIndex(x => x.FirmaId).IsUnique();
     }
 }

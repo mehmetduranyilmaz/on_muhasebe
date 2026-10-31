@@ -29,11 +29,14 @@ public static class CariMetinleri
         CariHareketTuru.CekSenetCikisi => "Çek/Senet Çıkışı",
         CariHareketTuru.CekSenetIadesi => "Çek/Senet İadesi",
         CariHareketTuru.KarsiliksizCekSenet => "Karşılıksız Çek/Senet",
+        CariHareketTuru.GiderPusulasi => "Gider Pusulası",
+        CariHareketTuru.SerbestMeslekMakbuzu => "Serbest Meslek Makbuzu",
         _ => tur.ToString()
     };
 
     public static bool FaturaHareketiMi(CariHareketTuru tur) => tur is CariHareketTuru.SatisFaturasi or CariHareketTuru.AlisFaturasi
-        or CariHareketTuru.SatistanIadeFaturasi or CariHareketTuru.AlistanIadeFaturasi;
+        or CariHareketTuru.SatistanIadeFaturasi or CariHareketTuru.AlistanIadeFaturasi
+        or CariHareketTuru.GiderPusulasi or CariHareketTuru.SerbestMeslekMakbuzu;
 
     public static string BakiyeDurumu(BakiyeDurumu durum) => durum switch
     {
