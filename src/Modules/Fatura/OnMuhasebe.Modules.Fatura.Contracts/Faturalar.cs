@@ -8,7 +8,11 @@ public enum FaturaTuru
     Satis,
     Alis,
     SatistanIade,
-    AlistanIade
+    AlistanIade,
+    // Vergi mükellefi olmayandan alım için biz düzenleriz (KDV yok, stopaj var).
+    GiderPusulasi,
+    // Serbest meslek erbabının düzenlediği belge; biz alırız (KDV + gelir vergisi stopajı).
+    SerbestMeslekMakbuzu
 }
 
 // Satış ve satıştan iade faturalarında; fiyat önerisini, numara serisini ve nihai tüketiciye kesilebilmeyi belirler.
@@ -36,13 +40,24 @@ public enum GenelIskontoTuru
 
 public static class FaturaTurleri
 {
-    // Numarasını firmanın verdiği (bizim düzenlediğimiz) faturalar; diğerlerinde karşı tarafın numarası girilir.
-    public static bool GidenMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade;
+    // Numarasını firmanın verdiği (bizim düzenlediğimiz) belgeler; diğerlerinde karşı tarafın numarası girilir.
+    // Gider pusulasını da biz düzenleriz (kendi serisiyle numaralanır); SMM'yi karşı taraf düzenler.
+    public static bool GidenMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade or FaturaTuru.GiderPusulasi;
 
     public static bool SatisTarafiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.SatistanIade;
 
-    // Peşin işlemde paranın yönü: satışta ve alıştan iadede para bize girer.
+    // Peşin işlemde paranın yönü: satışta ve alıştan iadede para bize girer; alış/GP/SMM'de bizden çıkar.
     public static bool ParaGirisiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade;
+
+    // Gider pusulası KDV mükellefi olmayana düzenlenir: satırlarda KDV olmaz.
+    public static bool KdvsizMi(FaturaTuru tur) => tur is FaturaTuru.GiderPusulasi;
+
+    // Gelir vergisi stopajı (tevkifatı) uygulanabilen belgeler.
+    public static bool StopajliMi(FaturaTuru tur) => tur is FaturaTuru.GiderPusulasi or FaturaTuru.SerbestMeslekMakbuzu;
+
+    // Mal/hizmet satırları stok hareketi oluşturabilir mi (alış tarafı gibi). SMM yalnızca hizmettir.
+    public static bool StoklaIliskiliMi(FaturaTuru tur) =>
+        tur is FaturaTuru.Satis or FaturaTuru.Alis or FaturaTuru.SatistanIade or FaturaTuru.AlistanIade or FaturaTuru.GiderPusulasi;
 }
 
 // Cari seçilmeyen perakende fatura nihai tüketiciye kesilir; bilgiler boşsa "Nihai Tüketici" / 11111111111 yazılır.

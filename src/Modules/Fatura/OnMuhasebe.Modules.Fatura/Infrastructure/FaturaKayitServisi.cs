@@ -283,6 +283,8 @@ internal static class FaturaMetinleri
         FaturaTuru.Alis => "Alış faturası",
         FaturaTuru.SatistanIade => "Satıştan iade faturası",
         FaturaTuru.AlistanIade => "Alıştan iade faturası",
+        FaturaTuru.GiderPusulasi => "Gider pusulası",
+        FaturaTuru.SerbestMeslekMakbuzu => "Serbest meslek makbuzu",
         _ => tur.ToString()
     };
 }

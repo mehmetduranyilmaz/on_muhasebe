@@ -63,6 +63,8 @@ internal static class FaturaIslemleri
                 .WithMessage("Geçersiz T.C. kimlik numarası.");
             RuleFor(x => x.Satirlar).NotEmpty().WithMessage("Faturada en az bir satır olmalıdır.")
                 .Must(s => s.Count <= AzamiSatirSayisi).WithMessage($"Bir faturada en fazla {AzamiSatirSayisi} satır olabilir.");
+            RuleFor(x => x.Satirlar).Must(s => s.All(sat => sat.KdvOrani == 0)).When(x => FaturaTurleri.KdvsizMi(x.Tur))
+                .WithMessage("Gider pusulasında KDV uygulanmaz; satırların KDV oranı %0 olmalıdır.");
             RuleForEach(x => x.Satirlar).ChildRules(s =>
             {
                 s.RuleFor(x => x.Ad).MaximumLength(250);

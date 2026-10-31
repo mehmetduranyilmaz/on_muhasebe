@@ -15,6 +15,8 @@ public static class FaturaMetinleri
         FaturaTuru.Alis => "Alış Faturası",
         FaturaTuru.SatistanIade => "Satıştan İade",
         FaturaTuru.AlistanIade => "Alıştan İade",
+        FaturaTuru.GiderPusulasi => "Gider Pusulası",
+        FaturaTuru.SerbestMeslekMakbuzu => "Serbest Meslek Makbuzu",
         _ => tur.ToString()
     };
 
@@ -24,6 +26,8 @@ public static class FaturaMetinleri
         FaturaTuru.Alis => "Alış",
         FaturaTuru.SatistanIade => "Satıştan iade",
         FaturaTuru.AlistanIade => "Alıştan iade",
+        FaturaTuru.GiderPusulasi => "Gider pusulası",
+        FaturaTuru.SerbestMeslekMakbuzu => "SMM",
         _ => tur.ToString()
     };
 
@@ -33,6 +37,8 @@ public static class FaturaMetinleri
         FaturaTuru.Alis => "Tedarikçiden alış; cari alacaklanır, stok girer",
         FaturaTuru.SatistanIade => "Müşteriden geri gelen mal; stok girer",
         FaturaTuru.AlistanIade => "Tedarikçiye geri gönderilen mal; stok çıkar",
+        FaturaTuru.GiderPusulasi => "Mükellef olmayandan alım; KDV yok, stopaj kesilir",
+        FaturaTuru.SerbestMeslekMakbuzu => "Serbest meslek ödemesi; KDV ve gelir vergisi stopajı",
         _ => ""
     };
 
@@ -42,6 +48,8 @@ public static class FaturaMetinleri
         FaturaTuru.Alis => Icons.Material.Filled.ShoppingCart,
         FaturaTuru.SatistanIade => Icons.Material.Filled.AssignmentReturn,
         FaturaTuru.AlistanIade => Icons.Material.Filled.KeyboardReturn,
+        FaturaTuru.GiderPusulasi => Icons.Material.Filled.ReceiptLong,
+        FaturaTuru.SerbestMeslekMakbuzu => Icons.Material.Filled.WorkOutline,
         _ => Icons.Material.Filled.ReceiptLong
     };
 
@@ -51,16 +59,20 @@ public static class FaturaMetinleri
         FaturaTuru.Alis => "#3B82F6",
         FaturaTuru.SatistanIade => "#F59E0B",
         FaturaTuru.AlistanIade => "#8B5CF6",
+        FaturaTuru.GiderPusulasi => "#EC4899",
+        FaturaTuru.SerbestMeslekMakbuzu => "#0EA5E9",
         _ => UygulamaTemasi.Turkuaz
     };
 
-    // Adres çubuğundaki tür adı: fatura/yeni/satis, fatura/yeni/satistan-iade...
+    // Adres çubuğundaki tür adı: fatura/yeni/satis, fatura/yeni/gider-pusulasi...
     public static string Yol(FaturaTuru tur) => tur switch
     {
         FaturaTuru.Satis => "satis",
         FaturaTuru.Alis => "alis",
         FaturaTuru.SatistanIade => "satistan-iade",
         FaturaTuru.AlistanIade => "alistan-iade",
+        FaturaTuru.GiderPusulasi => "gider-pusulasi",
+        FaturaTuru.SerbestMeslekMakbuzu => "serbest-meslek-makbuzu",
         _ => tur.ToString().ToLowerInvariant()
     };
 
