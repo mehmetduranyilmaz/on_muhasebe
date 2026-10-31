@@ -6,8 +6,47 @@ using OnMuhasebe.Shared.Domain.Results;
 
 namespace OnMuhasebe.Modules.Stok.Infrastructure;
 
-internal sealed class StokSorgusu(StokDbContext db, DepoServisi depoServisi) : IStokSorgusu
+internal sealed class StokSorgusu(StokDbContext db, DepoServisi depoServisi, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi) : IStokSorgusu
 {
+    // Çıkış maliyeti saklanmaz; ilgili kartların tüm geçmişi firmanın yöntemiyle işlenip belgelerin çıkışlarına düşen birim maliyet alınır.
+    public async Task<IReadOnlyList<BelgeMaliyeti>> BelgeMaliyetleriAsync(
+        IReadOnlyCollection<Guid> kaynakBelgeIdleri, CancellationToken cancellationToken = default)
+    {
+        if (kaynakBelgeIdleri.Count == 0)
+        {
+            return [];
+        }
+
+        var hareketler = await db.StokHareketleri.AsNoTracking()
+            .Where(h => h.KaynakBelgeId != null && kaynakBelgeIdleri.Contains(h.KaynakBelgeId.Value)
+                        && h.IptalHareketId == null && h.IptalEdilenHareketId == null
+                        && h.Tur != StokHareketTuru.TransferGiris && h.Tur != StokHareketTuru.TransferCikis)
+            .Select(h => new { h.Id, BelgeId = h.KaynakBelgeId!.Value, h.StokKartiId, h.GirisMiktari, h.CikisMiktari, h.BirimFiyat })
+            .ToListAsync(cancellationToken);
+        if (hareketler.Count == 0)
+        {
+            return [];
+        }
+
+        var kartIdleri = hareketler.Select(h => h.StokKartiId).Distinct().ToList();
+        var ayar = await ayarServisi.GetirAsync(cancellationToken);
+        var hesaplar = await hesaplayici.HesaplaAsync(db.StokKartlari.Where(k => kartIdleri.Contains(k.Id)).Select(k => k.Id), null,
+            ayar.MaliyetYontemi, cancellationToken);
+
+        return hareketler
+            .GroupBy(h => (h.BelgeId, h.StokKartiId))
+            .Select(g =>
+            {
+                var cikislar = hesaplar.TryGetValue(g.Key.StokKartiId, out var hesap) ? hesap.CikisBirimMaliyetleri : new Dictionary<Guid, decimal>();
+                return new BelgeMaliyeti(g.Key.BelgeId, g.Key.StokKartiId,
+                    g.Sum(h => h.CikisMiktari),
+                    g.Where(h => h.CikisMiktari > 0).Sum(h => h.CikisMiktari * cikislar.GetValueOrDefault(h.Id)),
+                    g.Sum(h => h.GirisMiktari),
+                    g.Where(h => h.GirisMiktari > 0).Sum(h => h.GirisMiktari * (h.BirimFiyat ?? 0m)));
+            })
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<StokKartiBilgisi>> KartlariGetirAsync(
         IReadOnlyCollection<Guid> kartIdleri, CancellationToken cancellationToken = default)
     {

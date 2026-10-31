@@ -23,6 +23,16 @@ public interface IStokSorgusu
 
     // Depo verilmezse firmanın varsayılan deposu kullanılır (yoksa açılır). Pasif ya da başka firmanın deposu null döner.
     Task<Guid?> DepoCozAsync(Guid? depoId, CancellationToken cancellationToken = default);
+
+    // Belgelerin (fatura, irsaliye) stok hareketlerinin maliyeti, firmanın maliyet yöntemiyle (kârlılık için).
+    Task<IReadOnlyList<BelgeMaliyeti>> BelgeMaliyetleriAsync(IReadOnlyCollection<Guid> kaynakBelgeIdleri, CancellationToken cancellationToken = default);
+}
+
+// Bir belgedeki bir kartın stok etkisi. Çıkışta (satış) maliyet çıkış anındaki birim maliyettir; satıştan iade girişinde
+// stoğa giriş maliyetidir. Miktar temel birimdedir, MaliyetTl toplamdır. İptal edilmiş hareketler sayılmaz.
+public sealed record BelgeMaliyeti(Guid KaynakBelgeId, Guid StokKartiId, decimal CikisMiktari, decimal CikisMaliyetiTl, decimal GirisMiktari, decimal GirisMaliyetiTl)
+{
+    public decimal CikisBirimMaliyeti => CikisMiktari == 0 ? 0m : CikisMaliyetiTl / CikisMiktari;
 }
 
 // Miktar ve birim fiyat girilen birim üzerindendir. BirimFiyat giriş hareketlerinde TL maliyettir;
