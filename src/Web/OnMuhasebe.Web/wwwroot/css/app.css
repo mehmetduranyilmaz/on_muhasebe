@@ -1423,6 +1423,18 @@ h1:focus {
     font-variant-numeric: tabular-nums;
 }
 
+/* Nakit akış: kümülatif bakiye çizgisi ve dönem tablosu */
+.bakiye-cizgisi { width: 100%; height: 170px; display: block; }
+.bc-sifir { stroke: var(--mud-palette-text-secondary); stroke-dasharray: 4 4; stroke-width: 1; opacity: .6; }
+.bc-cizgi { fill: none; stroke: var(--om-turkuaz); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+.bc-nokta { fill: var(--om-turkuaz); }
+.bc-nokta.eksi { fill: var(--mud-palette-error); }
+
+.nakit-tablosu td, .nakit-tablosu th { white-space: nowrap; }
+.nakit-tablosu tbody tr { cursor: pointer; }
+.nakit-tablosu tbody tr.secili { background: color-mix(in srgb, var(--om-turkuaz) 10%, transparent); }
+.nakit-tablosu .eksi-bakiye { color: var(--mud-palette-error); font-weight: 700; }
+
 /* Faturaya irsaliyeden aktarım diyaloğu */
 .aktarim-grubu {
     padding: 8px 10px;

@@ -45,10 +45,24 @@
         {
             <MudItem xs="6" lg="3">
                 <OzetKarti Baslik="@baslik" Deger="deger" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Schedule" Renk="@renk" Sira="sira"
-                           AltMetin="TL carilerin toplamı" />
+                           AltMetin="Tüm cariler · dövizliler rapor tarihi kuruyla" />
             </MudItem>
         }
     </MudGrid>
+
+    @if (a.AvansTl > 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2" Icon="@Icons.Material.Filled.Savings">
+            @(_alacakMi ? "Carilerden alınmış, henüz faturayla mahsup edilmemiş avans" : "Carilere verilmiş, henüz faturayla mahsup edilmemiş avans"):
+            <b>@Bicim.Tutar(a.AvansTl, ParaBirimleri.Tl)</b> — vadesi gelen @(_alacakMi ? "alacak" : "borç") olmadığı için dilimlere katılmaz.
+        </MudAlert>
+    }
+    @if (a.KurBulunamayanlar.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+            @string.Join(", ", a.KurBulunamayanlar) için rapor tarihinin TCMB kuru bulunamadı; bu dövizdeki cariler özet kartlara katılmadı (tabloda görünür).
+        </MudAlert>
+    }
 
     <VeriTablosu T="VadeAnaliziSatiri" Kayitlar="a.Satirlar.Kayitlar" Dense="true" Sayfa="_sayfa" ToplamSayfa="a.Satirlar.ToplamSayfa" SayfaDegisti="SayfaDegistiAsync" Yukleniyor="_yukleniyor" SatirTiklandi="@(s => Navigasyon.NavigateTo($"cari/{s.CariId}"))"
                  BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="@(_alacakMi ? "Açık alacak yok" : "Açık borç yok")">

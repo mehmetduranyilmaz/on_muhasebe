@@ -1,0 +1,286 @@
+@page "/nakit-akis"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Nakit Akış Takvimi" AltBaslik="Hazır değerlerden başlayarak beklenen tahsilat ve ödemeler; nakit açığı erken uyarısı"
+             Ikon="@Icons.Material.Filled.Timeline">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme yazdirma-gizle">
+    @foreach (var (etiket, periyot, adet) in _secenekler)
+    {
+        <button type="button" class="tur-sekmesi @(_periyot == periyot && _adet == adet ? "secili" : "")" style="--vurgu:@UygulamaTemasi.Turkuaz"
+                @onclick="() => SecAsync(periyot, adet)">@etiket</button>
+    }
+    <MudSwitch T="bool" Value="_gecikmisAlacak" ValueChanged="GecikmisDegistiAsync" Color="Color.Secondary" Class="ml-2"
+               Label="Vadesi geçmiş alacakları ilk döneme dahil et" />
+</div>
+
+@if (_rapor is { } r)
+{
+    var girisToplam = r.Donemler.Sum(d => d.Giris);
+    var cikisToplam = r.Donemler.Sum(d => d.Cikis);
+
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Nakit Akış Takvimi · @Bicim.Tarih(r.Tarih) itibarıyla</MudText>
+    </div>
+
+    @if (r.IlkAcikDonem is { } acik)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-3" Icon="@Icons.Material.Filled.Warning">
+            @Bicim.Tarih(acik) ile başlayan dönemde nakit açığı bekleniyor. En düşük bakiye: <b>@Bicim.Tutar(r.EnDusukBakiyeTl, ParaBirimleri.Tl)</b>.
+            Tahsilatları hızlandırmak, ödemeleri ötelemek ya da finansman sağlamak için zaman var.
+        </MudAlert>
+    }
+    @if (r.KurBulunamayanlar.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+            @string.Join(", ", r.KurBulunamayanlar) için güncel TCMB kuru bulunamadı; bu dövizdeki bakiye ve kalemler rapora katılmadı.
+        </MudAlert>
+    }
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Hazır değerler" Deger="r.AcilisTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.AccountBalance" Renk="#3B82F6" Sira="0"
+                       AltMetin="Kasa ve banka bakiyeleri" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Beklenen giriş" Deger="girisToplam" Bicimle="Tl" Ikon="@Icons.Material.Filled.CallReceived" Renk="#16A34A" Sira="1"
+                       AltMetin="@(r.GecikmisAlacakTl > 0 && !r.GecikmisAlacakDahil ? $"+ {Tl(r.GecikmisAlacakTl)} vadesi geçmiş (dahil değil)" : "Alacaklar, çek/senet, POS")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Beklenen çıkış" Deger="cikisToplam" Bicimle="Tl" Ikon="@Icons.Material.Filled.CallMade" Renk="#DC2626" Sira="2"
+                       AltMetin="@(r.GecikmisBorcTl > 0 ? $"{Tl(r.GecikmisBorcTl)} vadesi geçmiş, ilk dönemde" : "Borçlar, verilen çek/senet, kredi kartı")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Dönem sonu bakiye" Deger="r.DonemSonuTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Savings"
+                       Renk="@(r.DonemSonuTl < 0 ? "#DC2626" : "#14B8A6")" Sira="3" AltMetin="@($"{Bicim.Tarih(r.Donemler[^1].Bitis)} sonunda")" />
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" lg="7">
+            <div class="panel-kart kart belirme" style="--i:4">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Small" Color="Color.Secondary" /> Dönem giriş ve çıkışları</div>
+                <SutunGrafigi Gruplar="Gruplar(r)" Seriler="_seriler" Bicimle="Tl" />
+            </div>
+        </MudItem>
+        <MudItem xs="12" lg="5">
+            <div class="panel-kart kart belirme" style="--i:5">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.ShowChart" Size="Size.Small" Color="Color.Secondary" /> Kümülatif bakiye</div>
+                <BakiyeCizgisi Noktalar="@r.Donemler.Select(d => (Etiket(d), d.Kumulatif)).ToList()" Bicimle="Tl" />
+                <div class="ozet-alt">En düşük: <b class="@(r.EnDusukBakiyeTl < 0 ? "bakiye-borclu" : "")">@Tl(r.EnDusukBakiyeTl)</b></div>
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <div class="panel-kart kart belirme mb-4" style="--i:6; overflow-x:auto">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.CalendarViewWeek" Size="Size.Small" Color="Color.Secondary" /> Dönemler <small style="opacity:.6">(ayrıntı için satıra tıklayın)</small></div>
+        <MudSimpleTable Dense="true" Hover="true" Class="nakit-tablosu">
+            <thead>
+                <tr>
+                    <th>Dönem</th>
+                    <th class="sayi">Cari tahsilat</th>
+                    <th class="sayi">Çek/senet tahsil</th>
+                    <th class="sayi">POS</th>
+                    <th class="sayi">Cari ödeme</th>
+                    <th class="sayi">Çek/senet ödeme</th>
+                    <th class="sayi">Kredi kartı</th>
+                    <th class="sayi">Net</th>
+                    <th class="sayi">Bakiye</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="cursor:default">
+                    <td><b>Açılış</b></td>
+                    <td colspan="7"></td>
+                    <td class="sayi"><b>@Tl(r.AcilisTl)</b></td>
+                </tr>
+                @for (var i = 0; i < r.Donemler.Count; i++)
+                {
+                    var d = r.Donemler[i];
+                    var sira = i;
+                    <tr class="@(_secili == sira ? "secili" : "")" @onclick="() => _secili = _secili == sira ? null : sira">
+                        <td>@Etiket(d)</td>
+                        <td class="sayi">@Hucre(d.CariTahsilat)</td>
+                        <td class="sayi">@Hucre(d.CekSenetTahsil)</td>
+                        <td class="sayi">@Hucre(d.PosAktarim)</td>
+                        <td class="sayi">@Hucre(-d.CariOdeme)</td>
+                        <td class="sayi">@Hucre(-d.CekSenetOdeme)</td>
+                        <td class="sayi">@Hucre(-d.KrediKartiOdeme)</td>
+                        <td class="sayi @(d.Net < 0 ? "bakiye-borclu" : "bakiye-alacakli")">@Tl(d.Net)</td>
+                        <td class="sayi @(d.Kumulatif < 0 ? "eksi-bakiye" : "")"><b>@Tl(d.Kumulatif)</b></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </div>
+
+    @if (_secili is { } s)
+    {
+        var d = r.Donemler[s];
+        var kalemler = DonemKalemleri(r, s);
+        <div class="panel-kart kart belirme mb-4">
+            <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.List" Size="Size.Small" Color="Color.Secondary" /> @Etiket(d) · @kalemler.Count kalem</div>
+            @if (kalemler.Count == 0)
+            {
+                <div class="ozet-alt">Bu dönemde beklenen giriş/çıkış yok.</div>
+            }
+            @foreach (var k in kalemler)
+            {
+                var giris = NakitKaynaklari.GirisMi(k.Kaynak);
+                <a href="@Adres(k)" class="son-hareket">
+                    <span class="son-hareket-ikon" style="background:color-mix(in srgb, @(giris ? "#16A34A" : "#DC2626") 16%, transparent); color:@(giris ? "#16A34A" : "#DC2626")">
+                        <MudIcon Icon="@(giris ? Icons.Material.Filled.CallReceived : Icons.Material.Filled.CallMade)" Size="Size.Small" />
+                    </span>
+                    <span style="flex:1; min-width:0">
+                        <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">@k.Aciklama</div>
+                        <div style="font-size:.8rem; opacity:.7">
+                            @Bicim.Tarih(k.Tarih) · @KaynakAdi(k.Kaynak)@(k.BelgeNo is null ? "" : $" · {k.BelgeNo}")
+                            @if (k.GecikmisMi)
+                            {
+                                <span class="bakiye-borclu"> · vadesi geçmiş</span>
+                            }
+                        </div>
+                    </span>
+                    <span style="font-weight:600; white-space:nowrap" class="@(giris ? "bakiye-alacakli" : "bakiye-borclu")">
+                        @(giris ? "" : "−")@Bicim.Tutar(k.Tutar, k.ParaBirimi)
+                        @if (k.ParaBirimi != ParaBirimleri.Tl)
+                        {
+                            <small style="display:block; opacity:.7">@Tl(k.TutarTl)</small>
+                        }
+                    </span>
+                </a>
+            }
+        </div>
+    }
+
+    <div class="panel-kart kart belirme" style="--i:7">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Size="Size.Small" Color="Color.Secondary" /> Hazır değerler</div>
+        @foreach (var h in r.HazirDegerler)
+        {
+            <a href="@($"kasabanka/{h.HesapId}")" class="son-hareket">
+                <span style="flex:1">@h.Ad <small style="opacity:.6">@(h.Tur == HesapTuru.Kasa ? "Kasa" : "Banka")</small></span>
+                <span class="@(h.Bakiye < 0 ? "bakiye-borclu" : "")" style="font-weight:600">
+                    @Bicim.Tutar(h.Bakiye, h.ParaBirimi)
+                    @if (h.ParaBirimi != ParaBirimleri.Tl)
+                    {
+                        <small style="display:block; opacity:.7; text-align:right">@Tl(h.BakiyeTl)</small>
+                    }
+                </span>
+            </a>
+        }
+        <div class="ozet-alt mt-2">
+            Dövizler güncel TCMB döviz alış kuruyla TL'ye çevrilir. Teminattaki, ciro edilmiş ve karşılıksız evraklar nakit girişi sayılmaz;
+            POS valörü ve kredi kartı son ödeme günü kart tanımından yaklaşık hesaplanır.
+        </div>
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+    private static readonly IReadOnlyList<SutunSerisi> _seriler =
+        [new("Giriş", "linear-gradient(180deg, #4ADE80, #15803D)"), new("Çıkış", "linear-gradient(180deg, #F87171, #B91C1C)")];
+
+    // 13 haftalık görünüm hazine yönetiminin standart kısa vadeli nakit planıdır.
+    private static readonly (string Etiket, NakitPeriyodu Periyot, int Adet)[] _secenekler =
+    [
+        ("30 gün", NakitPeriyodu.Gun, 30),
+        ("13 hafta", NakitPeriyodu.Hafta, 13),
+        ("6 ay", NakitPeriyodu.Ay, 6),
+        ("12 ay", NakitPeriyodu.Ay, 12)
+    ];
+
+    private NakitPeriyodu _periyot = NakitPeriyodu.Hafta;
+    private int _adet = 13;
+    private bool _gecikmisAlacak;
+    private int? _secili;
+    private NakitAkisRaporu? _rapor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _rapor = null;
+        _secili = null;
+        var sonuc = await Api.GetAsync<NakitAkisRaporu>(
+            $"api/kasabanka/raporlar/nakit-akis?periyot={_periyot}&adet={_adet}&gecikmisAlacak={(_gecikmisAlacak ? "true" : "false")}");
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task SecAsync(NakitPeriyodu periyot, int adet)
+    {
+        (_periyot, _adet) = (periyot, adet);
+        await YukleAsync();
+    }
+
+    private async Task GecikmisDegistiAsync(bool dahil)
+    {
+        _gecikmisAlacak = dahil;
+        await YukleAsync();
+    }
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+
+    private static string Hucre(decimal d) => d == 0 ? "—" : Bicim.Tutar(d);
+
+    private string Etiket(NakitDonemi d) => _periyot switch
+    {
+        NakitPeriyodu.Gun => d.Baslangic.ToString("dd MMM ddd", _tr),
+        NakitPeriyodu.Hafta => $"{d.Baslangic.ToString("dd MMM", _tr)} – {d.Bitis.ToString("dd MMM", _tr)}",
+        _ => d.Baslangic.ToString("MMMM yyyy", _tr)
+    };
+
+    private IReadOnlyList<SutunGrubu> Gruplar(NakitAkisRaporu r) =>
+        r.Donemler.Select(d => new SutunGrubu(_periyot == NakitPeriyodu.Ay ? d.Baslangic.ToString("MMM", _tr) : d.Baslangic.ToString("dd.MM", _tr),
+            [d.Giris, d.Cikis])).ToList();
+
+    // Kalemler hesaplayıcının kuralıyla dönemlenir: vadesi geçmiş borçlar (ve istenirse alacaklar) ilk dönemdedir.
+    private static List<NakitKalemi> DonemKalemleri(NakitAkisRaporu r, int i)
+    {
+        var d = r.Donemler[i];
+        return r.Kalemler.Where(k =>
+            {
+                if (k.GecikmisMi)
+                {
+                    return i == 0 && (!NakitKaynaklari.GirisMi(k.Kaynak) || r.GecikmisAlacakDahil);
+                }
+
+                return k.Tarih >= d.Baslangic && k.Tarih <= d.Bitis;
+            })
+            .OrderByDescending(k => NakitKaynaklari.GirisMi(k.Kaynak)).ThenBy(k => k.Tarih)
+            .ToList();
+    }
+
+    private static string KaynakAdi(NakitKaynagi k) => k switch
+    {
+        NakitKaynagi.CariTahsilat => "Cari tahsilat",
+        NakitKaynagi.CekSenetTahsil => "Çek/senet tahsili",
+        NakitKaynagi.PosAktarim => "POS aktarımı",
+        NakitKaynagi.CariOdeme => "Cari ödeme",
+        NakitKaynagi.CekSenetOdeme => "Çek/senet ödemesi",
+        NakitKaynagi.KrediKartiOdeme => "Kredi kartı ödemesi",
+        _ => k.ToString()
+    };
+
+    private static string Adres(NakitKalemi k) => k.Baglanti switch
+    {
+        NakitBaglantisi.Fatura => $"fatura/{k.BaglantiId}",
+        NakitBaglantisi.Evrak => $"cek-senet/{k.BaglantiId}",
+        NakitBaglantisi.Hesap => $"kasabanka/{k.BaglantiId}",
+        _ => $"cari/{k.BaglantiId}"
+    };
+}

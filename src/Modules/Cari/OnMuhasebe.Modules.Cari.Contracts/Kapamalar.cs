@@ -51,5 +51,12 @@ public sealed record VadeDilimleri(decimal VadesiGelmemis, decimal Gun0Ile30, de
 public sealed record VadeAnaliziSatiri(Guid CariId, string Kod, string Unvan, string ParaBirimi, VadeDilimleri Dilimler, int EnUzunGecikmeGun);
 
 // Alacaklar: carilerin bize borçlu olduğu açık kalemler; değilse bizim carilere borcumuz. Satırlar vadesi geçen tutara göre sıralı ve sayfalıdır;
-// TlToplami özet kartları içindir (yalnızca TL cariler, sayfadan bağımsız).
-public sealed record VadeAnalizi(DateOnly Tarih, bool Alacaklar, VadeDilimleri TlToplami, SayfaliSonuc<VadeAnaliziSatiri> Satirlar);
+// TlToplami özet kartları içindir: tüm cariler, dövizliler rapor tarihinin TCMB döviz alış kuruyla TL'ye çevrilmiş (sayfadan bağımsız).
+// AvansTl: dilimlere girmeyen, mahsup edilmemiş avanslar (alacaklarda alınan, borçlarda verilen). KurBulunamayanlar toplamlara katılamayan dövizlerdir.
+public sealed record VadeAnalizi(
+    DateOnly Tarih,
+    bool Alacaklar,
+    VadeDilimleri TlToplami,
+    SayfaliSonuc<VadeAnaliziSatiri> Satirlar,
+    decimal AvansTl,
+    IReadOnlyList<string> KurBulunamayanlar);

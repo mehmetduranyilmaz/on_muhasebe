@@ -1,0 +1,40 @@
+@* Dönem sonu kümülatif nakit bakiyesi: sıfır çizgisi kesikli, eksiye düşen dönemler kırmızı nokta. *@
+@if (Noktalar.Count > 0)
+{
+    var (min, max) = (Math.Min(0m, Noktalar.Min(n => n.Deger)), Math.Max(0m, Noktalar.Max(n => n.Deger)));
+    var aralik = max - min == 0 ? 1m : max - min;
+    double X(int i) => Noktalar.Count == 1 ? Genislik / 2.0 : Kenar + i * (Genislik - 2.0 * Kenar) / (Noktalar.Count - 1);
+    double Y(decimal d) => Kenar + (double)((max - d) / aralik) * (Yukseklik - 2.0 * Kenar);
+    var cizgi = string.Join(" ", Noktalar.Select((n, i) => $"{X(i).ToString("0.#", _ic)},{Y(n.Deger).ToString("0.#", _ic)}"));
+    var sifir = Y(0m).ToString("0.#", _ic);
+    var alan = $"{X(0).ToString("0.#", _ic)},{sifir} {cizgi} {X(Noktalar.Count - 1).ToString("0.#", _ic)},{sifir}";
+
+    <svg class="bakiye-cizgisi" viewBox="0 0 @Genislik @Yukseklik" preserveAspectRatio="none" role="img" aria-label="Kümülatif nakit bakiyesi">
+        <defs>
+            <linearGradient id="bakiye-dolgu" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--om-turkuaz)" stop-opacity=".35" />
+                <stop offset="100%" stop-color="var(--om-turkuaz)" stop-opacity="0" />
+            </linearGradient>
+        </defs>
+        <line x1="0" x2="@Genislik" y1="@sifir" y2="@sifir" class="bc-sifir" />
+        <polygon points="@alan" fill="url(#bakiye-dolgu)" />
+        <polyline points="@cizgi" class="bc-cizgi" />
+        @for (var i = 0; i < Noktalar.Count; i++)
+        {
+            var n = Noktalar[i];
+            <circle cx="@X(i).ToString("0.#", _ic)" cy="@Y(n.Deger).ToString("0.#", _ic)" r="4" class="@(n.Deger < 0 ? "bc-nokta eksi" : "bc-nokta")">
+                <title>@n.Etiket: @Bicimle(n.Deger)</title>
+            </circle>
+        }
+    </svg>
+}
+
+@code {
+    private const int Genislik = 600;
+    private const int Yukseklik = 160;
+    private const int Kenar = 10;
+    private static readonly CultureInfo _ic = CultureInfo.InvariantCulture;
+
+    [Parameter, EditorRequired] public IReadOnlyList<(string Etiket, decimal Deger)> Noktalar { get; set; } = [];
+    [Parameter] public Func<decimal, string> Bicimle { get; set; } = d => Bicim.Tutar(d);
+}
