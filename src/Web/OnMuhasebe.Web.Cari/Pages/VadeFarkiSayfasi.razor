@@ -1,0 +1,141 @@
+@page "/cari/{Id:guid}/vade-farki"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Vade Farkı" AltBaslik="@(_cari?.Unvan ?? "")" GeriAdres="@($"cari/{Id}")" Ikon="@Icons.Material.Filled.Percent">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_hesap is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<FiltreCubugu>
+    <MudItem xs="6" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç (son vade farkı faturası)" @bind-Date="_baslangic" Clearable="true" DateFormat="dd.MM.yyyy"
+                       HelperText="Boşsa vadeden itibaren" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Hesap tarihi" @bind-Date="_bitis" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_oran" Label="Yıllık oran" Min="0" Max="500" Format="0.##"
+                         HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="%" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tolerans" Label="Tolerans (gün)" Min="0" Max="365" HideSpinButtons="true" />
+    </MudItem>
+    <MudItem xs="12" md="2" Class="d-flex align-center">
+        <IslemDugmesi Islem="HesaplaAsync" StartIcon="@Icons.Material.Filled.Calculate" Disabled="_oran is not > 0 || _bitis is null">Hesapla</IslemDugmesi>
+    </MudItem>
+</FiltreCubugu>
+
+@if (_hesap is { } h)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Vade Farkı Hesabı · @_cari?.Unvan · @Bicim.Tarih(h.Bitis) · yıllık %@h.YillikOran.ToString("0.##")</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="12" md="8">
+            <VeriTablosu T="VadeFarkiSatiri" Kayitlar="h.Satirlar" Dense="true" BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="Vade farkı doğmamış"
+                         BosAciklama="Seçilen dönemde geç ödenen ya da vadesi geçmiş açık kalem yok.">
+                <Basliklar>
+                    <MudTh>Belge</MudTh>
+                    <MudTh>Vade</MudTh>
+                    <MudTh>Ödeme</MudTh>
+                    <MudTh Class="sayi">Geciken tutar</MudTh>
+                    <MudTh Class="sayi">Gün</MudTh>
+                    <MudTh Class="sayi">Vade farkı</MudTh>
+                </Basliklar>
+                <Satir>
+                    <MudTd DataLabel="Belge">
+                        @CariMetinleri.HareketTuru(context.Tur)
+                        <span class="mobil-alt-bilgi"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="CariMetinleri.FaturaHareketiMi(context.Tur)" Metin="@context.BelgeNo" /></span>
+                    </MudTd>
+                    <MudTd DataLabel="Vade">@Bicim.Tarih(context.Vade)</MudTd>
+                    <MudTd DataLabel="Ödeme">
+                        @if (context.OdemeTarihi is { } o)
+                        {
+                            @Bicim.Tarih(o)
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">Açık</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Geciken tutar" Class="sayi">@Bicim.Tutar(context.GecikenTutar, h.ParaBirimi)</MudTd>
+                    <MudTd DataLabel="Gün" Class="sayi">@context.Gun</MudTd>
+                    <MudTd DataLabel="Vade farkı" Class="sayi"><b>@Bicim.Tutar(context.Faiz, h.ParaBirimi)</b></MudTd>
+                </Satir>
+            </VeriTablosu>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <div class="fatura-toplam-paneli kart belirme">
+                <dl class="toplam-listesi">
+                    <dt>Dönem</dt><dd>@(h.Baslangic is { } b ? Bicim.Tarih(b) : "vadeden") – @Bicim.Tarih(h.Bitis)</dd>
+                    <dt>Yıllık oran</dt><dd>%@h.YillikOran.ToString("0.##")</dd>
+                    <dt>Tolerans</dt><dd>@h.ToleransGun gün</dd>
+                </dl>
+                <div class="genel-toplam"><span>Vade farkı (KDV hariç)</span><b>@Bicim.Tutar(h.ToplamFaiz, h.ParaBirimi)</b></div>
+                @if (h.ToplamFaiz > 0 && Oturum.ModulAcikMi(ModulKodlari.Fatura) && !Oturum.SaltOkunurMu)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-3" StartIcon="@Icons.Material.Filled.ReceiptLong"
+                               Href="@FaturaAdresi(h)">Vade farkı faturası kes</MudButton>
+                }
+                <div class="ozet-alt mt-3">
+                    Basit faiz, 365 gün esası. Geç ödenen kısım ödeme tarihine, açık kısım hesap tarihine kadar faizlenir; çek/senetle ödemede evrakın vadesi alınır.
+                    Vade farkı KDV'ye tabidir ve bağlı olduğu teslimin oranıyla faturalanır.
+                </div>
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private CariDetayi? _cari;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private decimal? _oran;
+    private int _tolerans;
+    private VadeFarkiHesabi? _hesap;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _bitis = Zaman.GetLocalNow().Date;
+        var cari = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{Id}");
+        _hata = cari.Hata;
+        _cari = cari.BasariliMi ? cari.Deger : null;
+        _oran = _cari?.VadeFarkiOrani;
+        if (_oran is > 0)
+        {
+            await HesaplaAsync();
+        }
+    }
+
+    private async Task HesaplaAsync()
+    {
+        if (Bicim.Gun(_bitis) is not { } bitis)
+        {
+            return;
+        }
+
+        var adres = $"api/cari/hesaplar/{Id}/vade-farki?bitis={Bicim.Iso(bitis)}&oran={_oran!.Value.ToString(CultureInfo.InvariantCulture)}&tolerans={_tolerans}"
+                    + (Bicim.Gun(_baslangic) is { } b ? $"&baslangic={Bicim.Iso(b)}" : "");
+        var sonuc = await Api.GetAsync<VadeFarkiHesabi>(adres);
+        _hata = sonuc.Hata;
+        _hesap = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private string FaturaAdresi(VadeFarkiHesabi h)
+    {
+        var aciklama = $"Vade farkı ({(h.Baslangic is { } b ? Bicim.Tarih(b) : "vadeden")} – {Bicim.Tarih(h.Bitis)}, yıllık %{h.YillikOran:0.##})";
+        return $"fatura/yeni/satis?cari={Id}&vadeFarki={h.ToplamFaiz.ToString(CultureInfo.InvariantCulture)}&vfAciklama={Uri.EscapeDataString(aciklama)}";
+    }
+}

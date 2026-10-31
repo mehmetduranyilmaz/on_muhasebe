@@ -12,6 +12,7 @@ using OnMuhasebe.Modules.Doviz.Contracts;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
+using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -30,6 +31,59 @@ internal static class CariKapamaIslemleri
         grup.MapGet("/raporlar/vade-analizi", VadeAnaliziAsync);
         grup.MapGet("/hesaplar/{cariId:guid}/avans", AvansDurumuAsync);
         grup.MapPost("/avans-mahsubu", AvansMahsupAsync);
+        grup.MapGet("/hesaplar/{cariId:guid}/vade-farki", VadeFarkiAsync);
+    }
+
+    // Carinin borç kalemlerinin (fatura, dekont, karşılıksız evrak...) geç ödenen ve açık kısımlarının vade farkı.
+    // Ödeme tarihi kapamanın karşı kalemidir; çek/senetle ödemede evrakın vadesi alınır (para o gün tahsil edilir). Avanslar hariçtir.
+    private static async Task<IResult> VadeFarkiAsync(
+        Guid cariId, DateOnly? bitis, DateOnly? baslangic, decimal? oran, int? tolerans, CariDbContext db, TimeProvider zaman,
+        CancellationToken cancellationToken)
+    {
+        var cari = await db.CariHesaplar.AsNoTracking().Where(c => c.Id == cariId)
+            .Select(c => new { c.ParaBirimi, c.VadeFarkiOrani }).SingleOrDefaultAsync(cancellationToken);
+        if (cari is null)
+        {
+            return CariHatalari.CariBulunamadi.Problem();
+        }
+
+        if ((oran ?? cari.VadeFarkiOrani) is not { } yillik || yillik <= 0 || yillik > 500)
+        {
+            return Hata.Dogrulama("vade_farki_orani", "Yıllık vade farkı oranı girilmeli (cari kartında tanımlanabilir).").Problem();
+        }
+
+        var son = bitis ?? TurkiyeSaati.Bugun(zaman);
+        if (baslangic >= son || tolerans is < 0 or > 365)
+        {
+            return Hata.Dogrulama("vade_farki_donem", "Başlangıç bitişten önce, tolerans 0-365 gün olmalıdır.").Problem();
+        }
+
+        var borclar = await db.CariHareketler.AsNoTracking()
+            .Where(h => h.CariHesapId == cariId && h.Borc > 0 && !h.AvansMi && h.IptalHareketId == null && h.IptalEdilenHareketId == null
+                        && (h.VadeTarihi ?? h.Tarih) < son)
+            .Select(h => new { h.Id, h.Tur, h.BelgeNo, Vade = h.VadeTarihi ?? h.Tarih, h.Borc, h.KaynakBelgeId })
+            .ToListAsync(cancellationToken);
+        var idler = borclar.Select(b => b.Id).ToList();
+        var odemeler = await (
+                from k in db.CariKapamalari.AsNoTracking()
+                join a in db.CariHareketler on k.AlacakHareketId equals a.Id
+                where idler.Contains(k.BorcHareketId)
+                select new
+                {
+                    k.BorcHareketId,
+                    Tarih = a.Tur == CariHareketTuru.CekSenetGirisi ? a.VadeTarihi ?? a.Tarih : a.Tarih,
+                    k.Tutar
+                })
+            .ToListAsync(cancellationToken);
+        var odemeGruplari = odemeler.ToLookup(o => o.BorcHareketId);
+
+        var girdiler = borclar.Select(b =>
+        {
+            var liste = odemeGruplari[b.Id].Select(o => new VadeFarkiOdemesi(o.Tarih, o.Tutar)).ToList();
+            return new VadeFarkiGirdisi(b.Id, b.Tur, b.BelgeNo, b.Vade, b.Borc, liste, b.Borc - liste.Sum(o => o.Tutar), b.KaynakBelgeId);
+        });
+        var satirlar = VadeFarkiHesaplayici.Hesapla(girdiler, yillik, baslangic, son, tolerans ?? 0);
+        return TypedResults.Ok(new VadeFarkiHesabi(cariId, cari.ParaBirimi, baslangic, son, yillik, tolerans ?? 0, satirlar, satirlar.Sum(s => s.Faiz)));
     }
 
     private static async Task<IResult> AvansDurumuAsync(Guid cariId, CariKapamaServisi kapama, CancellationToken cancellationToken) =>

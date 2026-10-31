@@ -77,6 +77,7 @@ internal static class CariHesapIslemleri
             RuleFor(x => x.Eposta).EmailAddress().MaximumLength(256).When(x => !string.IsNullOrWhiteSpace(x.Eposta));
             RuleFor(x => x.ParaBirimi).Must(ParaBirimleri.GecerliMi).WithMessage("Geçersiz para birimi.");
             RuleFor(x => x.VadeGun).InclusiveBetween(0, 365);
+            RuleFor(x => x.VadeFarkiOrani).InclusiveBetween(0, 500).When(x => x.VadeFarkiOrani is not null);
             RuleFor(x => x.RiskLimiti).GreaterThanOrEqualTo(0);
             RuleFor(x => x.YetkiliAd).MaximumLength(100);
             RuleFor(x => x.YetkiliTelefon).MaximumLength(30);
@@ -234,7 +235,8 @@ internal static class CariHesapIslemleri
                 db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Borc - h.Alacak),
                 db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.BorcTl - h.AlacakTl),
                 db.CariHareketler.Any(h => h.CariHesapId == c.Id),
-                c.Surum))
+                c.Surum,
+                c.VadeFarkiOrani))
             .SingleOrDefaultAsync(cancellationToken);
 
     private static Task<bool> KodKullanimdaMiAsync(CariDbContext db, string kod, Guid? haricId, CancellationToken cancellationToken) =>

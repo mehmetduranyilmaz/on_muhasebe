@@ -321,6 +321,11 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
                         .HasColumnType("character varying(250)")
                         .HasColumnName("unvan");
 
+                    b.Property<decimal?>("VadeFarkiOrani")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("vade_farki_orani");
+
                     b.Property<int?>("VadeGun")
                         .HasColumnType("integer")
                         .HasColumnName("vade_gun");

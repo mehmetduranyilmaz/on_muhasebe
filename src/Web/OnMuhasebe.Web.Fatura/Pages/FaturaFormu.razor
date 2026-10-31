@@ -422,6 +422,10 @@ else
     // İrsaliye detayındaki "Faturala": o irsaliyenin faturalanmamış tüm satırları hazır gelir.
     [SupplyParameterFromQuery(Name = "irsaliye")] public Guid? IrsaliyeParametresi { get; set; }
 
+    // Cari vade farkı hesabından: tutar KDV hariçtir; KDV, bağlı teslimin oranıyla uygulanır (varsayılan genel oran, değiştirilebilir).
+    [SupplyParameterFromQuery(Name = "vadeFarki")] public string? VadeFarkiParametresi { get; set; }
+    [SupplyParameterFromQuery(Name = "vfAciklama")] public string? VadeFarkiAciklamasi { get; set; }
+
     private FaturaTuru _tur = FaturaTuru.Satis;
     private FaturaDurumu _durum = FaturaDurumu.Taslak;
     private SatisSekli _satisSekli = SatisSekli.Toptan;
@@ -547,6 +551,16 @@ else
             if (CariParametresi is { } cariId && await CariGetirAsync(cariId) is { } detay)
             {
                 await CariAtaAsync(Ozet(detay), detay.VadeGun);
+                if (decimal.TryParse(VadeFarkiParametresi, NumberStyles.Number, CultureInfo.InvariantCulture, out var vadeFarki) && vadeFarki > 0)
+                {
+                    _satirlar.Add(new FaturaSatirModeli
+                    {
+                        Ad = VadeFarkiAciklamasi ?? "Vade farkı", Birim = Birimler.Adet, Miktar = 1, BirimFiyat = vadeFarki,
+                        KdvDahilMi = false, KdvOrani = KdvOranlari.Genel
+                    });
+                    _aciklama ??= VadeFarkiAciklamasi;
+                }
+
                 if (IrsaliyeParametresi is { } irsaliyeId && IrsaliyeAktarilabilirMi)
                 {
                     var acik = await Api.GetAsync<List<AktarilacakIrsaliyeSatiri>>($"api/fatura/irsaliyeler/aktarim?cariId={cariId}&faturaTuru={_tur}");

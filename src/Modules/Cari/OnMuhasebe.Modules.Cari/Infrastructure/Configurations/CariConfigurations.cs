@@ -25,6 +25,7 @@ internal sealed class CariHesapConfiguration : IEntityTypeConfiguration<CariHesa
         builder.Property(x => x.YetkiliAd).HasMaxLength(100);
         builder.Property(x => x.YetkiliTelefon).HasMaxLength(30);
         builder.Property(x => x.Not).HasMaxLength(1000);
+        builder.Property(x => x.VadeFarkiOrani).HasPrecision(6, 2);
 
         // Silinmiş carilerin kodları da benzersizlikte sayılır; eski kayıtlarla karışmasın.
         builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();

@@ -30,6 +30,10 @@
         <Islemler>
             <DegisiklikGecmisiDugmesi Modul="cari" KayitId="Id" />
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Href="@($"cari/{cari.Id}/ekstre")">Ekstre</MudButton>
+            @if (cari.Tur != CariTuru.Tedarikci)
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Percent" Href="@($"cari/{cari.Id}/vade-farki")">Vade Farkı</MudButton>
+            }
             @if (!Oturum.SaltOkunurMu && cari.AktifMi && Oturum.ModulAcikMi(ModulKodlari.Fatura))
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ReceiptLong"

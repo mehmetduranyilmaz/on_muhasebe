@@ -23,6 +23,9 @@ internal sealed class CariHesap : FirmaEntity, ISilinebilir
     public string? Iban { get; private set; }
     public string ParaBirimi { get; private set; } = null!;
     public int? VadeGun { get; private set; }
+
+    // Geç ödemede uygulanacak yıllık vade farkı (gecikme faizi) oranı, %. Sözleşmede yoksa boş bırakılır.
+    public decimal? VadeFarkiOrani { get; private set; }
     public decimal? RiskLimiti { get; private set; }
     public Guid? GrupId { get; private set; }
     public string? YetkiliAd { get; private set; }
@@ -78,6 +81,7 @@ internal sealed class CariHesap : FirmaEntity, ISilinebilir
         Eposta = b.Eposta;
         Iban = b.Iban;
         VadeGun = b.VadeGun;
+        VadeFarkiOrani = b.VadeFarkiOrani;
         RiskLimiti = b.RiskLimiti;
         GrupId = b.GrupId;
         YetkiliAd = b.YetkiliAd;
@@ -106,13 +110,14 @@ internal sealed record CariBilgileri(
     string? YetkiliTelefon,
     string? Not,
     bool FarkliDovizdeIslem,
-    string? Iban)
+    string? Iban,
+    decimal? VadeFarkiOrani = null)
 {
     public static CariBilgileri Istekten(CariKaydetIstegi i) => new(
         i.Unvan.Trim(), i.Tur, i.KisiTipi, Temiz(i.VergiNo), Temiz(i.VergiDairesi), Temiz(i.Il), Temiz(i.Ilce),
         Temiz(i.Adres), Temiz(i.Telefon), Temiz(i.Eposta)?.ToLowerInvariant(), i.ParaBirimi, i.VadeGun, i.RiskLimiti,
         i.GrupId, Temiz(i.YetkiliAd), Temiz(i.YetkiliTelefon), Temiz(i.Not), i.FarkliDovizdeIslem,
-        Temiz(i.Iban) is { } iban ? Shared.Domain.Dogrulama.Iban.Normalize(iban) : null);
+        Temiz(i.Iban) is { } iban ? Shared.Domain.Dogrulama.Iban.Normalize(iban) : null, i.VadeFarkiOrani);
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }
