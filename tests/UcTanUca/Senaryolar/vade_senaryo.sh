@@ -42,7 +42,8 @@ istek POST "/api/cari/hareketler/$D/iptal" "$T"
 istek GET "/api/cari/raporlar/vade-analizi?tarih=2026-10-21" "$T"
 kontrol 200 "Kismi kapanan kalem: 1000-400=600 31-60 gun, gelecek vadeli 500 vadesi gelmemis, en eski 50 gun" '"unvan":"Gecikmeli Musteri","paraBirimi":"TRY","dilimler":\{"vadesiGelmemis":500[.0]*,"gun0Ile30":0[.0]*,"gun31Ile60":600[.0]*,"gun61Ile90":0[.0]*,"gun90Ustu":0[.0]*,"toplam":1100[.0]*,"vadesiGecen":600[.0]*\},"enUzunGecikmeGun":50'
 kontrol 200 "Dovizli cari kendi para biriminde, 90+ gun" '"unvan":"Dovizli Musteri","paraBirimi":"USD","dilimler":\{"vadesiGelmemis":0[.0]*,"gun0Ile30":0[.0]*,"gun31Ile60":0[.0]*,"gun61Ile90":0[.0]*,"gun90Ustu":200'
-kontrol 200 "TL toplami yalniz TL cariler (dovizli haric)" '"tlToplami":\{"vadesiGelmemis":500[.0]*,"gun0Ile30":0[.0]*,"gun31Ile60":600[.0]*,"gun61Ile90":0[.0]*,"gun90Ustu":0[.0]*'
+# Dövizli cari TL toplamına rapor tarihinin kuruyla girer (S3); kur TCMB verisine bağlı olduğundan 90+ dilimin tutarı sabitlenmez.
+kontrol 200 "TL toplami: TL cariler + dovizli rapor tarihi kuruyla" '"tlToplami":\{"vadesiGelmemis":500[.0]*,"gun0Ile30":0[.0]*,"gun31Ile60":600[.0]*,"gun61Ile90":0[.0]*,"gun90Ustu":[0-9.]+,'
 if echo "$GOVDE" | grep -q "Kapali Musteri\|Tedarikci Ltd\|999"; then KOD=999; fi
 kontrol 200 "Tamamen kapanan, karsi yondeki ve iptal edilen kalemler listede yok"
 kontrol 200 "Siralama: vadesi gecen buyuk once (USD 200 < TL 600)" '"Gecikmeli Musteri".*"Dovizli Musteri"'

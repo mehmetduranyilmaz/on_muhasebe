@@ -87,6 +87,39 @@ id["kasaHesap"] = (await Post(a, "api/kasabanka/hesaplar", new { ad = "SIZINTI B
 var kategoriler = JsonNode.Parse(await a.GetStringAsync("api/kasabanka/kategoriler"))!.AsArray();
 id["kategori"] = kategoriler[0]!["id"]!.GetValue<string>();
 id["kasaIslem"] = (await Post(a, "api/kasabanka/islemler/tahsilat", new { hesapId = id["kasaHesap"], cariHesapId = id["cari"], tarih = "2026-10-11", tutar = 50, aciklama = "SIZINTI tahsilat" }))["islemId"]!.GetValue<string>();
+var belgeSatiri = new { stokKartiId = id["stokKart"], ad = "SIZINTI satir", birim = "ADET", miktar = 1, birimFiyat = 100, kdvOrani = 20, kdvDahilMi = false, iskonto1 = 0, iskonto2 = 0, iskonto3 = 0 };
+id["irsaliye"] = (await Post(a, "api/fatura/irsaliyeler", new
+{
+    tur = "Satis", cariHesapId = id["cari"], tarih = "2026-10-12", sevkTarihi = "2026-10-12", sevkSaati = "10:00:00", aciklama = "SIZINTI irsaliye", tasiyiciUnvani = "SIZINTI Kargo", tasiyiciVkn = "1234567890",
+    satirlar = new[] { new { stokKartiId = id["stokKart"], ad = "SIZINTI satir", birim = "ADET", miktar = 1, birimFiyat = 100 } }
+}))["irsaliye"]!["id"]!.GetValue<string>();
+id["teklif"] = (await Post(a, "api/fatura/teklif-siparis", new
+{
+    tur = "SatisTeklifi", cariHesapId = id["cari"], tarih = "2026-10-12", genelIskontoTuru = "Yuzde", genelIskonto = 0, aciklama = "SIZINTI teklif",
+    satirlar = new[] { belgeSatiri }
+}))["id"]!.GetValue<string>();
+id["masrafMerkezi"] = (await Post(a, "api/kasabanka/masraf-merkezleri", new { kod = "SZ1", ad = "SIZINTI Masraf" }))["id"]!.GetValue<string>();
+id["demirbas"] = (await Post(a, "api/kasabanka/demirbaslar", new
+{
+    ad = "SIZINTI Demirbas", grup = "Bilgisayar", binekOtomobilMi = false, edinmeTarihi = "2026-01-15", edinmeBedeli = 30000, faydaliOmur = 4, yontem = "Normal"
+}))["id"]!.GetValue<string>();
+id["kredi"] = (await Post(a, "api/kasabanka/krediler", new
+{
+    ad = "SIZINTI Kredi", tur = "TaksitliTicari", hesapId = id["kasaHesap"], kullandirimTarihi = "2026-10-01", tutar = 1000, aylikFaizOrani = 2, kullandirimMasrafi = 0,
+    taksitler = new[] { new { sira = 1, vade = "2026-11-01", anapara = 1000, faiz = 20, vergi = 1 } }
+}))["id"]!.GetValue<string>();
+id["krediSira"] = "1";
+// Şube eklemesi yalnızca kimliği (JSON metni) döner.
+id["sube"] = (await Post(a, "api/kasabanka/subeler", new { bankaAdi = "SIZINTI Bank", ad = "SIZINTI Sube" })).GetValue<string>();
+id["teminat"] = (await Post(a, "api/kasabanka/teminatlar", new
+{
+    tur = "TeminatMektubu", yon = "Alinan", cariHesapId = id["cari"], bankaAdi = "SIZINTI Bank", tutar = 500, paraBirimi = "TRY", verilisTarihi = "2026-10-01", aciklama = "SIZINTI teminat"
+})).GetValue<string>();
+id["fiyatListesi"] = (await Post(a, "api/stok/fiyat-listeleri", new
+{
+    ad = "SIZINTI Liste", tur = "Satis", paraBirimi = "TRY", kdvDahilMi = false, aktifMi = true, hedefler = Array.Empty<object>(),
+    satirlar = new[] { new { stokKartiId = id["stokKart"], minMiktar = 0, fiyat = 90, iskonto = 0 } }
+}))["id"]!.GetValue<string>();
 using (var form = new MultipartFormDataContent { { new ByteArrayContent(await File.ReadAllBytesAsync(Path.Combine(dosyalar, "banka.csv"))), "dosya", "banka.csv" } })
 {
     var c = await a.PostAsync($"api/kasabanka/hesaplar/{id["kasaHesap"]}/ekstre-aktarimlari", form);
@@ -162,6 +195,16 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/yonetim/kullanicilar/davetler/", "id", "davet"),
     ("/api/yonetim/kullanicilar/", "kullaniciId", "kullanici"),
     ("/api/yonetim/roller/", "id", "rol"),
+    ("/api/fatura/irsaliyeler/", "id", "irsaliye"),
+    ("/api/fatura/teklif-siparis/", "id", "teklif"),
+    ("/api/fatura/raporlar/ba-bs/cari/", "cariId", "cari"),
+    ("/api/kasabanka/demirbaslar/", "id", "demirbas"),
+    ("/api/kasabanka/krediler/", "id", "kredi"),
+    ("/api/kasabanka/krediler/", "sira", "krediSira"),
+    ("/api/kasabanka/masraf-merkezleri/", "id", "masrafMerkezi"),
+    ("/api/kasabanka/subeler/", "id", "sube"),
+    ("/api/kasabanka/teminatlar/", "id", "teminat"),
+    ("/api/stok/fiyat-listeleri/", "id", "fiyatListesi"),
     ("/api/yonetim/sistem/odeme-bildirimleri/", "id", "bildirim"),
     ("/api/bildirim/", "id", "bildirimKaydi"),
     ("/api/yonetim/sistem/paketler/", "kod", "paket"),
@@ -178,7 +221,7 @@ foreach (var (yol, metotlar) in openApi["paths"]!.AsObject())
     }
 }
 
-var aIdleri = id.Where(k => k.Key is not ("barkod" or "paket")).Select(k => k.Value).ToHashSet();
+var aIdleri = id.Where(k => k.Key is not ("barkod" or "paket" or "krediSira")).Select(k => k.Value).ToHashSet();
 bool SizintiVar(string govde) => govde.Contains("SIZINTI", StringComparison.Ordinal) || aIdleri.Any(x => govde.Contains(x, StringComparison.OrdinalIgnoreCase));
 
 // Silmeler en sona: yanlışlıkla başarılı olursa diğer denemeleri etkilemesin.
