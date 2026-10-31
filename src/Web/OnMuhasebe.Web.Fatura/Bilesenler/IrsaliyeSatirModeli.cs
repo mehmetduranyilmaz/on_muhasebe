@@ -20,6 +20,12 @@ public sealed class IrsaliyeSatirModeli
     // Düzenlenen irsaliyede faturalanmış miktar (bilgi amaçlı).
     public decimal FaturalananMiktar { get; set; }
 
+    // Siparişten aktarılan satır: ürün ve birim siparişle aynı kalır.
+    public Guid? SiparisSatiriId { get; set; }
+    public string? SiparisNo { get; set; }
+
+    public bool SiparisliMi => SiparisSatiriId is not null;
+
     public IEnumerable<string> BirimSecenekleri => EkBirimler.Select(b => b.BirimKodu).Prepend(TemelBirim);
 
     public decimal? Tutar => BirimFiyat is { } f ? Math.Round(f * Miktar, 2, MidpointRounding.AwayFromZero) : null;
@@ -54,7 +60,24 @@ public sealed class IrsaliyeSatirModeli
         EkBirimler = kart.EkBirimler;
     }
 
-    public IrsaliyeSatiriIstegi Istek(bool fiyatli) => new(StokKartiId, Ad, DepoId, Birim, Miktar, fiyatli ? BirimFiyat : null);
+    public IrsaliyeSatiriIstegi Istek(bool fiyatli) => new(StokKartiId, Ad, DepoId, Birim, Miktar, fiyatli ? BirimFiyat : null, SiparisSatiriId);
+
+    // İrsaliye fiyatı KDV hariçtir: siparişteki KDV dahil fiyat hariçe, iskontolar düşülerek çevrilir (döviz farkını çağıran çevirir).
+    public static IrsaliyeSatirModeli Siparisten(AktarilacakSiparisSatiri a, decimal miktar, StokKartiDetayi kart)
+    {
+        var fiyat = a.BirimFiyat * (1 - a.Iskonto1 / 100m) * (1 - a.Iskonto2 / 100m) * (1 - a.Iskonto3 / 100m);
+        if (a.KdvDahilMi)
+        {
+            fiyat /= 1m + a.KdvOrani / 100m;
+        }
+
+        var satir = new IrsaliyeSatirModeli { DepoId = a.DepoId, Miktar = miktar, SiparisSatiriId = a.SiparisSatiriId, SiparisNo = a.SiparisNo };
+        satir.KartAta(kart);
+        satir.Ad = a.Ad;
+        satir.Birim = a.Birim;
+        satir.BirimFiyat = Math.Round(fiyat, 4, MidpointRounding.AwayFromZero);
+        return satir;
+    }
 
     public static IrsaliyeSatirModeli Detaydan(IrsaliyeSatiriDetayi s) => new()
     {
@@ -66,6 +89,7 @@ public sealed class IrsaliyeSatirModeli
         Birim = s.Birim,
         Miktar = s.Miktar,
         BirimFiyat = s.BirimFiyat,
-        FaturalananMiktar = s.FaturalananMiktar
+        FaturalananMiktar = s.FaturalananMiktar,
+        SiparisSatiriId = s.SiparisSatiriId
     };
 }

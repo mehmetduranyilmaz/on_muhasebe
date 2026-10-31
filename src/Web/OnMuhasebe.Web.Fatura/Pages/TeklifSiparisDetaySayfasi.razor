@@ -35,6 +35,18 @@
                 {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"{kok}/{b.Id}/duzenle")">Düzenle</MudButton>
                 }
+                @if (!Oturum.SaltOkunurMu && !teklifMi && b.Durum == TeklifSiparisDurumu.Acik && b.CariHesapId is { } siparisCarisi
+                     && b.Karsilama != KarsilamaDurumu.Tamamlandi)
+                {
+                    var sorgu = $"?cari={siparisCarisi}&siparis={b.Id}";
+                    @if (Oturum.ModulAcikMi(ModulKodlari.Stok) && b.Satirlar.Any(s => s.StokluMu && s.KalanMiktar > 0))
+                    {
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.LocalShipping"
+                                   Href="@($"irsaliye/yeni/{IrsaliyeMetinleri.Yol(TeklifSiparisTurleri.IrsaliyeTuru(b.Tur))}{sorgu}")">İrsaliye oluştur</MudButton>
+                    }
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Receipt"
+                               Href="@($"fatura/yeni/{FaturaMetinleri.Yol(TeklifSiparisTurleri.FaturaTuru(b.Tur))}{sorgu}")">Faturala</MudButton>
+                }
                 @if (!Oturum.SaltOkunurMu && b.Durum == TeklifSiparisDurumu.Taslak)
                 {
                     <IslemDugmesi Islem="@(() => IslemAsync("onayla", teklifMi ? "Teklif verildi." : "Sipariş onaylandı."))" StartIcon="@Icons.Material.Filled.TaskAlt">
@@ -136,6 +148,23 @@
                     @if (b.KaynakTeklifId is { } teklifId)
                     {
                         <div class="ozet-alt mt-1"><a class="baglanti" href="@($"teklif/{teklifId}")">Kaynak teklif</a></div>
+                    }
+                    @if (b.Irsaliyeler.Count + b.Faturalar.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            @foreach (var i in b.Irsaliyeler)
+                            {
+                                <MudChip T="string" Size="Size.Small" Href="@($"irsaliye/{i.Id}")" Icon="@Icons.Material.Filled.LocalShipping" Variant="Variant.Outlined">
+                                    @(i.Numara ?? "Taslak") · @Bicim.Tarih(i.Tarih)
+                                </MudChip>
+                            }
+                            @foreach (var f in b.Faturalar)
+                            {
+                                <MudChip T="string" Size="Size.Small" Href="@($"fatura/{f.Id}")" Icon="@Icons.Material.Filled.Receipt" Variant="Variant.Outlined" Color="Color.Primary">
+                                    @(f.Numara ?? "Taslak") · @Bicim.Tarih(f.Tarih)
+                                </MudChip>
+                            }
+                        </div>
                     }
                 </div>
             </MudItem>

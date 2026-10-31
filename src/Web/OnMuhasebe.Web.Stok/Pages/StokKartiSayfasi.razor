@@ -1,4 +1,5 @@
 @page "/stok/{Id:guid}"
+@using OnMuhasebe.Modules.Fatura.Contracts
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject IDialogService DialogService
@@ -73,6 +74,17 @@
                     @if (kart.KritikSeviye is { } seviye)
                     {
                         <div class="ozet-alt">Kritik seviye: @Bicim.Miktar(seviye, kart.TemelBirim)@(kritikMi ? " · altında!" : "")</div>
+                    }
+                    @if (_bekleyen is { } bk && bk.Rezerve + bk.Beklenen > 0)
+                    {
+                        // Kullanılabilir: eldeki eksi müşteri siparişlerine ayrılan; öngörülen: buna yoldaki satınalma siparişleri eklenmiş hâli.
+                        var kullanilabilir = kart.Miktar - bk.Rezerve;
+                        <div class="d-flex flex-wrap gap-4 mt-2">
+                            <div><div class="ozet-baslik">Rezerve</div><b>@Bicim.Miktar(bk.Rezerve, kart.TemelBirim)</b></div>
+                            <div><div class="ozet-baslik">Kullanılabilir</div><b class="@(kullanilabilir < 0 ? "bakiye-borclu" : "")">@Bicim.Miktar(kullanilabilir, kart.TemelBirim)</b></div>
+                            <div><div class="ozet-baslik">Beklenen</div><b>@Bicim.Miktar(bk.Beklenen, kart.TemelBirim)</b></div>
+                            <div><div class="ozet-baslik">Öngörülen</div><b>@Bicim.Miktar(kullanilabilir + bk.Beklenen, kart.TemelBirim)</b></div>
+                        </div>
                     }
                 </div>
             </MudItem>
@@ -211,6 +223,7 @@ else if (_hata is null)
     [Parameter] public Guid Id { get; set; }
 
     private StokKartiDetayi? _kart;
+    private SiparisBekleyenMiktari? _bekleyen;
     private SayfaliSonuc<StokHareketSatiri>? _hareketler;
     private int _sayfa = 1;
     private bool _hareketlerYukleniyor;
@@ -227,6 +240,13 @@ else if (_hata is null)
         var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{Id}");
         _hata = sonuc.Hata;
         _kart = sonuc.BasariliMi ? sonuc.Deger : null;
+
+        // Açık siparişlerdeki rezerve/beklenen miktar Fatura modülündedir; lisans yoksa gösterilmez.
+        if (_kart?.Tur == StokTuru.Urun && Oturum.ModulAcikMi(ModulKodlari.Fatura))
+        {
+            var bekleyen = await Api.GetAsync<List<SiparisBekleyenMiktari>>($"api/fatura/teklif-siparis/bekleyen?stokKartiId={Id}");
+            _bekleyen = bekleyen.BasariliMi ? bekleyen.Deger.FirstOrDefault() : null;
+        }
     }
 
     private async Task HareketleriYukleAsync()

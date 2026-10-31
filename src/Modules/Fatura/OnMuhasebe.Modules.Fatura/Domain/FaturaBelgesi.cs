@@ -224,6 +224,9 @@ internal sealed class FaturaSatiri : BaseEntity
     // İrsaliyeden aktarılan satır: stok hareketi irsaliyede oluştuğu için fatura stok yazmaz.
     public Guid? IrsaliyeSatiriId { get; private set; }
 
+    // İrsaliyesiz satırın karşıladığı sipariş satırı; irsaliyeli satırda bağ irsaliye satırındadır.
+    public Guid? SiparisSatiriId { get; private set; }
+
     public static FaturaSatiri Olustur(Guid faturaId, int sira, FaturaSatiriBilgisi b, SatirHesabi h) => new()
     {
         FaturaId = faturaId,
@@ -251,7 +254,8 @@ internal sealed class FaturaSatiri : BaseEntity
         TevkifatPay = b.TevkifatPay,
         TevkifatPayda = b.TevkifatPayda,
         TevkifEdilenKdv = h.TevkifEdilenKdv,
-        IrsaliyeSatiriId = b.IrsaliyeSatiriId
+        IrsaliyeSatiriId = b.IrsaliyeSatiriId,
+        SiparisSatiriId = b.IrsaliyeSatiriId is null ? b.SiparisSatiriId : null
     };
 }
 
@@ -283,7 +287,8 @@ internal sealed record FaturaSatiriBilgisi(
     string? TevkifatKodu = null,
     int TevkifatPay = 0,
     int TevkifatPayda = 0,
-    Guid? IrsaliyeSatiriId = null);
+    Guid? IrsaliyeSatiriId = null,
+    Guid? SiparisSatiriId = null);
 
 // İstek, cari/stok/kur bilgileriyle çözümlendikten sonra entity'ye verilen hali.
 internal sealed record FaturaBilgileri(

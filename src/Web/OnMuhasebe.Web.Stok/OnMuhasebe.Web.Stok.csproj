@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Modules\Stok\OnMuhasebe.Modules.Stok.Contracts\OnMuhasebe.Modules.Stok.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Fatura\OnMuhasebe.Modules.Fatura.Contracts\OnMuhasebe.Modules.Fatura.Contracts.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
   </ItemGroup>
 

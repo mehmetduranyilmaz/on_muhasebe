@@ -247,6 +247,7 @@ internal sealed class IrsaliyeSatiri : BaseEntity
     // Faturaya aktarılırken önerilen KDV oranı (kartın oranı).
     public int KdvOrani { get; private set; }
     public decimal FaturalananMiktar { get; private set; }
+    public Guid? SiparisSatiriId { get; private set; }
 
     public decimal KalanMiktar => IrsaliyeHesaplari.Kalan(Miktar, FaturalananMiktar);
 
@@ -261,7 +262,8 @@ internal sealed class IrsaliyeSatiri : BaseEntity
         Birim = b.Birim,
         Miktar = b.Miktar,
         BirimFiyat = depoSevkMi ? null : b.BirimFiyat,
-        KdvOrani = b.KdvOrani
+        KdvOrani = b.KdvOrani,
+        SiparisSatiriId = depoSevkMi ? null : b.SiparisSatiriId
     };
 
     public Sonuc FaturalananAyarla(decimal toplam)
@@ -284,7 +286,8 @@ internal sealed record IrsaliyeSatiriBilgisi(
     string Birim,
     decimal Miktar,
     decimal? BirimFiyat,
-    int KdvOrani);
+    int KdvOrani,
+    Guid? SiparisSatiriId = null);
 
 // İstek, cari/stok/depo bilgileriyle çözümlendikten sonra entity'ye verilen hali. Depo sevkinde Cari boştur;
 // "alıcı" olarak hedef deponun adı yazılır.

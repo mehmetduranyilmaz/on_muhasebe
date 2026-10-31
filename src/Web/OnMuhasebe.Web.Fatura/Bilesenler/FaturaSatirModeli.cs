@@ -44,6 +44,12 @@ public sealed class FaturaSatirModeli
 
     public bool IrsaliyeliMi => IrsaliyeSatiriId is not null;
 
+    // Siparişten aktarılan (irsaliyesiz) satır: ürün ve birim siparişle aynı kalır.
+    public Guid? SiparisSatiriId { get; set; }
+    public string? SiparisNo { get; set; }
+
+    public bool SiparisliMi => SiparisSatiriId is not null;
+
     // Kod listesinden seçince oran da dolar; temizleyince tevkifat kalkar.
     public void TevkifatSec(string? kod)
     {
@@ -97,7 +103,7 @@ public sealed class FaturaSatirModeli
 
     public FaturaSatiriIstegi Istek() =>
         new(StokKartiId, Ad, StokluMu ? DepoId : null, Birim, Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3,
-            TevkifatKodu, TevkifatPay, TevkifatPayda, IrsaliyeSatiriId);
+            TevkifatKodu, TevkifatPay, TevkifatPayda, IrsaliyeSatiriId, SiparisSatiriId);
 
     public static FaturaSatirModeli Detaydan(FaturaSatiriDetayi s) => new()
     {
@@ -120,7 +126,8 @@ public sealed class FaturaSatirModeli
         TevkifatPayda = s.TevkifatPayda,
         EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0,
         TevkifatAcik = s.TevkifatPayda > 0,
-        IrsaliyeSatiriId = s.IrsaliyeSatiriId
+        IrsaliyeSatiriId = s.IrsaliyeSatiriId,
+        SiparisSatiriId = s.SiparisSatiriId
     };
 
     public static FaturaSatirModeli TeklifSiparistan(TeklifSiparisSatiriDetayi s) => new()
@@ -140,6 +147,29 @@ public sealed class FaturaSatirModeli
         Iskonto2 = s.Iskonto2,
         Iskonto3 = s.Iskonto3,
         EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0
+    };
+
+    // Fiyat ve iskontolar siparişte anlaşılan gibidir; döviz farklıysa çağıran taraf fiyatı çevirir.
+    public static FaturaSatirModeli Siparisten(AktarilacakSiparisSatiri a, decimal miktar, StokKartiDetayi? kart) => new()
+    {
+        StokKartiId = a.StokKartiId,
+        StokKodu = a.StokKodu,
+        KartTuru = a.StokKartiId is null ? null : a.StokluMu ? StokTuru.Urun : StokTuru.Hizmet,
+        TemelBirim = kart?.TemelBirim ?? a.Birim,
+        EkBirimler = kart?.EkBirimler ?? [],
+        Ad = a.Ad,
+        DepoId = a.DepoId,
+        Birim = a.Birim,
+        Miktar = miktar,
+        BirimFiyat = a.BirimFiyat,
+        KdvDahilMi = a.KdvDahilMi,
+        KdvOrani = a.KdvOrani,
+        Iskonto1 = a.Iskonto1,
+        Iskonto2 = a.Iskonto2,
+        Iskonto3 = a.Iskonto3,
+        EkIskontoAcik = a.Iskonto2 > 0 || a.Iskonto3 > 0,
+        SiparisSatiriId = a.SiparisSatiriId,
+        SiparisNo = a.SiparisNo
     };
 
     // İrsaliye fiyatı KDV hariçtir; fiyat yoksa çağıran taraf önerilen fiyatı verir.

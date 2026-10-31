@@ -15,6 +15,9 @@ public sealed record StokKartiBilgisi(
     bool AktifMi)
 {
     public bool BirimTanimliMi(string birim) => birim == TemelBirim || EkBirimler.Any(b => b.BirimKodu == birim);
+
+    // 1 {birim} kaç temel birimdir; tanımsız birim temel birim sayılır.
+    public decimal Katsayi(string birim) => birim == TemelBirim ? 1m : EkBirimler.FirstOrDefault(b => b.BirimKodu == birim)?.Katsayi ?? 1m;
 }
 
 public interface IStokSorgusu

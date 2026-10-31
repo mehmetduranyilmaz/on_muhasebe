@@ -442,6 +442,10 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("olusturma_tarihi");
 
+                    b.Property<Guid?>("SiparisSatiriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("siparis_satiri_id");
+
                     b.Property<int>("Sira")
                         .HasColumnType("integer")
                         .HasColumnName("sira");
@@ -496,6 +500,9 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
 
                     b.HasIndex("IrsaliyeSatiriId")
                         .HasDatabaseName("ix_fatura_satiri_irsaliye_satiri_id");
+
+                    b.HasIndex("SiparisSatiriId")
+                        .HasDatabaseName("ix_fatura_satiri_siparis_satiri_id");
 
                     b.HasIndex("StokKartiId")
                         .HasDatabaseName("ix_fatura_satiri_stok_karti_id");
@@ -773,6 +780,10 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("olusturma_tarihi");
 
+                    b.Property<Guid?>("SiparisSatiriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("siparis_satiri_id");
+
                     b.Property<int>("Sira")
                         .HasColumnType("integer")
                         .HasColumnName("sira");
@@ -798,6 +809,9 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
 
                     b.HasIndex("IrsaliyeId")
                         .HasDatabaseName("ix_irsaliye_satiri_irsaliye_id");
+
+                    b.HasIndex("SiparisSatiriId")
+                        .HasDatabaseName("ix_irsaliye_satiri_siparis_satiri_id");
 
                     b.HasIndex("StokKartiId")
                         .HasDatabaseName("ix_irsaliye_satiri_stok_karti_id");

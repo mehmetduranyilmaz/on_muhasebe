@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
+using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Shared.Contracts.Birimler;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
@@ -25,6 +26,8 @@ internal static class TeklifSiparisIslemleri
         var g = grup.MapGroup("/teklif-siparis");
         g.MapGet("", ListeleAsync);
         g.MapGet("/{id:guid}", GetirAsync);
+        g.MapGet("/aktarim", AktarimAsync);
+        g.MapGet("/bekleyen", BekleyenAsync);
         g.MapPost("", OlusturAsync).Dogrula<TeklifSiparisKaydetIstegi>();
         g.MapPut("/{id:guid}", GuncelleAsync).Dogrula<TeklifSiparisKaydetIstegi>();
         g.MapPost("/{id:guid}/onayla", OnaylaAsync);
@@ -125,6 +128,56 @@ internal static class TeklifSiparisIslemleri
             ? TypedResults.Ok(await DetayAsync(db, belge, zaman, cancellationToken))
             : TeklifSiparisHatalari.Bulunamadi.Problem();
 
+    // Carinin açık siparişlerindeki karşılanmamış satırlar, termin sırasıyla. İrsaliyeye yalnızca ürün satırları aktarılır.
+    private static async Task<IResult> AktarimAsync(Guid cariId, TeklifSiparisTuru tur, bool? yalnizcaUrun, FaturaDbContext db, CancellationToken cancellationToken)
+    {
+        if (TeklifSiparisTurleri.TeklifMi(tur))
+        {
+            return TypedResults.Ok(Array.Empty<AktarilacakSiparisSatiri>());
+        }
+
+        var sorgu = from s in db.TeklifSiparisSatirlari.AsNoTracking()
+                    join b in db.TeklifSiparisler on s.TeklifSiparisId equals b.Id
+                    where b.CariHesapId == cariId && b.Tur == tur && b.Durum == TeklifSiparisDurumu.Acik && s.KarsilananMiktar < s.Miktar
+                    select new { b.Numara, b.Tarih, b.TerminTarihi, b.ParaBirimi, Satir = s };
+        if (yalnizcaUrun == true)
+        {
+            sorgu = sorgu.Where(x => x.Satir.StokluMu);
+        }
+
+        var liste = await sorgu.OrderBy(x => x.TerminTarihi ?? x.Tarih).ThenBy(x => x.Numara).ThenBy(x => x.Satir.Sira).ToListAsync(cancellationToken);
+        return TypedResults.Ok(liste.Select(x => new AktarilacakSiparisSatiri(
+            x.Satir.TeklifSiparisId, x.Numara, x.TerminTarihi, x.Satir.Id, x.Satir.StokKartiId, x.Satir.StokKodu, x.Satir.Ad, x.Satir.StokluMu,
+            x.Satir.DepoId, x.Satir.Birim, x.Satir.KalanMiktar, x.ParaBirimi, x.Satir.BirimFiyat, x.Satir.KdvDahilMi, x.Satir.KdvOrani,
+            x.Satir.Iskonto1, x.Satir.Iskonto2, x.Satir.Iskonto3)).ToList());
+    }
+
+    // Kartların açık siparişlerdeki karşılanmamış miktarı, temel birime çevrilmiş olarak.
+    private static async Task<IResult> BekleyenAsync(Guid[] stokKartiId, FaturaDbContext db, IStokSorgusu stokSorgusu, CancellationToken cancellationToken)
+    {
+        var idler = stokKartiId.Distinct().Take(500).ToList();
+        if (idler.Count == 0)
+        {
+            return TypedResults.Ok(Array.Empty<SiparisBekleyenMiktari>());
+        }
+
+        var satirlar = await (
+                from s in db.TeklifSiparisSatirlari
+                join b in db.TeklifSiparisler on s.TeklifSiparisId equals b.Id
+                where b.Durum == TeklifSiparisDurumu.Acik && b.Tur != TeklifSiparisTuru.SatisTeklifi
+                      && s.StokKartiId != null && idler.Contains(s.StokKartiId.Value) && s.KarsilananMiktar < s.Miktar
+                select new { KartId = s.StokKartiId!.Value, b.Tur, s.Birim, Kalan = s.Miktar - s.KarsilananMiktar })
+            .ToListAsync(cancellationToken);
+        var kartlar = (await stokSorgusu.KartlariGetirAsync(idler, cancellationToken)).ToDictionary(k => k.Id);
+
+        decimal Toplam(Guid kartId, TeklifSiparisTuru tur) => satirlar
+            .Where(s => s.KartId == kartId && s.Tur == tur)
+            .Sum(s => s.Kalan * (kartlar.TryGetValue(kartId, out var k) ? k.Katsayi(s.Birim) : 1m));
+
+        return TypedResults.Ok(idler.Select(id => new SiparisBekleyenMiktari(
+            id, Toplam(id, TeklifSiparisTuru.SatisSiparisi), Toplam(id, TeklifSiparisTuru.SatinalmaSiparisi))).ToList());
+    }
+
     private static async Task<IResult> OlusturAsync(
         TeklifSiparisKaydetIstegi istek, TeklifSiparisServisi servis, FaturaDbContext db, TimeProvider zaman, CancellationToken cancellationToken)
     {
@@ -180,6 +233,26 @@ internal static class TeklifSiparisIslemleri
                 .Select(s => new BagliBelge(s.Id, s.Numara, s.Tarih)).ToListAsync(cancellationToken)
             : [];
         var satirlar = b.Satirlar.OrderBy(s => s.Sira).ToList();
+
+        // Siparişi karşılayan belgeler: bağlı irsaliyeler, doğrudan bağlı faturalar ve o irsaliyeleri faturalayan faturalar.
+        List<BagliBelge> irsaliyeler = [], faturalar = [];
+        if (!b.TeklifMi && b.Durum != TeklifSiparisDurumu.Taslak)
+        {
+            var idler = satirlar.Select(s => s.Id).ToList();
+            var irsaliyeSatirlari = db.IrsaliyeSatirlari.Where(s => s.SiparisSatiriId != null && idler.Contains(s.SiparisSatiriId.Value)).Select(s => s.Id);
+            irsaliyeler = await db.Irsaliyeler.AsNoTracking()
+                .Where(i => i.Durum != IrsaliyeDurumu.Iptal && i.Satirlar.Any(s => s.SiparisSatiriId != null && idler.Contains(s.SiparisSatiriId.Value)))
+                .OrderBy(i => i.SevkTarihi)
+                .Select(i => new BagliBelge(i.Id, i.Numara, i.SevkTarihi))
+                .ToListAsync(cancellationToken);
+            faturalar = await db.Faturalar.AsNoTracking()
+                .Where(f => f.Durum != FaturaDurumu.Iptal && f.Satirlar.Any(s =>
+                    (s.SiparisSatiriId != null && idler.Contains(s.SiparisSatiriId.Value))
+                    || (s.IrsaliyeSatiriId != null && irsaliyeSatirlari.Contains(s.IrsaliyeSatiriId.Value))))
+                .OrderBy(f => f.Tarih)
+                .Select(f => new BagliBelge(f.Id, f.Numara, f.Tarih))
+                .ToListAsync(cancellationToken);
+        }
         return new TeklifSiparisDetayi(
             b.Id, b.Tur, b.Durum, b.Karsilama, b.Numara, b.Tarih, b.GecerlilikTarihi, b.TerminTarihi,
             b.CariHesapId, b.CariKodu, b.CariUnvan, b.VergiNo, b.VergiDairesi, b.Il, b.Ilce, b.Adres, b.ParaBirimi, b.Kur,
@@ -189,7 +262,7 @@ internal static class TeklifSiparisIslemleri
             satirlar.Select(s => new TeklifSiparisSatiriDetayi(s.Id, s.Sira, s.StokKartiId, s.StokKodu, s.Ad, s.StokluMu, s.DepoId, s.Birim, s.Miktar,
                 s.BirimFiyat, s.KdvDahilMi, s.KdvOrani, s.Iskonto1, s.Iskonto2, s.Iskonto3, s.Matrah, s.KdvTutari, s.Toplam,
                 s.KarsilananMiktar, s.KalanMiktar)).ToList(),
-            b.KaynakTeklifId, siparisler,
+            b.KaynakTeklifId, siparisler, irsaliyeler, faturalar,
             TeklifSiparisTurleri.SuresiDolduMu(b.Tur, b.Durum, b.GecerlilikTarihi, TurkiyeSaati.Bugun(zaman)),
             b.OnayTarihi, b.Surum);
     }

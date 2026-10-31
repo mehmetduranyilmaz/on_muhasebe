@@ -23,6 +23,7 @@ internal sealed class FaturaKayitServisi(
     IStokHareketYazici stokYazici,
     IKasaBankaYazici kasaYazici,
     IrsaliyeKayitServisi irsaliyeServisi,
+    SiparisKarsilamaServisi siparisServisi,
     IIslemKapsami islemKapsami,
     TimeProvider zaman)
 {
@@ -77,6 +78,7 @@ internal sealed class FaturaKayitServisi(
 
         // Düzenleme satırları yeniden kurar; eski irsaliye bağları da yeniden hesaplanabilsin diye önce alınır.
         var eskiBaglar = IrsaliyeBaglari(fatura);
+        var eskiSiparisBaglari = SiparisKarsilamaServisi.BagIdleri(fatura);
         var guncelleme = fatura.Guncelle(bilgiler.Deger);
         if (!guncelleme.BasariliMi)
         {
@@ -111,7 +113,13 @@ internal sealed class FaturaKayitServisi(
             }
 
             var irsaliye = await IrsaliyeleriEsitleAsync(fatura, eskiBaglar, ct);
-            return irsaliye.BasariliMi ? new FaturaIslemSonucu(fatura, Birlestir(yazim.Deger, irsaliye.Deger)) : irsaliye.Hata;
+            if (!irsaliye.BasariliMi)
+            {
+                return irsaliye.Hata;
+            }
+
+            var siparis = await SiparisleriEsitleAsync(fatura, eskiSiparisBaglari, ct);
+            return siparis.BasariliMi ? new FaturaIslemSonucu(fatura, Birlestir(yazim.Deger, irsaliye.Deger)) : siparis.Hata;
         }, cancellationToken);
     }
 
@@ -157,7 +165,13 @@ internal sealed class FaturaKayitServisi(
 
             // İptal edilen faturanın irsaliye bağları düşer; irsaliyeler yeniden faturalanabilir hale gelir.
             var irsaliye = await IrsaliyeleriEsitleAsync(fatura, [], ct);
-            return irsaliye.BasariliMi ? new FaturaIslemSonucu(fatura, null) : irsaliye.Hata;
+            if (!irsaliye.BasariliMi)
+            {
+                return irsaliye.Hata;
+            }
+
+            var siparis = await SiparisleriEsitleAsync(fatura, SiparisKarsilamaServisi.BagIdleri(fatura), ct);
+            return siparis.BasariliMi ? new FaturaIslemSonucu(fatura, null) : siparis.Hata;
         }, cancellationToken);
     }
 
@@ -187,8 +201,17 @@ internal sealed class FaturaKayitServisi(
         }
 
         var irsaliye = await IrsaliyeleriEsitleAsync(fatura, [], cancellationToken);
-        return irsaliye.BasariliMi ? new FaturaIslemSonucu(fatura, Birlestir(yazim.Deger, irsaliye.Deger)) : irsaliye.Hata;
+        if (!irsaliye.BasariliMi)
+        {
+            return irsaliye.Hata;
+        }
+
+        var siparis = await SiparisleriEsitleAsync(fatura, [], cancellationToken);
+        return siparis.BasariliMi ? new FaturaIslemSonucu(fatura, Birlestir(yazim.Deger, irsaliye.Deger)) : siparis.Hata;
     }
+
+    private Task<Sonuc> SiparisleriEsitleAsync(FaturaBelgesi f, IEnumerable<Guid> eskiBaglar, CancellationToken cancellationToken) =>
+        siparisServisi.EsitleAsync(f.CariHesapId, TeklifSiparisTurleri.SiparisTuru(f.Tur), SiparisKarsilamaServisi.Baglar(f), eskiBaglar, cancellationToken);
 
     private static List<Guid> IrsaliyeBaglari(FaturaBelgesi f) =>
         f.Satirlar.Where(s => s.IrsaliyeSatiriId is not null).Select(s => s.IrsaliyeSatiriId!.Value).Distinct().ToList();

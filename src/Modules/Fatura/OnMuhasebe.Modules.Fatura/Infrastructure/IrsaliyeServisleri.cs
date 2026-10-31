@@ -145,7 +145,7 @@ internal sealed class IrsaliyeHazirlayici(
                 return FaturaHatalari.DepoBulunamadi;
             }
 
-            sonuc.Add(new IrsaliyeSatiriBilgisi(kart.Id, kart.Kod, Temiz(s.Ad) ?? kart.Ad, depoId.Value, s.Birim, s.Miktar, s.BirimFiyat, kart.KdvOrani));
+            sonuc.Add(new IrsaliyeSatiriBilgisi(kart.Id, kart.Kod, Temiz(s.Ad) ?? kart.Ad, depoId.Value, s.Birim, s.Miktar, s.BirimFiyat, kart.KdvOrani, s.SiparisSatiriId));
         }
 
         return sonuc;
@@ -161,6 +161,7 @@ internal sealed class IrsaliyeKayitServisi(
     FaturaAyarServisi ayarServisi,
     FaturaNumaraUretici numaraUretici,
     IStokHareketYazici stokYazici,
+    SiparisKarsilamaServisi siparisServisi,
     IIslemKapsami islemKapsami,
     TimeProvider zaman)
 {
@@ -212,6 +213,7 @@ internal sealed class IrsaliyeKayitServisi(
             return bilgiler.Hata;
         }
 
+        var eskiSiparisBaglari = SiparisKarsilamaServisi.BagIdleri(irsaliye);
         var guncelleme = irsaliye.Guncelle(bilgiler.Deger);
         if (!guncelleme.BasariliMi)
         {
@@ -240,7 +242,13 @@ internal sealed class IrsaliyeKayitServisi(
             }
 
             var yazim = await StokuYazAsync(irsaliye, null, ct);
-            return yazim.BasariliMi ? new IrsaliyeIslemSonucu(irsaliye, yazim.Deger) : yazim.Hata;
+            if (!yazim.BasariliMi)
+            {
+                return yazim.Hata;
+            }
+
+            var siparis = await SiparisleriEsitleAsync(irsaliye, eskiSiparisBaglari, ct);
+            return siparis.BasariliMi ? new IrsaliyeIslemSonucu(irsaliye, yazim.Deger) : siparis.Hata;
         }, cancellationToken);
     }
 
@@ -279,7 +287,13 @@ internal sealed class IrsaliyeKayitServisi(
         {
             await db.SaveChangesAsync(ct);
             var iptal = await stokYazici.IptalEtAsync(irsaliye.Id, ct);
-            return iptal.BasariliMi ? new IrsaliyeIslemSonucu(irsaliye, null) : iptal.Hata;
+            if (!iptal.BasariliMi)
+            {
+                return iptal.Hata;
+            }
+
+            var siparis = await SiparisleriEsitleAsync(irsaliye, SiparisKarsilamaServisi.BagIdleri(irsaliye), ct);
+            return siparis.BasariliMi ? new IrsaliyeIslemSonucu(irsaliye, null) : siparis.Hata;
         }, cancellationToken);
     }
 
@@ -334,8 +348,17 @@ internal sealed class IrsaliyeKayitServisi(
 
         await db.SaveChangesAsync(cancellationToken);
         var yazim = await StokuYazAsync(irsaliye, null, cancellationToken);
-        return yazim.BasariliMi ? new IrsaliyeIslemSonucu(irsaliye, yazim.Deger) : yazim.Hata;
+        if (!yazim.BasariliMi)
+        {
+            return yazim.Hata;
+        }
+
+        var siparis = await SiparisleriEsitleAsync(irsaliye, [], cancellationToken);
+        return siparis.BasariliMi ? new IrsaliyeIslemSonucu(irsaliye, yazim.Deger) : siparis.Hata;
     }
+
+    private Task<Sonuc> SiparisleriEsitleAsync(Irsaliye i, IEnumerable<Guid> eskiBaglar, CancellationToken cancellationToken) =>
+        siparisServisi.EsitleAsync(i.CariHesapId, SiparisKarsilamaServisi.SiparisTuru(i.Tur), SiparisKarsilamaServisi.Baglar(i), eskiBaglar, cancellationToken);
 
     // Gelen irsaliyede aynı carinin aynı türde aynı numaralı ikinci irsaliyesi kabul edilmez. Giden irsaliyede numara
     // seri + yıl + sıradır: yıl irsaliye yılıyla aynı kalmalı ve aynı seride tarih sırası bozulmamalıdır (VUK).

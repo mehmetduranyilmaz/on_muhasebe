@@ -256,7 +256,7 @@ internal sealed class FaturaHazirlayici(
             : TevkifatKodlari.Bul(Temiz(s.TevkifatKodu)) is { } t ? (t.Pay, t.Payda) : (0, 0);
 
         return new(kartId, kod, ad, stokluMu, depoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvDahilMi, s.KdvOrani, s.Iskonto1, s.Iskonto2, s.Iskonto3,
-            Temiz(s.TevkifatKodu), pay, payda, s.IrsaliyeSatiriId);
+            Temiz(s.TevkifatKodu), pay, payda, s.IrsaliyeSatiriId, s.SiparisSatiriId);
     }
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();

@@ -143,12 +143,39 @@ public sealed record TeklifSiparisDetayi(
     IReadOnlyList<TeklifSiparisSatiriDetayi> Satirlar,
     Guid? KaynakTeklifId,
     IReadOnlyList<BagliBelge> Siparisler,
+    IReadOnlyList<BagliBelge> Irsaliyeler,
+    IReadOnlyList<BagliBelge> Faturalar,
     bool SuresiDolduMu,
     DateTime? OnayTarihi,
     uint Surum);
 
 // Teklif yanıtı: kabul ya da red (red nedeni açıklamaya eklenir).
 public sealed record TeklifYanitiIstegi(bool KabulMu, string? Neden);
+
+// İrsaliye ya da faturaya aktarılabilecek sipariş satırı: açık siparişin karşılanmamış kalanı. Fiyat ve iskontolar
+// siparişte anlaşılan gibi, siparişin dövizinde gelir.
+public sealed record AktarilacakSiparisSatiri(
+    Guid SiparisId,
+    string? SiparisNo,
+    DateOnly? TerminTarihi,
+    Guid SiparisSatiriId,
+    Guid? StokKartiId,
+    string? StokKodu,
+    string Ad,
+    bool StokluMu,
+    Guid? DepoId,
+    string Birim,
+    decimal KalanMiktar,
+    string ParaBirimi,
+    decimal BirimFiyat,
+    bool KdvDahilMi,
+    int KdvOrani,
+    decimal Iskonto1,
+    decimal Iskonto2,
+    decimal Iskonto3);
+
+// Açık siparişlerin karşılanmamış miktarı (temel birimde): müşteri siparişi rezerve, satınalma siparişi beklenen giriştir.
+public sealed record SiparisBekleyenMiktari(Guid StokKartiId, decimal Rezerve, decimal Beklenen);
 
 public static class TeklifSiparisHesaplari
 {

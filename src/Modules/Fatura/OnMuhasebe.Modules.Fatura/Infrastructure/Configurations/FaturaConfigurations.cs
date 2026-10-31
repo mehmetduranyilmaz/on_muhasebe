@@ -57,6 +57,7 @@ internal sealed class FaturaSatiriConfiguration : IEntityTypeConfiguration<Fatur
 
         // Dış anahtar yok: taslak fatura, henüz faturalanmamış irsaliye satırına bağlanabilir; geçerlilik onayda denetlenir.
         builder.HasIndex(x => x.IrsaliyeSatiriId);
+        builder.HasIndex(x => x.SiparisSatiriId);
     }
 }
 
@@ -111,6 +112,7 @@ internal sealed class IrsaliyeSatiriConfiguration : IEntityTypeConfiguration<Irs
         builder.Property(x => x.FaturalananMiktar).HasPrecision(18, 4);
         builder.Ignore(x => x.KalanMiktar);
         builder.HasIndex(x => x.StokKartiId);
+        builder.HasIndex(x => x.SiparisSatiriId);
     }
 }
 

@@ -17,7 +17,8 @@ public static class ModulPaketleri
         [ModulKodlari.Stok] =
         [
             "OnMuhasebe.Web.Stok.wasm",
-            "OnMuhasebe.Modules.Stok.Contracts.wasm"
+            "OnMuhasebe.Modules.Stok.Contracts.wasm",
+            "OnMuhasebe.Modules.Fatura.Contracts.wasm"
         ],
         [ModulKodlari.Fatura] =
         [

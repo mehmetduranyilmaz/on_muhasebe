@@ -22,7 +22,9 @@ internal static class TeklifSiparisHatalari
     public static readonly Hata KapatilamazDurum = Hata.IsKurali("siparis_kapat", "Yalnızca açık sipariş kapatılabilir.");
     public static readonly Hata IptalEdilemez = Hata.IsKurali("teklif_siparis_iptal", "Karşılanmış (sevk/fatura edilmiş) sipariş iptal edilemez; kalanı için 'kapat' kullanın.");
     public static readonly Hata YalnizcaTaslakSilinir = Hata.IsKurali("teklif_siparis_sil", "Yalnızca taslak silinebilir.");
-    public static readonly Hata KarsilananAsildi = Hata.IsKurali("siparis_karsilanan_asildi", "Sevk/fatura edilen miktar sipariş miktarını aşamaz.");
+    public static readonly Hata KarsilananAsildi = Hata.IsKurali("siparis_karsilanan_asildi", "Sevk/fatura edilen miktar negatif olamaz.");
+    public static readonly Hata SiparisBagiGecersiz = Hata.IsKurali("siparis_bagi_gecersiz",
+        "Sipariş bağı geçersiz: sipariş açık olmalı; cari, belge türü, ürün ve birim siparişle aynı olmalıdır.");
 }
 
 // Teklif ve sipariş: fatura gibi hesaplanır ama stok/cari hareketi yaratmaz. Siparişte satır bazında karşılanan miktar
@@ -242,9 +244,10 @@ internal sealed class TeklifSiparisSatiri : BaseEntity
         Matrah = h.Matrah, KdvTutari = h.KdvTutari, Toplam = h.Toplam
     };
 
+    // Siparişten fazla teslim (tolerans, yuvarlama, tartım farkı) olağandır; engellenmez, kalan sıfırda kalır.
     public Sonuc KarsilananAyarla(decimal toplam)
     {
-        if (toplam < 0m || toplam > Miktar)
+        if (toplam < 0m)
         {
             return TeklifSiparisHatalari.KarsilananAsildi;
         }

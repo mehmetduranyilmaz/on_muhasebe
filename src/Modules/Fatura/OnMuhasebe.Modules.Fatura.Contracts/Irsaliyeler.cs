@@ -61,13 +61,15 @@ public static class IrsaliyeTurleri
 // Satır yalnızca ürün kartıdır (hizmet sevk edilmez). Fiyat opsiyoneldir (fiyatsız irsaliye yaygındır), KDV hariç ve
 // irsaliyenin dövizindedir; alış irsaliyesinde stoğa giriş maliyeti olduğu için zorunludur (fatura gelince güncellenir).
 // Depo boşsa varsayılan depo kullanılır; depo sevkinde bu, malın çıktığı depodur.
+// SiparisSatiriId, sevkin karşıladığı sipariş satırıdır (kart ve birim aynı olmalı).
 public sealed record IrsaliyeSatiriIstegi(
     Guid StokKartiId,
     string? Ad,
     Guid? DepoId,
     string Birim,
     decimal Miktar,
-    decimal? BirimFiyat);
+    decimal? BirimFiyat,
+    Guid? SiparisSatiriId = null);
 
 // Sevk saati e-İrsaliye'de zorunludur; kâğıt irsaliyede de fiili sevk anı olarak tutulur.
 // Araç/şoför/taşıyıcı alanları kâğıt irsaliyede opsiyonel, e-İrsaliye'de (S5) zorunlu olacaktır.
@@ -117,7 +119,8 @@ public sealed record IrsaliyeSatiriDetayi(
     decimal? BirimFiyat,
     int KdvOrani,
     decimal FaturalananMiktar,
-    decimal KalanMiktar);
+    decimal KalanMiktar,
+    Guid? SiparisSatiriId);
 
 public sealed record IrsaliyeDetayi(
     Guid Id,

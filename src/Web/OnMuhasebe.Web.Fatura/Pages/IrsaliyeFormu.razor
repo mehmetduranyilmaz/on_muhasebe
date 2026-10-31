@@ -5,6 +5,7 @@
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
 @inject TimeProvider Zaman
+@inject IDialogService DialogService
 
 <SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? "irsaliye" : $"irsaliye/{Id}")" Ikon="@IrsaliyeMetinleri.Ikon(_tur)"
              AltBaslik="@(_numara is not null && Id is not null ? _numara : IrsaliyeMetinleri.TurAciklamasi(_tur))" />
@@ -148,6 +149,12 @@ else
                         <MudTextField @ref="_barkodAlani" T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_barkod"
                                       Placeholder="Barkod" OnKeyUp="BarkodTusAsync" Class="barkod-alani"
                                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.QrCodeScanner" />
+                        @if (SiparisAktarilabilirMi)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ShoppingBag" OnClick="SiparistenAktarAsync">
+                                Siparişten aktar
+                            </MudButton>
+                        }
                         @if (!AlisMi && !DepoSevkMi)
                         {
                             <MudSwitch T="bool" @bind-Value="_fiyatli" Color="Color.Secondary" Label="Fiyatlı irsaliye" />
@@ -173,6 +180,12 @@ else
                                     {
                                         <span class="fs-hizmet">@Bicim.Miktar(s.FaturalananMiktar, s.Birim) faturalandı</span>
                                     }
+                                    @if (s.SiparisliMi)
+                                    {
+                                        <span class="fs-hizmet" title="Siparişi karşılar; ürün ve birim değiştirilemez">
+                                            <MudIcon Icon="@Icons.Material.Filled.ShoppingBag" Style="font-size:.9rem; vertical-align:-2px" /> Sipariş @s.SiparisNo
+                                        </span>
+                                    }
                                 </div>
                                 <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Ad" Label="Ürün" MaxLength="250" />
                             </div>
@@ -181,7 +194,8 @@ else
                                                  Format="#,0.####" HideSpinButtons="true" Min="0" Immediate="true" DebounceInterval="250" />
                             </div>
                             <div class="fs-birim">
-                                <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.Birim" ValueChanged="b => s.BirimDegistir(b)" Label="Birim">
+                                <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.Birim" ValueChanged="b => s.BirimDegistir(b)" Label="Birim"
+                                           Disabled="s.SiparisliMi">
                                     @foreach (var b in s.BirimSecenekleri)
                                     {
                                         <MudSelectItem Value="b">@Birimler.Ad(b)</MudSelectItem>
@@ -292,6 +306,10 @@ else
     [Parameter] public string? TurYolu { get; set; }
     [Parameter] public Guid? Id { get; set; }
 
+    // Sipariş detayından "irsaliye oluştur": cari seçili gelir, siparişin kalan satırları aktarılır.
+    [SupplyParameterFromQuery(Name = "cari")] public Guid? CariParametresi { get; set; }
+    [SupplyParameterFromQuery(Name = "siparis")] public Guid? SiparisParametresi { get; set; }
+
     private IrsaliyeTuru _tur = IrsaliyeTuru.Satis;
     private IrsaliyeDurumu _durum = IrsaliyeDurumu.Taslak;
     private FaturaAyarlari? _ayar;
@@ -330,6 +348,8 @@ else
     private bool TaslakAkisi => _ayar?.KayitAkisi == KayitAkisi.TaslakOnay;
     private bool Dovizli => _paraBirimi != ParaBirimleri.Tl;
     private string ParaSimgesi => Dovizli ? _paraBirimi : "TL";
+    private TeklifSiparisTuru? SiparisTuru => IrsaliyeTurleri.FaturaTuru(_tur) is { } f ? TeklifSiparisTurleri.SiparisTuru(f) : null;
+    private bool SiparisAktarilabilirMi => _cari is not null && SiparisTuru is not null;
 
     private string Baslik => Id is null ? $"Yeni {IrsaliyeMetinleri.Tur(_tur)}" : $"{IrsaliyeMetinleri.Tur(_tur)} Düzenle";
 
@@ -379,6 +399,20 @@ else
             if (DepoSevkMi)
             {
                 HedefDepoSecildi(_depolar.FirstOrDefault(d => !d.VarsayilanMi)?.Id);
+            }
+
+            if (CariParametresi is { } cariId && !DepoSevkMi && await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{cariId}") is { BasariliMi: true } cari)
+            {
+                var d = cari.Deger;
+                await CariSecildiAsync(new CariOzeti(d.Id, d.Kod, d.Unvan, d.Tur, d.GrupAdi, d.ParaBirimi, d.Telefon, d.AktifMi, d.Bakiye, d.BakiyeTl, d.RiskLimiti));
+                if (SiparisParametresi is { } siparisId && SiparisTuru is { } siparisTuru)
+                {
+                    var acik = await Api.GetAsync<List<AktarilacakSiparisSatiri>>($"api/fatura/teklif-siparis/aktarim?cariId={cariId}&tur={siparisTuru}&yalnizcaUrun=true");
+                    if (acik.BasariliMi)
+                    {
+                        await SiparisSatirlariniEkleAsync(acik.Deger.Where(s => s.SiparisId == siparisId).Select(s => new SiparisAktarimi(s, s.KalanMiktar)).ToList());
+                    }
+                }
             }
         }
 
@@ -547,6 +581,57 @@ else
         }
 
         _satirlar.Add(satir);
+    }
+
+    private async Task SiparistenAktarAsync()
+    {
+        var parametreler = new DialogParameters<SiparisAktarDialog>
+        {
+            { d => d.CariId, _cari!.Id },
+            { d => d.SiparisTuru, SiparisTuru!.Value },
+            { d => d.YalnizcaUrun, true },
+            { d => d.Mevcutlar, _satirlar.Where(s => s.SiparisSatiriId is not null).Select(s => s.SiparisSatiriId!.Value).ToList() }
+        };
+        var dialog = await DialogService.ShowAsync<SiparisAktarDialog>("Siparişten Aktar", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: List<SiparisAktarimi> secilenler })
+        {
+            await SiparisSatirlariniEkleAsync(secilenler);
+        }
+    }
+
+    // Fiyat siparişte anlaşılan net (iskontolu, KDV hariç) fiyattır; sipariş dövizi farklıysa irsaliye dövizine çevrilir.
+    private async Task SiparisSatirlariniEkleAsync(IReadOnlyList<SiparisAktarimi> secilenler)
+    {
+        var fiyatCevirici = new FiyatOnerici(Api);
+        var kartlar = new Dictionary<Guid, StokKartiDetayi>();
+        foreach (var (a, miktar) in secilenler)
+        {
+            if (a.StokKartiId is not { } kartId)
+            {
+                continue;
+            }
+
+            if (!kartlar.TryGetValue(kartId, out var kart))
+            {
+                var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{kartId}");
+                if (!sonuc.BasariliMi)
+                {
+                    Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+                    continue;
+                }
+
+                kart = kartlar[kartId] = sonuc.Deger;
+            }
+
+            var satir = IrsaliyeSatirModeli.Siparisten(a, miktar, kart);
+            if (a.ParaBirimi != _paraBirimi && satir.BirimFiyat is { } fiyat && Bicim.Gun(_sevkTarihi) is { } gun)
+            {
+                satir.BirimFiyat = await fiyatCevirici.CevirAsync(fiyat, a.ParaBirimi, _paraBirimi, Dovizli ? _kur : 1m, gun);
+            }
+
+            _satirlar.Add(satir);
+        }
     }
 
     // Alış tarafında kartın alış fiyatı (tahmini maliyet), satış tarafında satış fiyatı önerilir; ikisi de KDV hariçtir

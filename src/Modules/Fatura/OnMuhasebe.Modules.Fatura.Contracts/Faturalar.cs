@@ -68,6 +68,7 @@ public sealed record NihaiTuketiciBilgisi(string? AdSoyad, string? Tckn);
 // TevkifatKodu/Pay/Payda opsiyoneldir; verilmezse satırda KDV tevkifatı yoktur.
 // IrsaliyeSatiriId verilirse satır irsaliyeden aktarılmıştır: stok hareketi irsaliyede olduğu için fatura stok yazmaz;
 // kart, birim ve depo irsaliye satırıyla aynı olmalı, miktar faturalanmamış kalanı aşamaz.
+// SiparisSatiriId, irsaliyesiz satırın karşıladığı sipariş satırıdır; irsaliyeli satırda sipariş bağı irsaliyededir.
 public sealed record FaturaSatiriIstegi(
     Guid? StokKartiId,
     string? Ad,
@@ -83,7 +84,8 @@ public sealed record FaturaSatiriIstegi(
     string? TevkifatKodu = null,
     int TevkifatPay = 0,
     int TevkifatPayda = 0,
-    Guid? IrsaliyeSatiriId = null);
+    Guid? IrsaliyeSatiriId = null,
+    Guid? SiparisSatiriId = null);
 
 // PesinHesapId verilirse fatura kesinleşirken o kasa/banka/POS hesabından peşin tahsil edilir (ödenir).
 // Numara yalnızca gelen faturalarda (alış, satıştan iade) girilir; giden faturaların numarası otomatik verilir.
@@ -146,7 +148,8 @@ public sealed record FaturaSatiriDetayi(
     int TevkifatPay,
     int TevkifatPayda,
     decimal TevkifEdilenKdv,
-    Guid? IrsaliyeSatiriId);
+    Guid? IrsaliyeSatiriId,
+    Guid? SiparisSatiriId);
 
 // Cari bilgileri fatura anındaki kopyadır; cari kartı sonradan değişse de fatura değişmez.
 public sealed record FaturaDetayi(
