@@ -29,7 +29,7 @@ internal static class TeklifSiparisHatalari
 
 // Teklif ve sipariş: fatura gibi hesaplanır ama stok/cari hareketi yaratmaz. Siparişte satır bazında karşılanan miktar
 // (irsaliye ya da irsaliyesiz fatura) onaylı belgelerden yeniden hesaplanır.
-internal sealed class TeklifSiparis : FirmaEntity, ISilinebilir, IDonemeTabi
+internal sealed class TeklifSiparis : FirmaEntity, ISilinebilir, IDonemeTabi, IIsyeriVarligi
 {
     private readonly List<TeklifSiparisSatiri> _satirlar = [];
 
@@ -68,8 +68,13 @@ internal sealed class TeklifSiparis : FirmaEntity, ISilinebilir, IDonemeTabi
 
     public Guid? KaynakTeklifId { get; private set; }
     public DateTime? OnayTarihi { get; private set; }
+    // Belgenin düzenlendiği işyeri (seri, raporlar ve işyeri kısıtı buna göre).
+    public Guid IsyeriId { get; private set; }
+
     public bool SilindiMi { get; private set; }
     public DateTime? SilinmeTarihi { get; private set; }
+
+    public void IsyeriAta(Guid isyeriId) => IsyeriId = isyeriId;
 
     public IReadOnlyCollection<TeklifSiparisSatiri> Satirlar => _satirlar;
 

@@ -132,7 +132,7 @@ internal static class FaturaIslemleri
         var sonuc = await sorgu
             .OrderByDescending(f => f.Tarih).ThenByDescending(f => f.OlusturmaTarihi)
             .Select(f => new FaturaOzeti(f.Id, f.Tur, f.SatisSekli, f.Durum, f.Numara, f.Tarih, f.VadeTarihi, f.CariHesapId, f.CariUnvan,
-                f.ParaBirimi, f.GenelToplam, f.GenelToplamTl, null))
+                f.ParaBirimi, f.GenelToplam, f.GenelToplamTl, null, f.IsyeriId))
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
 
         return TypedResults.Ok(sonuc with { Kayitlar = await KalanlariEkleAsync(sonuc.Kayitlar, cariSorgusu, cancellationToken) });
@@ -245,6 +245,6 @@ internal static class FaturaIslemleri
                 s.Iskonto1, s.Iskonto2, s.Iskonto3, s.KdvOrani, s.BrutTutar, s.IskontoTutari, s.GenelIskontoPayi, s.Matrah,
                 s.KdvTutari, s.Toplam, s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda, s.TevkifEdilenKdv, s.IrsaliyeSatiriId, s.SiparisSatiriId,
                 s.LotNo, s.SonKullanmaTarihi, s.SeriNolari)).ToList(),
-            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler, f.MasrafMerkeziId);
+            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler, f.MasrafMerkeziId, f.IsyeriId);
     }
 }

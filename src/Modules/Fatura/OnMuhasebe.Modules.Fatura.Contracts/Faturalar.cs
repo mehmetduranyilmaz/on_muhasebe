@@ -110,7 +110,8 @@ public sealed record FaturaKaydetIstegi(
     uint Surum = 0,
     Guid? PesinHesapId = null,
     decimal StopajOrani = 0m,
-    Guid? MasrafMerkeziId = null);
+    Guid? MasrafMerkeziId = null,
+    Guid? IsyeriId = null);
 
 public sealed record FaturaOzeti(
     Guid Id,
@@ -125,7 +126,8 @@ public sealed record FaturaOzeti(
     string ParaBirimi,
     decimal GenelToplam,
     decimal GenelToplamTl,
-    decimal? Kalan);
+    decimal? Kalan,
+    Guid? IsyeriId = null);
 
 public sealed record FaturaSatiriDetayi(
     Guid Id,
@@ -201,7 +203,8 @@ public sealed record FaturaDetayi(
     Guid? PesinHesapId,
     decimal? Kalan,
     IReadOnlyList<BagliBelge> Irsaliyeler,
-    Guid? MasrafMerkeziId);
+    Guid? MasrafMerkeziId,
+    Guid? IsyeriId = null);
 
 // Eksi stok ayarı "Uyar" ise kayıt yapılır ve uyarı döner.
 public sealed record FaturaCevabi(FaturaDetayi Fatura, string? Uyari);

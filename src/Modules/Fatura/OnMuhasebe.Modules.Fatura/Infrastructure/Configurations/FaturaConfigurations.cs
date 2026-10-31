@@ -9,6 +9,7 @@ internal sealed class FaturaBelgesiConfiguration : IEntityTypeConfiguration<Fatu
     public void Configure(EntityTypeBuilder<FaturaBelgesi> builder)
     {
         builder.ToTable("fatura");
+        builder.HasIndex(x => new { x.FirmaId, x.IsyeriId, x.Tarih });
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.SatisSekli).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(10);
@@ -67,6 +68,7 @@ internal sealed class IrsaliyeConfiguration : IEntityTypeConfiguration<Irsaliye>
     public void Configure(EntityTypeBuilder<Irsaliye> builder)
     {
         builder.ToTable("irsaliye");
+        builder.HasIndex(x => new { x.FirmaId, x.IsyeriId, x.Tarih });
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Numara).HasMaxLength(30);
@@ -122,6 +124,7 @@ internal sealed class TeklifSiparisConfiguration : IEntityTypeConfiguration<Tekl
     public void Configure(EntityTypeBuilder<TeklifSiparis> builder)
     {
         builder.ToTable("teklif_siparis");
+        builder.HasIndex(x => new { x.FirmaId, x.IsyeriId, x.Tarih });
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Numara).HasMaxLength(30);

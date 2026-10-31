@@ -164,6 +164,7 @@ internal sealed class IrsaliyeKayitServisi(
     IStokHareketYazici stokYazici,
     SiparisKarsilamaServisi siparisServisi,
     IIslemKapsami islemKapsami,
+    IsyeriSecici isyeriSecici,
     TimeProvider zaman)
 {
     public async Task<Sonuc<IrsaliyeIslemSonucu>> OlusturAsync(IrsaliyeKaydetIstegi istek, CancellationToken cancellationToken)
@@ -181,6 +182,13 @@ internal sealed class IrsaliyeKayitServisi(
         }
 
         var irsaliye = olusturma.Deger;
+        var isyeri = await isyeriSecici.BelirleAsync(istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata;
+        }
+
+        irsaliye.IsyeriAta(isyeri.Deger);
         db.Irsaliyeler.Add(irsaliye);
         var ayar = await ayarServisi.GetirAsync(cancellationToken);
         if (ayar.KayitAkisi == KayitAkisi.TaslakOnay)
@@ -215,11 +223,19 @@ internal sealed class IrsaliyeKayitServisi(
         }
 
         var eskiSiparisBaglari = SiparisKarsilamaServisi.BagIdleri(irsaliye);
+        var isyeri = await isyeriSecici.DegisiklikAsync(irsaliye.IsyeriId, istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata;
+        }
+
         var guncelleme = irsaliye.Guncelle(bilgiler.Deger);
         if (!guncelleme.BasariliMi)
         {
             return guncelleme.Hata;
         }
+
+        irsaliye.IsyeriAta(isyeri.Deger);
 
         if (irsaliye.Durum == IrsaliyeDurumu.Taslak)
         {
@@ -370,7 +386,7 @@ internal sealed class IrsaliyeKayitServisi(
     {
         if (!irsaliye.GidenMi)
         {
-            var cakisiyor = await db.Irsaliyeler.AnyAsync(
+            var cakisiyor = await db.TumIrsaliyeler.AnyAsync(
                 i => i.Id != irsaliye.Id && i.Tur == irsaliye.Tur && i.CariHesapId == irsaliye.CariHesapId
                      && i.Numara == irsaliye.Numara && i.Durum != IrsaliyeDurumu.Iptal, cancellationToken);
             return cakisiyor ? IrsaliyeHatalari.NumaraKullaniliyor : null;
@@ -383,7 +399,7 @@ internal sealed class IrsaliyeKayitServisi(
         }
 
         var onek = numara[..7];
-        var ayniSeri = db.Irsaliyeler.Where(i => i.Id != irsaliye.Id && i.Durum != IrsaliyeDurumu.Taslak
+        var ayniSeri = db.TumIrsaliyeler.Where(i => i.Id != irsaliye.Id && i.Durum != IrsaliyeDurumu.Taslak
                                                  && i.Numara != null && i.Numara.StartsWith(onek) && i.Numara.Length == numara.Length);
         var oncekiEnGec = await ayniSeri.Where(i => string.Compare(i.Numara, numara) < 0).MaxAsync(i => (DateOnly?)i.Tarih, cancellationToken);
         if (oncekiEnGec > irsaliye.Tarih)

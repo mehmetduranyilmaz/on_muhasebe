@@ -212,6 +212,10 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("iptal_tarihi");
 
+                    b.Property<Guid>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
                     b.Property<decimal>("KdvToplami")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -342,6 +346,9 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
 
                     b.HasIndex("FirmaId", "Tarih")
                         .HasDatabaseName("ix_fatura_firma_id_tarih");
+
+                    b.HasIndex("FirmaId", "IsyeriId", "Tarih")
+                        .HasDatabaseName("ix_fatura_firma_id_isyeri_id_tarih");
 
                     b.ToTable("fatura", "fatura");
                 });
@@ -627,6 +634,10 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("iptal_tarihi");
 
+                    b.Property<Guid>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
                     b.Property<decimal>("Kur")
                         .HasPrecision(19, 6)
                         .HasColumnType("numeric(19,6)")
@@ -735,6 +746,9 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
 
                     b.HasIndex("FirmaId", "Tarih")
                         .HasDatabaseName("ix_irsaliye_firma_id_tarih");
+
+                    b.HasIndex("FirmaId", "IsyeriId", "Tarih")
+                        .HasDatabaseName("ix_irsaliye_firma_id_isyeri_id_tarih");
 
                     b.ToTable("irsaliye", "fatura");
                 });
@@ -940,6 +954,10 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("ilce");
 
+                    b.Property<Guid>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
                     b.Property<Guid?>("KaynakTeklifId")
                         .HasColumnType("uuid")
                         .HasColumnName("kaynak_teklif_id");
@@ -1051,6 +1069,9 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
 
                     b.HasIndex("FirmaId", "Tarih")
                         .HasDatabaseName("ix_teklif_siparis_firma_id_tarih");
+
+                    b.HasIndex("FirmaId", "IsyeriId", "Tarih")
+                        .HasDatabaseName("ix_teklif_siparis_firma_id_isyeri_id_tarih");
 
                     b.ToTable("teklif_siparis", "fatura");
                 });

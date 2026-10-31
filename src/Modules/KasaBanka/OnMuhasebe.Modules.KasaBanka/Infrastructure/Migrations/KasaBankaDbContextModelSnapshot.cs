@@ -885,6 +885,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("guncelleyen_id");
 
+                    b.Property<Guid>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
                     b.Property<string>("Konum")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -930,6 +934,9 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
 
                     b.HasIndex("MasrafMerkeziId")
                         .HasDatabaseName("ix_demirbas_masraf_merkezi_id");
+
+                    b.HasIndex("FirmaId", "IsyeriId")
+                        .HasDatabaseName("ix_demirbas_firma_id_isyeri_id");
 
                     b.HasIndex("FirmaId", "SicilNo")
                         .IsUnique()
@@ -1677,6 +1684,10 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("character varying(34)")
                         .HasColumnName("iban");
 
+                    b.Property<Guid?>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
                     b.Property<string>("Kod")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1776,6 +1787,9 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
 
                     b.HasIndex("SubeId")
                         .HasDatabaseName("ix_kasa_hesabi_sube_id");
+
+                    b.HasIndex("FirmaId", "IsyeriId")
+                        .HasDatabaseName("ix_kasa_hesabi_firma_id_isyeri_id");
 
                     b.HasIndex("FirmaId", "Kod")
                         .IsUnique()

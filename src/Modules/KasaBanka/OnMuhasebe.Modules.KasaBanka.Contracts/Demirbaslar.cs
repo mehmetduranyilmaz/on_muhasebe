@@ -48,7 +48,8 @@ public sealed record DemirbasKaydetIstegi(
     string? Konum,
     Guid? MasrafMerkeziId,
     string? Aciklama,
-    uint Surum = 0);
+    uint Surum = 0,
+    Guid? IsyeriId = null);
 
 public sealed record ElCikarmaIstegi(ElCikarmaTuru Tur, DateOnly Tarih, decimal Bedel, string? Aciklama);
 
@@ -67,7 +68,8 @@ public sealed record DemirbasOzeti(
     DateOnly? ElCikarmaTarihi,
     decimal YilAmortismani,
     decimal Birikmis,
-    decimal NetDeger);
+    decimal NetDeger,
+    Guid? IsyeriId = null);
 
 public sealed record DemirbasDetayi(
     Guid Id,
@@ -90,7 +92,8 @@ public sealed record DemirbasDetayi(
     string? ElCikarmaAciklamasi,
     decimal? ElCikarmaKarZarari,
     IReadOnlyList<AmortismanYili> Plan,
-    uint Surum);
+    uint Surum,
+    Guid? IsyeriId = null);
 
 // Seçilen yılın amortisman listesi (yıl sonu envanter ve beyanname eki).
 public sealed record AmortismanListesi(int Yil, IReadOnlyList<DemirbasOzeti> Kalemler, decimal ToplamBedel, decimal ToplamYilAmortismani, decimal ToplamBirikmis, decimal ToplamNetDeger);

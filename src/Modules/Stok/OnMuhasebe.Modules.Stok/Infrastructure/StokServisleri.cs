@@ -15,12 +15,13 @@ internal sealed class StokKodUretici(StokDbContext db, IMevcutKullanici mevcutKu
         KodUretici.SonrakiAsync(db, "stok.stok_karti", "S", mevcutKullanici.FirmaId!.Value, cancellationToken);
 }
 
-internal sealed class DepoServisi(StokDbContext db)
+internal sealed class DepoServisi(StokDbContext db, IsyeriSecici isyeriSecici)
 {
-    // Firmanın ilk stok işleminde "Merkez Depo" kendiliğinden açılır; depo kavramını bilmeyen kullanıcı fark etmez.
+    // Firmanın ilk stok işleminde merkez işyerinde "Merkez Depo" kendiliğinden açılır; depo kavramını bilmeyen kullanıcı fark etmez.
+    // Varsayılan depo firma genelidir: işyeri kısıtlı kullanıcı onu görmese de yeniden açılmaz, başka depo varsayılan yapılmaz.
     public async Task<Depo> VarsayilanAsync(CancellationToken cancellationToken)
     {
-        var depolar = await db.Depolar.OrderBy(d => d.OlusturmaTarihi).ToListAsync(cancellationToken);
+        var depolar = await db.Depolar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi]).OrderBy(d => d.OlusturmaTarihi).ToListAsync(cancellationToken);
         if (depolar.Find(d => d.VarsayilanMi) is { } varsayilan)
         {
             return varsayilan;
@@ -33,7 +34,7 @@ internal sealed class DepoServisi(StokDbContext db)
             return ilk;
         }
 
-        var yeni = Depo.Olustur(Depo.VarsayilanAd, varsayilanMi: true);
+        var yeni = Depo.Olustur(Depo.VarsayilanAd, await isyeriSecici.MerkezAsync(cancellationToken), varsayilanMi: true);
         db.Depolar.Add(yeni);
         await db.SaveChangesAsync(cancellationToken);
         return yeni;

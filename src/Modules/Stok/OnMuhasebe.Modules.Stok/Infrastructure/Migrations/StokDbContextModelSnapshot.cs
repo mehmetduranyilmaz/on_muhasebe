@@ -66,6 +66,10 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("ilce");
 
+                    b.Property<Guid>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
                         .HasColumnName("olusturan_id");
@@ -90,6 +94,9 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                     b.HasIndex("FirmaId", "Ad")
                         .IsUnique()
                         .HasDatabaseName("ix_depo_firma_id_ad");
+
+                    b.HasIndex("FirmaId", "IsyeriId")
+                        .HasDatabaseName("ix_depo_firma_id_isyeri_id");
 
                     b.ToTable("depo", "stok");
                 });

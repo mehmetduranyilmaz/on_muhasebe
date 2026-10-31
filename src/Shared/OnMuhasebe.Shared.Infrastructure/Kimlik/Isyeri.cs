@@ -46,6 +46,10 @@ public sealed class IsyeriSecici(IIsyeriSorgusu sorgu, IYetkiDenetimi yetkiDenet
             : IsyeriHatalari.Yok;
     }
 
+    // Firma geneli varsayılan kayıtlar (ilk depo, ilk kasa) kullanıcıdan bağımsız olarak merkeze bağlanır.
+    public async Task<Guid> MerkezAsync(CancellationToken cancellationToken = default) =>
+        (await sorgu.FirmaninAsync(mevcutKullanici.FirmaId!.Value, cancellationToken)).First(i => i.MerkezMi).Id;
+
     // Var olan kaydın işyeri değişiyorsa yeni işyeri denetlenir; değişmiyorsa (pasifleşmiş olsa da) korunur.
     public async Task<Sonuc<Guid>> DegisiklikAsync(Guid mevcut, Guid? istenen, CancellationToken cancellationToken = default) =>
         istenen is null || istenen == mevcut ? mevcut : await BelirleAsync(istenen, cancellationToken);

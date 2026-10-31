@@ -12,6 +12,7 @@ internal sealed class KasaHesabiConfiguration : IEntityTypeConfiguration<KasaHes
     public void Configure(EntityTypeBuilder<KasaHesabi> builder)
     {
         builder.ToTable("kasa_hesabi");
+        builder.HasIndex(x => new { x.FirmaId, x.IsyeriId });
         builder.Property(x => x.Kod).HasMaxLength(20);
         builder.Property(x => x.Ad).HasMaxLength(150);
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(15);
@@ -147,6 +148,7 @@ internal sealed class DemirbasConfiguration : IEntityTypeConfiguration<Demirbas>
     public void Configure(EntityTypeBuilder<Demirbas> builder)
     {
         builder.ToTable("demirbas");
+        builder.HasIndex(x => new { x.FirmaId, x.IsyeriId });
         builder.Property(x => x.SicilNo).HasMaxLength(30);
         builder.Property(x => x.Ad).HasMaxLength(200);
         builder.Property(x => x.Grup).HasConversion<string>().HasMaxLength(20);

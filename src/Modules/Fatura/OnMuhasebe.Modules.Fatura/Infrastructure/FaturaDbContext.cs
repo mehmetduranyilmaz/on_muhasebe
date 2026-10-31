@@ -19,5 +19,11 @@ internal sealed class FaturaDbContext(DbContextOptions<FaturaDbContext> options,
     public DbSet<Irsaliye> Irsaliyeler => Set<Irsaliye>();
     public DbSet<IrsaliyeSatiri> IrsaliyeSatirlari => Set<IrsaliyeSatiri>();
     public DbSet<TeklifSiparis> TeklifSiparisler => Set<TeklifSiparis>();
+
+    // Firma geneli tutarlılık hesapları (sipariş karşılama, faturalanan miktar, numara sırası ve mükerrer kontrolü) işyeri
+    // kısıtlı kullanıcının işleminde de tüm işyerlerinin belgelerini görmelidir.
+    public IQueryable<FaturaBelgesi> TumFaturalar => Faturalar.IgnoreQueryFilters([IsyeriFiltresi]);
+    public IQueryable<Irsaliye> TumIrsaliyeler => Irsaliyeler.IgnoreQueryFilters([IsyeriFiltresi]);
+    public IQueryable<TeklifSiparis> TumTeklifSiparisler => TeklifSiparisler.IgnoreQueryFilters([IsyeriFiltresi]);
     public DbSet<TeklifSiparisSatiri> TeklifSiparisSatirlari => Set<TeklifSiparisSatiri>();
 }

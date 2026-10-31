@@ -23,7 +23,7 @@ internal sealed class SiparisKarsilamaServisi(FaturaDbContext db)
             return Sonuc.Basarili();
         }
 
-        var siparisler = await db.TeklifSiparisler.Include(t => t.Satirlar)
+        var siparisler = await db.TumTeklifSiparisler.Include(t => t.Satirlar)
             .Where(t => t.Satirlar.Any(s => idler.Contains(s.Id)))
             .ToListAsync(cancellationToken);
         var satirlar = siparisler
@@ -45,13 +45,13 @@ internal sealed class SiparisKarsilamaServisi(FaturaDbContext db)
 
         var irsaliyeden = await (
                 from s in db.IrsaliyeSatirlari
-                join i in db.Irsaliyeler on s.IrsaliyeId equals i.Id
+                join i in db.TumIrsaliyeler on s.IrsaliyeId equals i.Id
                 where i.Durum == IrsaliyeDurumu.Onayli && s.SiparisSatiriId != null && idler.Contains(s.SiparisSatiriId.Value)
                 select new { Id = s.SiparisSatiriId!.Value, s.Miktar })
             .ToListAsync(cancellationToken);
         var faturadan = await (
                 from s in db.FaturaSatirlari
-                join f in db.Faturalar on s.FaturaId equals f.Id
+                join f in db.TumFaturalar on s.FaturaId equals f.Id
                 where f.Durum == FaturaDurumu.Onayli && s.SiparisSatiriId != null && idler.Contains(s.SiparisSatiriId.Value)
                 select new { Id = s.SiparisSatiriId!.Value, s.Miktar })
             .ToListAsync(cancellationToken);

@@ -98,7 +98,8 @@ public sealed record HesapKaydetIstegi(
     Guid? PosAktarilacakHesapId = null,
     string? PosTerminalNo = null,
     string? PosBatchNo = null,
-    uint Surum = 0);
+    uint Surum = 0,
+    Guid? IsyeriId = null);
 
 public sealed record HesapOzeti(
     Guid Id,
@@ -111,7 +112,8 @@ public sealed record HesapOzeti(
     decimal? Limit,
     bool AktifMi,
     decimal Bakiye,
-    decimal BakiyeTl);
+    decimal BakiyeTl,
+    Guid? IsyeriId = null);
 
 public sealed record HesapDetayi(
     Guid Id,
@@ -141,7 +143,8 @@ public sealed record HesapDetayi(
     decimal Bakiye,
     decimal BakiyeTl,
     bool HareketVarMi,
-    uint Surum);
+    uint Surum,
+    Guid? IsyeriId = null);
 
 // Tutarlar hesabın para birimindedir. IslemId aynı işlemin bacaklarını (virman, tahsilat) gruplar.
 public sealed record KasaHareketSatiri(

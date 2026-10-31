@@ -88,11 +88,12 @@ public sealed record BarkodSonucu(
     Guid StokKartiId, string Kod, string Ad, string Birim, decimal Katsayi,
     string? LotNo = null, DateOnly? SonKullanmaTarihi = null, string? SeriNo = null);
 
-public sealed record Depo(Guid Id, string Ad, bool VarsayilanMi, bool AktifMi, string? Adres = null, string? Il = null, string? Ilce = null)
+public sealed record Depo(Guid Id, string Ad, bool VarsayilanMi, bool AktifMi, string? Adres = null, string? Il = null, string? Ilce = null, Guid? IsyeriId = null)
 {
     // Tek satırlık adres: "Açık adres, İlçe/İl".
     public string? TamAdres => string.Join(", ", new[] { Adres, string.Join("/", new[] { Ilce, Il }.Where(x => !string.IsNullOrEmpty(x))) }
         .Where(x => !string.IsNullOrEmpty(x))) is { Length: > 0 } a ? a : null;
 }
 
-public sealed record DepoKaydetIstegi(string Ad, string? Adres = null, string? Il = null, string? Ilce = null);
+// IsyeriId boşsa yeni depo kullanıcının varsayılan işyerine açılır; güncellemede boşsa işyeri değişmez.
+public sealed record DepoKaydetIstegi(string Ad, string? Adres = null, string? Il = null, string? Ilce = null, Guid? IsyeriId = null);

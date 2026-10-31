@@ -59,28 +59,36 @@ internal static class StokTanimIslemleri
         await depoServisi.VarsayilanAsync(cancellationToken);
         return TypedResults.Ok(await db.Depolar.AsNoTracking()
             .OrderByDescending(d => d.VarsayilanMi).ThenBy(d => d.Ad)
-            .Select(d => new DepoDto(d.Id, d.Ad, d.VarsayilanMi, d.AktifMi, d.Adres, d.Il, d.Ilce))
+            .Select(d => new DepoDto(d.Id, d.Ad, d.VarsayilanMi, d.AktifMi, d.Adres, d.Il, d.Ilce, d.IsyeriId))
             .ToListAsync(cancellationToken));
     }
 
-    private static async Task<IResult> DepoEkleAsync(DepoKaydetIstegi istek, StokDbContext db, DepoServisi depoServisi, CancellationToken cancellationToken)
+    private static async Task<IResult> DepoEkleAsync(
+        DepoKaydetIstegi istek, StokDbContext db, DepoServisi depoServisi, IsyeriSecici isyeriSecici, CancellationToken cancellationToken)
     {
         await depoServisi.VarsayilanAsync(cancellationToken);
         var ad = istek.Ad.Trim();
-        if (await db.Depolar.AnyAsync(d => d.Ad == ad, cancellationToken))
+        if (await db.Depolar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi]).AnyAsync(d => d.Ad == ad, cancellationToken))
         {
             return StokHatalari.AdKullaniliyor.Problem();
         }
 
-        var depo = Domain.Depo.Olustur(ad);
+        var isyeri = await isyeriSecici.BelirleAsync(istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata.Problem();
+        }
+
+        var depo = Domain.Depo.Olustur(ad, isyeri.Deger);
         depo.AdresDegistir(istek.Adres, istek.Il, istek.Ilce);
         db.Depolar.Add(depo);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Created($"/api/stok/depolar/{depo.Id}",
-            new DepoDto(depo.Id, depo.Ad, depo.VarsayilanMi, depo.AktifMi, depo.Adres, depo.Il, depo.Ilce));
+            new DepoDto(depo.Id, depo.Ad, depo.VarsayilanMi, depo.AktifMi, depo.Adres, depo.Il, depo.Ilce, depo.IsyeriId));
     }
 
-    private static async Task<IResult> DepoGuncelleAsync(Guid id, DepoKaydetIstegi istek, StokDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> DepoGuncelleAsync(
+        Guid id, DepoKaydetIstegi istek, StokDbContext db, IsyeriSecici isyeriSecici, CancellationToken cancellationToken)
     {
         var depo = await db.Depolar.SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
         if (depo is null)
@@ -89,12 +97,19 @@ internal static class StokTanimIslemleri
         }
 
         var ad = istek.Ad.Trim();
-        if (await db.Depolar.AnyAsync(d => d.Ad == ad && d.Id != id, cancellationToken))
+        if (await db.Depolar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi]).AnyAsync(d => d.Ad == ad && d.Id != id, cancellationToken))
         {
             return StokHatalari.AdKullaniliyor.Problem();
         }
 
+        var isyeri = await isyeriSecici.DegisiklikAsync(depo.IsyeriId, istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata.Problem();
+        }
+
         depo.AdDegistir(ad);
+        depo.IsyeriDegistir(isyeri.Deger);
         depo.AdresDegistir(istek.Adres, istek.Il, istek.Ilce);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
@@ -102,7 +117,8 @@ internal static class StokTanimIslemleri
 
     private static async Task<IResult> VarsayilanYapAsync(Guid id, StokDbContext db, CancellationToken cancellationToken)
     {
-        var depolar = await db.Depolar.ToListAsync(cancellationToken);
+        // Varsayılan depo firma genelinde tektir: kısıtlı kullanıcının görmediği depolar da güncellenir.
+        var depolar = await db.Depolar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi]).ToListAsync(cancellationToken);
         if (depolar.Find(d => d.Id == id) is null)
         {
             return StokHatalari.DepoBulunamadi.Problem();

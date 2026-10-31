@@ -76,5 +76,43 @@ kontrol 200 "Kisitli kullanici yalniz girebildigi isyerini gorur" '"kod":"MRK"'
 istek POST $Y/isyerleri "$K" '{"kod":"YET","ad":"Yetkisiz"}'
 kontrol 403 "Firma ayari yetkisi olmayan isyeri acamaz" yetki_yok
 
+
+echo "--- Belge, depo ve kasa isyerine bagli"
+fatura() { echo '{"tur":"Satis","cariHesapId":"'"$1"'","tarih":"2026-10-12","genelIskontoTuru":"Yuzde","genelIskonto":0,"aciklama":"'"$2"'"'"${3:+,\"isyeriId\":\"$3\"}"',"satirlar":[{"ad":"Hizmet","birim":"ADET","miktar":1,"birimFiyat":100,"kdvOrani":20,"kdvDahilMi":false,"iskonto1":0,"iskonto2":0,"iskonto3":0}]}'; }
+istek POST /api/cari/hesaplar "$T" '{"unvan":"Isyeri Musteri","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; CARI=$(alan id)
+istek POST /api/fatura/faturalar "$T" "$(fatura "$CARI" "Yonetici varsayilan")"
+kontrol 201 "Yoneticinin faturasi varsayilan isyerine (merkez=Ankara) acildi" '"isyeriId":"'"$ANK"'"'
+istek POST /api/fatura/faturalar "$T" "$(fatura "$CARI" "Ankara faturasi" "$ANK")"
+kontrol 201 "Ankara isyerine fatura" '"isyeriId":"'"$ANK"'"'; F_ANK=$(echo "$GOVDE" | grep -o '"fatura":{"id":"[^"]*"' | cut -d'"' -f6)
+istek POST /api/fatura/faturalar "$K" "$(fatura "$CARI" "Kemal varsayilan")"
+kontrol 201 "Kemal'in faturasi kendi varsayilan isyerine acildi" '"isyeriId":"'"$MERKEZ"'"'
+istek POST /api/fatura/faturalar "$K" "$(fatura "$CARI" "Kemal Ankara" "$ANK")"
+kontrol 403 "Kemal izinli olmadigi isyerinde fatura kesemez" isyeri_yetkisiz
+istek GET /api/fatura/faturalar "$K"
+if echo "$GOVDE" | grep -q "$F_ANK"; then KOD=999; fi
+kontrol 200 "Kemal Ankara faturalarini listede gormez" '"isyeriId":"'"$MERKEZ"'"'
+istek GET "/api/fatura/faturalar/$F_ANK" "$K"
+kontrol 404 "Kemal Ankara faturasini acamaz"
+istek GET "/api/fatura/faturalar/$F_ANK" "$T"
+kontrol 200 "Yonetici Ankara faturasini gorur"
+
+istek POST /api/stok/depolar "$T" '{"ad":"Ankara Depo","isyeriId":"'"$ANK"'"}'
+kontrol 201 "Ankara deposu acildi" '"isyeriId":"'"$ANK"'"'
+istek GET /api/stok/depolar "$K"
+if echo "$GOVDE" | grep -q "Ankara Depo"; then KOD=999; fi
+kontrol 200 "Kemal Ankara deposunu gormez"
+istek POST /api/stok/depolar "$K" '{"ad":"Ankara Depo"}'
+kontrol 409 "Depo adi firma genelinde benzersiz (gormedigi depo da sayilir)" ad_kullaniliyor
+
+istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Ankara Kasa","tur":"Kasa","paraBirimi":"TRY","isyeriId":"'"$ANK"'"}'
+kontrol 201 "Ankara kasasi" '"isyeriId":"'"$ANK"'"'
+istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Ortak Banka","tur":"Banka","paraBirimi":"TRY"}'
+kontrol 201 "Banka hesabi firma geneli (isyeri bos)" '"isyeriId":null'
+istek POST /api/kasabanka/hesaplar "$K" '{"ad":"Kemal Kasa","tur":"Kasa","paraBirimi":"TRY"}'
+kontrol 201 "Kemal'in kasasi kendi isyerine" '"isyeriId":"'"$MERKEZ"'"'
+istek GET /api/kasabanka/hesaplar "$K"
+if echo "$GOVDE" | grep -q "Ankara Kasa"; then KOD=999; fi
+kontrol 200 "Kemal Ankara kasasini gormez, ortak bankayi gorur" 'Ortak Banka'
+
 echo; echo "SONUC: $GECEN gecti, $KALAN kaldi"
 [ "$KALAN" -eq 0 ]

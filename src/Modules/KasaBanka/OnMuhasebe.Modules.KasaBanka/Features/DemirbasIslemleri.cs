@@ -85,10 +85,11 @@ internal static class DemirbasIslemleri
             ? TypedResults.Ok(Detay(d))
             : DemirbasHatalari.Bulunamadi.Problem();
 
-    private static async Task<IResult> OlusturAsync(DemirbasKaydetIstegi istek, KasaBankaDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> OlusturAsync(
+        DemirbasKaydetIstegi istek, KasaBankaDbContext db, IsyeriSecici isyeriSecici, CancellationToken cancellationToken)
     {
         var sicil = string.IsNullOrWhiteSpace(istek.SicilNo) ? await SonrakiSicilAsync(db, istek.EdinmeTarihi.Year, cancellationToken) : istek.SicilNo.Trim();
-        if (await db.Demirbaslar.AnyAsync(d => d.SicilNo == sicil, cancellationToken))
+        if (await db.Demirbaslar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi]).AnyAsync(d => d.SicilNo == sicil, cancellationToken))
         {
             return DemirbasHatalari.SicilKullaniliyor.Problem();
         }
@@ -98,7 +99,13 @@ internal static class DemirbasIslemleri
             return hata;
         }
 
-        var sonuc = Demirbas.Olustur(sicil, istek);
+        var isyeri = await isyeriSecici.BelirleAsync(istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata.Problem();
+        }
+
+        var sonuc = Demirbas.Olustur(sicil, istek, isyeri.Deger);
         if (!sonuc.BasariliMi)
         {
             return sonuc.Hata.Problem();
@@ -109,7 +116,8 @@ internal static class DemirbasIslemleri
         return TypedResults.Created($"/api/kasabanka/demirbaslar/{sonuc.Deger.Id}", Detay(sonuc.Deger));
     }
 
-    private static async Task<IResult> GuncelleAsync(Guid id, DemirbasKaydetIstegi istek, KasaBankaDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GuncelleAsync(
+        Guid id, DemirbasKaydetIstegi istek, KasaBankaDbContext db, IsyeriSecici isyeriSecici, CancellationToken cancellationToken)
     {
         var demirbas = await db.Demirbaslar.SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
         if (demirbas is null)
@@ -119,7 +127,7 @@ internal static class DemirbasIslemleri
 
         db.Entry(demirbas).Property(d => d.Surum).OriginalValue = istek.Surum;
         var sicil = string.IsNullOrWhiteSpace(istek.SicilNo) ? demirbas.SicilNo : istek.SicilNo.Trim();
-        if (await db.Demirbaslar.AnyAsync(d => d.Id != id && d.SicilNo == sicil, cancellationToken))
+        if (await db.Demirbaslar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi]).AnyAsync(d => d.Id != id && d.SicilNo == sicil, cancellationToken))
         {
             return DemirbasHatalari.SicilKullaniliyor.Problem();
         }
@@ -129,11 +137,19 @@ internal static class DemirbasIslemleri
             return hata;
         }
 
+        var isyeri = await isyeriSecici.DegisiklikAsync(demirbas.IsyeriId, istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata.Problem();
+        }
+
         var sonuc = demirbas.Guncelle(sicil, istek);
         if (!sonuc.BasariliMi)
         {
             return sonuc.Hata.Problem();
         }
+
+        demirbas.IsyeriDegistir(isyeri.Deger);
 
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Ok(Detay(demirbas));
@@ -182,7 +198,7 @@ internal static class DemirbasIslemleri
     private static async Task<string> SonrakiSicilAsync(KasaBankaDbContext db, int yil, CancellationToken cancellationToken)
     {
         var onek = $"DMB{yil.ToString(CultureInfo.InvariantCulture)}";
-        var sonuncu = await db.Demirbaslar.Where(d => d.SicilNo.StartsWith(onek) && d.SicilNo.Length == onek.Length + 4)
+        var sonuncu = await db.Demirbaslar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi]).Where(d => d.SicilNo.StartsWith(onek) && d.SicilNo.Length == onek.Length + 4)
             .MaxAsync(d => (string?)d.SicilNo, cancellationToken);
         var sira = sonuncu is not null && int.TryParse(sonuncu[onek.Length..], NumberStyles.None, CultureInfo.InvariantCulture, out var s) ? s + 1 : 1;
         return $"{onek}{sira.ToString("D4", CultureInfo.InvariantCulture)}";
@@ -192,7 +208,7 @@ internal static class DemirbasIslemleri
     {
         var (yilTutari, birikmis) = AmortismanHesaplayici.Yil(d.Plan(), yil);
         return new DemirbasOzeti(d.Id, d.SicilNo, d.Ad, d.Grup, d.EdinmeTarihi, d.EdinmeBedeli, d.FaydaliOmur, d.Yontem, d.Zimmetli, d.ElCikarmaTarihi,
-            yilTutari, birikmis, d.EdinmeBedeli - birikmis);
+            yilTutari, birikmis, d.EdinmeBedeli - birikmis, d.IsyeriId);
     }
 
     private static DemirbasDetayi Detay(Demirbas d)
@@ -203,6 +219,6 @@ internal static class DemirbasIslemleri
             : null;
         return new DemirbasDetayi(d.Id, d.SicilNo, d.Ad, d.Grup, d.BinekOtomobilMi, d.EdinmeTarihi, d.EdinmeBedeli, d.FaydaliOmur, d.Yontem,
             d.BelgeNo, d.Zimmetli, d.Konum, d.MasrafMerkeziId, d.Aciklama, d.ElCikarmaTuru, d.ElCikarmaTarihi, d.ElCikarmaBedeli,
-            d.ElCikarmaAciklamasi, karZarar, plan, d.Surum);
+            d.ElCikarmaAciklamasi, karZarar, plan, d.Surum, d.IsyeriId);
     }
 }

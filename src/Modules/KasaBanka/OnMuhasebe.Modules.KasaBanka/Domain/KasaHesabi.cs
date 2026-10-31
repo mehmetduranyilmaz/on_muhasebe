@@ -7,7 +7,7 @@ using OnMuhasebe.Shared.Domain.Results;
 
 namespace OnMuhasebe.Modules.KasaBanka.Domain;
 
-internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
+internal sealed class KasaHesabi : FirmaEntity, ISilinebilir, IIsyeriVarligi
 {
     private KasaHesabi() { }
 
@@ -42,6 +42,9 @@ internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
     public string? PosTerminalNo { get; private set; }
     public string? PosBatchNo { get; private set; }
 
+    // Kasa ve POS bir işyerinindir; banka ve kredi kartı boşsa firma geneli (her işyeri görür).
+    public Guid? IsyeriId { get; private set; }
+
     public string? Aciklama { get; private set; }
     public bool AktifMi { get; private set; } = true;
     public bool SilindiMi { get; private set; }
@@ -55,9 +58,9 @@ internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
         _ => "PS"
     };
 
-    public static KasaHesabi Olustur(string kod, HesapBilgileri b)
+    public static KasaHesabi Olustur(string kod, HesapBilgileri b, Guid? isyeriId)
     {
-        var hesap = new KasaHesabi { Kod = kod, Tur = b.Tur, ParaBirimi = b.ParaBirimi };
+        var hesap = new KasaHesabi { Kod = kod, Tur = b.Tur, ParaBirimi = b.ParaBirimi, IsyeriId = isyeriId };
         hesap.Ayarla(b);
         return hesap;
     }
@@ -76,6 +79,8 @@ internal sealed class KasaHesabi : FirmaEntity, ISilinebilir
         Ayarla(b);
         return Sonuc.Basarili();
     }
+
+    public void IsyeriAta(Guid? isyeriId) => IsyeriId = isyeriId;
 
     public void Pasiflestir() => AktifMi = false;
 

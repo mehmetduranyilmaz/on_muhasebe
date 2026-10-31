@@ -183,7 +183,7 @@ internal sealed class StokGrubu : FirmaEntity
     public void AdDegistir(string ad) => Ad = ad.Trim();
 }
 
-internal sealed class Depo : FirmaEntity
+internal sealed class Depo : FirmaEntity, IIsyeriVarligi
 {
     public const string VarsayilanAd = "Merkez Depo";
 
@@ -193,12 +193,17 @@ internal sealed class Depo : FirmaEntity
     public bool VarsayilanMi { get; private set; }
     public bool AktifMi { get; private set; } = true;
 
+    // Deponun bulunduğu işyeri; işyeri kısıtlı kullanıcı yalnız kendi işyerlerinin depolarını görür.
+    public Guid IsyeriId { get; private set; }
+
     // Depolar arası sevk irsaliyesinde teslim adresi ve yazdırmada gönderen/teslim yeri olarak kullanılır.
     public string? Adres { get; private set; }
     public string? Il { get; private set; }
     public string? Ilce { get; private set; }
 
-    public static Depo Olustur(string ad, bool varsayilanMi = false) => new() { Ad = ad.Trim(), VarsayilanMi = varsayilanMi };
+    public static Depo Olustur(string ad, Guid isyeriId, bool varsayilanMi = false) => new() { Ad = ad.Trim(), IsyeriId = isyeriId, VarsayilanMi = varsayilanMi };
+
+    public void IsyeriDegistir(Guid isyeriId) => IsyeriId = isyeriId;
 
     public void AdDegistir(string ad) => Ad = ad.Trim();
 

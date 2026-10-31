@@ -7,7 +7,7 @@ namespace OnMuhasebe.Modules.Fatura.Domain;
 
 // Sevk belgesi: onaylanınca stok hareketi oluşur, cari etkilenmez. Faturalanan miktar satır bazında izlenir;
 // bir irsaliye birden çok faturaya (kısmi), bir fatura birden çok irsaliyeye (toplu) bağlanabilir.
-internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
+internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi, IIsyeriVarligi
 {
     private readonly List<IrsaliyeSatiri> _satirlar = [];
 
@@ -42,8 +42,13 @@ internal sealed class Irsaliye : FirmaEntity, ISilinebilir, IDonemeTabi
 
     public DateTime? OnayTarihi { get; private set; }
     public DateTime? IptalTarihi { get; private set; }
+    // Belgenin düzenlendiği işyeri (seri, raporlar ve işyeri kısıtı buna göre).
+    public Guid IsyeriId { get; private set; }
+
     public bool SilindiMi { get; private set; }
     public DateTime? SilinmeTarihi { get; private set; }
+
+    public void IsyeriAta(Guid isyeriId) => IsyeriId = isyeriId;
 
     public IReadOnlyCollection<IrsaliyeSatiri> Satirlar => _satirlar;
 

@@ -112,7 +112,7 @@ internal static class TeklifSiparisIslemleri
         var sonuc = await sorgu.OrderByDescending(b => b.Tarih).ThenByDescending(b => b.OlusturmaTarihi)
             .Select(b => new
             {
-                b.Id, b.Tur, b.Durum, b.Numara, b.Tarih, b.GecerlilikTarihi, b.TerminTarihi, b.CariHesapId, b.CariUnvan, b.ParaBirimi, b.GenelToplam,
+                b.Id, b.Tur, b.Durum, b.Numara, b.Tarih, b.GecerlilikTarihi, b.TerminTarihi, b.CariHesapId, b.CariUnvan, b.ParaBirimi, b.GenelToplam, b.IsyeriId,
                 Hic = b.Satirlar.All(s => s.KarsilananMiktar == 0), Tam = b.Satirlar.All(s => s.KarsilananMiktar >= s.Miktar)
             })
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
@@ -121,7 +121,7 @@ internal static class TeklifSiparisIslemleri
                 b.Id, b.Tur, b.Durum,
                 TeklifSiparisTurleri.TeklifMi(b.Tur) ? null : b.Hic ? KarsilamaDurumu.Bekliyor : b.Tam ? KarsilamaDurumu.Tamamlandi : KarsilamaDurumu.Kismen,
                 b.Numara, b.Tarih, b.GecerlilikTarihi, b.TerminTarihi, b.CariHesapId, b.CariUnvan, b.ParaBirimi, b.GenelToplam,
-                TeklifSiparisTurleri.SuresiDolduMu(b.Tur, b.Durum, b.GecerlilikTarihi, bugun))).ToList(),
+                TeklifSiparisTurleri.SuresiDolduMu(b.Tur, b.Durum, b.GecerlilikTarihi, bugun), b.IsyeriId)).ToList(),
             sonuc.Sayfa, sonuc.Boyut, sonuc.ToplamKayit));
     }
 
@@ -266,6 +266,6 @@ internal static class TeklifSiparisIslemleri
                 s.KarsilananMiktar, s.KalanMiktar)).ToList(),
             b.KaynakTeklifId, siparisler, irsaliyeler, faturalar,
             TeklifSiparisTurleri.SuresiDolduMu(b.Tur, b.Durum, b.GecerlilikTarihi, TurkiyeSaati.Bugun(zaman)),
-            b.OnayTarihi, b.Surum);
+            b.OnayTarihi, b.Surum, b.IsyeriId);
     }
 }

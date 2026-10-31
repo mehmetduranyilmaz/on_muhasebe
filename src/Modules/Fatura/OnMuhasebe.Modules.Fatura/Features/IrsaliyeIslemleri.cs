@@ -130,7 +130,7 @@ internal static class IrsaliyeIslemleri
             .OrderByDescending(i => i.Tarih).ThenByDescending(i => i.OlusturmaTarihi)
             .Select(i => new
             {
-                i.Id, i.Tur, i.Durum, i.Numara, i.Tarih, i.SevkTarihi, i.CariHesapId, i.CariUnvan,
+                i.Id, i.Tur, i.Durum, i.Numara, i.Tarih, i.SevkTarihi, i.CariHesapId, i.CariUnvan, i.IsyeriId,
                 SatirSayisi = i.Satirlar.Count,
                 HicFaturalanmadi = i.Satirlar.All(s => s.FaturalananMiktar == 0),
                 TamFaturalandi = i.Satirlar.All(s => s.FaturalananMiktar >= s.Miktar)
@@ -143,7 +143,7 @@ internal static class IrsaliyeIslemleri
                 ? i.HicFaturalanmadi ? FaturalamaDurumu.Faturalanmadi : i.TamFaturalandi ? FaturalamaDurumu.Faturalandi : FaturalamaDurumu.KismenFaturalandi
                 : null;
             return new IrsaliyeOzeti(i.Id, i.Tur, i.Durum, fd, i.Numara, i.Tarih, i.SevkTarihi, i.CariHesapId, i.CariUnvan, i.SatirSayisi,
-                FaturaSonGunu(i.Durum, fd, i.SevkTarihi));
+                FaturaSonGunu(i.Durum, fd, i.SevkTarihi), i.IsyeriId);
         }).ToList();
 
         return TypedResults.Ok(new SayfaliSonuc<IrsaliyeOzeti>(kayitlar, sonuc.Sayfa, sonuc.Boyut, sonuc.ToplamKayit));
@@ -250,5 +250,5 @@ internal static class IrsaliyeIslemleri
             s.FaturalananMiktar, s.KalanMiktar, s.SiparisSatiriId, s.LotNo, s.SonKullanmaTarihi, s.SeriNolari)).ToList(),
         faturalar,
         FaturaSonGunu(i.Durum, i.FaturalamaDurumu, i.SevkTarihi),
-        i.OnayTarihi, i.IptalTarihi, i.Surum);
+        i.OnayTarihi, i.IptalTarihi, i.Surum, i.IsyeriId);
 }

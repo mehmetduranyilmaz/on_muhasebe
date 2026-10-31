@@ -8,7 +8,7 @@ namespace OnMuhasebe.Modules.Fatura.Domain;
 
 // Sınıf adı "Fatura" değil: modül namespace'i (OnMuhasebe.Modules.Fatura) ile çakışmasın.
 // Tutarlar faturanın para biriminde (= carinin para birimi), TL karşılıkları kurla hesaplanır.
-internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi
+internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi, IIsyeriVarligi
 {
     public const int KurOndalik = 6;
     public const string NihaiTuketiciUnvani = "Nihai Tüketici";
@@ -65,8 +65,13 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi
     public Guid Ettn { get; private set; }
     public DateTime? OnayTarihi { get; private set; }
     public DateTime? IptalTarihi { get; private set; }
+    // Belgenin düzenlendiği işyeri (seri, raporlar ve işyeri kısıtı buna göre).
+    public Guid IsyeriId { get; private set; }
+
     public bool SilindiMi { get; private set; }
     public DateTime? SilinmeTarihi { get; private set; }
+
+    public void IsyeriAta(Guid isyeriId) => IsyeriId = isyeriId;
 
     public IReadOnlyCollection<FaturaSatiri> Satirlar => _satirlar;
 

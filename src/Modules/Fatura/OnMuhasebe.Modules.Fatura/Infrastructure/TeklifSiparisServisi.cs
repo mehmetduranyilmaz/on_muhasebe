@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Doviz.Contracts;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -15,6 +16,7 @@ internal sealed class TeklifSiparisServisi(
     IKurSorgusu kurSorgusu,
     FaturaNumaraUretici numaraUretici,
     IIslemKapsami islemKapsami,
+    IsyeriSecici isyeriSecici,
     TimeProvider zaman)
 {
     // İç belgelerdir (GİB numaralama kuralına tabi değil); seri + yıl + sıra biçimi faturayla aynıdır.
@@ -39,6 +41,14 @@ internal sealed class TeklifSiparisServisi(
             return olusturma.Hata;
         }
 
+        var isyeri = await isyeriSecici.BelirleAsync(istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata;
+        }
+
+        olusturma.Deger.IsyeriAta(isyeri.Deger);
+
         db.TeklifSiparisler.Add(olusturma.Deger);
         await db.SaveChangesAsync(cancellationToken);
         return olusturma.Deger;
@@ -58,11 +68,19 @@ internal sealed class TeklifSiparisServisi(
             return bilgiler.Hata;
         }
 
+        var isyeri = await isyeriSecici.DegisiklikAsync(belge.IsyeriId, istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata;
+        }
+
         var sonuc = belge.Guncelle(bilgiler.Deger);
         if (!sonuc.BasariliMi)
         {
             return sonuc.Hata;
         }
+
+        belge.IsyeriAta(isyeri.Deger);
 
         await db.SaveChangesAsync(cancellationToken);
         return belge;
@@ -120,6 +138,9 @@ internal sealed class TeklifSiparisServisi(
         {
             return siparis.Hata;
         }
+
+        // Teklifin işyerinde sipariş açılır.
+        siparis.Deger.IsyeriAta(teklif.IsyeriId);
 
         db.TeklifSiparisler.Add(siparis.Deger);
         await db.SaveChangesAsync(cancellationToken);

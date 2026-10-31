@@ -95,7 +95,8 @@ public sealed record IrsaliyeKaydetIstegi(
     string? TasiyiciVkn,
     string? Aciklama,
     IReadOnlyList<IrsaliyeSatiriIstegi> Satirlar,
-    uint Surum = 0);
+    uint Surum = 0,
+    Guid? IsyeriId = null);
 
 public sealed record IrsaliyeOzeti(
     Guid Id,
@@ -108,7 +109,8 @@ public sealed record IrsaliyeOzeti(
     Guid? CariHesapId,
     string CariUnvan,
     int SatirSayisi,
-    DateOnly? FaturaSonGunu);
+    DateOnly? FaturaSonGunu,
+    Guid? IsyeriId = null);
 
 public sealed record IrsaliyeSatiriDetayi(
     Guid Id,
@@ -160,7 +162,8 @@ public sealed record IrsaliyeDetayi(
     DateOnly? FaturaSonGunu,
     DateTime? OnayTarihi,
     DateTime? IptalTarihi,
-    uint Surum);
+    uint Surum,
+    Guid? IsyeriId = null);
 
 // İrsaliye ile fatura arasındaki bağ (iki yönde de gösterilir). Tarih, irsaliyede fiili sevk tarihidir.
 public sealed record BagliBelge(Guid Id, string? Numara, DateOnly Tarih);

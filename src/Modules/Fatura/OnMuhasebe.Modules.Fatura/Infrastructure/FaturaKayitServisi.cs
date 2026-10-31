@@ -5,6 +5,7 @@ using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 
@@ -25,6 +26,7 @@ internal sealed class FaturaKayitServisi(
     IrsaliyeKayitServisi irsaliyeServisi,
     SiparisKarsilamaServisi siparisServisi,
     IIslemKapsami islemKapsami,
+    IsyeriSecici isyeriSecici,
     TimeProvider zaman)
 {
     public async Task<Sonuc<FaturaIslemSonucu>> OlusturAsync(FaturaKaydetIstegi istek, CancellationToken cancellationToken)
@@ -42,6 +44,13 @@ internal sealed class FaturaKayitServisi(
         }
 
         var fatura = olusturma.Deger;
+        var isyeri = await isyeriSecici.BelirleAsync(istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata;
+        }
+
+        fatura.IsyeriAta(isyeri.Deger);
         db.Faturalar.Add(fatura);
         var ayar = await ayarServisi.GetirAsync(cancellationToken);
         if (ayar.KayitAkisi == KayitAkisi.TaslakOnay)
@@ -79,11 +88,19 @@ internal sealed class FaturaKayitServisi(
         // Düzenleme satırları yeniden kurar; eski irsaliye bağları da yeniden hesaplanabilsin diye önce alınır.
         var eskiBaglar = IrsaliyeBaglari(fatura);
         var eskiSiparisBaglari = SiparisKarsilamaServisi.BagIdleri(fatura);
+        var isyeri = await isyeriSecici.DegisiklikAsync(fatura.IsyeriId, istek.IsyeriId, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata;
+        }
+
         var guncelleme = fatura.Guncelle(bilgiler.Deger);
         if (!guncelleme.BasariliMi)
         {
             return guncelleme.Hata;
         }
+
+        fatura.IsyeriAta(isyeri.Deger);
 
         if (fatura.Durum == FaturaDurumu.Taslak)
         {
@@ -229,7 +246,7 @@ internal sealed class FaturaKayitServisi(
             return (string?)null;
         }
 
-        var irsaliyeler = await db.Irsaliyeler.Include(i => i.Satirlar)
+        var irsaliyeler = await db.TumIrsaliyeler.Include(i => i.Satirlar)
             .Where(i => i.Satirlar.Any(s => idler.Contains(s.Id)))
             .ToListAsync(cancellationToken);
         var satirlar = irsaliyeler
@@ -252,7 +269,7 @@ internal sealed class FaturaKayitServisi(
 
         var toplamlar = await db.FaturaSatirlari
             .Where(s => s.IrsaliyeSatiriId != null && idler.Contains(s.IrsaliyeSatiriId.Value)
-                        && db.Faturalar.Any(fa => fa.Id == s.FaturaId && fa.Durum == FaturaDurumu.Onayli))
+                        && db.TumFaturalar.Any(fa => fa.Id == s.FaturaId && fa.Durum == FaturaDurumu.Onayli))
             .GroupBy(s => s.IrsaliyeSatiriId!.Value)
             .Select(g => new { Id = g.Key, Miktar = g.Sum(s => s.Miktar) })
             .ToDictionaryAsync(g => g.Id, g => g.Miktar, cancellationToken);
@@ -298,7 +315,7 @@ internal sealed class FaturaKayitServisi(
         var satirIdleri = alislar.SelectMany(i => i.Satirlar).Select(s => s.Id).ToList();
         var parcalar = await (
                 from s in db.FaturaSatirlari
-                join fa in db.Faturalar on s.FaturaId equals fa.Id
+                join fa in db.TumFaturalar on s.FaturaId equals fa.Id
                 where fa.Durum == FaturaDurumu.Onayli && s.IrsaliyeSatiriId != null && satirIdleri.Contains(s.IrsaliyeSatiriId.Value)
                 select new { Id = s.IrsaliyeSatiriId!.Value, s.Miktar, BirimMaliyet = s.Matrah * fa.Kur / s.Miktar })
             .ToListAsync(cancellationToken);
@@ -332,7 +349,7 @@ internal sealed class FaturaKayitServisi(
     {
         if (!fatura.GidenMi)
         {
-            var cakisiyor = fatura.CariHesapId is not null && await db.Faturalar.AnyAsync(
+            var cakisiyor = fatura.CariHesapId is not null && await db.TumFaturalar.AnyAsync(
                 f => f.Id != fatura.Id && f.Tur == fatura.Tur && f.CariHesapId == fatura.CariHesapId
                      && f.Numara == fatura.Numara && f.Durum != FaturaDurumu.Iptal, cancellationToken);
             return cakisiyor ? FaturaHatalari.NumaraKullaniliyor : null;
@@ -345,7 +362,7 @@ internal sealed class FaturaKayitServisi(
         }
 
         var onek = numara[..7];
-        var ayniSeri = db.Faturalar.Where(f => f.Id != fatura.Id && f.Durum != FaturaDurumu.Taslak
+        var ayniSeri = db.TumFaturalar.Where(f => f.Id != fatura.Id && f.Durum != FaturaDurumu.Taslak
                                                && f.Numara != null && f.Numara.StartsWith(onek) && f.Numara.Length == numara.Length);
         var oncekiEnGec = await ayniSeri.Where(f => string.Compare(f.Numara, numara) < 0).MaxAsync(f => (DateOnly?)f.Tarih, cancellationToken);
         if (oncekiEnGec > fatura.Tarih)

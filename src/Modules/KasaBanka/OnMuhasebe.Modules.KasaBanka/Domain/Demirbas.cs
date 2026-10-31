@@ -1,4 +1,5 @@
 using OnMuhasebe.Modules.KasaBanka.Contracts;
+using OnMuhasebe.Shared.Domain.Abstractions;
 using OnMuhasebe.Shared.Domain.Entities;
 using OnMuhasebe.Shared.Domain.Results;
 
@@ -15,7 +16,7 @@ internal static class DemirbasHatalari
 }
 
 // Sabit kıymet (amortismana tabi iktisadi kıymet). Amortisman planı her sorguda edinme bilgilerinden hesaplanır.
-internal sealed class Demirbas : FirmaEntity
+internal sealed class Demirbas : FirmaEntity, IIsyeriVarligi
 {
     private Demirbas() { }
 
@@ -31,6 +32,9 @@ internal sealed class Demirbas : FirmaEntity
     public string? Zimmetli { get; private set; }
     public string? Konum { get; private set; }
     public Guid? MasrafMerkeziId { get; private set; }
+
+    // Bulunduğu işyeri (envanter sayımı ve şube bazlı amortisman listesi için).
+    public Guid IsyeriId { get; private set; }
     public string? Aciklama { get; private set; }
 
     public ElCikarmaTuru? ElCikarmaTuru { get; private set; }
@@ -41,12 +45,14 @@ internal sealed class Demirbas : FirmaEntity
     public IReadOnlyList<AmortismanYili> Plan() =>
         AmortismanHesaplayici.Plan(EdinmeBedeli, EdinmeTarihi, FaydaliOmur, Yontem, BinekOtomobilMi, ElCikarmaTarihi);
 
-    public static Sonuc<Demirbas> Olustur(string sicilNo, DemirbasKaydetIstegi istek)
+    public static Sonuc<Demirbas> Olustur(string sicilNo, DemirbasKaydetIstegi istek, Guid isyeriId)
     {
-        var demirbas = new Demirbas { SicilNo = sicilNo };
+        var demirbas = new Demirbas { SicilNo = sicilNo, IsyeriId = isyeriId };
         var sonuc = demirbas.Ayarla(sicilNo, istek);
         return sonuc.BasariliMi ? demirbas : sonuc.Hata;
     }
+
+    public void IsyeriDegistir(Guid isyeriId) => IsyeriId = isyeriId;
 
     public Sonuc Guncelle(string sicilNo, DemirbasKaydetIstegi istek) =>
         ElCikarmaTarihi is not null ? DemirbasHatalari.ElCikarilmis : Ayarla(sicilNo, istek);

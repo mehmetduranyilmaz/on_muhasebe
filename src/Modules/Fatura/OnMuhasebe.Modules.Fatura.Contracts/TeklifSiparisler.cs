@@ -70,7 +70,8 @@ public sealed record TeklifSiparisKaydetIstegi(
     string? TeslimKosulu,
     string? Aciklama,
     IReadOnlyList<FaturaSatiriIstegi> Satirlar,
-    uint Surum = 0);
+    uint Surum = 0,
+    Guid? IsyeriId = null);
 
 public sealed record TeklifSiparisOzeti(
     Guid Id,
@@ -85,7 +86,8 @@ public sealed record TeklifSiparisOzeti(
     string CariUnvan,
     string ParaBirimi,
     decimal GenelToplam,
-    bool SuresiDolduMu);
+    bool SuresiDolduMu,
+    Guid? IsyeriId = null);
 
 public sealed record TeklifSiparisSatiriDetayi(
     Guid Id,
@@ -147,7 +149,8 @@ public sealed record TeklifSiparisDetayi(
     IReadOnlyList<BagliBelge> Faturalar,
     bool SuresiDolduMu,
     DateTime? OnayTarihi,
-    uint Surum);
+    uint Surum,
+    Guid? IsyeriId = null);
 
 // Teklif yanıtı: kabul ya da red (red nedeni açıklamaya eklenir).
 public sealed record TeklifYanitiIstegi(bool KabulMu, string? Neden);

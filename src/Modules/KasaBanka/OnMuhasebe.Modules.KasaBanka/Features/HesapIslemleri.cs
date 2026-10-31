@@ -92,13 +92,14 @@ internal static class HesapIslemleri
             .Select(h => new HesapOzeti(
                 h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.BankaAdi, h.Iban, h.Limit, h.AktifMi,
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.Giris - x.Cikis),
-                db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.GirisTl - x.CikisTl)));
+                db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.GirisTl - x.CikisTl),
+                h.IsyeriId));
 
     private static async Task<IResult> DetayAsync(Guid id, KasaBankaDbContext db, CancellationToken cancellationToken) =>
         await DetayGetirAsync(db, id, cancellationToken) is { } detay ? TypedResults.Ok(detay) : KasaBankaHatalari.HesapBulunamadi.Problem();
 
     private static async Task<IResult> EkleAsync(
-        HesapKaydetIstegi istek, KasaBankaDbContext db, KasaKodUretici kodUretici, CancellationToken cancellationToken)
+        HesapKaydetIstegi istek, KasaBankaDbContext db, KasaKodUretici kodUretici, IsyeriSecici isyeriSecici, CancellationToken cancellationToken)
     {
         var kod = string.IsNullOrWhiteSpace(istek.Kod) ? await kodUretici.SonrakiAsync(istek.Tur, cancellationToken) : istek.Kod.Trim();
         if (await KodKullanimdaMiAsync(db, kod, null, cancellationToken))
@@ -106,13 +107,20 @@ internal static class HesapIslemleri
             return KasaBankaHatalari.KodKullaniliyor.Problem();
         }
 
-        var hesap = KasaHesabi.Olustur(kod, HesapBilgileri.Istekten(istek));
+        var isyeri = await IsyeriAsync(istek.Tur, istek.IsyeriId, null, isyeriSecici, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata.Problem();
+        }
+
+        var hesap = KasaHesabi.Olustur(kod, HesapBilgileri.Istekten(istek), isyeri.Deger);
         db.Hesaplar.Add(hesap);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Created($"/api/kasabanka/hesaplar/{hesap.Id}", await DetayGetirAsync(db, hesap.Id, cancellationToken));
     }
 
-    private static async Task<IResult> GuncelleAsync(Guid id, HesapKaydetIstegi istek, KasaBankaDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GuncelleAsync(
+        Guid id, HesapKaydetIstegi istek, KasaBankaDbContext db, IsyeriSecici isyeriSecici, CancellationToken cancellationToken)
     {
         var hesap = await db.Hesaplar.SingleOrDefaultAsync(h => h.Id == id, cancellationToken);
         if (hesap is null)
@@ -129,11 +137,19 @@ internal static class HesapIslemleri
             return KasaBankaHatalari.KodKullaniliyor.Problem();
         }
 
+        var isyeri = await IsyeriAsync(istek.Tur, istek.IsyeriId, hesap.IsyeriId, isyeriSecici, cancellationToken);
+        if (!isyeri.BasariliMi)
+        {
+            return isyeri.Hata.Problem();
+        }
+
         var sonuc = hesap.Guncelle(kod, HesapBilgileri.Istekten(istek), await db.KasaHareketleri.AnyAsync(h => h.HesapId == id, cancellationToken));
         if (!sonuc.BasariliMi)
         {
             return sonuc.HttpSonucu();
         }
+
+        hesap.IsyeriAta(isyeri.Deger);
 
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Ok(await DetayGetirAsync(db, id, cancellationToken));
@@ -249,9 +265,29 @@ internal static class HesapIslemleri
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.Giris - x.Cikis),
                 db.KasaHareketleri.Where(x => x.HesapId == h.Id).Sum(x => x.GirisTl - x.CikisTl),
                 db.KasaHareketleri.Any(x => x.HesapId == h.Id),
-                h.Surum))
+                h.Surum,
+                h.IsyeriId))
             .SingleOrDefaultAsync(cancellationToken);
 
+    // Kasa ve POS bir işyerinin fiziki hesabıdır (boşsa varsayılan işyeri); banka ve kredi kartı boş bırakılırsa firma genelidir.
+    private static async Task<Sonuc<Guid?>> IsyeriAsync(
+        HesapTuru tur, Guid? istenen, Guid? mevcut, IsyeriSecici secici, CancellationToken cancellationToken)
+    {
+        if (tur is HesapTuru.Kasa or HesapTuru.Pos)
+        {
+            var zorunlu = mevcut is { } m ? await secici.DegisiklikAsync(m, istenen, cancellationToken) : await secici.BelirleAsync(istenen, cancellationToken);
+            return zorunlu.BasariliMi ? (Sonuc<Guid?>)zorunlu.Deger : zorunlu.Hata;
+        }
+
+        if (istenen is null || istenen == mevcut)
+        {
+            return istenen;
+        }
+
+        var secilen = await secici.BelirleAsync(istenen, cancellationToken);
+        return secilen.BasariliMi ? (Sonuc<Guid?>)secilen.Deger : secilen.Hata;
+    }
+
     private static Task<bool> KodKullanimdaMiAsync(KasaBankaDbContext db, string kod, Guid? haricId, CancellationToken cancellationToken) =>
-        db.Hesaplar.IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi]).AnyAsync(h => h.Kod == kod && h.Id != haricId, cancellationToken);
+        db.Hesaplar.IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi, ModulDbContext.IsyeriFiltresi]).AnyAsync(h => h.Kod == kod && h.Id != haricId, cancellationToken);
 }
