@@ -23,6 +23,72 @@ internal static class CariRaporlari
         grup.MapGet("/hesaplar/{cariId:guid}/ekstre", EkstreAsync);
         grup.MapGet("/raporlar/bakiye-listesi", BakiyeListesiAsync);
         grup.MapGet("/raporlar/ozet", OzetAsync);
+        grup.MapGet("/raporlar/yaslandirma", YaslandirmaAsync);
+    }
+
+    // Açık kalemlerin vade yaşına göre dağılımı (bugün itibarıyla). Alacak: carinin açık borç kalemleri; Borç: açık alacak kalemleri.
+    // Fazla tahsilat/ödeme (avans) yaşlandırmaya girmez, ayrıca toplanır. TL karşılığı güncel TCMB döviz alış kuruyladır.
+    private static async Task<IResult> YaslandirmaAsync(
+        CariDbContext db, CariKapamaServisi kapama, IKurSorgusu kurSorgusu, TimeProvider zaman,
+        YaslandirmaYonu? yon, string? arama, CancellationToken cancellationToken)
+    {
+        var y = yon ?? YaslandirmaYonu.Alacak;
+        var kalemYonu = y == YaslandirmaYonu.Alacak ? HareketYonu.Borc : HareketYonu.Alacak;
+        var bugun = TurkiyeSaati.Bugun(zaman);
+        var kalemler = (await kapama.FirmaAcikKalemleriAsync(bugun, cancellationToken)).Where(x => x.Kalem.Yon == kalemYonu).ToList();
+
+        var cariler = await db.CariHesaplar.AsNoTracking()
+            .IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi])
+            .Select(c => new { c.Id, c.Kod, c.Unvan, c.ParaBirimi })
+            .ToDictionaryAsync(c => c.Id, cancellationToken);
+
+        var kurlar = new Dictionary<string, decimal> { [ParaBirimleri.Tl] = 1m };
+        foreach (var pb in cariler.Values.Select(c => c.ParaBirimi).Distinct().Where(pb => pb != ParaBirimleri.Tl))
+        {
+            if (await kurSorgusu.IslemKuruAsync(pb, bugun, cancellationToken) is { } kur)
+            {
+                kurlar[pb] = kur.DovizAlis;
+            }
+        }
+
+        decimal Tl(decimal tutar, string pb) => kurlar.TryGetValue(pb, out var kur) ? Para.TlKarsiligi(tutar, kur) : 0m;
+
+        var avansTl = kalemler.Where(x => CariHareketTurleri.AvansMi(x.Kalem.Tur, x.Kalem.Yon) && cariler.ContainsKey(x.CariHesapId))
+            .Sum(x => Tl(x.Kalem.Kalan, cariler[x.CariHesapId].ParaBirimi));
+
+        var desen = string.IsNullOrWhiteSpace(arama) ? null : arama.Trim();
+        var satirlar = kalemler
+            .Where(x => !CariHareketTurleri.AvansMi(x.Kalem.Tur, x.Kalem.Yon) && cariler.ContainsKey(x.CariHesapId))
+            .GroupBy(x => x.CariHesapId)
+            .Select(g =>
+            {
+                var c = cariler[g.Key];
+                var veri = g.Select(x => (x.Kalem.Kalan, x.Kalem.GecikmeGun)).ToList();
+                var d = YaslandirmaHesaplayici.Dilimle(veri);
+                var toplam = d.Sum();
+                return new YaslandirmaSatiri(c.Id, c.Kod, c.Unvan, c.ParaBirimi, d[0], d[1], d[2], d[3], d[4], toplam,
+                    Tl(toplam, c.ParaBirimi), Tl(toplam - d[0], c.ParaBirimi), YaslandirmaHesaplayici.OrtalamaGecikme(veri),
+                    g.Min(x => x.Kalem.VadeTarihi ?? x.Kalem.Tarih));
+            })
+            .Where(s => desen is null || s.Unvan.Contains(desen, StringComparison.CurrentCultureIgnoreCase)
+                                      || s.CariKodu.Contains(desen, StringComparison.CurrentCultureIgnoreCase))
+            .OrderByDescending(s => s.VadesiGecmisTl).ThenByDescending(s => s.ToplamTl)
+            .ToList();
+
+        decimal DilimTl(Func<YaslandirmaSatiri, decimal> sec) => satirlar.Sum(s => Tl(sec(s), s.ParaBirimi));
+        var listedekiler = satirlar.Select(s => s.CariHesapId).ToHashSet();
+        var tumKalemler = kalemler
+            .Where(x => !CariHareketTurleri.AvansMi(x.Kalem.Tur, x.Kalem.Yon) && listedekiler.Contains(x.CariHesapId))
+            .Select(x => (Tl(x.Kalem.Kalan, cariler[x.CariHesapId].ParaBirimi), x.Kalem.GecikmeGun))
+            .ToList();
+
+        return TypedResults.Ok(new YaslandirmaRaporu(
+            bugun, y,
+            DilimTl(s => s.VadesiGelmemis), DilimTl(s => s.Gun1_30), DilimTl(s => s.Gun31_60), DilimTl(s => s.Gun61_90), DilimTl(s => s.Gun90Ustu),
+            satirlar.Sum(s => s.ToplamTl),
+            YaslandirmaHesaplayici.OrtalamaGecikme(tumKalemler),
+            avansTl,
+            satirlar));
     }
 
     private const int OzetListeBoyutu = 5;
