@@ -37,6 +37,7 @@ public interface ICariSorgusu
 
 // Tutar carinin para birimindedir; TL carilerde kur 1'dir.
 // OtomatikKapama false ise kalem yazılınca FIFO çalışmaz (ör. peşin faturayı hemen ardından gelen tahsilat kapatacaktır).
+// Avans: sipariş avansıdır; FIFO hiçbir zaman kullanmaz (eski faturaları kapatmaz), ilgili faturayla bilinçli mahsup edilir.
 public sealed record BelgeCariHareketi(
     Guid CariHesapId,
     CariHareketTuru Tur,
@@ -48,7 +49,8 @@ public sealed record BelgeCariHareketi(
     string? BelgeNo,
     string? Aciklama,
     Guid? OncelikliKapamaBelgeId = null,
-    bool OtomatikKapama = true);
+    bool OtomatikKapama = true,
+    bool Avans = false);
 
 // Kaynak belgeye bağlı hareketler yalnızca bu sözleşmeyle yazılır ve iptal edilir; elle iptal edilemez.
 // Birden çok modülü kapsayan işlemlerde çağıran taraf IIslemKapsami ile tek transaction açar.

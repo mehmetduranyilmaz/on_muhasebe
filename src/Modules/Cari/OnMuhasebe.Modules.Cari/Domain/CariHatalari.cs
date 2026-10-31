@@ -23,5 +23,7 @@ internal static class CariHatalari
     public static readonly Hata ZatenIptalEdilmis = Hata.IsKurali("zaten_iptal", "Bu hareket zaten iptal edilmiş.");
     public static readonly Hata IptalKaydiIptalEdilemez = Hata.IsKurali("iptal_kaydi", "İptal kaydı iptal edilemez.");
     public static readonly Hata IptalliKalemKapanmaz = Hata.IsKurali("iptalli_kalem", "İptal edilmiş hareket kapamaya katılmaz.");
+    public static readonly Hata MahsupHedefiYok = Hata.IsKurali("mahsup_hedefi_yok", "Mahsup edilecek açık kalem bulunamadı (belge kapanmış ya da iptal edilmiş olabilir).");
+    public static readonly Hata AcikAvansYok = Hata.IsKurali("acik_avans_yok", "Bu carinin bu belgeye mahsup edilebilecek açık avansı yok.");
     public static readonly Hata KapamaTutariGecersiz = Hata.Dogrulama("kapama_gecersiz", "Kapama satırları geçersiz: karşı kalem aynı caride, ters yönde olmalı ve tutar açık kısmı aşmamalıdır.");
 }

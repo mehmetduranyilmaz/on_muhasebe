@@ -92,6 +92,10 @@ namespace OnMuhasebe.Modules.Cari.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("alacak_tl");
 
+                    b.Property<bool>("AvansMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("avans_mi");
+
                     b.Property<string>("BelgeNo")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")

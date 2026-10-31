@@ -38,10 +38,16 @@ internal sealed class CariHareket : FirmaEntity, IDonemeTabi
     [DonemKilidiDisinda]
     public bool ElleKapamaMi { get; private set; }
 
+    // Sipariş avansı: her zaman FIFO dışındadır, yalnızca bilinçli mahsupla kapanır (avans için fatura kesilmez).
+    public bool AvansMi { get; private set; }
+
     public bool IptalEdildiMi => IptalHareketId is not null;
     public bool IptalKaydiMi => IptalEdilenHareketId is not null;
 
-    public void ElleKapamaAyarla(bool elle) => ElleKapamaMi = elle;
+    // Avans FIFO'ya geri bırakılamaz; aksi halde eski faturaları kapatırdı.
+    public void ElleKapamaAyarla(bool elle) => ElleKapamaMi = elle || AvansMi;
+
+    public void AvansOlarakIsaretle() => (AvansMi, ElleKapamaMi) = (true, true);
 
     // Kaynak belgeden gelen hareketler (fatura, tahsilat) yalnızca kendi belgesinden iptal edilir.
     public static bool ElleGirilebilirMi(CariHareketTuru tur) => tur is CariHareketTuru.Acilis or CariHareketTuru.Dekont;

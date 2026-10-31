@@ -71,6 +71,8 @@ internal static class IslemIslemleri
             RuleFor(x => x.Tutar).GreaterThan(0).LessThan(AzamiTutar);
             RuleFor(x => x.Kur).GreaterThan(0).When(x => x.Kur is not null);
             RuleFor(x => x.CariKuru).GreaterThan(0).When(x => x.CariKuru is not null);
+            RuleFor(x => x.KapatilacakBelgeId).Null().When(x => x.Avans)
+                .WithMessage("Sipariş avansı bir faturayı kapatmak için alınmaz; fatura varsa normal tahsilat/ödeme girin.");
             RuleFor(x => x.BelgeNo).MaximumLength(50);
             RuleFor(x => x.Aciklama).MaximumLength(400);
         }

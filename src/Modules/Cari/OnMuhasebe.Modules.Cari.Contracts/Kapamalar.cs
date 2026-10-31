@@ -17,7 +17,8 @@ public sealed record AcikKalem(
     decimal Kalan,
     int GecikmeGun,
     bool ElleKapamaMi,
-    Guid? KaynakBelgeId);
+    Guid? KaynakBelgeId,
+    bool AvansMi = false);
 
 // Bir kalemin hangi karşı kalemlerle (ne kadar) kapandığı.
 public sealed record KapamaSatiri(
@@ -40,6 +41,15 @@ public sealed record ElleKapamaOgesi(Guid KarsiHareketId, decimal Tutar);
 
 // Kalemin kapamaları bu listeyle değiştirilir ve kalem otomatik (FIFO) kapamadan çıkarılır.
 public sealed record ElleKapamaIstegi(IReadOnlyList<ElleKapamaOgesi> Kapamalar);
+
+// Belgenin (ör. fatura) ya da tek bir hareketin açık kalanı, carinin açık sipariş avanslarından (en eskiden başlayarak) mahsup edilir.
+// Tutar boşsa açık kalan ya da avans hangisi küçükse o kadar.
+public sealed record AvansMahsubuIstegi(Guid? BelgeId, Guid? HareketId, decimal? Tutar);
+
+public sealed record AvansMahsubuSonucu(decimal MahsupEdilen, decimal KalanAvans);
+
+// Carinin mahsup edilmemiş sipariş avansları (cari dövizinde): alınan (müşteriden) ve verilen (tedarikçiye).
+public sealed record CariAvansDurumu(string ParaBirimi, decimal AlinanAvans, decimal VerilenAvans);
 
 // Vade analizi: açık kalemlerin gecikmeye göre dağılımı.
 public sealed record VadeDilimleri(decimal VadesiGelmemis, decimal Gun0Ile30, decimal Gun31Ile60, decimal Gun61Ile90, decimal Gun90Ustu)

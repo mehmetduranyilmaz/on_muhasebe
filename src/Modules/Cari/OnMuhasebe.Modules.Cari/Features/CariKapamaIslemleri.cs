@@ -28,6 +28,22 @@ internal static class CariKapamaIslemleri
         grup.MapPut("/hareketler/{hareketId:guid}/kapamalar", ElleKapatAsync).Dogrula<ElleKapamaIstegi>();
         grup.MapDelete("/hareketler/{hareketId:guid}/kapamalar", OtomatigeDonAsync);
         grup.MapGet("/raporlar/vade-analizi", VadeAnaliziAsync);
+        grup.MapGet("/hesaplar/{cariId:guid}/avans", AvansDurumuAsync);
+        grup.MapPost("/avans-mahsubu", AvansMahsupAsync);
+    }
+
+    private static async Task<IResult> AvansDurumuAsync(Guid cariId, CariKapamaServisi kapama, CancellationToken cancellationToken) =>
+        await kapama.AvansDurumuAsync(cariId, cancellationToken) is { } durum ? TypedResults.Ok(durum) : CariHatalari.CariBulunamadi.Problem();
+
+    private static async Task<IResult> AvansMahsupAsync(AvansMahsubuIstegi istek, CariKapamaServisi kapama, CancellationToken cancellationToken)
+    {
+        if (istek.Tutar is <= 0)
+        {
+            return CariHatalari.KapamaTutariGecersiz.Problem();
+        }
+
+        var sonuc = await kapama.AvansMahsupEtAsync(istek, cancellationToken);
+        return sonuc.BasariliMi ? TypedResults.Ok(sonuc.Deger) : sonuc.HttpSonucu();
     }
 
     internal sealed class Dogrulayici : AbstractValidator<ElleKapamaIstegi>

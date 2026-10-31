@@ -68,6 +68,18 @@
             </MudAlert>
         }
 
+        @if (MahsupEdilebilirAvans(f) is > 0 and var avans && !Oturum.SaltOkunurMu)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.Savings">
+                <div class="d-flex align-center flex-wrap gap-2">
+                    <span>Bu carinin <b>@Bicim.Tutar(avans, _avans!.ParaBirimi)</b> mahsup edilmemiş sipariş avansı var.</span>
+                    <IslemDugmesi Islem="AvanstanMahsupEtAsync" Size="Size.Small" StartIcon="@Icons.Material.Filled.Savings">
+                        Avanstan mahsup et (@Bicim.Tutar(Math.Min(avans, f.Kalan!.Value), f.ParaBirimi))
+                    </IslemDugmesi>
+                </div>
+            </MudAlert>
+        }
+
         <MudGrid Spacing="3" Class="mb-4">
             <MudItem xs="12" md="4">
                 <div class="fatura-tutar-karti kart belirme" style="--i:0; --vurgu:@renk">
@@ -254,6 +266,7 @@ else if (_hata is null)
     [Parameter] public Guid Id { get; set; }
 
     private FaturaDetayi? _fatura;
+    private CariAvansDurumu? _avans;
     private FaturaAyarlari? _ayar;
     private FirmaBilgileri? _firma;
     private string? _telefon;
@@ -270,6 +283,8 @@ else if (_hata is null)
         _ayar = ayar.BasariliMi ? ayar.Deger : null;
         var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
         _firma = firma.BasariliMi ? firma.Deger : null;
+
+        await AvansYukleAsync();
 
         // Carinin telefonu yalnızca WhatsApp paylaşımı için; Cari modülü kapalıysa paylaşımda kişi seçilir.
         _telefon = null;
@@ -308,6 +323,35 @@ else if (_hata is null)
     }
 
     private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+
+    // Faturanın cari kalemi borç yönlüyse (satış, alıştan iade) alınan avansla, alacak yönlüyse verilen avansla mahsup edilir.
+    private decimal? MahsupEdilebilirAvans(FaturaDetayi f) =>
+        _avans is { } a && f.Durum == FaturaDurumu.Onayli && f.Kalan is > 0
+            ? FaturaTurleri.ParaGirisiMi(f.Tur) ? a.AlinanAvans : a.VerilenAvans
+            : null;
+
+    private async Task AvansYukleAsync()
+    {
+        _avans = null;
+        if (_fatura is { CariHesapId: { } cariId, Durum: FaturaDurumu.Onayli, Kalan: > 0 } && Oturum.ModulAcikMi(ModulKodlari.Cari))
+        {
+            var sonuc = await Api.GetAsync<CariAvansDurumu>($"api/cari/hesaplar/{cariId}/avans");
+            _avans = sonuc.BasariliMi ? sonuc.Deger : null;
+        }
+    }
+
+    private async Task AvanstanMahsupEtAsync()
+    {
+        var sonuc = await Api.PostAsync<AvansMahsubuSonucu>("api/cari/avans-mahsubu", new AvansMahsubuIstegi(Id, null, null));
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"{Bicim.Tutar(sonuc.Deger.MahsupEdilen, _fatura!.ParaBirimi)} avanstan mahsup edildi.", Severity.Success);
+        await OnParametersSetAsync();
+    }
 
     private string WhatsAppMetni(FaturaDetayi f) =>
         $"Sayın {f.CariUnvan},\n{Bicim.Tarih(f.Tarih)} tarihli{(f.Numara is null ? "" : $" {f.Numara} numaralı")} {FaturaMetinleri.Tur(f.Tur).ToLower(Bicim.Kultur)}:\n"

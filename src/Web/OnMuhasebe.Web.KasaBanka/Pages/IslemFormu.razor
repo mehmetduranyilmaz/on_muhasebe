@@ -120,6 +120,15 @@ else
                                 }
                             </div>
                         }
+                        @if (_tur is IslemTuru.Tahsilat or IslemTuru.Odeme && BelgeParametresi is null)
+                        {
+                            <MudSwitch T="bool" @bind-Value="_avans" Color="Color.Secondary" Class="mt-1"
+                                       Label="@(_tur == IslemTuru.Tahsilat ? "Sipariş avansı (alınan avans)" : "Sipariş avansı (verilen avans)")" />
+                            @if (_avans)
+                            {
+                                <div class="ozet-alt">Avans carinin eski faturalarını kapatmaz; sipariş faturalanınca fatura detayından mahsup edilir. Avans için fatura kesilmez.</div>
+                            }
+                        }
                     </MudItem>
                 }
                 @if (DovizUyumsuz)
@@ -237,6 +246,7 @@ else
     private Guid? _hesapId;
     private Guid? _hedefHesapId;
     private CariOzeti? _cari;
+    private bool _avans;
     private bool _cariFarkliDovizIzni;
     private Guid? _kategoriId;
     private GelirGiderBicimi _bicim = GelirGiderBicimi.Odendi;
@@ -484,7 +494,8 @@ else
         ApiSonucu<IslemCevabi> sonuc = _tur switch
         {
             IslemTuru.Tahsilat or IslemTuru.Odeme => await Api.PostAsync<IslemCevabi>($"api/kasabanka/islemler/{(_tur == IslemTuru.Tahsilat ? "tahsilat" : "odeme")}",
-                new TahsilatOdemeIstegi(_hesapId!.Value, _cari!.Id, tarih, _tutar, kur, cariKuru, _belgeNo, _aciklama, BelgeParametresi), islemAnahtari: _anahtar.Deger),
+                new TahsilatOdemeIstegi(_hesapId!.Value, _cari!.Id, tarih, _tutar, kur, cariKuru, _belgeNo, _aciklama, BelgeParametresi,
+                    BelgeParametresi is null && _avans), islemAnahtari: _anahtar.Deger),
             IslemTuru.Virman => await Api.PostAsync<IslemCevabi>("api/kasabanka/islemler/virman",
                 new VirmanIstegi(_hesapId!.Value, _hedefHesapId!.Value, tarih, _tutar, HedefFarkliDoviz ? _hedefTutar : null, kur,
                     HedefFarkliDoviz ? _hedefKur : null, _aciklama), islemAnahtari: _anahtar.Deger),

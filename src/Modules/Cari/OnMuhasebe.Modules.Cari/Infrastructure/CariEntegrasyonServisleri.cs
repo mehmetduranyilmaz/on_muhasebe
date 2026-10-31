@@ -70,9 +70,14 @@ internal sealed class CariHareketYazici(CariDbContext db, CariKapamaServisi kapa
             return sonuc.Hata;
         }
 
+        if (hareket.Avans)
+        {
+            sonuc.Deger.AvansOlarakIsaretle();
+        }
+
         db.CariHareketler.Add(sonuc.Deger);
         await db.SaveChangesAsync(cancellationToken);
-        if (hareket.OtomatikKapama)
+        if (hareket.OtomatikKapama && !hareket.Avans)
         {
             await kapama.KapatAsync(cari.Id, sonuc.Deger.Id, hareket.OncelikliKapamaBelgeId, cancellationToken);
         }

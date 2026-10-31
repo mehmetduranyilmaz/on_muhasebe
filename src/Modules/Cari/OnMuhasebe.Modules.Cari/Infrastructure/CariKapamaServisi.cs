@@ -13,7 +13,7 @@ internal sealed class CariKapamaServisi(CariDbContext db, IIslemKapsami islemKap
 {
     private sealed record Kalem(
         Guid Id, Guid CariHesapId, DateOnly Tarih, DateOnly? Vade, CariHareketTuru Tur, string? BelgeNo, string? Aciklama,
-        decimal Borc, decimal Alacak, bool ElleMi, Guid? KaynakBelgeId, decimal Kapanan)
+        decimal Borc, decimal Alacak, bool ElleMi, Guid? KaynakBelgeId, decimal Kapanan, bool AvansMi)
     {
         public bool BorcMu => Borc > 0;
         public decimal Tutar => Borc + Alacak;
@@ -108,6 +108,72 @@ internal sealed class CariKapamaServisi(CariDbContext db, IIslemKapsami islemKap
             return true;
         }, cancellationToken);
 
+    // Hedefin (belge kalemleri ya da tek hareket) açık kalanı, aynı carinin ters yöndeki açık avanslarından en eskiden başlanarak kapatılır.
+    // Satış faturası alınan avansla, alış faturası verilen avansla mahsup edilir; kapamalar elle kapama gibi kalıcıdır.
+    public Task<Sonuc<AvansMahsubuSonucu>> AvansMahsupEtAsync(AvansMahsubuIstegi istek, CancellationToken cancellationToken) =>
+        islemKapsami.CalistirAsync<AvansMahsubuSonucu>(async ct =>
+        {
+            var hedefSorgu = db.CariHareketler.AsNoTracking().Where(h => h.IptalHareketId == null && h.IptalEdilenHareketId == null && !h.AvansMi);
+            hedefSorgu = istek.HareketId is { } hid ? hedefSorgu.Where(h => h.Id == hid) : hedefSorgu.Where(h => h.KaynakBelgeId == istek.BelgeId);
+            var hedefIdleri = await hedefSorgu.Select(h => new { h.Id, h.CariHesapId }).ToListAsync(ct);
+            if (hedefIdleri.Count == 0 || (istek.HareketId is null && istek.BelgeId is null))
+            {
+                return CariHatalari.MahsupHedefiYok;
+            }
+
+            var cariId = hedefIdleri[0].CariHesapId;
+            await KilitleAsync(cariId, ct);
+            var kalemler = await KalemlerAsync(cariId, ct);
+            var idler = hedefIdleri.Select(h => h.Id).ToHashSet();
+            var hedefler = kalemler.Where(k => idler.Contains(k.Id) && k.Kalan > 0).OrderBy(k => k.Vade ?? k.Tarih).ToList();
+            if (hedefler.Count == 0)
+            {
+                return CariHatalari.MahsupHedefiYok;
+            }
+
+            var borcMu = hedefler[0].BorcMu;
+            var avanslar = kalemler.Where(k => k.AvansMi && k.BorcMu != borcMu && k.Kalan > 0).OrderBy(k => k.Tarih).ToList();
+            if (avanslar.Count == 0)
+            {
+                return CariHatalari.AcikAvansYok;
+            }
+
+            var kalan = Math.Min(istek.Tutar ?? decimal.MaxValue, hedefler.Sum(h => h.Kalan));
+            var mahsup = 0m;
+            var avansKalan = avanslar.ToDictionary(a => a.Id, a => a.Kalan);
+            foreach (var hedef in hedefler)
+            {
+                var hedefKalan = hedef.Kalan;
+                foreach (var avans in avanslar)
+                {
+                    var tutar = Math.Min(Math.Min(hedefKalan, avansKalan[avans.Id]), kalan);
+                    if (tutar <= 0)
+                    {
+                        continue;
+                    }
+
+                    db.CariKapamalari.Add(CariKapama.Olustur(cariId,
+                        borcMu ? new KapamaEslesmesi(hedef.Id, avans.Id, tutar) : new KapamaEslesmesi(avans.Id, hedef.Id, tutar)));
+                    (hedefKalan, avansKalan[avans.Id], kalan, mahsup) = (hedefKalan - tutar, avansKalan[avans.Id] - tutar, kalan - tutar, mahsup + tutar);
+                }
+            }
+
+            await db.SaveChangesAsync(ct);
+            return new AvansMahsubuSonucu(mahsup, avansKalan.Values.Sum());
+        }, cancellationToken);
+
+    public async Task<CariAvansDurumu?> AvansDurumuAsync(Guid cariId, CancellationToken cancellationToken)
+    {
+        var paraBirimi = await db.CariHesaplar.AsNoTracking().Where(c => c.Id == cariId).Select(c => c.ParaBirimi).SingleOrDefaultAsync(cancellationToken);
+        if (paraBirimi is null)
+        {
+            return null;
+        }
+
+        var avanslar = (await KalemlerAsync(cariId, cancellationToken)).Where(k => k.AvansMi && k.Kalan > 0).ToList();
+        return new CariAvansDurumu(paraBirimi, avanslar.Where(a => !a.BorcMu).Sum(a => a.Kalan), avanslar.Where(a => a.BorcMu).Sum(a => a.Kalan));
+    }
+
     public async Task<List<AcikKalem>> AcikKalemlerAsync(Guid? cariId, DateOnly tarih, CancellationToken cancellationToken) =>
         (await KalemlerAsync(cariId, cancellationToken))
             .Where(k => k.Kalan > 0)
@@ -194,7 +260,8 @@ internal sealed class CariKapamaServisi(CariDbContext db, IIslemKapsami islemKap
         return sorgu
             .Select(h => new Kalem(h.Id, h.CariHesapId, h.Tarih, h.VadeTarihi, h.Tur, h.BelgeNo, h.Aciklama, h.Borc, h.Alacak, h.ElleKapamaMi,
                 h.KaynakBelgeId,
-                db.CariKapamalari.Where(k => k.BorcHareketId == h.Id || k.AlacakHareketId == h.Id).Sum(k => (decimal?)k.Tutar) ?? 0m))
+                db.CariKapamalari.Where(k => k.BorcHareketId == h.Id || k.AlacakHareketId == h.Id).Sum(k => (decimal?)k.Tutar) ?? 0m,
+                h.AvansMi))
             .ToListAsync(cancellationToken);
     }
 
@@ -206,5 +273,5 @@ internal sealed class CariKapamaServisi(CariDbContext db, IIslemKapsami islemKap
 
     private static AcikKalem AcikKalem(Kalem k, DateOnly tarih) => new(
         k.Id, k.Tarih, k.Vade, k.Tur, k.BorcMu ? HareketYonu.Borc : HareketYonu.Alacak, k.BelgeNo, k.Aciklama,
-        k.Tutar, k.Kapanan, k.Kalan, tarih.DayNumber - (k.Vade ?? k.Tarih).DayNumber, k.ElleMi, k.KaynakBelgeId);
+        k.Tutar, k.Kapanan, k.Kalan, tarih.DayNumber - (k.Vade ?? k.Tarih).DayNumber, k.ElleMi, k.KaynakBelgeId, k.AvansMi);
 }

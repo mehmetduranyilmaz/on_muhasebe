@@ -149,12 +149,22 @@
     @if (_acikKalemGorunumu)
     {
         var borcKalan = _acikKalemler?.Where(k => k.Yon == HareketYonu.Borc).Sum(k => k.Kalan) ?? 0m;
-        var alacakKalan = _acikKalemler?.Where(k => k.Yon == HareketYonu.Alacak).Sum(k => k.Kalan) ?? 0m;
-        var gecikmis = _acikKalemler?.Where(k => k.Yon == HareketYonu.Borc && k.GecikmeGun > 0).Sum(k => k.Kalan) ?? 0m;
+        var alacakKalan = _acikKalemler?.Where(k => k.Yon == HareketYonu.Alacak && !k.AvansMi).Sum(k => k.Kalan) ?? 0m;
+        var gecikmis = _acikKalemler?.Where(k => k.Yon == HareketYonu.Borc && k.GecikmeGun > 0 && !k.AvansMi).Sum(k => k.Kalan) ?? 0m;
+        var alinanAvans = _acikKalemler?.Where(k => k.AvansMi && k.Yon == HareketYonu.Alacak).Sum(k => k.Kalan) ?? 0m;
+        var verilenAvans = _acikKalemler?.Where(k => k.AvansMi && k.Yon == HareketYonu.Borc).Sum(k => k.Kalan) ?? 0m;
         <div class="d-flex flex-wrap gap-6 mb-3 belirme">
-            <div><div class="ozet-baslik">Ödenmemiş borç kalemleri</div><b class="bakiye-borclu">@Bicim.Tutar(borcKalan, cari.ParaBirimi)</b></div>
+            <div><div class="ozet-baslik">Ödenmemiş borç kalemleri</div><b class="bakiye-borclu">@Bicim.Tutar(borcKalan - verilenAvans, cari.ParaBirimi)</b></div>
             <div><div class="ozet-baslik">Bunun vadesi geçen</div><b class="@(gecikmis > 0 ? "bakiye-borclu" : "")">@Bicim.Tutar(gecikmis, cari.ParaBirimi)</b></div>
-            <div><div class="ozet-baslik">Dağıtılmamış alacak (avans / ödenmemiş alış)</div><b class="bakiye-alacakli">@Bicim.Tutar(alacakKalan, cari.ParaBirimi)</b></div>
+            <div><div class="ozet-baslik">Dağıtılmamış alacak (fazla tahsilat / ödenmemiş alış)</div><b class="bakiye-alacakli">@Bicim.Tutar(alacakKalan, cari.ParaBirimi)</b></div>
+            @if (alinanAvans > 0)
+            {
+                <div><div class="ozet-baslik">Alınan sipariş avansı</div><b class="bakiye-alacakli">@Bicim.Tutar(alinanAvans, cari.ParaBirimi)</b></div>
+            }
+            @if (verilenAvans > 0)
+            {
+                <div><div class="ozet-baslik">Verilen sipariş avansı</div><b class="bakiye-borclu">@Bicim.Tutar(verilenAvans, cari.ParaBirimi)</b></div>
+            }
         </div>
         <VeriTablosu T="AcikKalem" Kayitlar="_acikKalemler" Dense="true" BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="Açık kalem yok"
                      BosAciklama="Tüm faturalar ve tahsilatlar birbirini kapatmış.">
@@ -171,6 +181,10 @@
                 <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
                 <MudTd DataLabel="Kalem">
                     @CariMetinleri.HareketTuru(context.Tur)
+                    @if (context.AvansMi)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Class="ml-1">Sipariş avansı</MudChip>
+                    }
                     <span class="mobil-alt-bilgi"><BelgeBaglantisi KaynakBelgeId="context.KaynakBelgeId" FaturaMi="CariMetinleri.FaturaHareketiMi(context.Tur)" Metin="@context.BelgeNo" /></span>
                 </MudTd>
                 <MudTd DataLabel="Vade">
@@ -184,7 +198,7 @@
                 <MudTd DataLabel="Kapanan" Class="sayi">@(context.Kapanan > 0 ? Bicim.Tutar(context.Kapanan) : "")</MudTd>
                 <MudTd DataLabel="Kalan" Class="sayi">
                     <b class="@(context.Yon == HareketYonu.Borc ? "bakiye-borclu" : "bakiye-alacakli")">@Bicim.Tutar(context.Kalan)</b>
-                    @if (context.ElleKapamaMi)
+                    @if (context.ElleKapamaMi && !context.AvansMi)
                     {
                         <span class="mobil-alt-bilgi">elle</span>
                     }
