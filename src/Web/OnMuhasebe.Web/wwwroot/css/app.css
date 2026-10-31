@@ -3442,3 +3442,13 @@ td.soluk {
     background: color-mix(in srgb, #8B5CF6 8%, transparent);
     border: 1px solid color-mix(in srgb, #8B5CF6 24%, transparent);
 }
+
+/* Mutabakat mektubu: ekranda kâğıt önizlemesi, yazdırmada sade A4. */
+.mutabakat-kagidi { max-width: 820px; margin: 0 auto; line-height: 1.6; }
+.mutabakat-tablosu { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+.mutabakat-tablosu th, .mutabakat-tablosu td { border: 1px solid var(--mud-palette-lines-default); padding: 6px 8px; text-align: right; }
+.mutabakat-tablosu td:first-child { text-align: left; }
+.mutabakat-yanit { border-top: 1px dashed var(--mud-palette-lines-default); padding-top: 12px; }
+@media print {
+    .mutabakat-kagidi { box-shadow: none !important; border: none !important; background: #fff !important; color: #000 !important; }
+}

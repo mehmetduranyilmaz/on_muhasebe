@@ -1,0 +1,181 @@
+@page "/cari/{Id:guid}/mutabakat"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<div class="yazdirma-gizle">
+    <SayfaBasligi Baslik="Mutabakat Mektubu" GeriAdres="@($"cari/{Id}")" Ikon="@Icons.Material.Filled.Handshake"
+                  AltBaslik="@(_cari?.Unvan ?? "")">
+        <Islemler>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Print" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+        </Islemler>
+    </SayfaBasligi>
+
+    <HataGosterimi Hata="_hata" />
+
+    <div class="tur-sekmeleri belirme">
+        <button type="button" class="tur-sekmesi @(_baBs ? "" : "secili")" style="--vurgu:#14B8A6" @onclick="() => _baBs = false">Bakiye mutabakatı</button>
+        @if (Oturum.ModulAcikMi(ModulKodlari.Fatura))
+        {
+            <button type="button" class="tur-sekmesi @(_baBs ? "secili" : "")" style="--vurgu:#3B82F6" @onclick="BaBsSecAsync">Ba / Bs mutabakatı</button>
+        }
+    </div>
+
+    <div class="d-flex gap-2 align-center mb-3">
+        @if (_baBs)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Önceki ay" OnClick="() => AyAsync(-1)" />
+            <b style="min-width:130px; text-align:center">@_donem.ToString("MMMM yyyy", _tr)</b>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Sonraki ay" OnClick="() => AyAsync(1)" />
+        }
+        else
+        {
+            <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Date="_tarih" DateChanged="TarihDegistiAsync" Label="Mutabakat tarihi" DateFormat="dd.MM.yyyy" Style="max-width:180px" />
+        }
+        <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yanitGunu" Label="Yanıt süresi (gün)" Min="1" Max="60" Style="max-width:150px" />
+    </div>
+</div>
+
+@if (_cari is { } c)
+{
+    <div class="panel-kart kart mutabakat-kagidi">
+        <div class="d-flex justify-space-between flex-wrap gap-4 mb-6">
+            <div>
+                <b>@(_firma?.Unvan ?? Oturum.Bilgi?.AktifFirma?.Unvan)</b>
+                @if (_firma is { } f)
+                {
+                    <div>@f.Adres @(string.Join("/", new[] { f.Ilce, f.Il }.Where(x => x is not null)))</div>
+                    <div>@(f.VergiDairesi is null ? "" : $"{f.VergiDairesi} V.D. · ")@f.VergiNo</div>
+                    <div>@string.Join(" · ", new[] { f.Telefon, f.Eposta }.Where(x => x is not null))</div>
+                }
+            </div>
+            <div style="text-align:right">Tarih: @Bicim.Tarih(DateOnly.FromDateTime(Zaman.GetLocalNow().Date))</div>
+        </div>
+
+        <div class="mb-4">
+            <b>SAYIN @c.Unvan</b>
+            <div>@c.Adres @(string.Join("/", new[] { c.Ilce, c.Il }.Where(x => x is not null)))</div>
+            @if (c.VergiNo is not null)
+            {
+                <div>@(c.VergiDairesi is null ? "" : $"{c.VergiDairesi} V.D. · ")@c.VergiNo</div>
+            }
+        </div>
+
+        <div class="mb-2"><b>Konu: @(_baBs ? $"{_donem.ToString("MMMM yyyy", _tr)} dönemi Form Ba/Bs mutabakatı" : $"{Bicim.Tarih(Gun)} tarihli cari hesap mutabakatı")</b></div>
+
+        @if (_baBs)
+        {
+            @if (_baBsOzeti is { } o)
+            {
+                <p>
+                    Vergi Usul Kanunu 396 Sıra No'lu Genel Tebliğ uyarınca verilecek Form Ba ve Form Bs bildirimlerinin karşılıklı uyumu için
+                    @_donem.ToString("MMMM yyyy", _tr) dönemine ait kayıtlarımız aşağıdadır (tutarlar KDV hariç, TL):
+                </p>
+                <table class="mutabakat-tablosu">
+                    <tr><th></th><th>Belge sayısı</th><th>Tutar (TL)</th></tr>
+                    <tr><td>Firmanıza düzenlediğimiz belgeler (bizim Form Bs / sizin Form Ba)</td><td>@o.BsBelgeSayisi</td><td>@o.BsTutar.ToString("N0", _tr)</td></tr>
+                    <tr><td>Firmanızdan aldığımız belgeler (bizim Form Ba / sizin Form Bs)</td><td>@o.BaBelgeSayisi</td><td>@o.BaTutar.ToString("N0", _tr)</td></tr>
+                </table>
+            }
+        }
+        else if (_ekstre is { } e)
+        {
+            <p>
+                Kayıtlarımıza göre @Bicim.Tarih(Gun) tarihi itibarıyla cari hesabınız
+                <b>@Bicim.Tutar(Math.Abs(e.SonBakiye), e.ParaBirimi) @(e.SonBakiye > 0 ? "borç" : e.SonBakiye < 0 ? "alacak" : "")</b>
+                bakiyesi vermektedir@(e.SonBakiye == 0 ? " (bakiye sıfırdır)" : e.SonBakiye > 0 ? " (firmamıza borçlusunuz)" : " (firmamızdan alacaklısınız)").
+                @if (e.ParaBirimi != ParaBirimleri.Tl)
+                {
+                    <span>Kayıtlı kurlarla TL karşılığı @Bicim.Tutar(Math.Abs(e.SonBakiyeTl), ParaBirimleri.Tl)'dir.</span>
+                }
+            </p>
+        }
+
+        <p>
+            Mutabık olup olmadığınızı, bu mektubun alt kısmını doldurup kaşe ve imzayla @_yanitGunu gün içinde tarafımıza iletmenizi; mutabık değilseniz
+            hesap ekstrenizi göndermenizi rica ederiz. Belirtilen süre içinde yanıt alınamaması halinde mutabık sayılacağınızı bilgilerinize sunarız.
+        </p>
+        <div class="d-flex justify-end mt-6 mb-8"><div style="text-align:center; min-width:200px">Saygılarımızla<br /><br />Kaşe / İmza</div></div>
+
+        <div class="mutabakat-yanit">
+            <b>Cevap</b>
+            <div class="mt-2">☐ Mutabıkız.</div>
+            <div>☐ Mutabık değiliz. Kayıtlarımıza göre @(_baBs ? "belge sayısı / tutar" : "bakiye"): ...........................................</div>
+            <div class="d-flex justify-space-between mt-6"><span>Tarih: ....../....../..........</span><span>Kaşe / İmza</span></div>
+        </div>
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    [Parameter] public Guid Id { get; set; }
+    [SupplyParameterFromQuery(Name = "yil")] public int? YilParametresi { get; set; }
+    [SupplyParameterFromQuery(Name = "ay")] public int? AyParametresi { get; set; }
+
+    private CariDetayi? _cari;
+    private FirmaBilgisi? _firma;
+    private EkstreCevabi? _ekstre;
+    private BaBsOzeti? _baBsOzeti;
+    private bool _baBs;
+    private DateTime? _tarih;
+    private DateTime _donem;
+    private int _yanitGunu = 15;
+    private ApiHatasi? _hata;
+
+    private DateOnly Gun => DateOnly.FromDateTime(_tarih ?? DateTime.Today);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow();
+        _tarih = bugun.Date;
+        _donem = YilParametresi is { } y && AyParametresi is { } a ? new DateTime(y, a, 1) : new DateTime(bugun.Year, bugun.Month, 1).AddMonths(-1);
+        var cari = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{Id}");
+        _hata = cari.Hata;
+        _cari = cari.BasariliMi ? cari.Deger : null;
+        var firma = await Api.GetAsync<FirmaBilgisi>("api/yonetim/firma");
+        _firma = firma.BasariliMi ? firma.Deger : null;
+        await BakiyeAsync();
+        if (YilParametresi is not null && Oturum.ModulAcikMi(ModulKodlari.Fatura))
+        {
+            await BaBsSecAsync();
+        }
+    }
+
+    // Tarih itibarıyla bakiye: ekstrenin tek günlük aralığında son bakiye, o güne kadarki tüm hareketleri içerir.
+    private async Task BakiyeAsync()
+    {
+        var gun = Bicim.Iso(Gun);
+        var sonuc = await Api.GetAsync<EkstreCevabi>($"api/cari/hesaplar/{Id}/ekstre?baslangic={gun}&bitis={gun}");
+        _ekstre = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task TarihDegistiAsync(DateTime? tarih)
+    {
+        _tarih = tarih;
+        await BakiyeAsync();
+    }
+
+    private async Task BaBsSecAsync()
+    {
+        _baBs = true;
+        var sonuc = await Api.GetAsync<BaBsOzeti>($"api/fatura/raporlar/ba-bs/cari/{Id}?yil={_donem.Year}&ay={_donem.Month}");
+        _baBsOzeti = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task AyAsync(int fark)
+    {
+        _donem = _donem.AddMonths(fark);
+        await BaBsSecAsync();
+    }
+
+    // Yönetim ve Fatura sözleşmelerinin bu ekranın kullandığı alanları (Cari paketi o modüllere bağlanmaz).
+    private sealed record FirmaBilgisi(string Unvan, string? VergiNo, string? VergiDairesi, string? Il, string? Ilce, string? Adres, string? Telefon, string? Eposta);
+
+    private sealed record BaBsOzeti(int Yil, int Ay, int BaBelgeSayisi, decimal BaTutar, int BsBelgeSayisi, decimal BsTutar);
+}

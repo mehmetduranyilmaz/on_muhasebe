@@ -23,6 +23,51 @@ internal static class FaturaRaporlari
         grup.MapGet("/raporlar/karlilik", KarlilikAsync);
         grup.MapGet("/raporlar/kdv", KdvAsync);
         grup.MapGet("/raporlar/masraf-merkezi", MasrafMerkeziAsync);
+        grup.MapGet("/raporlar/ba-bs", BaBsAsync);
+        grup.MapGet("/raporlar/ba-bs/cari/{cariId:guid}", CariBaBsAsync);
+    }
+
+    private static async Task<IResult> BaBsAsync(int yil, int ay, decimal? sinir, FaturaDbContext db, CancellationToken cancellationToken)
+    {
+        if (ay is < 1 or > 12)
+        {
+            return Hata.Dogrulama("ay_gecersiz", "Ay 1-12 arasında olmalıdır.").Problem();
+        }
+
+        var belgeler = await BaBsBelgeleriAsync(db, yil, ay, null, cancellationToken);
+        var s = sinir ?? BaBsHesaplayici.VarsayilanSinir;
+        return TypedResults.Ok(new BaBsRaporu(yil, ay, s, BaBsHesaplayici.Ozet(belgeler, true, s), BaBsHesaplayici.Ozet(belgeler, false, s)));
+    }
+
+    // Karşı tarafa gönderilecek BA/BS mutabakat mektubu için cariyle o aydaki belgeler (sınır uygulanmaz).
+    private static async Task<IResult> CariBaBsAsync(Guid cariId, int yil, int ay, FaturaDbContext db, CancellationToken cancellationToken)
+    {
+        if (ay is < 1 or > 12)
+        {
+            return Hata.Dogrulama("ay_gecersiz", "Ay 1-12 arasında olmalıdır.").Problem();
+        }
+
+        var belgeler = await BaBsBelgeleriAsync(db, yil, ay, cariId, cancellationToken);
+        var ba = belgeler.Where(b => b.BaMi).ToList();
+        var bs = belgeler.Where(b => !b.BaMi).ToList();
+        return TypedResults.Ok(new CariBaBsOzeti(yil, ay, ba.Count, Math.Truncate(ba.Sum(b => b.MatrahTl)), bs.Count, Math.Truncate(bs.Sum(b => b.MatrahTl))));
+    }
+
+    // Onaylı faturalar, belge tarihine göre ay; tutar KDV hariç matrahın fatura kuruyla TL karşılığı.
+    private static async Task<List<BaBsBelgesi>> BaBsBelgeleriAsync(FaturaDbContext db, int yil, int ay, Guid? cariId, CancellationToken cancellationToken)
+    {
+        var bas = new DateOnly(yil, ay, 1);
+        var son = bas.AddMonths(1).AddDays(-1);
+        var faturalar = await db.Faturalar.AsNoTracking()
+            .Where(f => f.Durum == FaturaDurumu.Onayli && f.Tarih >= bas && f.Tarih <= son && (cariId == null || f.CariHesapId == cariId))
+            .Select(f => new { f.Tur, f.CariHesapId, f.VergiNo, f.CariUnvan, f.Matrah, f.Kur })
+            .ToListAsync(cancellationToken);
+        return faturalar
+            .Select(f => (Fatura: f, BaMi: BaBsHesaplayici.BaMi(f.Tur, f.CariHesapId is null || f.VergiNo == "11111111111")))
+            .Where(x => x.BaMi is not null)
+            .Select(x => new BaBsBelgesi(x.BaMi!.Value, x.Fatura.VergiNo, x.Fatura.CariHesapId, x.Fatura.CariUnvan,
+                Math.Round(x.Fatura.Matrah * x.Fatura.Kur, 2, MidpointRounding.AwayFromZero)))
+            .ToList();
     }
 
     // Onaylı faturaların merkez bazında KDV hariç TL tutarı: satış gelir, alış/gider pusulası/SMM gider; iadeler düşülür.

@@ -1,0 +1,122 @@
+@page "/fatura/ba-bs"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Form Ba / Bs" GeriAdres="fatura" Ikon="@Icons.Material.Filled.FactCheck"
+              AltBaslik="Aylık mal ve hizmet alım (Ba) / satış (Bs) bildirimi: aynı karşı tarafla KDV hariç sınır ve üzeri belgeler">
+    <Islemler>
+        <div class="d-flex align-center gap-1">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Önceki ay" OnClick="() => AyDegistirAsync(-1)" />
+            <b style="min-width:130px; text-align:center">@_donem.ToString("MMMM yyyy", _tr)</b>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Sonraki ay" OnClick="() => AyDegistirAsync(1)" />
+        </div>
+        <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_sinir" ValueChanged="SinirDegistiAsync" Label="Sınır (TL)"
+                         Style="max-width:130px" Min="0" HideSpinButtons="true" Format="N0" />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_rapor is { } r)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Form Ba / Bs · @_donem.ToString("MMMM yyyy", _tr)</MudText>
+    </div>
+
+    @if (r.Ba.Concat(r.Bs).Any(s => s.VergiNoEksik))
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">Vergi/TC kimlik numarası eksik cariler var; bildirimden önce cari kartlarını tamamlayın.</MudAlert>
+    }
+
+    <MudGrid Spacing="3">
+        @foreach (var (baslik, liste, renk, sira) in new[] { ("Form Ba — alımlar", r.Ba, "#3B82F6", 0), ("Form Bs — satışlar", r.Bs, "#16A34A", 1) })
+        {
+            <MudItem xs="12" lg="6">
+                <div class="panel-kart kart belirme" style="--i:@sira">
+                    <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Small" Style="@($"color:{renk}")" /> @baslik</div>
+                    @if (liste.Count == 0)
+                    {
+                        <BosDurum Ikon="@Icons.Material.Outlined.FactCheck" Baslik="Bildirilecek kayıt yok" Aciklama="Bu ay sınırı aşan karşı taraf bulunmuyor." />
+                    }
+                    else
+                    {
+                        <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                            <thead><tr><th>Unvan</th><th>VKN / TCKN</th><th class="sayi">Belge</th><th class="sayi">Tutar (TL)</th></tr></thead>
+                            <tbody>
+                                @foreach (var s in liste)
+                                {
+                                    <tr>
+                                        <td>
+                                            @if (s.CariHesapId is { } cariId)
+                                            {
+                                                <a class="baglanti" href="@($"cari/{cariId}/mutabakat?yil={r.Yil}&ay={r.Ay}")" title="BA/BS mutabakat mektubu">@s.Unvan</a>
+                                            }
+                                            else
+                                            {
+                                                @s.Unvan
+                                            }
+                                        </td>
+                                        <td class="@(s.VergiNoEksik ? "bakiye-borclu" : "")">@(s.VergiNo ?? "eksik")</td>
+                                        <td class="sayi">@s.BelgeSayisi</td>
+                                        <td class="sayi"><b>@s.Tutar.ToString("N0", _tr)</b></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                        <div class="ozet-alt mt-2">@liste.Count kayıt · toplam @liste.Sum(s => s.Tutar).ToString("N0", _tr) TL</div>
+                    }
+                </div>
+            </MudItem>
+        }
+    </MudGrid>
+    <div class="ozet-alt mt-3">
+        Tutarlar KDV hariç, kuruşsuz TL'dir; iade faturaları ayrı belge olarak dahildir (alıştan iade Bs, satıştan iade Ba). Nihai tüketici satışları dahil edilmez.
+        Serbest meslek makbuzları Ba'ya alınmış, gider pusulaları alınmamıştır. Bildirim, izleyen ayın son gününe kadar verilir; kapsamı mali müşavirinizle teyit edin.
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    private DateTime _donem;
+    private decimal _sinir = BaBsHesaplayici.VarsayilanSinir;
+    private BaBsRaporu? _rapor;
+    private ApiHatasi? _hata;
+
+    // Bildirim bir önceki ay içindir.
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow();
+        _donem = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(-1);
+        await YukleAsync();
+    }
+
+    private async Task AyDegistirAsync(int fark)
+    {
+        _donem = _donem.AddMonths(fark);
+        await YukleAsync();
+    }
+
+    private async Task SinirDegistiAsync(decimal sinir)
+    {
+        _sinir = sinir;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _rapor = null;
+        var sonuc = await Api.GetAsync<BaBsRaporu>(
+            $"api/fatura/raporlar/ba-bs?yil={_donem.Year}&ay={_donem.Month}&sinir={_sinir.ToString(CultureInfo.InvariantCulture)}");
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+}
