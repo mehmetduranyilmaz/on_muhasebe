@@ -4,8 +4,9 @@ namespace OnMuhasebe.Hesaplama.Tests;
 
 public class FaturaHesaplamaTestleri
 {
-    private static HesapSatiri Satir(decimal miktar, decimal fiyat, int kdv = 20, bool dahil = false, decimal i1 = 0, decimal i2 = 0, decimal i3 = 0) =>
-        new(miktar, fiyat, dahil, kdv, i1, i2, i3);
+    private static HesapSatiri Satir(decimal miktar, decimal fiyat, int kdv = 20, bool dahil = false, decimal i1 = 0, decimal i2 = 0, decimal i3 = 0,
+        int tevkifatPay = 0, int tevkifatPayda = 0) =>
+        new(miktar, fiyat, dahil, kdv, i1, i2, i3, tevkifatPay, tevkifatPayda);
 
     private static FaturaHesabi Hesapla(params HesapSatiri[] satirlar) =>
         FaturaHesaplayici.Hesapla(satirlar, GenelIskontoTuru.Yuzde, 0m);
@@ -81,6 +82,55 @@ public class FaturaHesaplamaTestleri
         var s = Hesapla(Satir(1m, 0.125m, kdv: 0)).Satirlar[0];
 
         Assert.Equal((0.13m, 0m, 0.13m), (s.Matrah, s.KdvTutari, s.Toplam));
+    }
+
+    [Fact]
+    public void Tevkifatsiz_faturada_odenecek_tutar_genel_toplama_esittir()
+    {
+        var h = Hesapla(Satir(1m, 1000m, kdv: 20));
+
+        Assert.Equal((0m, 0m, 1200m, 1200m), (h.TevkifEdilenKdvToplami, h.StopajTutari, h.GenelToplam, h.OdenecekTutar));
+    }
+
+    [Fact]
+    public void Satir_bazli_tevkifat_hesaplanan_kdvnin_payina_uygulanir()
+    {
+        // Matrah 1000, KDV %20 = 200, tevkifat 7/10 -> 140 tevkif; ödenecek 1200 - 140 = 1060
+        var h = Hesapla(Satir(1m, 1000m, kdv: 20, tevkifatPay: 7, tevkifatPayda: 10));
+
+        Assert.Equal(140m, h.Satirlar[0].TevkifEdilenKdv);
+        Assert.Equal((140m, 1200m, 1060m), (h.TevkifEdilenKdvToplami, h.GenelToplam, h.OdenecekTutar));
+    }
+
+    [Fact]
+    public void Karma_tevkifatta_her_satir_kendi_oraniyla_toplanir()
+    {
+        // S1: matrah 1000, KDV 200, 5/10 -> 100; S2: matrah 500, KDV 100, 9/10 -> 90; toplam tevkif 190
+        var h = Hesapla(
+            Satir(1m, 1000m, kdv: 20, tevkifatPay: 5, tevkifatPayda: 10),
+            Satir(1m, 500m, kdv: 20, tevkifatPay: 9, tevkifatPayda: 10));
+
+        Assert.Equal([100m, 90m], h.Satirlar.Select(s => s.TevkifEdilenKdv));
+        Assert.Equal((190m, 1800m, 1610m), (h.TevkifEdilenKdvToplami, h.GenelToplam, h.OdenecekTutar));
+    }
+
+    [Fact]
+    public void Stopaj_matrah_toplamina_uygulanir_ve_odenecegi_dusurur()
+    {
+        // Gider pusulası: KDV yok, matrah 1000, stopaj %10 = 100; ödenecek 1000 - 100 = 900
+        var h = FaturaHesaplayici.Hesapla([Satir(1m, 1000m, kdv: 0)], GenelIskontoTuru.Yuzde, 0m, stopajOrani: 10m);
+
+        Assert.Equal((100m, 1000m, 900m), (h.StopajTutari, h.GenelToplam, h.OdenecekTutar));
+    }
+
+    [Fact]
+    public void Serbest_meslek_makbuzunda_stopaj_ve_tevkifat_birlikte_dusulur()
+    {
+        // Matrah 1000, KDV %20 = 200 (5/10 tevkifat -> 100), GV stopajı %20 = 200; ödenecek 1200 - 100 - 200 = 900
+        var h = FaturaHesaplayici.Hesapla(
+            [Satir(1m, 1000m, kdv: 20, tevkifatPay: 5, tevkifatPayda: 10)], GenelIskontoTuru.Yuzde, 0m, stopajOrani: 20m);
+
+        Assert.Equal((100m, 200m, 1200m, 900m), (h.TevkifEdilenKdvToplami, h.StopajTutari, h.GenelToplam, h.OdenecekTutar));
     }
 
     [Fact]

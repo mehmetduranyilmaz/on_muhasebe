@@ -1,5 +1,6 @@
 namespace OnMuhasebe.Modules.Fatura.Contracts;
 
+// TevkifatPay/TevkifatPayda (ör. 7/10) satırın hesaplanan KDV'sine uygulanır; 0 ise tevkifat yoktur.
 public sealed record HesapSatiri(
     decimal Miktar,
     decimal BirimFiyat,
@@ -7,19 +8,25 @@ public sealed record HesapSatiri(
     int KdvOrani,
     decimal Iskonto1,
     decimal Iskonto2,
-    decimal Iskonto3);
+    decimal Iskonto3,
+    int TevkifatPay = 0,
+    int TevkifatPayda = 0);
 
 // Tutarlar KDV hariçtir: Brut - Iskonto = net; net - GenelIskontoPayi = Matrah; Matrah + Kdv = Toplam.
+// TevkifEdilenKdv, KDV'nin alıcı tarafından satıcıya ödenmeyip vergi dairesine yatırılan kısmıdır.
 public sealed record SatirHesabi(
     decimal BrutTutar,
     decimal IskontoTutari,
     decimal GenelIskontoPayi,
     decimal Matrah,
     decimal KdvTutari,
-    decimal Toplam);
+    decimal Toplam,
+    decimal TevkifEdilenKdv = 0m);
 
 public sealed record KdvDagilimi(int Oran, decimal Matrah, decimal KdvTutari);
 
+// GenelToplam belgenin brütüdür (Matrah + KDV) ve tevkifat/stopajla değişmez.
+// OdenecekTutar carinin gördüğü/tahsil-ödeme yapılan tutardır: GenelToplam - tevkif edilen KDV - stopaj.
 public sealed record FaturaHesabi(
     IReadOnlyList<SatirHesabi> Satirlar,
     decimal BrutToplam,
@@ -28,14 +35,19 @@ public sealed record FaturaHesabi(
     decimal Matrah,
     decimal KdvToplami,
     decimal GenelToplam,
-    IReadOnlyList<KdvDagilimi> KdvDagilimi);
+    IReadOnlyList<KdvDagilimi> KdvDagilimi,
+    decimal TevkifEdilenKdvToplami,
+    decimal StopajTutari,
+    decimal OdenecekTutar);
 
 // Fatura tutarlarının tek hesap noktası. API kaydederken, Web ekranda canlı gösterirken aynı kodu kullanır.
 // Kurallar: satır iskontoları zincirleme uygulanır (%10+%5 = %14,5); genel iskonto KDV matrahından düşülmesi için
 // satırlara net tutarları oranında dağıtılır, kuruş farkı en büyük satıra yazılır; tutarlar 2 haneye yukarı yuvarlanır.
+// Stopaj (gelir vergisi tevkifatı) gider pusulası/serbest meslek makbuzunda matrah toplamına uygulanır.
 public static class FaturaHesaplayici
 {
-    public static FaturaHesabi Hesapla(IReadOnlyList<HesapSatiri> satirlar, GenelIskontoTuru genelIskontoTuru, decimal genelIskonto)
+    public static FaturaHesabi Hesapla(
+        IReadOnlyList<HesapSatiri> satirlar, GenelIskontoTuru genelIskontoTuru, decimal genelIskonto, decimal stopajOrani = 0m)
     {
         var ara = satirlar.Select(AraHesap).ToList();
         var netToplam = ara.Sum(a => a.Net);
@@ -52,7 +64,8 @@ public static class FaturaHesaplayici
             var kdv = a.DahilNet is { } dahilNet && paylar[i] == 0m
                 ? dahilNet - matrah
                 : Yuvarla(matrah * satirlar[i].KdvOrani / 100m);
-            sonuclar.Add(new SatirHesabi(a.Brut, a.Brut - a.Net, paylar[i], matrah, kdv, matrah + kdv));
+            var tevkif = TevkifEdilenKdv(kdv, satirlar[i].TevkifatPay, satirlar[i].TevkifatPayda);
+            sonuclar.Add(new SatirHesabi(a.Brut, a.Brut - a.Net, paylar[i], matrah, kdv, matrah + kdv, tevkif));
         }
 
         var dagilim = satirlar.Zip(sonuclar)
@@ -61,21 +74,33 @@ public static class FaturaHesaplayici
             .Select(g => new KdvDagilimi(g.Key, g.Sum(x => x.Second.Matrah), g.Sum(x => x.Second.KdvTutari)))
             .ToList();
 
+        var matrahToplam = sonuclar.Sum(s => s.Matrah);
+        var kdvToplam = sonuclar.Sum(s => s.KdvTutari);
+        var genelToplam = sonuclar.Sum(s => s.Toplam);
+        var tevkifToplam = sonuclar.Sum(s => s.TevkifEdilenKdv);
+        var stopaj = stopajOrani > 0m ? Yuvarla(matrahToplam * stopajOrani / 100m) : 0m;
+
         return new FaturaHesabi(
             sonuclar,
             sonuclar.Sum(s => s.BrutTutar),
             sonuclar.Sum(s => s.IskontoTutari),
             sonuclar.Sum(s => s.GenelIskontoPayi),
-            sonuclar.Sum(s => s.Matrah),
-            sonuclar.Sum(s => s.KdvTutari),
-            sonuclar.Sum(s => s.Toplam),
-            dagilim);
+            matrahToplam,
+            kdvToplam,
+            genelToplam,
+            dagilim,
+            tevkifToplam,
+            stopaj,
+            genelToplam - tevkifToplam - stopaj);
     }
 
     public static decimal Yuvarla(decimal tutar) => Math.Round(tutar, 2, MidpointRounding.AwayFromZero);
 
     public static decimal ZincirCarpani(decimal iskonto1, decimal iskonto2, decimal iskonto3) =>
         (1m - iskonto1 / 100m) * (1m - iskonto2 / 100m) * (1m - iskonto3 / 100m);
+
+    private static decimal TevkifEdilenKdv(decimal kdv, int pay, int payda) =>
+        payda > 0 && pay > 0 ? Yuvarla(kdv * pay / payda) : 0m;
 
     private static (decimal Brut, decimal Net, decimal? DahilNet) AraHesap(HesapSatiri s)
     {
