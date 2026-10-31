@@ -204,7 +204,8 @@ kontrol 400 "Net toplami asan tutar iskontosu reddedildi" genel_iskonto_fazla
 
 echo "--- Rapor, firma bilgileri ve izolasyon"
 istek GET /api/fatura/raporlar/ozet "$T"
-kontrol 200 "Ozet raporu: bu ay satis (KDV haric, iade dusulmus) 18900+409,09+500+1000+2500+1500-5000" '"buAySatis":19809.09'
+# Test faturaları Ekim 2026 tarihli; "bu ay" sunucunun bugününe göre hesaplandığından Ekim dışında tutar son aylar grafiğinde aranır.
+kontrol 200 "Ozet raporu: Ekim satisi (KDV haric, iade dusulmus) 18900+409,09+500+1000+2500+1500-5000" '"buAySatis":19809.09|"yil":2026,"ay":10,"satis":19809.09'
 istek GET /api/yonetim/firma "$T"
 kontrol 200 "Firma bilgileri okunuyor" '"unvan":"Fatura Test AS"'
 istek PUT /api/yonetim/firma "$T" '{"unvan":"Fatura Test AS","vergiNo":"9876543217","vergiDairesi":"Kadikoy","il":"Istanbul","ilce":"Kadikoy","adres":"Moda Cad. 5","telefon":"0216 000 00 00","eposta":"info@fatura.test"}'
