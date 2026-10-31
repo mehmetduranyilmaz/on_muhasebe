@@ -51,6 +51,13 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi
     public decimal GenelToplam { get; private set; }
     public decimal GenelToplamTl { get; private set; }
 
+    // Stopaj (gelir vergisi tevkifatı) matrah toplamına uygulanır. OdenecekTutar carinin gördüğü tutardır:
+    // GenelToplam - tevkif edilen KDV - stopaj. GenelToplam belge brütü olarak değişmez kalır.
+    public decimal StopajOrani { get; private set; }
+    public decimal StopajTutari { get; private set; }
+    public decimal TevkifEdilenKdvToplami { get; private set; }
+    public decimal OdenecekTutar { get; private set; }
+
     // e-Fatura/e-Arşiv UUID'si; entegratör bağlantısı geldiğinde belge bununla gönderilir.
     public Guid Ettn { get; private set; }
     public DateTime? OnayTarihi { get; private set; }
@@ -129,8 +136,8 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi
         }
 
         var hesap = FaturaHesaplayici.Hesapla(
-            b.Satirlar.Select(s => new HesapSatiri(s.Miktar, s.BirimFiyat, s.KdvDahilMi, s.KdvOrani, s.Iskonto1, s.Iskonto2, s.Iskonto3)).ToList(),
-            b.GenelIskontoTuru, b.GenelIskonto);
+            b.Satirlar.Select(s => new HesapSatiri(s.Miktar, s.BirimFiyat, s.KdvDahilMi, s.KdvOrani, s.Iskonto1, s.Iskonto2, s.Iskonto3, s.TevkifatPay, s.TevkifatPayda)).ToList(),
+            b.GenelIskontoTuru, b.GenelIskonto, b.StopajOrani);
         if (b.GenelIskontoTuru == GenelIskontoTuru.Tutar && FaturaHesaplayici.Yuvarla(b.GenelIskonto) > hesap.BrutToplam - hesap.SatirIskontoToplami)
         {
             return FaturaHatalari.GenelIskontoFazla;
@@ -173,6 +180,10 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi
         KdvToplami = hesap.KdvToplami;
         GenelToplam = hesap.GenelToplam;
         GenelToplamTl = FaturaHesaplayici.Yuvarla(GenelToplam * Kur);
+        StopajOrani = b.StopajOrani;
+        StopajTutari = hesap.StopajTutari;
+        TevkifEdilenKdvToplami = hesap.TevkifEdilenKdvToplami;
+        OdenecekTutar = hesap.OdenecekTutar;
         return Sonuc.Basarili();
     }
 }
@@ -205,6 +216,11 @@ internal sealed class FaturaSatiri : BaseEntity
     public decimal KdvTutari { get; private set; }
     public decimal Toplam { get; private set; }
 
+    public string? TevkifatKodu { get; private set; }
+    public int TevkifatPay { get; private set; }
+    public int TevkifatPayda { get; private set; }
+    public decimal TevkifEdilenKdv { get; private set; }
+
     public static FaturaSatiri Olustur(Guid faturaId, int sira, FaturaSatiriBilgisi b, SatirHesabi h) => new()
     {
         FaturaId = faturaId,
@@ -227,7 +243,11 @@ internal sealed class FaturaSatiri : BaseEntity
         GenelIskontoPayi = h.GenelIskontoPayi,
         Matrah = h.Matrah,
         KdvTutari = h.KdvTutari,
-        Toplam = h.Toplam
+        Toplam = h.Toplam,
+        TevkifatKodu = b.TevkifatKodu,
+        TevkifatPay = b.TevkifatPay,
+        TevkifatPayda = b.TevkifatPayda,
+        TevkifEdilenKdv = h.TevkifEdilenKdv
     };
 }
 
@@ -255,7 +275,10 @@ internal sealed record FaturaSatiriBilgisi(
     int KdvOrani,
     decimal Iskonto1,
     decimal Iskonto2,
-    decimal Iskonto3);
+    decimal Iskonto3,
+    string? TevkifatKodu = null,
+    int TevkifatPay = 0,
+    int TevkifatPayda = 0);
 
 // İstek, cari/stok/kur bilgileriyle çözümlendikten sonra entity'ye verilen hali.
 internal sealed record FaturaBilgileri(
@@ -271,4 +294,5 @@ internal sealed record FaturaBilgileri(
     decimal GenelIskonto,
     string? Aciklama,
     IReadOnlyList<FaturaSatiriBilgisi> Satirlar,
-    Guid? PesinHesapId = null);
+    Guid? PesinHesapId = null,
+    decimal StopajOrani = 0m);

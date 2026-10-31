@@ -50,6 +50,7 @@ public sealed record NihaiTuketiciBilgisi(string? AdSoyad, string? Tckn);
 
 // Stok kartı seçilmezse serbest satırdır (Ad zorunlu, stok hareketi oluşmaz). Stoklu satırda Ad boşsa kart adı kullanılır.
 // Depo boşsa varsayılan depo. Fiyat seçilen birim içindir; KdvDahilMi ise girilen fiyat KDV dahildir. İskontolar yüzdedir.
+// TevkifatKodu/Pay/Payda opsiyoneldir; verilmezse satırda KDV tevkifatı yoktur.
 public sealed record FaturaSatiriIstegi(
     Guid? StokKartiId,
     string? Ad,
@@ -61,7 +62,10 @@ public sealed record FaturaSatiriIstegi(
     int KdvOrani,
     decimal Iskonto1,
     decimal Iskonto2,
-    decimal Iskonto3);
+    decimal Iskonto3,
+    string? TevkifatKodu = null,
+    int TevkifatPay = 0,
+    int TevkifatPayda = 0);
 
 // PesinHesapId verilirse fatura kesinleşirken o kasa/banka/POS hesabından peşin tahsil edilir (ödenir).
 // Numara yalnızca gelen faturalarda (alış, satıştan iade) girilir; giden faturaların numarası otomatik verilir.
@@ -80,7 +84,8 @@ public sealed record FaturaKaydetIstegi(
     string? Aciklama,
     IReadOnlyList<FaturaSatiriIstegi> Satirlar,
     uint Surum = 0,
-    Guid? PesinHesapId = null);
+    Guid? PesinHesapId = null,
+    decimal StopajOrani = 0m);
 
 public sealed record FaturaOzeti(
     Guid Id,
@@ -118,7 +123,11 @@ public sealed record FaturaSatiriDetayi(
     decimal GenelIskontoPayi,
     decimal Matrah,
     decimal KdvTutari,
-    decimal Toplam);
+    decimal Toplam,
+    string? TevkifatKodu,
+    int TevkifatPay,
+    int TevkifatPayda,
+    decimal TevkifEdilenKdv);
 
 // Cari bilgileri fatura anındaki kopyadır; cari kartı sonradan değişse de fatura değişmez.
 public sealed record FaturaDetayi(
@@ -149,6 +158,10 @@ public sealed record FaturaDetayi(
     decimal KdvToplami,
     decimal GenelToplam,
     decimal GenelToplamTl,
+    decimal StopajOrani,
+    decimal StopajTutari,
+    decimal TevkifEdilenKdvToplami,
+    decimal OdenecekTutar,
     IReadOnlyList<KdvDagilimi> KdvDagilimi,
     IReadOnlyList<FaturaSatiriDetayi> Satirlar,
     Guid Ettn,

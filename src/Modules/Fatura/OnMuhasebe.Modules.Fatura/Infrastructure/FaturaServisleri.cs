@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Moduller;
+using OnMuhasebe.Shared.Contracts.Vergi;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
@@ -92,7 +93,8 @@ internal sealed class FaturaHazirlayici(
         return new FaturaBilgileri(
             istek.Tur, satisSekli, faturaCarisi, istek.Tarih, istek.VadeTarihi,
             FaturaTurleri.GidenMi(istek.Tur) ? null : Temiz(istek.Numara)?.ToUpperInvariant(),
-            paraBirimi, kur, istek.GenelIskontoTuru, istek.GenelIskonto, Temiz(istek.Aciklama), satirlar.Deger, istek.PesinHesapId);
+            paraBirimi, kur, istek.GenelIskontoTuru, istek.GenelIskonto, Temiz(istek.Aciklama), satirlar.Deger, istek.PesinHesapId,
+            istek.StopajOrani);
     }
 
     // Satış tarafında para hesaba girer (kredi kartına tahsilat olmaz), alış tarafında çıkar (POS'tan ödeme olmaz).
@@ -229,8 +231,16 @@ internal sealed class FaturaHazirlayici(
         return sonuc;
     }
 
-    private static FaturaSatiriBilgisi Satir(FaturaSatiriIstegi s, Guid? kartId, string? kod, string ad, bool stokluMu, Guid? depoId) =>
-        new(kartId, kod, ad, stokluMu, depoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvDahilMi, s.KdvOrani, s.Iskonto1, s.Iskonto2, s.Iskonto3);
+    private static FaturaSatiriBilgisi Satir(FaturaSatiriIstegi s, Guid? kartId, string? kod, string ad, bool stokluMu, Guid? depoId)
+    {
+        // Oran açıkça gelmişse ona uyulur; yalnızca kod gelmişse referanstaki varsayılan oran kullanılır.
+        var (pay, payda) = s.TevkifatPayda > 0
+            ? (s.TevkifatPay, s.TevkifatPayda)
+            : TevkifatKodlari.Bul(Temiz(s.TevkifatKodu)) is { } t ? (t.Pay, t.Payda) : (0, 0);
+
+        return new(kartId, kod, ad, stokluMu, depoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvDahilMi, s.KdvOrani, s.Iskonto1, s.Iskonto2, s.Iskonto3,
+            Temiz(s.TevkifatKodu), pay, payda);
+    }
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

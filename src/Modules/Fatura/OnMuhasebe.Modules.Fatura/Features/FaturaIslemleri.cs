@@ -203,11 +203,12 @@ internal static class FaturaIslemleri
             f.CariHesapId, f.CariKodu, f.CariUnvan, f.VergiNo, f.VergiDairesi, f.Il, f.Ilce, f.Adres,
             f.ParaBirimi, f.Kur, f.GenelIskontoTuru, f.GenelIskonto, f.Aciklama,
             f.BrutToplam, f.SatirIskontoToplami, f.GenelIskontoTutari, f.Matrah, f.KdvToplami, f.GenelToplam, f.GenelToplamTl,
+            f.StopajOrani, f.StopajTutari, f.TevkifEdilenKdvToplami, f.OdenecekTutar,
             dagilim,
             satirlar.Select(s => new FaturaSatiriDetayi(
                 s.Id, s.Sira, s.StokKartiId, s.StokKodu, s.Ad, s.StokluMu, s.DepoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvDahilMi,
                 s.Iskonto1, s.Iskonto2, s.Iskonto3, s.KdvOrani, s.BrutTutar, s.IskontoTutari, s.GenelIskontoPayi, s.Matrah,
-                s.KdvTutari, s.Toplam)).ToList(),
+                s.KdvTutari, s.Toplam, s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda, s.TevkifEdilenKdv)).ToList(),
             f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan);
     }
 }
