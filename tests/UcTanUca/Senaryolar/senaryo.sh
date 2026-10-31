@@ -94,7 +94,7 @@ kontrol 200 "Davet kabul edilmeden Ali firma B'ye bagli degil"
 
 DAVET_KODU=$(mailpit_kodu "$ALI" davet)
 istek POST /davet-bilgi "" "" '{"kod":"'"$DAVET_KODU"'"}'
-kontrol 200 "Davet bilgisi: firma B, yonetici, mevcut hesap" '"firmaUnvani":"B Insaat".*"rol":"Yonetici","hesapVarMi":true'
+kontrol 200 "Davet bilgisi: firma B, yonetici, mevcut hesap" '"firmaUnvani":"B Insaat".*"rolAdi":"Y.*"hesapVarMi":true'
 istek POST /davet-kabul "" "" '{"kod":"'"$DAVET_KODU"'","sifre":"Yanlis123"}'
 kontrol 401 "Yanlis sifreyle davet kabul edilmez" giris_basarisiz
 istek POST /davet-kabul "" "" '{"kod":"'"$DAVET_KODU"'","sifre":"Sifre1234"}'
@@ -118,16 +118,18 @@ echo "--- Kullanici yonetimi ve firma izolasyonu"
 davet_kabul "$ALI_TOKEN" '{"ad":"Veli","soyad":"Kaya","eposta":"'"$VELI"'","sifre":"Sifre1234","rol":"Kullanici"}'
 kontrol 200 "Veli davetle firma A'ya katildi (kendi sifresini belirledi)" accessToken
 
-istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$AYSE"'","rol":"Kullanici"}'
-kontrol 201 "Ayse'ye davet gitti" '"eposta":"'"$AYSE"'","rol":"Kullanici"'
+istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$AYSE"'","rolId":"'"$(rol_id "$ALI_TOKEN" Kullanici)"'"}'
+kontrol 201 "Ayse'ye davet gitti" '"eposta":"'"$AYSE"'","rolId":"'
 if echo "$GOVDE" | grep -q '"ad"'; then KOD=999; fi
 kontrol 201 "Davet yaniti kisisel bilgi (ad/soyad) icermez"
 istek GET /kullanicilar/davetler "$ALI_TOKEN"
 kontrol 200 "Bekleyen davetlerde Ayse var" "$AYSE"
 
-istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$VELI"'","rol":"Patron"}'
+istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$VELI"'","rolId":"00000000-0000-0000-0000-000000000000"}'
 kontrol 400 "Gecersiz rol reddedildi"
-istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$VELI"'","rol":"Kullanici"}'
+istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"yok'"$U"'@ornek.com","rolId":"'"$(rol_id "$ALI_B_TOKEN" Kullanici)"'"}'
+kontrol 404 "Baska firmanin rolu ile davet edilemez" rol_bulunamadi
+istek POST /kullanicilar "$ALI_TOKEN" "" '{"eposta":"'"$VELI"'","rolId":"'"$(rol_id "$ALI_TOKEN" Kullanici)"'"}'
 kontrol 409 "Zaten uye olan kisiye davet gitmez" zaten_firma_uyesi
 
 istek GET /kullanicilar "$ALI_TOKEN"

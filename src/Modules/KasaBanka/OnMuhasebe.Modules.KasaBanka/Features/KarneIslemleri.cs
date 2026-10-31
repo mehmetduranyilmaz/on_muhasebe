@@ -9,6 +9,8 @@ using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Domain.CekSenet;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
@@ -22,12 +24,12 @@ internal static class KarneIslemleri
         grup.MapGet("/karneler", ListeleAsync);
         grup.MapPost("/karneler", EkleAsync).Dogrula<KarneEkleIstegi>();
         grup.MapGet("/karneler/{id:guid}", DetayAsync);
-        grup.MapPost("/karneler/{id:guid}/yaprak-iptal", YaprakIptalAsync).Dogrula<YaprakIptalIstegi>();
-        grup.MapDelete("/karneler/{id:guid}/yaprak-iptal/{seriNo}", IptalGeriAlAsync);
+        grup.MapPost("/karneler/{id:guid}/yaprak-iptal", YaprakIptalAsync).Dogrula<YaprakIptalIstegi>().Islem(YetkiIslemleri.Duzenle);
+        grup.MapDelete("/karneler/{id:guid}/yaprak-iptal/{seriNo}", IptalGeriAlAsync).Islem(YetkiIslemleri.Duzenle);
         grup.MapPost("/karneler/{id:guid}/kapat", (Guid id, KasaBankaDbContext db, CekSenetServisi servis, CancellationToken ct) =>
-            DurumAsync(id, false, db, servis, ct));
+            DurumAsync(id, false, db, servis, ct)).Islem(YetkiIslemleri.Duzenle);
         grup.MapPost("/karneler/{id:guid}/ac", (Guid id, KasaBankaDbContext db, CekSenetServisi servis, CancellationToken ct) =>
-            DurumAsync(id, true, db, servis, ct));
+            DurumAsync(id, true, db, servis, ct)).Islem(YetkiIslemleri.Duzenle);
         grup.MapDelete("/karneler/{id:guid}", SilAsync);
     }
 

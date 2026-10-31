@@ -8,6 +8,8 @@ using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Domain.CekSenet;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;

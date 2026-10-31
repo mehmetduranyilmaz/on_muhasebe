@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Features;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Ayarlar;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Modules;
@@ -21,6 +22,8 @@ public sealed class FaturaModulu : IModul
     public string Ad => "Fatura";
 
     public IReadOnlyList<ZorunluAlanTanimi> ZorunluAlanlar => FaturaZorunluAlanlari.Tumu;
+
+    public IReadOnlyList<YetkiKaynagi> YetkiKaynaklari => FaturaYetkileri.Tumu;
 
     public void ServisleriEkle(IServiceCollection services, IConfiguration configuration)
     {

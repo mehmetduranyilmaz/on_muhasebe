@@ -18,7 +18,7 @@ internal static class DonemKilidiIslemleri
     public static void Map(RouteGroupBuilder grup)
     {
         grup.MapGet("/donem-kilidi", GetirAsync).RequireAuthorization();
-        grup.MapPut("/donem-kilidi", KaydetAsync).Dogrula<DonemKilidiAyari>().RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        grup.MapPut("/donem-kilidi", KaydetAsync).Dogrula<DonemKilidiAyari>().RequireYetki(YonetimYetkileri.Firma, YetkiIslemleri.Duzenle);
     }
 
     internal sealed class Dogrulayici : AbstractValidator<DonemKilidiAyari>

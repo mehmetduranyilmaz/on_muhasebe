@@ -11,9 +11,12 @@
         <MudForm @ref="_form">
             <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Label="E-posta" InputType="InputType.Email"
                           Required="true" RequiredError="E-posta gerekli." />
-            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_rol" Label="Rol" Class="mt-3">
-                <MudSelectItem Value="@Roller.Kullanici">Kullanıcı</MudSelectItem>
-                <MudSelectItem Value="@Roller.Yonetici">Yönetici</MudSelectItem>
+            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_rolId" Label="Rol" Class="mt-3"
+                       Required="true" RequiredError="Rol seçin.">
+                @foreach (var rol in _roller)
+                {
+                    <MudSelectItem Value="@rol.Id">@rol.Ad</MudSelectItem>
+                }
             </MudSelect>
         </MudForm>
     </DialogContent>
@@ -29,8 +32,17 @@
 
     private MudForm _form = null!;
     private string _eposta = "";
-    private string _rol = Roller.Kullanici;
+    private List<RolCevabi> _roller = [];
+    private Guid _rolId;
     private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<List<RolCevabi>>("api/yonetim/roller");
+        _hata = sonuc.Hata;
+        _roller = sonuc.Deger ?? [];
+        _rolId = (_roller.Find(r => r.Ad == "Kullanıcı") ?? _roller.Find(r => !r.TamYetkiliMi))?.Id ?? Guid.Empty;
+    }
 
     private async Task GonderAsync()
     {
@@ -40,7 +52,7 @@
             return;
         }
 
-        var sonuc = await Api.PostAsync<DavetOzeti>("api/yonetim/kullanicilar", new KullaniciDavetIstegi(_eposta.Trim(), _rol));
+        var sonuc = await Api.PostAsync<DavetOzeti>("api/yonetim/kullanicilar", new KullaniciDavetIstegi(_eposta.Trim(), _rolId));
         _hata = sonuc.Hata;
         if (sonuc.BasariliMi)
         {

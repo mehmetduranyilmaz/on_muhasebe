@@ -9,6 +9,8 @@ using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Domain.Ekstre;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Guvenlik;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -18,8 +20,9 @@ namespace OnMuhasebe.Modules.KasaBanka.Features;
 // Banka/kart/POS ekstresi içe aktarma: yükle → (kolon eşle) → satırları gözden geçir → aktar.
 internal static class EkstreIslemleri
 {
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(KasaBankaYetkileri.Ekstre);
         grup.MapPost("/hesaplar/{hesapId:guid}/ekstre-aktarimlari", YukleAsync).DisableAntiforgery()
             .WithMetadata(new YuklemeBoyutu(GuvenlikExtensions.AzamiYuklemeBoyutu));
         grup.MapGet("/hesaplar/{hesapId:guid}/ekstre-aktarimlari", ListeleAsync);

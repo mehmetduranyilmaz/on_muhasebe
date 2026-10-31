@@ -44,6 +44,9 @@ public static class ModulLisansExtensions
     {
         builder.RequireAuthorization();
         builder.AddEndpointFilter(new ModulLisansFiltresi(modulKodu));
+
+        // Lisanstan sonra yetki: modülün her ucu bir yetkiye (ya da açıkça "yetki gerekmez"e) bağlanmalıdır.
+        builder.YetkiFiltresiEkle();
         return builder;
     }
 }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Domain;
 using OnMuhasebe.Modules.Stok.Infrastructure;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Tanimlar;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -20,21 +21,21 @@ internal static class StokTanimIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var depolar = grup.MapGroup("/depolar");
+        var depolar = grup.MapGroup("/depolar").Yetki(StokYetkileri.Tanim);
         depolar.MapGet("", DepolariListeleAsync);
         depolar.MapPost("", DepoEkleAsync).Dogrula<DepoKaydetIstegi>();
         depolar.MapPut("/{id:guid}", DepoGuncelleAsync).Dogrula<DepoKaydetIstegi>();
-        depolar.MapPost("/{id:guid}/varsayilan", VarsayilanYapAsync);
+        depolar.MapPost("/{id:guid}/varsayilan", VarsayilanYapAsync).Islem(YetkiIslemleri.Duzenle);
         depolar.MapDelete("/{id:guid}", DepoSilAsync);
 
-        var gruplar = grup.MapGroup("/gruplar");
+        var gruplar = grup.MapGroup("/gruplar").Yetki(StokYetkileri.Tanim);
         gruplar.MapGet("", GruplariListeleAsync);
         gruplar.MapPost("", GrupEkleAsync).Dogrula<GrupKaydetIstegi>();
         gruplar.MapPut("/{id:guid}", GrupGuncelleAsync).Dogrula<GrupKaydetIstegi>();
         gruplar.MapDelete("/{id:guid}", GrupSilAsync);
 
-        grup.MapGet("/ayarlar", AyarlariGetirAsync);
-        grup.MapPut("/ayarlar", AyarlariKaydetAsync).RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        grup.MapGet("/ayarlar", AyarlariGetirAsync).YetkiGerekmez();
+        grup.MapPut("/ayarlar", AyarlariKaydetAsync).Yetki(YonetimYetkileri.Firma, YetkiIslemleri.Duzenle);
     }
 
     internal sealed class DepoDogrulayici : AbstractValidator<DepoKaydetIstegi>

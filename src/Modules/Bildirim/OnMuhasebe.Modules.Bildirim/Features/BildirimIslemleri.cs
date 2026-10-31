@@ -36,7 +36,7 @@ internal static class BildirimIslemleri
         firma.MapGet("/tercihler", TercihGetirAsync);
         firma.MapPut("/tercihler", TercihKaydetAsync).Dogrula<BildirimTercihleri>();
         firma.MapGet("/ayarlar", AyarGetirAsync);
-        firma.MapPut("/ayarlar", AyarKaydetAsync).Dogrula<BildirimAyarlari>().RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        firma.MapPut("/ayarlar", AyarKaydetAsync).Dogrula<BildirimAyarlari>().RequireYetki(YonetimYetkileri.Firma, YetkiIslemleri.Duzenle);
 
         var sistem = grup.MapGroup("/sistem").RequireAuthorization(p => p.RequireRole(Roller.SistemYoneticisi));
         sistem.MapGet("/eposta", EpostaGetirAsync);

@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -13,14 +15,16 @@ namespace OnMuhasebe.Modules.Stok.Features;
 // Lot/SKT ve seri sorguları: belgede lot/seri seçimi, raf ömrü raporu ve seri geçmişi (geri çağırma, garanti, iade).
 internal static class IzlenebilirlikIslemleri
 {
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        // Kartın lot/seri bakiyeleri belge formlarında seçim içindir; firma geneli lot ve seri izleri rapordur.
+        var grup = modul.MapGroup("").Yetki(StokYetkileri.Kart);
         grup.MapGet("/kartlar/{kartId:guid}/lotlar", (Guid kartId, Guid? depoId, IzlenebilirlikServisi s, CancellationToken ct) =>
             s.LotBakiyeleri(kartId, depoId).ToListAsync(ct));
         grup.MapGet("/kartlar/{kartId:guid}/seriler", (Guid kartId, Guid? depoId, IzlenebilirlikServisi s, CancellationToken ct) =>
             s.StoktakiSerilerAsync(kartId, depoId, null, ct));
-        grup.MapGet("/lotlar", LotlarAsync);
-        grup.MapGet("/seri-gecmisi", SeriGecmisiAsync);
+        grup.MapGet("/lotlar", LotlarAsync).Yetki(StokYetkileri.Rapor);
+        grup.MapGet("/seri-gecmisi", SeriGecmisiAsync).Yetki(StokYetkileri.Rapor);
     }
 
     // Stoktaki lotlar SKT sırasıyla; gun verilirse yalnızca SKT'si o kadar gün içinde dolan ya da geçmiş lotlar.

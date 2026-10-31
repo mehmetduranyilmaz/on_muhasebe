@@ -7,6 +7,8 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -20,7 +22,7 @@ internal static class IslemIslemleri
 
     public static void Map(RouteGroupBuilder grup)
     {
-        var islemler = grup.MapGroup("/islemler");
+        var islemler = grup.MapGroup("/islemler").Yetki(KasaBankaYetkileri.Islem);
         islemler.MapGet("/{islemId:guid}", GetirAsync);
         islemler.MapPost("/acilis", (AcilisIstegi i, KasaIslemServisi s, KasaBankaDbContext db, ICariSorgusu c, CancellationToken ct) =>
             SonucAsync(s.AcilisAsync(i, ct), db, c, ct)).Dogrula<AcilisIstegi>();
@@ -33,7 +35,7 @@ internal static class IslemIslemleri
         islemler.MapPost("/gelir-gider", (GelirGiderIstegi i, KasaIslemServisi s, KasaBankaDbContext db, ICariSorgusu c, CancellationToken ct) =>
             SonucAsync(s.GelirGiderAsync(i, ct), db, c, ct)).Dogrula<GelirGiderIstegi>();
         islemler.MapPost("/{islemId:guid}/iptal", (Guid islemId, KasaIslemServisi s, KasaBankaDbContext db, ICariSorgusu c, CancellationToken ct) =>
-            SonucAsync(s.IptalAsync(islemId, belgedenMi: false, ct), db, c, ct, olusturuldu: false));
+            SonucAsync(s.IptalAsync(islemId, belgedenMi: false, ct), db, c, ct, olusturuldu: false)).Islem(YetkiIslemleri.Iptal);
     }
 
     internal sealed class AcilisDogrulayici : AbstractValidator<AcilisIstegi>

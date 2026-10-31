@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Birimler;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
@@ -21,15 +23,16 @@ internal static class IrsaliyeIslemleri
 {
     public const int AzamiSatirSayisi = 500;
 
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(FaturaYetkileri.Irsaliye);
         grup.MapGet("/irsaliyeler", ListeleAsync);
         grup.MapGet("/irsaliyeler/aktarim", AktarimAsync);
         grup.MapGet("/irsaliyeler/{id:guid}", GetirAsync);
         grup.MapPost("/irsaliyeler", OlusturAsync).Dogrula<IrsaliyeKaydetIstegi>();
         grup.MapPut("/irsaliyeler/{id:guid}", GuncelleAsync).Dogrula<IrsaliyeKaydetIstegi>();
-        grup.MapPost("/irsaliyeler/{id:guid}/onayla", OnaylaAsync);
-        grup.MapPost("/irsaliyeler/{id:guid}/iptal", IptalEtAsync);
+        grup.MapPost("/irsaliyeler/{id:guid}/onayla", OnaylaAsync).Islem(YetkiIslemleri.Onayla);
+        grup.MapPost("/irsaliyeler/{id:guid}/iptal", IptalEtAsync).Islem(YetkiIslemleri.Iptal);
         grup.MapDelete("/irsaliyeler/{id:guid}", SilAsync);
     }
 

@@ -30,6 +30,7 @@ internal sealed class OturumServisi(
     {
         var uyelikler = await db.FirmaKullanicilari
             .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
+            .Include(u => u.Rol)
             .Where(u => u.KullaniciId == kullanici.Id && u.AktifMi && u.Firma.AktifMi)
             .OrderBy(u => u.OlusturmaTarihi)
             .ToListAsync(cancellationToken);

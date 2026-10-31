@@ -19,7 +19,7 @@ internal static class FirmaBilgileriIslemleri
     public static void Map(RouteGroupBuilder grup)
     {
         grup.MapGet("/firma", GetirAsync).RequireAuthorization();
-        grup.MapPut("/firma", KaydetAsync).Dogrula<FirmaBilgileri>().RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        grup.MapPut("/firma", KaydetAsync).Dogrula<FirmaBilgileri>().RequireYetki(YonetimYetkileri.Firma, YetkiIslemleri.Duzenle);
     }
 
     internal sealed class Dogrulayici : AbstractValidator<FirmaBilgileri>

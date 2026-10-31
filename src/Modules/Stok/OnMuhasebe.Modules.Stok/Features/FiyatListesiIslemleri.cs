@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Domain;
 using OnMuhasebe.Modules.Stok.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -17,7 +19,7 @@ internal static class FiyatListesiIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var g = grup.MapGroup("/fiyat-listeleri");
+        var g = grup.MapGroup("/fiyat-listeleri").Yetki(StokYetkileri.Fiyat);
         g.MapGet("", ListeleAsync);
         g.MapGet("/uygulanan", UygulananAsync);
         g.MapGet("/{id:guid}", GetirAsync);
@@ -32,15 +34,15 @@ internal static class FiyatListesiIslemleri
         {
             RuleFor(x => x.Ad).NotEmpty().MaximumLength(100);
             RuleFor(x => x.Tur).IsInEnum();
-            RuleFor(x => x.ParaBirimi).Must(ParaBirimleri.GecerliMi).WithMessage("Geçersiz para birimi.");
+            RuleFor(x => x.ParaBirimi).NotEmpty().Must(ParaBirimleri.GecerliMi).WithMessage("Geçersiz para birimi.");
             RuleFor(x => x.Aciklama).MaximumLength(500);
-            RuleFor(x => x.Hedefler).Must(h => h.Count <= 1000);
+            RuleFor(x => x.Hedefler).NotNull().Must(h => h.Count <= 1000);
             RuleForEach(x => x.Hedefler).ChildRules(h =>
             {
                 h.RuleFor(x => x.Tur).IsInEnum();
                 h.RuleFor(x => x.Ad).NotEmpty().MaximumLength(250);
             });
-            RuleFor(x => x.Satirlar).Must(s => s.Count <= FiyatListesiKurallari.AzamiSatirSayisi);
+            RuleFor(x => x.Satirlar).NotNull().Must(s => s.Count <= FiyatListesiKurallari.AzamiSatirSayisi);
             RuleForEach(x => x.Satirlar).ChildRules(s =>
             {
                 s.RuleFor(x => x.MinMiktar).GreaterThanOrEqualTo(0).LessThan(1_000_000_000m);

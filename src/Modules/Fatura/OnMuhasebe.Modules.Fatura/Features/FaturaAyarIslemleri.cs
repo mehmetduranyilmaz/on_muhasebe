@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
@@ -15,8 +16,8 @@ internal static class FaturaAyarIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        grup.MapGet("/ayarlar", GetirAsync);
-        grup.MapPut("/ayarlar", KaydetAsync).Dogrula<FaturaAyarlari>().RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        grup.MapGet("/ayarlar", GetirAsync).YetkiGerekmez();
+        grup.MapPut("/ayarlar", KaydetAsync).Dogrula<FaturaAyarlari>().Yetki(YonetimYetkileri.Firma, YetkiIslemleri.Duzenle);
     }
 
     internal sealed class Dogrulayici : AbstractValidator<FaturaAyarlari>

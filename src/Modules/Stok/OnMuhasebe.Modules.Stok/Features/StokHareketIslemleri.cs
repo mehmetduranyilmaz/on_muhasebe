@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Domain;
 using OnMuhasebe.Modules.Stok.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -17,12 +19,13 @@ namespace OnMuhasebe.Modules.Stok.Features;
 // Elle girilen hareketler (açılış, sayım farkı, fire, sarf), depolar arası transfer ve ters kayıtla iptal.
 internal static class StokHareketIslemleri
 {
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(StokYetkileri.Hareket);
         grup.MapGet("/kartlar/{kartId:guid}/hareketler", ListeleAsync);
         grup.MapPost("/kartlar/{kartId:guid}/hareketler", EkleAsync).Dogrula<StokHareketKaydetIstegi>();
         grup.MapPost("/kartlar/{kartId:guid}/transferler", TransferAsync).Dogrula<TransferIstegi>();
-        grup.MapPost("/hareketler/{hareketId:guid}/iptal", IptalEtAsync);
+        grup.MapPost("/hareketler/{hareketId:guid}/iptal", IptalEtAsync).Islem(YetkiIslemleri.Iptal);
     }
 
     internal sealed class Dogrulayici : AbstractValidator<StokHareketKaydetIstegi>

@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
 using OnMuhasebe.Shared.Contracts.Ayarlar;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Bildirimler;
@@ -24,6 +25,8 @@ public sealed class KasaBankaModulu : IModul
     public string Ad => "KasaBanka";
 
     public IReadOnlyList<ZorunluAlanTanimi> ZorunluAlanlar => KasaBankaZorunluAlanlari.Tumu;
+
+    public IReadOnlyList<YetkiKaynagi> YetkiKaynaklari => KasaBankaYetkileri.Tumu;
 
     public void ServisleriEkle(IServiceCollection services, IConfiguration configuration)
     {

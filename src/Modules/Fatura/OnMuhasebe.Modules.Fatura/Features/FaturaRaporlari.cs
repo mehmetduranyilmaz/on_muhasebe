@@ -6,6 +6,8 @@ using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -17,10 +19,11 @@ internal static class FaturaRaporlari
     private const int OzetListeBoyutu = 5;
     private const int GrafikAySayisi = 6;
 
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(FaturaYetkileri.Rapor);
         grup.MapGet("/raporlar/ozet", OzetAsync);
-        grup.MapGet("/raporlar/karlilik", KarlilikAsync);
+        grup.MapGet("/raporlar/karlilik", KarlilikAsync).Yetki(StokYetkileri.Maliyet);
         grup.MapGet("/raporlar/kdv", KdvAsync);
         grup.MapGet("/raporlar/masraf-merkezi", MasrafMerkeziAsync);
         grup.MapGet("/raporlar/ba-bs", BaBsAsync);

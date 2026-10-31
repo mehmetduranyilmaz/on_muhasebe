@@ -14,6 +14,7 @@ using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Features;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Bildirimler;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
@@ -30,6 +31,8 @@ public sealed class YonetimModulu : IModul
     internal const string YenilemeLimitPolitikasi = "yenileme";
 
     public string Ad => "Yonetim";
+
+    public IReadOnlyList<YetkiKaynagi> YetkiKaynaklari => YonetimYetkileri.Tumu;
 
     public void ServisleriEkle(IServiceCollection services, IConfiguration configuration)
     {
@@ -80,6 +83,7 @@ public sealed class YonetimModulu : IModul
         services.AddMemoryCache();
         services.AddSingleton<GirisDenemeleri>();
         services.AddScoped<ILisansSorgusu, LisansSorgusu>();
+        services.AddScoped<IYetkiSorgusu, YetkiSorgusu>();
         services.AddScoped<ZorunluAlanSorgusu>();
         services.AddScoped<IZorunluAlanSorgusu>(sp => sp.GetRequiredService<ZorunluAlanSorgusu>());
         services.AddScoped<DonemKilidiSorgusu>();
@@ -105,6 +109,7 @@ public sealed class YonetimModulu : IModul
         Ben.Map(grup);
         FirmaBilgileriIslemleri.Map(grup);
         KullaniciIslemleri.Map(grup);
+        RolIslemleri.Map(grup);
         SistemIslemleri.Map(grup);
         SistemAbonelikIslemleri.Map(grup);
         AbonelikIslemleri.Map(grup);

@@ -7,6 +7,7 @@ using OnMuhasebe.Modules.Stok;
 using OnMuhasebe.Modules.Yonetim;
 using OnMuhasebe.Shared.Infrastructure;
 using OnMuhasebe.Shared.Infrastructure.Guvenlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Modules;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Tekrar;
@@ -72,6 +73,7 @@ app.UseTekrarKorumasi();
 
 app.MapHealthChecks("/health");
 app.MapModuller();
+app.YetkiTanimlariniDenetle();
 
 app.Run();
 

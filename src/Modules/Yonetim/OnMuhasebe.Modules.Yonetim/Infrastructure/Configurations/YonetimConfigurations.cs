@@ -40,11 +40,23 @@ internal sealed class FirmaKullanicisiConfiguration : IEntityTypeConfiguration<F
     public void Configure(EntityTypeBuilder<FirmaKullanicisi> builder)
     {
         builder.ToTable("firma_kullanicisi");
-        builder.Property(x => x.Rol).HasMaxLength(20);
         builder.HasIndex(x => new { x.FirmaId, x.KullaniciId }).IsUnique();
         builder.HasIndex(x => x.KullaniciId);
         builder.HasOne(x => x.Firma).WithMany().HasForeignKey(x => x.FirmaId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Kullanici).WithMany().HasForeignKey(x => x.KullaniciId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Rol).WithMany().HasForeignKey(x => x.RolId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class FirmaRoluConfiguration : IEntityTypeConfiguration<FirmaRolu>
+{
+    public void Configure(EntityTypeBuilder<FirmaRolu> builder)
+    {
+        builder.ToTable("firma_rolu");
+        builder.Property(x => x.Ad).HasMaxLength(100);
+        builder.Property(x => x.Aciklama).HasMaxLength(500);
+        builder.HasIndex(x => new { x.FirmaId, x.Ad }).IsUnique();
+        builder.HasOne<Firma>().WithMany().HasForeignKey(x => x.FirmaId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -104,11 +116,11 @@ internal sealed class FirmaDavetiConfiguration : IEntityTypeConfiguration<FirmaD
     {
         builder.ToTable("firma_daveti");
         builder.Property(x => x.Eposta).HasMaxLength(256);
-        builder.Property(x => x.Rol).HasMaxLength(20);
         builder.Property(x => x.KodOzeti).HasMaxLength(64);
         builder.HasIndex(x => x.KodOzeti).IsUnique();
         builder.HasIndex(x => new { x.FirmaId, x.Eposta });
         builder.HasOne(x => x.Firma).WithMany().HasForeignKey(x => x.FirmaId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Rol).WithMany().HasForeignKey(x => x.RolId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 

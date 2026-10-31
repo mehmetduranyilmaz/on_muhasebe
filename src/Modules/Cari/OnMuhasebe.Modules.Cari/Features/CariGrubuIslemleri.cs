@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
 using OnMuhasebe.Modules.Cari.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Tanimlar;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -17,7 +19,7 @@ internal static class CariGrubuIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var gruplar = grup.MapGroup("/gruplar");
+        var gruplar = grup.MapGroup("/gruplar").Yetki(CariYetkileri.Grup);
         gruplar.MapGet("", ListeleAsync);
         gruplar.MapPost("", EkleAsync).Dogrula<GrupKaydetIstegi>();
         gruplar.MapPut("/{id:guid}", GuncelleAsync).Dogrula<GrupKaydetIstegi>();

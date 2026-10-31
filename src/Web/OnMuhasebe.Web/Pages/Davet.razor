@@ -23,7 +23,7 @@ else
 {
     <h2>@_bilgi.FirmaUnvani</h2>
     <div class="alt">
-        <b>@_bilgi.Eposta</b> olarak @(_bilgi.Rol == Roller.Yonetici ? "yönetici" : "kullanıcı") rolüyle davet edildiniz.
+        <b>@_bilgi.Eposta</b> olarak <b>@_bilgi.RolAdi</b> rolüyle davet edildiniz.
         @(_bilgi.HesapVarMi ? "Katılmak için şifrenizi girin." : "Katılmak için hesabınızı oluşturun.")
     </div>
     <HataGosterimi Hata="_hata" />

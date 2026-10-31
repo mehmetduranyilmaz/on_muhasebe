@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -17,13 +19,13 @@ internal static class KrediIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var krediler = grup.MapGroup("/krediler");
+        var krediler = grup.MapGroup("/krediler").Yetki(KasaBankaYetkileri.Kredi);
         krediler.MapGet("", ListeleAsync);
         krediler.MapGet("/{id:guid}", GetirAsync);
         krediler.MapPost("", OlusturAsync).Dogrula<KrediKaydetIstegi>();
         krediler.MapPost("/{id:guid}/taksitler/{sira:int}/ode", TaksitOdeAsync);
-        krediler.MapPost("/{id:guid}/taksitler/{sira:int}/geri-al", TaksitGeriAlAsync);
-        krediler.MapPost("/{id:guid}/iptal", IptalAsync);
+        krediler.MapPost("/{id:guid}/taksitler/{sira:int}/geri-al", TaksitGeriAlAsync).Islem(YetkiIslemleri.Iptal);
+        krediler.MapPost("/{id:guid}/iptal", IptalAsync).Islem(YetkiIslemleri.Iptal);
     }
 
     internal sealed class Dogrulayici : AbstractValidator<KrediKaydetIstegi>

@@ -69,7 +69,7 @@ istek GET "$CS/evraklar/$AS1" "$T"
 kontrol 200 "Senet AS00001, kimliksiz borclu kabul edildi" '"portfoyNo":"AS00001".*"borcluAdi":"Mehmet Kaya"'
 cari_bakiye "$C1" "Musteri: 1.200 fatura - 12.000 evrak = -10.800" -10800
 istek GET "/api/fatura/faturalar/$F1" "$T"
-kontrol 200 "Evrak girisi faturayi FIFO ile kapatti" '"kalan":0(\.0+)?}'
+kontrol 200 "Evrak girisi faturayi FIFO ile kapatti" '"kalan":0(.0+)?[,}]'
 istek GET "/api/cari/hesaplar/$C1/hareketler" "$T"
 kontrol 200 "Cari ekstrede cek/senet girisi belge no ve vadeyle" '"tur":"CekSenetGirisi".*"belgeNo":"AC00001/1001"'
 istek GET "$CS/borclular?arama=ahmet" "$T"

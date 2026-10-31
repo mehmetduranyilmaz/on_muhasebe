@@ -7,6 +7,8 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -19,12 +21,12 @@ internal static class TeminatIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var teminatlar = grup.MapGroup("/teminatlar");
+        var teminatlar = grup.MapGroup("/teminatlar").Yetki(KasaBankaYetkileri.Teminat);
         teminatlar.MapGet("", ListeleAsync);
         teminatlar.MapGet("/{id:guid}", DetayAsync);
         teminatlar.MapPost("", EkleAsync).Dogrula<TeminatKaydetIstegi>();
         teminatlar.MapPut("/{id:guid}", GuncelleAsync).Dogrula<TeminatKaydetIstegi>();
-        teminatlar.MapPost("/{id:guid}/durum", DurumDegistirAsync);
+        teminatlar.MapPost("/{id:guid}/durum", DurumDegistirAsync).Islem(YetkiIslemleri.Duzenle);
         teminatlar.MapDelete("/{id:guid}", SilAsync);
     }
 

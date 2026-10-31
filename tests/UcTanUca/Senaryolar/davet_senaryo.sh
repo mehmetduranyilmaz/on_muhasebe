@@ -38,7 +38,7 @@ kontrol 401 "Yanlis sifrede dogrulama durumu ele verilmez" giris_basarisiz
 echo "--- Firma yoneticisi kurbani davet eder"
 kayit_ol '{"firmaUnvani":"Hedef Firma","ad":"Yasar","soyad":"Yon","eposta":"'"$YONETICI"'","sifre":"Sifre1234"}'
 kontrol 200 "Hedef firma yoneticisi kayit + dogrulama" accessToken; T=$(alan accessToken)
-istek POST $Y/kullanicilar "$T" '{"eposta":"'"$KURBAN"'","rol":"Yonetici"}'
+istek POST $Y/kullanicilar "$T" '{"eposta":"'"$KURBAN"'","rolId":"'"$(rol_id "$T" Yonetici)"'"}'
 kontrol 201 "Kurbana davet gitti"
 istek GET $Y/kullanicilar "$T"
 if echo "$GOVDE" | grep -q "$KURBAN"; then KOD=999; fi
@@ -68,7 +68,7 @@ echo "--- Var olan (dogrulanmis) hesap davetle katilir"
 pencere
 kayit_ol '{"firmaUnvani":"Mevcut Ltd","ad":"Mehmet","soyad":"Var","eposta":"'"$MEVCUT"'","sifre":"Mevcut1234"}'
 kontrol 200 "Mevcut kullanici kendi firmasini acti" accessToken; TM=$(alan accessToken)
-istek POST $Y/kullanicilar "$T" '{"eposta":"'"$MEVCUT"'","rol":"Kullanici"}'
+istek POST $Y/kullanicilar "$T" '{"eposta":"'"$MEVCUT"'","rolId":"'"$(rol_id "$T" Kullanici)"'"}'
 kontrol 201 "Mevcut kullaniciya davet"
 if echo "$GOVDE" | grep -q "Mehmet"; then KOD=999; fi
 kontrol 201 "Davet yaniti baska firmanin kullanicisinin adini sizdirmaz"
@@ -84,7 +84,7 @@ kontrol 200 "Aktif firma davet edilen firma, ad degismedi, iki firma" '"ad":"Meh
 
 echo "--- Davet yonetimi"
 pencere
-istek POST $Y/kullanicilar "$T" '{"eposta":"iptal'"$U"'@ornek.com","rol":"Kullanici"}'
+istek POST $Y/kullanicilar "$T" '{"eposta":"iptal'"$U"'@ornek.com","rolId":"'"$(rol_id "$T" Kullanici)"'"}'
 DAVET=$(alan id)
 IKOD=$(mailpit_kodu "iptal$U@ornek.com" davet)
 istek POST "$Y/kullanicilar/davetler/$DAVET/yeniden-gonder" "$T"
@@ -100,7 +100,7 @@ istek POST $Y/davet-bilgi "" '{"kod":"'"$IKOD"'"}'
 kontrol 422 "Iptal edilen davetin baglantisi gecersiz" davet_gecersiz
 
 echo "--- Sistem yoneticisi bir firmaya davetle eklenemez"
-istek POST $Y/kullanicilar "$T" '{"eposta":"'"$OM_SISTEM_EPOSTA"'","rol":"Yonetici"}'
+istek POST $Y/kullanicilar "$T" '{"eposta":"'"$OM_SISTEM_EPOSTA"'","rolId":"'"$(rol_id "$T" Yonetici)"'"}'
 SKOD=$(mailpit_kodu "$OM_SISTEM_EPOSTA" davet)
 istek POST $Y/davet-bilgi "" '{"kod":"'"$SKOD"'"}'
 kontrol 422 "Sistem yoneticisine giden davet kabul edilemez" davet_gecersiz

@@ -211,11 +211,9 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("olusturma_tarihi");
 
-                    b.Property<string>("Rol")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("rol");
+                    b.Property<Guid>("RolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rol_id");
 
                     b.Property<DateTime>("SonGonderimTarihi")
                         .HasColumnType("timestamp with time zone")
@@ -234,6 +232,9 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_firma_daveti_kod_ozeti");
 
+                    b.HasIndex("RolId")
+                        .HasDatabaseName("ix_firma_daveti_rol_id");
+
                     b.HasIndex("FirmaId", "Eposta")
                         .HasDatabaseName("ix_firma_daveti_firma_id_eposta");
 
@@ -249,6 +250,11 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                     b.Property<bool>("AktifMi")
                         .HasColumnType("boolean")
                         .HasColumnName("aktif_mi");
+
+                    b.PrimitiveCollection<List<string>>("EkYetkiler")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("ek_yetkiler");
 
                     b.Property<Guid>("FirmaId")
                         .HasColumnType("uuid")
@@ -274,11 +280,9 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("olusturma_tarihi");
 
-                    b.Property<string>("Rol")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("rol");
+                    b.Property<Guid>("RolId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rol_id");
 
                     b.Property<uint>("Surum")
                         .IsConcurrencyToken()
@@ -286,11 +290,19 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.PrimitiveCollection<List<string>>("YasakYetkiler")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("yasak_yetkiler");
+
                     b.HasKey("Id")
                         .HasName("pk_firma_kullanicisi");
 
                     b.HasIndex("KullaniciId")
                         .HasDatabaseName("ix_firma_kullanicisi_kullanici_id");
+
+                    b.HasIndex("RolId")
+                        .HasDatabaseName("ix_firma_kullanicisi_rol_id");
 
                     b.HasIndex("FirmaId", "KullaniciId")
                         .IsUnique()
@@ -359,6 +371,68 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasDatabaseName("ix_firma_lisansi_paket_id");
 
                     b.ToTable("firma_lisansi", "yonetim");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaRolu", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ad");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<bool>("TamYetkiliMi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("tam_yetkili_mi");
+
+                    b.PrimitiveCollection<List<string>>("Yetkiler")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("yetkiler");
+
+                    b.HasKey("Id")
+                        .HasName("pk_firma_rolu");
+
+                    b.HasIndex("FirmaId", "Ad")
+                        .IsUnique()
+                        .HasDatabaseName("ix_firma_rolu_firma_id_ad");
+
+                    b.ToTable("firma_rolu", "yonetim");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaZorunluAlani", b =>
@@ -1027,7 +1101,16 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_firma_daveti_firma_firma_id");
 
+                    b.HasOne("OnMuhasebe.Modules.Yonetim.Domain.FirmaRolu", "Rol")
+                        .WithMany()
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_firma_daveti_roller_rol_id");
+
                     b.Navigation("Firma");
+
+                    b.Navigation("Rol");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaKullanicisi", b =>
@@ -1046,9 +1129,18 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_firma_kullanicisi_kullanicilar_kullanici_id");
 
+                    b.HasOne("OnMuhasebe.Modules.Yonetim.Domain.FirmaRolu", "Rol")
+                        .WithMany()
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_firma_kullanicisi_roller_rol_id");
+
                     b.Navigation("Firma");
 
                     b.Navigation("Kullanici");
+
+                    b.Navigation("Rol");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaLisansi", b =>
@@ -1068,6 +1160,16 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasConstraintName("fk_firma_lisansi_paketler_paket_id");
 
                     b.Navigation("Paket");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.FirmaRolu", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.Yonetim.Domain.Firma", null)
+                        .WithMany()
+                        .HasForeignKey("FirmaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_firma_rolu_firma_firma_id");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Yonetim.Domain.KullaniciKodu", b =>

@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -14,8 +16,9 @@ internal static class KasaBankaRaporlari
 {
     private const int SonHareketSayisi = 6;
 
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(KasaBankaYetkileri.Rapor);
         grup.MapGet("/raporlar/ozet", OzetAsync);
         grup.MapGet("/raporlar/gelir-gider", GelirGiderAsync);
     }

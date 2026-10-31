@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.Yonetim.Contracts;
 using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -73,7 +74,7 @@ internal static class DavetIslemleri
             return YonetimHatalari.DavetGecersiz.Problem();
         }
 
-        return TypedResults.Ok(new DavetBilgisi(davet.Firma.Unvan, davet.Eposta, davet.Rol, kullanici is { EpostaDogrulandiMi: true }));
+        return TypedResults.Ok(new DavetBilgisi(davet.Firma.Unvan, davet.Eposta, davet.Rol.Ad, kullanici is { EpostaDogrulandiMi: true }));
     }
 
     private static async Task<IResult> KabulAsync(
@@ -82,6 +83,7 @@ internal static class DavetIslemleri
         IPasswordHasher<Kullanici> hasher,
         OturumServisi oturumServisi,
         GirisDenemeleri denemeler,
+        IYetkiSorgusu yetkiSorgusu,
         HttpContext http,
         TimeProvider zaman,
         CancellationToken cancellationToken)
@@ -156,17 +158,18 @@ internal static class DavetIslemleri
 
             if (uyelik is null)
             {
-                db.FirmaKullanicilari.Add(FirmaKullanicisi.Olustur(kullanici.Id, davet.Rol, davet.FirmaId));
+                db.FirmaKullanicilari.Add(FirmaKullanicisi.Olustur(kullanici.Id, davet.RolId, davet.FirmaId));
             }
             else
             {
-                uyelik.Aktiflestir(davet.Rol);
+                uyelik.Aktiflestir(davet.RolId);
             }
         }
 
         davet.KabulEt(simdi);
         // Oturum, üyeliği veritabanından okur; önce kaydedilir.
         await db.SaveChangesAsync(cancellationToken);
+        await yetkiSorgusu.OnbellektenKaldirAsync(davet.FirmaId, cancellationToken);
         var sonuc = await oturumServisi.AcAsync(kullanici, davet.FirmaId, eskiToken: null, cancellationToken);
         return sonuc.HttpSonucu();
     }
@@ -176,6 +179,7 @@ internal static class DavetIslemleri
         var ozet = TokenServisi.Ozetle(kod.Trim());
         var davet = await db.FirmaDavetleri.IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
             .Include(d => d.Firma)
+            .Include(d => d.Rol)
             .SingleOrDefaultAsync(d => d.KodOzeti == ozet, cancellationToken);
         return davet is not null && davet.BekliyorMu(simdi) && davet.Firma.AktifMi ? davet : null;
     }

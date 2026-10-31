@@ -9,6 +9,8 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
 using OnMuhasebe.Modules.Cari.Infrastructure;
 using OnMuhasebe.Modules.Doviz.Contracts;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
@@ -22,15 +24,16 @@ namespace OnMuhasebe.Modules.Cari.Features;
 // Açık kalemler (hangi fatura ne kadar ödendi), elle kapama düzeltmesi ve vade analizi.
 internal static class CariKapamaIslemleri
 {
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(CariYetkileri.Kapama);
         grup.MapGet("/hesaplar/{cariId:guid}/acik-kalemler", AcikKalemlerAsync);
         grup.MapGet("/hareketler/{hareketId:guid}/kapamalar", DetayAsync);
         grup.MapPut("/hareketler/{hareketId:guid}/kapamalar", ElleKapatAsync).Dogrula<ElleKapamaIstegi>();
-        grup.MapDelete("/hareketler/{hareketId:guid}/kapamalar", OtomatigeDonAsync);
-        grup.MapGet("/raporlar/vade-analizi", VadeAnaliziAsync);
+        grup.MapDelete("/hareketler/{hareketId:guid}/kapamalar", OtomatigeDonAsync).Islem(YetkiIslemleri.Duzenle);
+        grup.MapGet("/raporlar/vade-analizi", VadeAnaliziAsync).Yetki(CariYetkileri.Rapor);
         grup.MapGet("/hesaplar/{cariId:guid}/avans", AvansDurumuAsync);
-        grup.MapPost("/avans-mahsubu", AvansMahsupAsync);
+        grup.MapPost("/avans-mahsubu", AvansMahsupAsync).Islem(YetkiIslemleri.Duzenle);
         grup.MapGet("/hesaplar/{cariId:guid}/vade-farki", VadeFarkiAsync);
     }
 

@@ -7,6 +7,8 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
 using OnMuhasebe.Modules.Cari.Infrastructure;
 using OnMuhasebe.Modules.Doviz.Contracts;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
@@ -18,8 +20,9 @@ namespace OnMuhasebe.Modules.Cari.Features;
 
 internal static class CariRaporlari
 {
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(CariYetkileri.Rapor);
         grup.MapGet("/hesaplar/{cariId:guid}/ekstre", EkstreAsync);
         grup.MapGet("/raporlar/bakiye-listesi", BakiyeListesiAsync);
         grup.MapGet("/raporlar/ozet", OzetAsync);

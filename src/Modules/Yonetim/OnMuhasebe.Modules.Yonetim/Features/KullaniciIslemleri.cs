@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -21,14 +22,14 @@ internal static class KullaniciIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var kullanicilar = grup.MapGroup("/kullanicilar")
-            .RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        var kullanicilar = grup.MapGroup("/kullanicilar").RequireYetki(YonetimYetkileri.Kullanici);
 
         kullanicilar.MapGet("", ListeleAsync);
         kullanicilar.MapPost("", DavetEtAsync).Dogrula<KullaniciDavetIstegi>();
-        kullanicilar.MapPost("/{kullaniciId:guid}/pasiflestir", PasiflestirAsync);
+        kullanicilar.MapPost("/{kullaniciId:guid}/pasiflestir", PasiflestirAsync).Islem(YetkiIslemleri.Duzenle);
+        kullanicilar.MapPut("/{kullaniciId:guid}/yetkiler", YetkileriAtaAsync).Dogrula<KullaniciYetkiIstegi>();
         kullanicilar.MapGet("/davetler", DavetleriListeleAsync);
-        kullanicilar.MapPost("/davetler/{id:guid}/yeniden-gonder", YenidenGonderAsync);
+        kullanicilar.MapPost("/davetler/{id:guid}/yeniden-gonder", YenidenGonderAsync).Islem(YetkiIslemleri.Ekle);
         kullanicilar.MapDelete("/davetler/{id:guid}", IptalEtAsync);
     }
 
@@ -37,7 +38,17 @@ internal static class KullaniciIslemleri
         public DavetDogrulayici()
         {
             RuleFor(x => x.Eposta).Eposta();
-            RuleFor(x => x.Rol).FirmaRolu();
+            RuleFor(x => x.RolId).NotEmpty();
+        }
+    }
+
+    internal sealed class YetkiDogrulayici : AbstractValidator<KullaniciYetkiIstegi>
+    {
+        public YetkiDogrulayici()
+        {
+            RuleFor(x => x.RolId).NotEmpty();
+            RuleFor(x => x.EkYetkiler).Must(l => l is null || l.Count <= 500);
+            RuleFor(x => x.YasakYetkiler).Must(l => l is null || l.Count <= 500);
         }
     }
 
@@ -47,7 +58,8 @@ internal static class KullaniciIslemleri
             .AsNoTracking()
             .OrderBy(u => u.Kullanici.Ad).ThenBy(u => u.Kullanici.Soyad)
             .Select(u => new FirmaKullanicisiCevabi(
-                u.KullaniciId, u.Kullanici.Ad, u.Kullanici.Soyad, u.Kullanici.Eposta, u.Rol, u.AktifMi))
+                u.KullaniciId, u.Kullanici.Ad, u.Kullanici.Soyad, u.Kullanici.Eposta, u.RolId, u.Rol.Ad, u.Rol.TamYetkiliMi,
+                u.EkYetkiler, u.YasakYetkiler, u.AktifMi))
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(liste);
@@ -60,7 +72,7 @@ internal static class KullaniciIslemleri
             .AsNoTracking()
             .Where(d => d.KabulTarihi == null && d.IptalTarihi == null)
             .OrderByDescending(d => d.SonGonderimTarihi)
-            .Select(d => new DavetOzeti(d.Id, d.Eposta, d.Rol, d.SonGonderimTarihi, d.BitisTarihi))
+            .Select(d => new DavetOzeti(d.Id, d.Eposta, d.RolId, d.Rol.Ad, d.SonGonderimTarihi, d.BitisTarihi))
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(liste);
@@ -72,6 +84,7 @@ internal static class KullaniciIslemleri
         YonetimDbContext db,
         KimlikPostasi posta,
         ILisansSorgusu lisansSorgusu,
+        IYetkiSorgusu yetkiSorgusu,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
@@ -79,6 +92,17 @@ internal static class KullaniciIslemleri
         if (await SaltOkunurMuAsync(lisansSorgusu, mevcutKullanici, simdi, cancellationToken))
         {
             return LisansHatalari.SuresiDoldu.Problem();
+        }
+
+        var rol = await db.Roller.AsNoTracking().SingleOrDefaultAsync(r => r.Id == istek.RolId, cancellationToken);
+        if (rol is null)
+        {
+            return YonetimHatalari.RolBulunamadi.Problem();
+        }
+
+        if (rol.TamYetkiliMi && !await TamYetkiliMiAsync(yetkiSorgusu, mevcutKullanici, cancellationToken))
+        {
+            return YonetimHatalari.YoneticiAtamaYetkisiYok.Problem();
         }
 
         var eposta = Kullanici.EpostaNormalize(istek.Eposta);
@@ -103,13 +127,13 @@ internal static class KullaniciIslemleri
         oncekiler.ForEach(d => d.IptalEt(simdi));
 
         var (kod, ozet) = TekKullanimlikKod.Uret();
-        var davet = FirmaDaveti.Olustur(eposta, istek.Rol, ozet, simdi);
+        var davet = FirmaDaveti.Olustur(eposta, rol.Id, ozet, simdi);
         db.FirmaDavetleri.Add(davet);
         await db.SaveChangesAsync(cancellationToken);
         await DavetGonderAsync(db, posta, mevcutKullanici, davet, kod, cancellationToken);
 
         return TypedResults.Created($"/api/yonetim/kullanicilar/davetler/{davet.Id}",
-            new DavetOzeti(davet.Id, davet.Eposta, davet.Rol, davet.SonGonderimTarihi, davet.BitisTarihi));
+            new DavetOzeti(davet.Id, davet.Eposta, davet.RolId, rol.Ad, davet.SonGonderimTarihi, davet.BitisTarihi));
     }
 
     private static async Task<IResult> YenidenGonderAsync(
@@ -127,12 +151,14 @@ internal static class KullaniciIslemleri
             return LisansHatalari.SuresiDoldu.Problem();
         }
 
-        var davet = await db.FirmaDavetleri.SingleOrDefaultAsync(d => d.Id == id && d.KabulTarihi == null && d.IptalTarihi == null, cancellationToken);
+        var davet = await db.FirmaDavetleri.Include(d => d.Rol)
+            .SingleOrDefaultAsync(d => d.Id == id && d.KabulTarihi == null && d.IptalTarihi == null, cancellationToken);
         if (davet is null)
         {
             return YonetimHatalari.DavetBulunamadi.Problem();
         }
 
+        var rol = davet.Rol;
         if (davet.SonGonderimTarihi > simdi - KullaniciKodu.YenidenGondermeAraligi)
         {
             return YonetimHatalari.DavetCokSik.Problem();
@@ -142,7 +168,7 @@ internal static class KullaniciIslemleri
         davet.YenidenGonder(ozet, simdi);
         await db.SaveChangesAsync(cancellationToken);
         await DavetGonderAsync(db, posta, mevcutKullanici, davet, kod, cancellationToken);
-        return TypedResults.Ok(new DavetOzeti(davet.Id, davet.Eposta, davet.Rol, davet.SonGonderimTarihi, davet.BitisTarihi));
+        return TypedResults.Ok(new DavetOzeti(davet.Id, davet.Eposta, davet.RolId, rol.Ad, davet.SonGonderimTarihi, davet.BitisTarihi));
     }
 
     private static async Task<IResult> IptalEtAsync(Guid id, YonetimDbContext db, TimeProvider zaman, CancellationToken cancellationToken)
@@ -176,10 +202,11 @@ internal static class KullaniciIslemleri
         Guid kullaniciId,
         IMevcutKullanici mevcutKullanici,
         YonetimDbContext db,
+        IYetkiSorgusu yetkiSorgusu,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
-        var uyelik = await db.FirmaKullanicilari.SingleOrDefaultAsync(u => u.KullaniciId == kullaniciId, cancellationToken);
+        var uyelik = await db.FirmaKullanicilari.Include(u => u.Rol).SingleOrDefaultAsync(u => u.KullaniciId == kullaniciId, cancellationToken);
         if (uyelik is null)
         {
             return YonetimHatalari.KullaniciBulunamadi.Problem();
@@ -191,9 +218,15 @@ internal static class KullaniciIslemleri
             return sonuc.HttpSonucu();
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        if (uyelik.Rol.TamYetkiliMi && await YoneticiKorumasiAsync(db, yetkiSorgusu, mevcutKullanici, uyelik, cancellationToken) is { } hata)
+        {
+            return hata.Problem();
+        }
 
-        // Bu firmadaki açık oturumları kapat; access token en geç süresi dolunca (15 dk) geçersizleşir.
+        await db.SaveChangesAsync(cancellationToken);
+        await yetkiSorgusu.OnbellektenKaldirAsync(uyelik.FirmaId, cancellationToken);
+
+        // Bu firmadaki açık oturumları kapat; yetki sorgusu pasif üyeye yetki vermediği için access token da hemen işlevsizleşir.
         var simdi = zaman.GetUtcNow().UtcDateTime;
         await db.RefreshTokenlar
             .Where(t => t.KullaniciId == kullaniciId && t.FirmaId == uyelik.FirmaId && t.IptalTarihi == null)
@@ -201,4 +234,71 @@ internal static class KullaniciIslemleri
 
         return TypedResults.NoContent();
     }
+
+    // Kişi kendi yetkisini değiştiremez; Yönetici rolünü yalnızca bir yönetici verir ya da alır ve firmada en az bir aktif yönetici kalır.
+    private static async Task<IResult> YetkileriAtaAsync(
+        Guid kullaniciId,
+        KullaniciYetkiIstegi istek,
+        IMevcutKullanici mevcutKullanici,
+        YonetimDbContext db,
+        IYetkiSorgusu yetkiSorgusu,
+        YetkiKatalogu katalog,
+        CancellationToken cancellationToken)
+    {
+        if (kullaniciId == mevcutKullanici.KullaniciId)
+        {
+            return YonetimHatalari.KendiYetkisiniDegistiremez.Problem();
+        }
+
+        var uyelik = await db.FirmaKullanicilari.Include(u => u.Rol).SingleOrDefaultAsync(u => u.KullaniciId == kullaniciId, cancellationToken);
+        if (uyelik is null)
+        {
+            return YonetimHatalari.KullaniciBulunamadi.Problem();
+        }
+
+        var rol = await db.Roller.AsNoTracking().SingleOrDefaultAsync(r => r.Id == istek.RolId, cancellationToken);
+        if (rol is null)
+        {
+            return YonetimHatalari.RolBulunamadi.Problem();
+        }
+
+        if (rol.TamYetkiliMi != uyelik.Rol.TamYetkiliMi
+            && await YoneticiKorumasiAsync(db, yetkiSorgusu, mevcutKullanici, uyelik, cancellationToken) is { } hata)
+        {
+            return hata.Problem();
+        }
+
+        var ek = istek.EkYetkiler ?? [];
+        var yasak = istek.YasakYetkiler ?? [];
+        if (ek.Concat(yasak).FirstOrDefault(y => !katalog.Yetkiler.Contains(y)) is { } gecersiz)
+        {
+            return YonetimHatalari.YetkiGecersiz(gecersiz).Problem();
+        }
+
+        uyelik.YetkileriAta(rol.Id, rol.TamYetkiliMi ? [] : ek, rol.TamYetkiliMi ? [] : yasak);
+        await db.SaveChangesAsync(cancellationToken);
+        await yetkiSorgusu.OnbellektenKaldirAsync(uyelik.FirmaId, cancellationToken);
+        return TypedResults.NoContent();
+    }
+
+    // Yönetici üyeliğine dokunan işlem: işlemi yapan yönetici olmalı ve işlemden sonra başka bir aktif yönetici kalmalı.
+    private static async Task<Hata?> YoneticiKorumasiAsync(
+        YonetimDbContext db, IYetkiSorgusu yetkiSorgusu, IMevcutKullanici mevcutKullanici, FirmaKullanicisi hedef, CancellationToken cancellationToken)
+    {
+        if (!await TamYetkiliMiAsync(yetkiSorgusu, mevcutKullanici, cancellationToken))
+        {
+            return YonetimHatalari.YoneticiAtamaYetkisiYok;
+        }
+
+        if (hedef.Rol.TamYetkiliMi
+            && !await db.FirmaKullanicilari.AnyAsync(u => u.Id != hedef.Id && u.AktifMi && u.Rol.TamYetkiliMi && u.Kullanici.AktifMi, cancellationToken))
+        {
+            return YonetimHatalari.SonYonetici;
+        }
+
+        return null;
+    }
+
+    private static async Task<bool> TamYetkiliMiAsync(IYetkiSorgusu yetkiSorgusu, IMevcutKullanici mevcutKullanici, CancellationToken cancellationToken) =>
+        (await yetkiSorgusu.GetirAsync(mevcutKullanici.FirmaId!.Value, mevcutKullanici.KullaniciId!.Value, cancellationToken)).TamYetkiliMi;
 }

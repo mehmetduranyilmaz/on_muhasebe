@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Shared.Contracts.Ayarlar;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 
 namespace OnMuhasebe.Shared.Infrastructure.Persistence;
 
@@ -13,11 +14,11 @@ public static class DegisiklikGecmisi
 {
     public const int AzamiSatir = 200;
 
-    // GET {modül}/degisiklikler?kayitId= : kaydın ve alt satırlarının değişiklik geçmişi, yeniden eskiye (yalnız yönetici).
+    // GET {modül}/degisiklikler?kayitId= : kaydın ve alt satırlarının değişiklik geçmişi, yeniden eskiye. Modül grubunda (RequireModul) eşlenir.
     public static RouteHandlerBuilder MapDegisiklikGecmisi<TContext>(this RouteGroupBuilder grup) where TContext : ModulDbContext
     {
         Func<Guid, TContext, CancellationToken, Task<Ok<List<DegisiklikSatiri>>>> islem = GetirAsync;
-        return grup.MapGet("/degisiklikler", islem).RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        return grup.MapGet("/degisiklikler", islem).Yetki(YonetimYetkileri.Degisiklik);
     }
 
     private static async Task<Ok<List<DegisiklikSatiri>>> GetirAsync<TContext>(Guid kayitId, TContext db, CancellationToken ct)

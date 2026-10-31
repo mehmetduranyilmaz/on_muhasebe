@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
@@ -16,12 +18,14 @@ internal static class KategoriIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var kategoriler = grup.MapGroup("/kategoriler");
+        var kategoriler = grup.MapGroup("/kategoriler").Yetki(KasaBankaYetkileri.Tanim);
         kategoriler.MapGet("", ListeleAsync);
         kategoriler.MapPost("", EkleAsync).Dogrula<KategoriKaydetIstegi>();
         kategoriler.MapPut("/{id:guid}", GuncelleAsync).Dogrula<KategoriKaydetIstegi>();
-        kategoriler.MapPost("/{id:guid}/pasiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) => AktiflikAsync(id, false, db, ct));
-        kategoriler.MapPost("/{id:guid}/aktiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) => AktiflikAsync(id, true, db, ct));
+        kategoriler.MapPost("/{id:guid}/pasiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) =>
+            AktiflikAsync(id, false, db, ct)).Islem(YetkiIslemleri.Duzenle);
+        kategoriler.MapPost("/{id:guid}/aktiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) =>
+            AktiflikAsync(id, true, db, ct)).Islem(YetkiIslemleri.Duzenle);
         kategoriler.MapDelete("/{id:guid}", SilAsync);
     }
 

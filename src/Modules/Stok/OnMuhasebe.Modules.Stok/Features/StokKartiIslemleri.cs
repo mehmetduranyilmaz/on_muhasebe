@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Domain;
 using OnMuhasebe.Modules.Stok.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Birimler;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
@@ -21,7 +23,7 @@ internal static class StokKartiIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var kartlar = grup.MapGroup("/kartlar");
+        var kartlar = grup.MapGroup("/kartlar").Yetki(StokYetkileri.Kart);
         kartlar.MapGet("", ListeleAsync);
         kartlar.MapGet("/{id:guid}", DetayAsync);
         kartlar.MapGet("/barkod/{barkod}", BarkodlaBulAsync);
@@ -29,8 +31,8 @@ internal static class StokKartiIslemleri
         kartlar.MapGet("/barkod", (string kod, StokDbContext db, CancellationToken ct) => BarkodlaBulAsync(kod, db, ct));
         kartlar.MapPost("", EkleAsync).Dogrula<StokKartiKaydetIstegi>();
         kartlar.MapPut("/{id:guid}", GuncelleAsync).Dogrula<StokKartiKaydetIstegi>();
-        kartlar.MapPost("/{id:guid}/pasiflestir", (Guid id, StokDbContext db, CancellationToken ct) => DurumAsync(id, db, k => k.Pasiflestir(), ct));
-        kartlar.MapPost("/{id:guid}/aktiflestir", (Guid id, StokDbContext db, CancellationToken ct) => DurumAsync(id, db, k => k.Aktiflestir(), ct));
+        kartlar.MapPost("/{id:guid}/pasiflestir", (Guid id, StokDbContext db, CancellationToken ct) => DurumAsync(id, db, k => k.Pasiflestir(), ct)).Islem(YetkiIslemleri.Duzenle);
+        kartlar.MapPost("/{id:guid}/aktiflestir", (Guid id, StokDbContext db, CancellationToken ct) => DurumAsync(id, db, k => k.Aktiflestir(), ct)).Islem(YetkiIslemleri.Duzenle);
         kartlar.MapDelete("/{id:guid}", SilAsync);
     }
 
@@ -112,10 +114,15 @@ internal static class StokKartiIslemleri
     }
 
     private static async Task<IResult> DetayAsync(
-        Guid id, StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi, CancellationToken cancellationToken)
+        Guid id, StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi, IYetkiDenetimi yetki, CancellationToken cancellationToken)
     {
         var detay = await DetayGetirAsync(db, hesaplayici, ayarServisi, id, cancellationToken);
-        return detay is null ? StokHatalari.KartBulunamadi.Problem() : TypedResults.Ok(detay);
+        if (detay is null)
+        {
+            return StokHatalari.KartBulunamadi.Problem();
+        }
+
+        return TypedResults.Ok(await yetki.GorurMuAsync(cancellationToken) ? detay : MaliyetYetkisi.Gizle(detay));
     }
 
     // Düz barkod (EAN/UPC) ya da GS1 karekod/barkod: GS1'de GTIN ile kart bulunur, lot/SKT/seri de döner.
@@ -137,7 +144,7 @@ internal static class StokKartiIslemleri
 
     private static async Task<IResult> EkleAsync(
         StokKartiKaydetIstegi istek, StokDbContext db, StokKodUretici kodUretici, StokHesaplayici hesaplayici,
-        StokAyarServisi ayarServisi, CancellationToken cancellationToken)
+        StokAyarServisi ayarServisi, IYetkiDenetimi yetki, CancellationToken cancellationToken)
     {
         if (await OnKontrolAsync(db, istek, haricId: null, cancellationToken) is { } hata)
         {
@@ -150,7 +157,9 @@ internal static class StokKartiIslemleri
             return StokHatalari.KodKullaniliyor.Problem();
         }
 
-        var sonuc = StokKarti.Olustur(kod, StokKartiBilgileri.Istekten(istek), istek.EkBirimler ?? []);
+        var maliyetGorur = await yetki.GorurMuAsync(cancellationToken);
+        var bilgiler = StokKartiBilgileri.Istekten(istek);
+        var sonuc = StokKarti.Olustur(kod, maliyetGorur ? bilgiler : bilgiler with { AlisFiyati = null }, istek.EkBirimler ?? []);
         if (!sonuc.BasariliMi)
         {
             return sonuc.HttpSonucu();
@@ -158,13 +167,13 @@ internal static class StokKartiIslemleri
 
         db.StokKartlari.Add(sonuc.Deger);
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Created($"/api/stok/kartlar/{sonuc.Deger.Id}",
-            await DetayGetirAsync(db, hesaplayici, ayarServisi, sonuc.Deger.Id, cancellationToken));
+        var detay = (await DetayGetirAsync(db, hesaplayici, ayarServisi, sonuc.Deger.Id, cancellationToken))!;
+        return TypedResults.Created($"/api/stok/kartlar/{sonuc.Deger.Id}", maliyetGorur ? detay : MaliyetYetkisi.Gizle(detay));
     }
 
     private static async Task<IResult> GuncelleAsync(
         Guid id, StokKartiKaydetIstegi istek, StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi,
-        CancellationToken cancellationToken)
+        IYetkiDenetimi yetki, CancellationToken cancellationToken)
     {
         var kart = await db.StokKartlari.Include(k => k.Birimler).SingleOrDefaultAsync(k => k.Id == id, cancellationToken);
         if (kart is null)
@@ -187,14 +196,18 @@ internal static class StokKartiIslemleri
         }
 
         var hareketVarMi = await db.StokHareketleri.AnyAsync(h => h.StokKartiId == id, cancellationToken);
-        var sonuc = kart.Guncelle(kod, StokKartiBilgileri.Istekten(istek), istek.EkBirimler ?? [], hareketVarMi);
+        // Alış fiyatını göremeyen kullanıcının formu onu boş gönderir; mevcut değer korunur.
+        var maliyetGorur = await yetki.GorurMuAsync(cancellationToken);
+        var bilgiler = StokKartiBilgileri.Istekten(istek);
+        var sonuc = kart.Guncelle(kod, maliyetGorur ? bilgiler : bilgiler with { AlisFiyati = kart.AlisFiyati }, istek.EkBirimler ?? [], hareketVarMi);
         if (!sonuc.BasariliMi)
         {
             return sonuc.HttpSonucu();
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(await DetayGetirAsync(db, hesaplayici, ayarServisi, id, cancellationToken));
+        var detay = (await DetayGetirAsync(db, hesaplayici, ayarServisi, id, cancellationToken))!;
+        return TypedResults.Ok(maliyetGorur ? detay : MaliyetYetkisi.Gizle(detay));
     }
 
     private static async Task<IResult> DurumAsync(Guid id, StokDbContext db, Action<StokKarti> islem, CancellationToken cancellationToken)

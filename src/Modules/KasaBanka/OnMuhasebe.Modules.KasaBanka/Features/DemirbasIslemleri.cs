@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -19,14 +21,14 @@ internal static class DemirbasIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var g = grup.MapGroup("/demirbaslar");
+        var g = grup.MapGroup("/demirbaslar").Yetki(KasaBankaYetkileri.Demirbas);
         g.MapGet("", ListeAsync);
         g.MapGet("/{id:guid}", GetirAsync);
         g.MapPost("", OlusturAsync).Dogrula<DemirbasKaydetIstegi>();
         g.MapPut("/{id:guid}", GuncelleAsync).Dogrula<DemirbasKaydetIstegi>();
-        g.MapPost("/{id:guid}/elden-cikar", ElCikarAsync).Dogrula<ElCikarmaIstegi>();
+        g.MapPost("/{id:guid}/elden-cikar", ElCikarAsync).Dogrula<ElCikarmaIstegi>().Islem(YetkiIslemleri.Duzenle);
         g.MapPost("/{id:guid}/elden-cikarma-geri-al", (Guid id, KasaBankaDbContext db, CancellationToken ct) =>
-            IslemAsync(id, db, d => d.ElCikarmayiGeriAl(), ct));
+            IslemAsync(id, db, d => d.ElCikarmayiGeriAl(), ct)).Islem(YetkiIslemleri.Duzenle);
         g.MapDelete("/{id:guid}", SilAsync);
     }
 

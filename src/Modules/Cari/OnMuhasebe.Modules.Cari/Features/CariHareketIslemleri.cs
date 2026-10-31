@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
 using OnMuhasebe.Modules.Cari.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -17,11 +19,12 @@ namespace OnMuhasebe.Modules.Cari.Features;
 // Elle girilen hareketler: açılış bakiyesi ve borç/alacak dekontu. Fatura ve tahsilat hareketlerini kendi modülleri yazar.
 internal static class CariHareketIslemleri
 {
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(CariYetkileri.Hareket);
         grup.MapGet("/hesaplar/{cariId:guid}/hareketler", ListeleAsync);
         grup.MapPost("/hesaplar/{cariId:guid}/hareketler", EkleAsync).Dogrula<CariHareketKaydetIstegi>();
-        grup.MapPost("/hareketler/{hareketId:guid}/iptal", IptalEtAsync);
+        grup.MapPost("/hareketler/{hareketId:guid}/iptal", IptalEtAsync).Islem(YetkiIslemleri.Iptal);
     }
 
     internal sealed class Dogrulayici : AbstractValidator<CariHareketKaydetIstegi>

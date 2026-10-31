@@ -20,7 +20,7 @@ internal static class ZorunluAlanIslemleri
     public static void Map(RouteGroupBuilder grup)
     {
         grup.MapGet("/zorunlu-alanlar", GetirAsync).RequireAuthorization();
-        grup.MapPut("/zorunlu-alanlar", KaydetAsync).RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        grup.MapPut("/zorunlu-alanlar", KaydetAsync).RequireYetki(YonetimYetkileri.Firma, YetkiIslemleri.Duzenle);
     }
 
     private static async Task<IResult> GetirAsync(

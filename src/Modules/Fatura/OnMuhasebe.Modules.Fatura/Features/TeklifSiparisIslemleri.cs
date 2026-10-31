@@ -7,6 +7,8 @@ using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Fatura.Domain;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
 using OnMuhasebe.Modules.Stok.Contracts;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Birimler;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
@@ -23,20 +25,20 @@ internal static class TeklifSiparisIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var g = grup.MapGroup("/teklif-siparis");
+        var g = grup.MapGroup("/teklif-siparis").Yetki(FaturaYetkileri.Teklif);
         g.MapGet("", ListeleAsync);
         g.MapGet("/{id:guid}", GetirAsync);
         g.MapGet("/aktarim", AktarimAsync);
         g.MapGet("/bekleyen", BekleyenAsync);
         g.MapPost("", OlusturAsync).Dogrula<TeklifSiparisKaydetIstegi>();
         g.MapPut("/{id:guid}", GuncelleAsync).Dogrula<TeklifSiparisKaydetIstegi>();
-        g.MapPost("/{id:guid}/onayla", OnaylaAsync);
-        g.MapPost("/{id:guid}/yanit", YanitAsync);
+        g.MapPost("/{id:guid}/onayla", OnaylaAsync).Islem(YetkiIslemleri.Onayla);
+        g.MapPost("/{id:guid}/yanit", YanitAsync).Islem(YetkiIslemleri.Duzenle);
         g.MapPost("/{id:guid}/siparise-donustur", SipariseDonusturAsync);
         g.MapPost("/{id:guid}/kapat", (Guid id, TeklifSiparisServisi s, FaturaDbContext db, TimeProvider z, CancellationToken ct) =>
-            IslemAsync(s.DurumAsync(id, b => b.Kapat(), ct), db, z, ct));
+            IslemAsync(s.DurumAsync(id, b => b.Kapat(), ct), db, z, ct)).Islem(YetkiIslemleri.Duzenle);
         g.MapPost("/{id:guid}/iptal", (Guid id, TeklifSiparisServisi s, FaturaDbContext db, TimeProvider z, CancellationToken ct) =>
-            IslemAsync(s.DurumAsync(id, b => b.IptalEt(), ct), db, z, ct));
+            IslemAsync(s.DurumAsync(id, b => b.IptalEt(), ct), db, z, ct)).Islem(YetkiIslemleri.Iptal);
         g.MapDelete("/{id:guid}", SilAsync);
     }
 

@@ -6,6 +6,8 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Doviz.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;
@@ -17,7 +19,7 @@ namespace OnMuhasebe.Modules.KasaBanka.Features;
 // Tüm dövizler güncel TCMB döviz alış kuruyla TL'ye çevrilir (VUK değerlemesindeki kur).
 internal static class NakitAkisIslemleri
 {
-    public static void Map(RouteGroupBuilder grup) => grup.MapGet("/raporlar/nakit-akis", RaporAsync);
+    public static void Map(RouteGroupBuilder grup) => grup.MapGet("/raporlar/nakit-akis", RaporAsync).Yetki(KasaBankaYetkileri.Rapor);
 
     private static async Task<IResult> RaporAsync(
         KasaBankaDbContext db, ICariSorgusu cariSorgusu, IKurSorgusu kurSorgusu, TimeProvider zaman,

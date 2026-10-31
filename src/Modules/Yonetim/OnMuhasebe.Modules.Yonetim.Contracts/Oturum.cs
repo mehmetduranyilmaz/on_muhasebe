@@ -16,9 +16,14 @@ public sealed record KullaniciBilgisi(
     bool SistemYoneticisiMi,
     FirmaOzeti? AktifFirma,
     IReadOnlyList<FirmaOzeti> Firmalar,
-    LisansOzeti? Lisans);
+    LisansOzeti? Lisans,
+    YetkiOzeti? Yetki);
 
+// Rol: rolün adı.
 public sealed record FirmaOzeti(Guid Id, string Unvan, string Rol);
+
+// Aktif firmadaki etkin yetkiler (lisanslı modüllerle sınırlı); tam yetkilide tüm lisanslı yetkiler listelenir.
+public sealed record YetkiOzeti(bool TamYetkiliMi, IReadOnlyList<string> Yetkiler);
 
 public sealed record LisansOzeti(IReadOnlyList<string> Moduller, DateTime BitisTarihi, bool SaltOkunur);
 

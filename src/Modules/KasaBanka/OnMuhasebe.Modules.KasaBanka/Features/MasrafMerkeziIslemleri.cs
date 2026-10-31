@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -18,14 +20,16 @@ internal static class MasrafMerkeziIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var g = grup.MapGroup("/masraf-merkezleri");
+        var g = grup.MapGroup("/masraf-merkezleri").Yetki(KasaBankaYetkileri.Tanim);
         g.MapGet("", ListeleAsync);
         g.MapPost("", EkleAsync).Dogrula<MasrafMerkeziKaydetIstegi>();
         g.MapPut("/{id:guid}", GuncelleAsync).Dogrula<MasrafMerkeziKaydetIstegi>();
-        g.MapPost("/{id:guid}/pasiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) => AktiflikAsync(id, false, db, ct));
-        g.MapPost("/{id:guid}/aktiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) => AktiflikAsync(id, true, db, ct));
+        g.MapPost("/{id:guid}/pasiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) =>
+            AktiflikAsync(id, false, db, ct)).Islem(YetkiIslemleri.Duzenle);
+        g.MapPost("/{id:guid}/aktiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) =>
+            AktiflikAsync(id, true, db, ct)).Islem(YetkiIslemleri.Duzenle);
 
-        grup.MapGet("/raporlar/masraf-merkezi", TutarlarAsync);
+        grup.MapGet("/raporlar/masraf-merkezi", TutarlarAsync).Yetki(KasaBankaYetkileri.Rapor);
     }
 
     internal sealed class Dogrulayici : AbstractValidator<MasrafMerkeziKaydetIstegi>

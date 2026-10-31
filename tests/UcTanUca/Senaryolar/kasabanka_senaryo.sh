@@ -23,7 +23,7 @@ kontrol() {
 nesne_id() { echo "$GOVDE" | sed 's/},{/}\n{/g' | grep -- "$1" | head -1 | grep -o '"hareketId":"[^"]*\|"id":"[^"]*' | head -1 | sed -E 's/.*:"//'; }
 bakiye() { istek GET "/api/kasabanka/hesaplar/$1" "$T"; kontrol 200 "$2" "\"bakiye\":$3(\.0+)?,"; }
 cari_bakiye() { istek GET "/api/cari/hesaplar/$1" "$T"; kontrol 200 "$2" "\"bakiye\":$3(\.0+)?,"; }
-fatura_kalan() { istek GET "/api/fatura/faturalar/$1" "$T"; kontrol 200 "$2" "\"kalan\":$3(\.0+)?}"; }
+fatura_kalan() { istek GET "/api/fatura/faturalar/$1" "$T"; kontrol 200 "$2" "\"kalan\":$3(\.0+)?[,}]"; }
 satis() { # CARI TUTAR [EK]
   local c=null; [ -n "$1" ] && c="\"$1\""
   istek POST /api/fatura/faturalar "$T" '{"tur":"Satis","cariHesapId":'"$c"',"tarih":"2026-10-10","genelIskontoTuru":"Yuzde","genelIskonto":0,"satirlar":[{"ad":"Hizmet","birim":"ADET","miktar":1,"birimFiyat":'"$2"',"kdvOrani":20,"kdvDahilMi":false,"iskonto1":0,"iskonto2":0,"iskonto3":0}]'"${3:+,$3}"'}'

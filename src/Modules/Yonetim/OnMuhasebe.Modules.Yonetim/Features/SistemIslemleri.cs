@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -95,6 +96,7 @@ internal static class SistemIslemleri
     private static async Task<IResult> FirmaOlusturAsync(
         FirmaOlusturIstegi istek,
         YonetimDbContext db,
+        YetkiKatalogu katalog,
         KimlikPostasi posta,
         TimeProvider zaman,
         CancellationToken cancellationToken)
@@ -108,11 +110,13 @@ internal static class SistemIslemleri
         // Yönetici hesabı doğrudan bağlanmaz; davetle e-postanın sahibi katılır (bu adresle başkasının açtığı hesaba firma geçmez).
         var simdi = zaman.GetUtcNow().UtcDateTime;
         var firma = Firma.Olustur(istek.FirmaUnvani, istek.VergiNo, istek.VergiDairesi);
+        var roller = RolSablonlari.Olustur(katalog.Tumu, firma.Id);
         var (kod, ozet) = TekKullanimlikKod.Uret();
+        db.Add(firma);
+        db.Roller.AddRange(roller);
         db.AddRange(
-            firma,
             FirmaLisansi.Olustur(firma.Id, paket, simdi, GunSonu(istek.LisansBitisTarihi)),
-            FirmaDaveti.Olustur(istek.YoneticiEposta, Roller.Yonetici, ozet, simdi, firma.Id));
+            FirmaDaveti.Olustur(istek.YoneticiEposta, roller[0].Id, ozet, simdi, firma.Id));
         await db.SaveChangesAsync(cancellationToken);
         await posta.DavetAsync(Kullanici.EpostaNormalize(istek.YoneticiEposta), firma.Unvan, "Ön Muhasebe", kod, cancellationToken);
 

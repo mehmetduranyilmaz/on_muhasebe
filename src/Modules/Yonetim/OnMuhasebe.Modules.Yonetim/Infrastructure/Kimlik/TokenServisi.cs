@@ -31,7 +31,8 @@ internal sealed class TokenServisi(IOptions<JwtAyarlari> ayarlar, TimeProvider z
         if (uyelik is not null)
         {
             claims.Add(new(ClaimTipleri.FirmaId, uyelik.FirmaId.ToString()));
-            claims.Add(new(ClaimTipleri.Rol, uyelik.Rol));
+            // Ayrıntılı yetki token'a konmaz (her istekte güncelinden okunur); rol talebi yalnızca yönetici/kullanıcı ayrımıdır.
+            claims.Add(new(ClaimTipleri.Rol, uyelik.Rol.TamYetkiliMi ? Roller.Yonetici : Roller.Kullanici));
             claims.AddRange(moduller.Select(m => new Claim(ClaimTipleri.Modul, m)));
         }
 

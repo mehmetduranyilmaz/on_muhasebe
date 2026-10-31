@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -17,7 +19,7 @@ internal static class SubeIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var subeler = grup.MapGroup("/subeler");
+        var subeler = grup.MapGroup("/subeler").Yetki(KasaBankaYetkileri.Tanim);
         subeler.MapGet("", ListeleAsync);
         subeler.MapGet("/{id:guid}", DetayAsync);
         subeler.MapPost("", EkleAsync).Dogrula<SubeKaydetIstegi>();

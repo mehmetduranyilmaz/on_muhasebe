@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Domain;
 using OnMuhasebe.Modules.Stok.Domain.Maliyet;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using Depo = OnMuhasebe.Modules.Stok.Domain.Depo;
@@ -98,4 +99,13 @@ internal sealed class StokHesaplayici(StokDbContext db)
         await db.StokHareketleri
             .Where(h => h.StokKartiId == kartId && h.DepoId == depoId)
             .SumAsync(h => h.GirisMiktari - h.CikisMiktari, cancellationToken);
+}
+
+// "Maliyet, alış fiyatı ve kârlılık" yetkisi olmayana birim maliyet, stok değeri ve alış fiyatı gösterilmez (sıfır/boş döner).
+internal static class MaliyetYetkisi
+{
+    public static Task<bool> GorurMuAsync(this IYetkiDenetimi yetki, CancellationToken cancellationToken) =>
+        yetki.VarMiAsync(StokYetkileri.Maliyet.Yetki(YetkiIslemleri.Goruntule), cancellationToken);
+
+    public static StokKartiDetayi Gizle(StokKartiDetayi d) => d with { AlisFiyati = null, BirimMaliyet = 0m, StokDegeri = 0m };
 }

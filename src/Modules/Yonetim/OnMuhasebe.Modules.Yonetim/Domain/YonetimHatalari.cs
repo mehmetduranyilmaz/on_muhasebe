@@ -30,6 +30,14 @@ internal static class YonetimHatalari
     public static readonly Hata BildirimBulunamadi = Hata.Bulunamadi("bildirim_bulunamadi", "Ödeme bildirimi bulunamadı.");
     public static readonly Hata BildirimSonuclanmis = Hata.IsKurali("bildirim_sonuclanmis", "Bu bildirim zaten sonuçlandırılmış.");
     public static readonly Hata OdemeBilgisiYok = Hata.IsKurali("odeme_bilgisi_yok", "Ödeme hesabı henüz tanımlanmadı. Lütfen bizimle iletişime geçin.");
+    public static readonly Hata RolBulunamadi = Hata.Bulunamadi("rol_bulunamadi", "Rol bulunamadı.");
+    public static readonly Hata RolAdiKayitli = Hata.Cakisma("rol_adi_kayitli", "Bu adla bir rol zaten var.");
+    public static readonly Hata YoneticiRoluDegistirilemez = Hata.IsKurali("yonetici_rolu_degistirilemez", "Yönetici rolü değiştirilemez ve silinemez; tüm yetkileri kendiliğinden kapsar.");
+    public static readonly Hata RolKullaniliyor = Hata.IsKurali("rol_kullaniliyor", "Bu role bağlı kullanıcı ya da bekleyen davet var; önce onları başka role alın.");
+    public static readonly Hata YoneticiAtamaYetkisiYok = Hata.Yetki("yonetici_atama_yetkisi_yok", "Yönetici rolünü yalnızca bir yönetici verebilir ya da alabilir.");
+    public static readonly Hata KendiYetkisiniDegistiremez = Hata.IsKurali("kendi_yetkisini_degistiremez", "Kendi rolünüzü ve yetkilerinizi değiştiremezsiniz.");
+    public static readonly Hata SonYonetici = Hata.IsKurali("son_yonetici", "Firmada en az bir aktif yönetici kalmalı.");
+    public static Hata YetkiGecersiz(string yetki) => Hata.Dogrulama("yetki_gecersiz", $"\"{yetki}\" verilebilecek bir yetki değil.");
     public static Hata KullaniciLimiti(int limit) =>
         Hata.IsKurali("kullanici_limiti", $"Paketinizin kullanıcı limiti ({limit}) dolu. Bir kullanıcıyı pasifleştirin ya da paketinizi yükseltin.");
 }

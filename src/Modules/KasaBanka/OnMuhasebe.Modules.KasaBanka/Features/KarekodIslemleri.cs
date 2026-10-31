@@ -7,6 +7,8 @@ using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain.CekSenet;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
 namespace OnMuhasebe.Modules.KasaBanka.Features;
@@ -18,7 +20,7 @@ internal static class KarekodIslemleri
     public const int AzamiUzunluk = 500;
 
     public static void Map(RouteGroupBuilder grup) =>
-        grup.MapPost("/karekod-coz", CozAsync).Dogrula<KarekodCozIstegi>();
+        grup.MapPost("/karekod-coz", CozAsync).Dogrula<KarekodCozIstegi>().Islem(YetkiIslemleri.Goruntule);
 
     internal sealed class Dogrulayici : AbstractValidator<KarekodCozIstegi>
     {

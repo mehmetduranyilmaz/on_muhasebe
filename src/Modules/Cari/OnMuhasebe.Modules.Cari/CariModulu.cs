@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Features;
 using OnMuhasebe.Modules.Cari.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Ayarlar;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Bildirimler;
@@ -21,6 +22,8 @@ public sealed class CariModulu : IModul
     public string Ad => "Cari";
 
     public IReadOnlyList<ZorunluAlanTanimi> ZorunluAlanlar => CariZorunluAlanlari.Tumu;
+
+    public IReadOnlyList<YetkiKaynagi> YetkiKaynaklari => CariYetkileri.Tumu;
 
     public void ServisleriEkle(IServiceCollection services, IConfiguration configuration)
     {

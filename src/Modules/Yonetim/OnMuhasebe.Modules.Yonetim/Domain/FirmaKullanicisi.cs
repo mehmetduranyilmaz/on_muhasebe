@@ -1,4 +1,3 @@
-using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Domain.Entities;
 using OnMuhasebe.Shared.Domain.Results;
 
@@ -6,38 +5,43 @@ namespace OnMuhasebe.Modules.Yonetim.Domain;
 
 internal sealed class FirmaKullanicisi : FirmaEntity
 {
-    public static readonly IReadOnlyList<string> GecerliRoller = [Roller.Yonetici, Roller.Kullanici];
-
     private FirmaKullanicisi() { }
 
     private FirmaKullanicisi(Guid firmaId) : base(firmaId) { }
 
     public Guid KullaniciId { get; private set; }
-    public string Rol { get; private set; } = null!;
+    public Guid RolId { get; private set; }
     public bool AktifMi { get; private set; } = true;
+
+    // Rolün üzerine bu kullanıcıya özel verilen ve alınan yetkiler.
+    public List<string> EkYetkiler { get; private set; } = [];
+    public List<string> YasakYetkiler { get; private set; } = [];
 
     public Firma Firma { get; private set; } = null!;
     public Kullanici Kullanici { get; private set; } = null!;
+    public FirmaRolu Rol { get; private set; } = null!;
 
     // firmaId yalnızca oturum dışı işlemlerde verilir; boş bırakılırsa oturumdaki firma atanır.
-    public static FirmaKullanicisi Olustur(Guid kullaniciId, string rol, Guid? firmaId = null)
+    public static FirmaKullanicisi Olustur(Guid kullaniciId, Guid rolId, Guid? firmaId = null)
     {
-        if (!GecerliRoller.Contains(rol))
-        {
-            throw new ArgumentException($"Geçersiz rol: {rol}", nameof(rol));
-        }
-
         var uyelik = firmaId is null ? new FirmaKullanicisi() : new FirmaKullanicisi(firmaId.Value);
         uyelik.KullaniciId = kullaniciId;
-        uyelik.Rol = rol;
+        uyelik.RolId = rolId;
         return uyelik;
     }
 
-    // Pasifleştirilmiş üye yeniden davet edilip kabul edince üyelik davetteki rolle yeniden açılır.
-    public void Aktiflestir(string rol)
+    // Pasifleştirilmiş üye yeniden davet edilip kabul edince üyelik davetteki rolle, özel yetkiler sıfırlanarak açılır.
+    public void Aktiflestir(Guid rolId)
     {
         AktifMi = true;
-        Rol = rol;
+        YetkileriAta(rolId, [], []);
+    }
+
+    public void YetkileriAta(Guid rolId, IEnumerable<string> ek, IEnumerable<string> yasak)
+    {
+        RolId = rolId;
+        EkYetkiler = ek.Distinct().Order().ToList();
+        YasakYetkiler = yasak.Distinct().Except(EkYetkiler).Order().ToList();
     }
 
     public Sonuc Pasiflestir(Guid islemiYapanId)

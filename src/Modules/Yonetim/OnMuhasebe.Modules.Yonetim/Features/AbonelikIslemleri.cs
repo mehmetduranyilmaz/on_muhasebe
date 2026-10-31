@@ -19,7 +19,7 @@ internal static class AbonelikIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var abonelik = grup.MapGroup("/abonelik").RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        var abonelik = grup.MapGroup("/abonelik").RequireYetki(YonetimYetkileri.Abonelik);
 
         abonelik.MapGet("", GetirAsync);
         abonelik.MapPost("/odeme-bildirimleri", BildirAsync).Dogrula<OdemeBildirimiIstegi>();

@@ -32,8 +32,8 @@
         </MudTd>
         <MudTd DataLabel="E-posta">@context.Eposta</MudTd>
         <MudTd DataLabel="Rol">
-            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.Rol == Roller.Yonetici ? Color.Secondary : Color.Default)">
-                @(context.Rol == Roller.Yonetici ? "Yönetici" : "Kullanıcı")
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.TamYetkiliMi ? Color.Secondary : Color.Default)">
+                @context.RolAdi
             </MudChip>
         </MudTd>
         <MudTd DataLabel="Durum">
@@ -65,7 +65,7 @@
         </Basliklar>
         <Satir>
             <MudTd DataLabel="E-posta">@context.Eposta</MudTd>
-            <MudTd DataLabel="Rol">@(context.Rol == Roller.Yonetici ? "Yönetici" : "Kullanıcı")</MudTd>
+            <MudTd DataLabel="Rol">@context.RolAdi</MudTd>
             <MudTd DataLabel="Gönderildi">@context.SonGonderimTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</MudTd>
             <MudTd DataLabel="Geçerlilik">
                 @if (context.BitisTarihi < Zaman.GetUtcNow().UtcDateTime)

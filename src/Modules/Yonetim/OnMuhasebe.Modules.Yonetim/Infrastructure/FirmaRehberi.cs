@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Modules.Yonetim.Contracts;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 
@@ -15,6 +16,7 @@ internal sealed class FirmaRehberi(YonetimDbContext db) : IFirmaRehberi
             .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])
             .AsNoTracking()
             .Where(u => u.FirmaId == firmaId && u.AktifMi && u.Kullanici.AktifMi)
-            .Select(u => new FirmaAlicisi(u.KullaniciId, u.Kullanici.Ad + " " + u.Kullanici.Soyad, u.Kullanici.Eposta, u.Rol))
+            .Select(u => new FirmaAlicisi(u.KullaniciId, u.Kullanici.Ad + " " + u.Kullanici.Soyad, u.Kullanici.Eposta,
+                u.Rol.TamYetkiliMi ? Roller.Yonetici : Roller.Kullanici))
             .ToListAsync(cancellationToken);
 }

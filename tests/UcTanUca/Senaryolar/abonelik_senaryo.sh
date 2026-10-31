@@ -109,12 +109,12 @@ kontrol 200 "Bildirim gecmisi firmada" '"durum":"Onaylandi".*"durum":"Reddedildi
 
 echo "--- Kullanici limiti"
 KODU=profesyonel; SIRA=2; ACIKLAMA="Profesyonel test"; istek PUT $PK/profesyonel "$SYS" "$(paket Profesyonel 900 null 2)"
-istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Ucuncu","soyad":"K","eposta":"abone3'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
+istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Ucuncu","soyad":"K","eposta":"abone3'"$U"'@ornek.com","sifre":"Sifre1234","rolId":"'"$(rol_id "$T" Kullanici)"'"}'
 kontrol 422 "Limit (2) dolu: ucuncu kullanici eklenemez" 'Paketinizin kullanıcı limiti \(2\) dolu.*"kod":"kullanici_limiti"'
 istek GET /api/yonetim/kullanicilar "$T"
 KUL=$(echo "$GOVDE" | grep -o '"kullaniciId":"[^"]*","ad":"Kaan"' | cut -d'"' -f4)
 istek POST "/api/yonetim/kullanicilar/$KUL/pasiflestir" "$T"
-istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Ucuncu","soyad":"K","eposta":"abone3'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Kullanici"}'
+istek POST /api/yonetim/kullanicilar "$T" '{"ad":"Ucuncu","soyad":"K","eposta":"abone3'"$U"'@ornek.com","sifre":"Sifre1234","rolId":"'"$(rol_id "$T" Kullanici)"'"}'
 kontrol 201 "Bir kullanici pasiflesince yer acildi"
 KODU=profesyonel; SIRA=2; ACIKLAMA="Profesyonel test"; istek PUT $PK/profesyonel "$SYS" "$(paket Profesyonel 900 null 5)"
 
@@ -123,7 +123,7 @@ FIRMA=$(echo "$T2" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | grep -
 istek PUT "/api/yonetim/sistem/firmalar/$FIRMA/lisans" "$SYS" '{"paketKodu":"basic","bitisTarihi":"2020-01-01","ekModuller":[]}'
 istek POST /api/cari/hesaplar "$T2" '{"unvan":"X","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'
 kontrol 403 "Suresi dolan firma kayit giremez" lisans_suresi_doldu
-istek POST /api/yonetim/kullanicilar "$T2" '{"eposta":"saltokunur'"$U"'@ornek.com","rol":"Kullanici"}'
+istek POST /api/yonetim/kullanicilar "$T2" '{"eposta":"saltokunur'"$U"'@ornek.com","rolId":"'"$(rol_id "$T2" Kullanici)"'"}'
 kontrol 403 "Suresi dolan firma kullanici davet edemez" lisans_suresi_doldu
 istek GET /api/yonetim/abonelik "$T2"
 kontrol 200 "Abonelik ekrani salt okunur durumu gosterir" '"paketKodu":"basic".*"kalanGun":0,"saltOkunur":true'

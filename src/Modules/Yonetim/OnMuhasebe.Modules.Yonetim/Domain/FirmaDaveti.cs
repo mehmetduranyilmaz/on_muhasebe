@@ -13,7 +13,7 @@ internal sealed class FirmaDaveti : FirmaEntity
     private FirmaDaveti(Guid firmaId) : base(firmaId) { }
 
     public string Eposta { get; private set; } = null!;
-    public string Rol { get; private set; } = null!;
+    public Guid RolId { get; private set; }
     public string KodOzeti { get; private set; } = null!;
     public DateTime BitisTarihi { get; private set; }
     public DateTime SonGonderimTarihi { get; private set; }
@@ -21,18 +21,14 @@ internal sealed class FirmaDaveti : FirmaEntity
     public DateTime? IptalTarihi { get; private set; }
 
     public Firma Firma { get; private set; } = null!;
+    public FirmaRolu Rol { get; private set; } = null!;
 
     // firmaId yalnızca oturum dışı işlemlerde (sistem yöneticisinin firma açması) verilir; boşsa oturumdaki firma atanır.
-    public static FirmaDaveti Olustur(string eposta, string rol, string kodOzeti, DateTime simdi, Guid? firmaId = null)
+    public static FirmaDaveti Olustur(string eposta, Guid rolId, string kodOzeti, DateTime simdi, Guid? firmaId = null)
     {
-        if (!FirmaKullanicisi.GecerliRoller.Contains(rol))
-        {
-            throw new ArgumentException($"Geçersiz rol: {rol}", nameof(rol));
-        }
-
         var davet = firmaId is null ? new FirmaDaveti() : new FirmaDaveti(firmaId.Value);
         davet.Eposta = Kullanici.EpostaNormalize(eposta);
-        davet.Rol = rol;
+        davet.RolId = rolId;
         davet.KodOzeti = kodOzeti;
         davet.BitisTarihi = simdi + GecerlilikSuresi;
         davet.SonGonderimTarihi = simdi;

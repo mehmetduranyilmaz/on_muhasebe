@@ -8,6 +8,7 @@ using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Domain.CekSenet;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Domain.Dogrulama;
@@ -21,19 +22,19 @@ internal static class CekSenetIslemleri
 {
     public static void Map(RouteGroupBuilder kok)
     {
-        var grup = kok.MapGroup("/cek-senet");
+        var grup = kok.MapGroup("/cek-senet").Yetki(KasaBankaYetkileri.Cek);
         grup.MapPost("/giris", GirisAsync).Dogrula<AlinanBordroIstegi>();
         grup.MapPost("/cikis", CikisAsync).Dogrula<VerilenBordroIstegi>();
-        grup.MapPost("/islemler", IslemAsync).Dogrula<EvrakIslemIstegi>();
-        grup.MapPost("/evraklar/{id:guid}/geri-al", GeriAlAsync);
+        grup.MapPost("/islemler", IslemAsync).Dogrula<EvrakIslemIstegi>().Islem(YetkiIslemleri.Duzenle);
+        grup.MapPost("/evraklar/{id:guid}/geri-al", GeriAlAsync).Islem(YetkiIslemleri.Iptal);
 
         grup.MapPost("/borclular", BorcluEkleAsync).Dogrula<BorcluKaydetIstegi>();
         grup.MapPut("/borclular/{id:guid}", BorcluGuncelleAsync).Dogrula<BorcluKaydetIstegi>();
-        grup.MapPut("/borclular/{id:guid}/risk", RiskAsync);
+        grup.MapPut("/borclular/{id:guid}/risk", RiskAsync).Islem(YetkiIslemleri.Duzenle);
         grup.MapDelete("/borclular/{id:guid}", BorcluSilAsync);
 
-        grup.MapGet("/ayarlar", AyarGetirAsync);
-        grup.MapPut("/ayarlar", AyarKaydetAsync).RequireAuthorization(p => p.RequireRole(Roller.Yonetici));
+        grup.MapGet("/ayarlar", AyarGetirAsync).YetkiGerekmez();
+        grup.MapPut("/ayarlar", AyarKaydetAsync).Yetki(YonetimYetkileri.Firma, YetkiIslemleri.Duzenle);
 
         CekSenetSorgulari.Map(grup);
         KarneIslemleri.Map(grup);

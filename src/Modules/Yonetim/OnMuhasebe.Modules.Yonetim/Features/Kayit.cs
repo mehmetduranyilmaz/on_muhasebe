@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Modules.Yonetim.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -67,6 +68,7 @@ internal static class Kayit
         IPasswordHasher<Kullanici> hasher,
         KimlikPostasi posta,
         HybridCache onbellek,
+        YetkiKatalogu katalog,
         TimeProvider zaman,
         CancellationToken cancellationToken)
     {
@@ -96,11 +98,12 @@ internal static class Kayit
         {
             var denemePaketi = await db.Paketler.SingleAsync(p => p.Kod == PaketKodlari.Deneme, cancellationToken);
             var firma = Firma.Olustur(istek.FirmaUnvani, istek.VergiNo, vergiDairesi: null);
+            var roller = RolSablonlari.Olustur(katalog.Tumu, firma.Id);
             kullanici = Kullanici.Olustur(istek.Ad, istek.Soyad, istek.Eposta);
+            db.AddRange(firma, kullanici);
+            db.Roller.AddRange(roller);
             db.AddRange(
-                firma,
-                kullanici,
-                FirmaKullanicisi.Olustur(kullanici.Id, Roller.Yonetici, firma.Id),
+                FirmaKullanicisi.Olustur(kullanici.Id, roller[0].Id, firma.Id),
                 FirmaLisansi.Olustur(firma.Id, denemePaketi, simdi, simdi.AddDays(DenemeSuresiGun)));
         }
         else

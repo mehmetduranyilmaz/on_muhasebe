@@ -21,6 +21,8 @@ public static class SharedInfrastructureExtensions
         services.AddScoped<ArkaPlanBaglami>();
         services.AddScoped<IMevcutKullanici, HttpMevcutKullanici>();
         services.AddSingleton<FirmaKapsami>();
+        services.AddSingleton<YetkiKatalogu>();
+        services.AddScoped<IYetkiDenetimi, YetkiDenetimi>();
         services.AddScoped<DenetimInterceptor>();
         services.AddScoped<IslemKapsami>();
         services.AddScoped<IIslemKapsami>(sp => sp.GetRequiredService<IslemKapsami>());

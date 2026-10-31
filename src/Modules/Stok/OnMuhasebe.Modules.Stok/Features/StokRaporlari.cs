@@ -6,6 +6,8 @@ using OnMuhasebe.Modules.Stok.Contracts;
 using OnMuhasebe.Modules.Stok.Domain;
 using OnMuhasebe.Modules.Stok.Domain.Maliyet;
 using OnMuhasebe.Modules.Stok.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Domain.Results;
@@ -18,8 +20,9 @@ internal static class StokRaporlari
 {
     private const int OzetListeBoyutu = 5;
 
-    public static void Map(RouteGroupBuilder grup)
+    public static void Map(RouteGroupBuilder modul)
     {
+        var grup = modul.MapGroup("").Yetki(StokYetkileri.Rapor);
         grup.MapGet("/raporlar/durum", DurumAsync);
         grup.MapGet("/raporlar/ozet", OzetAsync);
         grup.MapGet("/kartlar/{kartId:guid}/ekstre", EkstreAsync);
@@ -29,7 +32,7 @@ internal static class StokRaporlari
     private static async Task<IResult> DurumAsync(
         StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi, TimeProvider zaman,
         DateOnly? tarih, Guid? depoId, Guid? grupId, string? arama, bool? sadeceKritik, bool? sadeceEksi, int? sayfa, int? boyut,
-        CancellationToken cancellationToken)
+        IYetkiDenetimi yetki, CancellationToken cancellationToken)
     {
         var raporTarihi = tarih ?? TurkiyeSaati.Bugun(zaman);
         var ayar = await ayarServisi.GetirAsync(cancellationToken);
@@ -50,12 +53,13 @@ internal static class StokRaporlari
             .Select(k => new { k.Id, k.Kod, k.Ad, k.TemelBirim, GrupAdi = k.Grup != null ? k.Grup.Ad : null, k.KritikSeviye })
             .ToListAsync(cancellationToken);
         var hesaplar = await hesaplayici.HesaplaAsync(kartlar.Select(k => k.Id), raporTarihi, ayar.MaliyetYontemi, cancellationToken);
+        var maliyetGorur = await yetki.GorurMuAsync(cancellationToken);
 
         var satirlar = kartListesi.Select(k =>
         {
             var hesap = hesaplar.GetValueOrDefault(k.Id);
             var miktar = depoId is { } d ? hesap?.DepoMiktarlari.GetValueOrDefault(d) ?? 0m : hesap?.Miktar ?? 0m;
-            var birimMaliyet = hesap?.BirimMaliyet ?? 0m;
+            var birimMaliyet = maliyetGorur ? hesap?.BirimMaliyet ?? 0m : 0m;
             return new StokDurumuSatiri(k.Id, k.Kod, k.Ad, k.TemelBirim, k.GrupAdi, miktar,
                 Math.Round(birimMaliyet, 4), Para.Yuvarla(miktar * birimMaliyet), k.KritikSeviye);
         }).ToList();
@@ -78,7 +82,7 @@ internal static class StokRaporlari
     // Ürün hareket dökümü: devir, giriş/çıkış ve yürüyen bakiye; çıkışlar seçili maliyet yöntemiyle değerlenir.
     private static async Task<IResult> EkstreAsync(
         Guid kartId, DateOnly? baslangic, DateOnly? bitis, Guid? depoId,
-        StokDbContext db, StokAyarServisi ayarServisi, TimeProvider zaman, CancellationToken cancellationToken)
+        StokDbContext db, StokAyarServisi ayarServisi, TimeProvider zaman, IYetkiDenetimi yetki, CancellationToken cancellationToken)
     {
         var bugun = TurkiyeSaati.Bugun(zaman);
         var bas = baslangic ?? new DateOnly(bugun.Year, 1, 1);
@@ -114,6 +118,7 @@ internal static class StokRaporlari
             .Where(h => !h.IptalliMi && !StokHareket.TransferMi(h.Tur))
             .Select(h => new MaliyetHareketi(h.Id, h.GirisMiktari, h.CikisMiktari, h.BirimFiyat)));
 
+        var maliyetGorur = await yetki.GorurMuAsync(cancellationToken);
         var kapsam = hareketler.Where(h => depoId is null || h.DepoId == depoId).ToList();
         var bakiye = kapsam.Where(h => h.Tarih < bas).Sum(h => h.GirisMiktari - h.CikisMiktari);
         var devir = bakiye;
@@ -121,7 +126,8 @@ internal static class StokRaporlari
         foreach (var h in kapsam.Where(h => h.Tarih >= bas))
         {
             bakiye += h.GirisMiktari - h.CikisMiktari;
-            var birimMaliyet = h.CikisMiktari > 0 ? maliyet.CikisBirimMaliyetleri.GetValueOrDefault(h.Id, h.BirimFiyat ?? 0m) : h.BirimFiyat ?? 0m;
+            var birimMaliyet = !maliyetGorur ? 0m
+                : h.CikisMiktari > 0 ? maliyet.CikisBirimMaliyetleri.GetValueOrDefault(h.Id, h.BirimFiyat ?? 0m) : h.BirimFiyat ?? 0m;
             satirlar.Add(new StokEkstreSatiri(h.Id, h.Tarih, h.Tur, h.DepoAdi, h.BelgeNo, h.Aciklama, h.GirisMiktari, h.CikisMiktari,
                 bakiye, Math.Round(birimMaliyet, 4), Para.Yuvarla((h.GirisMiktari + h.CikisMiktari) * birimMaliyet), h.KaynakBelgeId));
         }
@@ -129,14 +135,15 @@ internal static class StokRaporlari
         return TypedResults.Ok(new StokEkstresi(
             kart.Id, kart.Kod, kart.Ad, kart.TemelBirim, depoId, bas, son, ayar.MaliyetYontemi, devir, satirlar,
             satirlar.Sum(s => s.Giris), satirlar.Sum(s => s.Cikis), bakiye,
-            Math.Round(maliyet.BirimMaliyet, 4), Para.Yuvarla(bakiye * maliyet.BirimMaliyet)));
+            maliyetGorur ? Math.Round(maliyet.BirimMaliyet, 4) : 0m, maliyetGorur ? Para.Yuvarla(bakiye * maliyet.BirimMaliyet) : 0m));
     }
 
     // Ana sayfa özet paneli.
     private static async Task<IResult> OzetAsync(
-        StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi, CancellationToken cancellationToken)
+        StokDbContext db, StokHesaplayici hesaplayici, StokAyarServisi ayarServisi, IYetkiDenetimi yetki, CancellationToken cancellationToken)
     {
         var ayar = await ayarServisi.GetirAsync(cancellationToken);
+        var maliyetGorur = await yetki.GorurMuAsync(cancellationToken);
         var kartlar = db.StokKartlari.AsNoTracking().Where(k => k.Tur == StokTuru.Urun && k.AktifMi);
         var kartListesi = await kartlar.Select(k => new { k.Id, k.Ad, k.TemelBirim, k.KritikSeviye }).ToListAsync(cancellationToken);
         var hesaplar = await hesaplayici.HesaplaAsync(kartlar.Select(k => k.Id), null, ayar.MaliyetYontemi, cancellationToken);
@@ -150,7 +157,7 @@ internal static class StokRaporlari
 
         var kritikler = durumlar.Where(d => d.KritikSeviye is { } s && d.Miktar <= s).ToList();
         var depoDegerleri = durumlar
-            .Where(d => d.Hesap is not null)
+            .Where(d => maliyetGorur && d.Hesap is not null)
             .SelectMany(d => d.Hesap!.DepoMiktarlari.Select(m => (DepoId: m.Key, Deger: m.Value * d.Hesap.BirimMaliyet)))
             .GroupBy(x => x.DepoId)
             .Select(g => new DepoDegeri(depolar.GetValueOrDefault(g.Key, "?"), Para.Yuvarla(g.Sum(x => x.Deger))))
@@ -167,7 +174,7 @@ internal static class StokRaporlari
 
         return TypedResults.Ok(new StokOzetRaporu(
             durumlar.Count,
-            Para.Yuvarla(durumlar.Sum(d => d.Hesap?.Deger ?? 0m)),
+            maliyetGorur ? Para.Yuvarla(durumlar.Sum(d => d.Hesap?.Deger ?? 0m)) : 0m,
             kritikler.Count,
             durumlar.Count(d => d.Miktar < 0),
             ayar.MaliyetYontemi,

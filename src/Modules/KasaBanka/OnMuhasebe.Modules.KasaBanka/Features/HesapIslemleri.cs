@@ -7,6 +7,8 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
+using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain;
@@ -22,15 +24,15 @@ internal static class HesapIslemleri
 {
     public static void Map(RouteGroupBuilder grup)
     {
-        var hesaplar = grup.MapGroup("/hesaplar");
+        var hesaplar = grup.MapGroup("/hesaplar").Yetki(KasaBankaYetkileri.Hesap);
         hesaplar.MapGet("", ListeleAsync);
         hesaplar.MapGet("/{id:guid}", DetayAsync);
         hesaplar.MapPost("", EkleAsync).Dogrula<HesapKaydetIstegi>();
         hesaplar.MapPut("/{id:guid}", GuncelleAsync).Dogrula<HesapKaydetIstegi>();
         hesaplar.MapPost("/{id:guid}/pasiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) =>
-            DurumDegistirAsync(id, db, h => h.Pasiflestir(), ct));
+            DurumDegistirAsync(id, db, h => h.Pasiflestir(), ct)).Islem(YetkiIslemleri.Duzenle);
         hesaplar.MapPost("/{id:guid}/aktiflestir", (Guid id, KasaBankaDbContext db, CancellationToken ct) =>
-            DurumDegistirAsync(id, db, h => h.Aktiflestir(), ct));
+            DurumDegistirAsync(id, db, h => h.Aktiflestir(), ct)).Islem(YetkiIslemleri.Duzenle);
         hesaplar.MapDelete("/{id:guid}", SilAsync);
         hesaplar.MapGet("/{id:guid}/hareketler", HareketleriListeleAsync);
         hesaplar.MapGet("/{id:guid}/ekstre", EkstreAsync);

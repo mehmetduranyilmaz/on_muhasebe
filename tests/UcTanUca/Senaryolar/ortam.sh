@@ -51,13 +51,23 @@ kayit_ol() {
   _hesap_istek /api/yonetim/eposta-dogrula '{"kod":"'"$kod"'"}' "" "$2"
 }
 
+# Firmanın rol kimliği. Kullanım: rol_id TOKEN Yonetici|Kullanici|ROL_ADI_ONEKI (Yonetici: tam yetkili rol; diğerleri ad önekiyle,
+# Türkçe harfler JSON'da kaçışlı geldiği için ASCII önek verilir: "Kullan", "Satis" değil "Sat").
+rol_id() {
+  local liste onek="$2"
+  liste=$(curl "${CURL_EK[@]}" -s "$OM_KOK/api/yonetim/roller" -H "Authorization: Bearer $1" | tr -d '\n' | sed 's/},{/}\n{/g')
+  if [ "$onek" = Yonetici ]; then echo "$liste" | grep '"tamYetkiliMi":true' | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4; return; fi
+  [ "$onek" = Kullanici ] && onek=Kullan
+  echo "$liste" | grep "\"ad\":\"$onek" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4
+}
+
 # Yöneticinin daveti + davet edilenin bağlantıyla kabulü (yeni hesap). Kullanım: davet_kabul YONETICI_TOKEN '{"ad":..,"soyad":..,"eposta":..,"sifre":..,"rol":..}'
 # Davet reddedilirse (ör. limit) davet yanıtı, kabul edilirse kabul yanıtı (200 + accessToken) döner.
 davet_kabul() {
   local alan_ eposta rol kod
   alan_() { echo "$2" | grep -o "\"$1\":\"[^\"]*\"" | cut -d'"' -f4; }
   eposta=$(alan_ eposta "$2" | tr 'A-Z' 'a-z'); rol=$(alan_ rol "$2")
-  _hesap_istek /api/yonetim/kullanicilar '{"eposta":"'"$eposta"'","rol":"'"$rol"'"}' "$1"
+  _hesap_istek /api/yonetim/kullanicilar '{"eposta":"'"$eposta"'","rolId":"'"$(rol_id "$1" "$rol")"'"}' "$1"
   [ "$KOD" = 201 ] || return 1
   kod=$(mailpit_kodu "$eposta" davet) || { KOD=000; GOVDE="davet e-postasi gelmedi: $eposta"; return 1; }
   _hesap_istek /api/yonetim/davet-kabul '{"kod":"'"$kod"'","ad":"'"$(alan_ ad "$2")"'","soyad":"'"$(alan_ soyad "$2")"'","sifre":"'"$(alan_ sifre "$2")"'"}'
