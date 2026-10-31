@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Fatura.Contracts;
+using OnMuhasebe.Modules.Fatura.Domain;
 using OnMuhasebe.Modules.Fatura.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Stok.Contracts;
@@ -29,6 +30,10 @@ internal static class FaturaRaporlari
         grup.MapGet("/raporlar/ba-bs", BaBsAsync);
         grup.MapGet("/raporlar/ba-bs/cari/{cariId:guid}", CariBaBsAsync);
     }
+
+    // Raporlar istenirse tek işyerine daraltılır (şube kârlılığı, şube KDV dökümü). Ba/Bs vergi numarası düzeyinde beyan olduğundan firma genelidir.
+    private static IQueryable<FaturaBelgesi> Faturalar(FaturaDbContext db, Guid? isyeriId) =>
+        isyeriId is { } i ? db.Faturalar.Where(f => f.IsyeriId == i) : db.Faturalar;
 
     private static async Task<IResult> BaBsAsync(int yil, int ay, decimal? sinir, FaturaDbContext db, CancellationToken cancellationToken)
     {
@@ -76,7 +81,7 @@ internal static class FaturaRaporlari
     // Onaylı faturaların merkez bazında KDV hariç TL tutarı: satış gelir, alış/gider pusulası/SMM gider; iadeler düşülür.
     // KDV ve stopaj gelir/gider değildir (vergi alacağı/borcu), bu yüzden matrah esas alınır.
     private static async Task<IResult> MasrafMerkeziAsync(
-        FaturaDbContext db, TimeProvider zaman, DateOnly? baslangic, DateOnly? bitis, CancellationToken cancellationToken)
+        FaturaDbContext db, TimeProvider zaman, DateOnly? baslangic, DateOnly? bitis, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var bugun = TurkiyeSaati.Bugun(zaman);
         var (bas, son) = (baslangic ?? new DateOnly(bugun.Year, 1, 1), bitis ?? bugun);
@@ -85,7 +90,7 @@ internal static class FaturaRaporlari
             return Hata.Dogrulama("tarih_araligi", "Bitiş tarihi başlangıçtan önce olamaz.").Problem();
         }
 
-        var faturalar = await db.Faturalar.AsNoTracking()
+        var faturalar = await Faturalar(db, isyeriId).AsNoTracking()
             .Where(f => f.Durum == FaturaDurumu.Onayli && f.Tarih >= bas && f.Tarih <= son)
             .Select(f => new { f.MasrafMerkeziId, f.Tur, f.Matrah, f.Kur })
             .ToListAsync(cancellationToken);
@@ -118,7 +123,7 @@ internal static class FaturaRaporlari
     // satıştan iadede stoğa giriş maliyeti düşülür. Hizmet ve serbest satırın maliyeti izlenmez.
     private static async Task<IResult> KarlilikAsync(
         FaturaDbContext db, IStokSorgusu stokSorgusu, TimeProvider zaman,
-        DateOnly? baslangic, DateOnly? bitis, KarlilikKirilimi? kirilim, CancellationToken cancellationToken)
+        DateOnly? baslangic, DateOnly? bitis, KarlilikKirilimi? kirilim, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var bugun = TurkiyeSaati.Bugun(zaman);
         var (bas, son) = (baslangic ?? new DateOnly(bugun.Year, bugun.Month, 1), bitis ?? bugun);
@@ -127,7 +132,7 @@ internal static class FaturaRaporlari
             return Hata.Dogrulama("tarih_araligi", "Bitiş tarihi başlangıçtan önce olamaz.").Problem();
         }
 
-        var faturalar = await db.Faturalar.AsNoTracking().Include(f => f.Satirlar)
+        var faturalar = await Faturalar(db, isyeriId).AsNoTracking().Include(f => f.Satirlar)
             .Where(f => f.Durum == FaturaDurumu.Onayli && (f.Tur == FaturaTuru.Satis || f.Tur == FaturaTuru.SatistanIade)
                         && f.Tarih >= bas && f.Tarih <= son)
             .ToListAsync(cancellationToken);
@@ -181,7 +186,7 @@ internal static class FaturaRaporlari
 
     // KDV beyan hazırlık özeti (aylık, fatura tarihine göre). Döviz faturaların TL karşılığı fatura kuruyladır.
     // Muhtasar için stopaj belge tarihine göre toplanır (hesaben ödeme); fiili ödeme tarihi farklıysa beyan dönemi değişebilir.
-    private static async Task<IResult> KdvAsync(FaturaDbContext db, TimeProvider zaman, int? yil, int? ay, CancellationToken cancellationToken)
+    private static async Task<IResult> KdvAsync(FaturaDbContext db, TimeProvider zaman, int? yil, int? ay, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var bugun = TurkiyeSaati.Bugun(zaman);
         var (y, a) = (yil ?? bugun.Year, ay ?? bugun.Month);
@@ -192,7 +197,7 @@ internal static class FaturaRaporlari
 
         var bas = new DateOnly(y, a, 1);
         var son = bas.AddMonths(1).AddDays(-1);
-        var faturalar = await db.Faturalar.AsNoTracking().Include(f => f.Satirlar)
+        var faturalar = await Faturalar(db, isyeriId).AsNoTracking().Include(f => f.Satirlar)
             .Where(f => f.Durum == FaturaDurumu.Onayli && f.Tarih >= bas && f.Tarih <= son)
             .ToListAsync(cancellationToken);
 
@@ -212,13 +217,13 @@ internal static class FaturaRaporlari
 
     // Ana sayfa özeti: yalnızca onaylı faturalar; tutarlar TL ve KDV hariç, iadeler düşülmüş.
     // KDV1 mantığı: satıcı tevkif edilen KDV'yi hesaplanan KDV'ye katmaz (alıcı KDV2 ile öder); alıcı KDV'nin tamamını indirir.
-    private static async Task<IResult> OzetAsync(FaturaDbContext db, TimeProvider zaman, CancellationToken cancellationToken)
+    private static async Task<IResult> OzetAsync(FaturaDbContext db, TimeProvider zaman, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var bugun = TurkiyeSaati.Bugun(zaman);
         var ayBasi = new DateOnly(bugun.Year, bugun.Month, 1);
         var ilkAy = ayBasi.AddMonths(-(GrafikAySayisi - 1));
 
-        var aylik = await db.Faturalar.AsNoTracking()
+        var aylik = await Faturalar(db, isyeriId).AsNoTracking()
             .Where(f => f.Durum == FaturaDurumu.Onayli && f.Tarih >= ilkAy)
             .GroupBy(f => new { f.Tarih.Year, f.Tarih.Month, f.Tur })
             .Select(g => new
@@ -250,8 +255,8 @@ internal static class FaturaRaporlari
             .ToList();
 
         var (y, m) = (ayBasi.Year, ayBasi.Month);
-        var taslakSayisi = await db.Faturalar.CountAsync(f => f.Durum == FaturaDurumu.Taslak, cancellationToken);
-        var sonFaturalar = await db.Faturalar.AsNoTracking()
+        var taslakSayisi = await Faturalar(db, isyeriId).CountAsync(f => f.Durum == FaturaDurumu.Taslak, cancellationToken);
+        var sonFaturalar = await Faturalar(db, isyeriId).AsNoTracking()
             .Where(f => f.Durum != FaturaDurumu.Taslak)
             .OrderByDescending(f => f.Tarih).ThenByDescending(f => f.OlusturmaTarihi)
             .Take(OzetListeBoyutu)

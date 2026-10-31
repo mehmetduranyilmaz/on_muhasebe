@@ -34,11 +34,12 @@ internal sealed class FaturaAyari : FirmaEntity
     }
 
     // Satış (toptan/perakende), alıştan iade ve gider pusulası numarayı biz veririz; diğer türlerin serisi yoktur.
-    public string Seri(FaturaTuru tur, SatisSekli? satisSekli) => tur switch
+    // İşyerinin kendi serisi varsa o, yoksa firma serisi kullanılır.
+    public string Seri(FaturaTuru tur, SatisSekli? satisSekli, IsyeriSerisi? ozel = null) => tur switch
     {
-        FaturaTuru.Satis => satisSekli == SatisSekli.Perakende ? PerakendeSeri : ToptanSeri,
-        FaturaTuru.AlistanIade => IadeSeri,
-        FaturaTuru.GiderPusulasi => GiderPusulasiSeri,
+        FaturaTuru.Satis => satisSekli == SatisSekli.Perakende ? ozel?.PerakendeSeri ?? PerakendeSeri : ozel?.ToptanSeri ?? ToptanSeri,
+        FaturaTuru.AlistanIade => ozel?.IadeSeri ?? IadeSeri,
+        FaturaTuru.GiderPusulasi => ozel?.GiderPusulasiSeri ?? GiderPusulasiSeri,
         _ => throw new InvalidOperationException($"{tur} belgesinin numarasını karşı taraf verir.")
     };
 
@@ -56,4 +57,35 @@ internal sealed class FaturaSeriSayaci
     public string Seri { get; private set; } = null!;
     public int Yil { get; private set; }
     public long SonNumara { get; private set; }
+}
+
+// İşyerine özel belge serisi (ör. Ankara şubesi satışları ANK). Boş bırakılan seri firma ayarındakini kullanır.
+// Sayaç seri + yıl başınadır: iki işyeri aynı seriyi kullanırsa numaralar ortak sıradan verilir.
+internal sealed class IsyeriSerisi : FirmaEntity
+{
+    private IsyeriSerisi() { }
+
+    public Guid IsyeriId { get; private set; }
+    public string? ToptanSeri { get; private set; }
+    public string? PerakendeSeri { get; private set; }
+    public string? IadeSeri { get; private set; }
+    public string? GiderPusulasiSeri { get; private set; }
+    public string? IrsaliyeSeri { get; private set; }
+
+    public static IsyeriSerisi Olustur(Guid isyeriId) => new() { IsyeriId = isyeriId };
+
+    public void Guncelle(IsyeriSerileri s)
+    {
+        ToptanSeri = Seri(s.ToptanSeri);
+        PerakendeSeri = Seri(s.PerakendeSeri);
+        IadeSeri = Seri(s.IadeSeri);
+        GiderPusulasiSeri = Seri(s.GiderPusulasiSeri);
+        IrsaliyeSeri = Seri(s.IrsaliyeSeri);
+    }
+
+    public bool BosMu => ToptanSeri is null && PerakendeSeri is null && IadeSeri is null && GiderPusulasiSeri is null && IrsaliyeSeri is null;
+
+    public IsyeriSerileri Sozlesme() => new(IsyeriId, ToptanSeri, PerakendeSeri, IadeSeri, GiderPusulasiSeri, IrsaliyeSeri);
+
+    private static string? Seri(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim().ToUpperInvariant();
 }

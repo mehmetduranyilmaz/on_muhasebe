@@ -114,5 +114,28 @@ istek GET /api/kasabanka/hesaplar "$K"
 if echo "$GOVDE" | grep -q "Ankara Kasa"; then KOD=999; fi
 kontrol 200 "Kemal Ankara kasasini gormez, ortak bankayi gorur" 'Ortak Banka'
 
+
+echo "--- Isyerine ozel seri ve rapor filtresi"
+istek PUT "/api/fatura/isyeri-serileri/$ANK" "$T" '{"isyeriId":"'"$ANK"'","toptanSeri":"an1"}'
+kontrol 200 "Ankara toptan serisi tanimlandi (buyuk harf)" '"toptanSeri":"AN1","perakendeSeri":null'
+istek PUT "/api/fatura/isyeri-serileri/$ANK" "$T" '{"isyeriId":"'"$ANK"'","toptanSeri":"ANKARA"}'
+kontrol 400 "Seri 3 karakter olmali" '3 harf'
+istek PUT "/api/fatura/isyeri-serileri/$ANK" "$T2" '{"isyeriId":"'"$ANK"'","toptanSeri":"XXX"}'
+kontrol 404 "Baska firmanin isyerine seri tanimlanamaz" isyeri_bulunamadi
+istek POST /api/fatura/faturalar "$T" "$(fatura "$CARI" "Ankara serili" "$ANK")"
+kontrol 201 "Ankara faturasi kendi serisinden numara aldi" '"numara":"AN12026000000001"'
+istek POST /api/fatura/faturalar "$T" "$(fatura "$CARI" "Eski merkez" "$MERKEZ")"
+kontrol 201 "Serisi olmayan isyeri firma serisini kullanir" '"numara":"TPT2026'
+istek GET "/api/fatura/isyeri-serileri" "$K"
+kontrol 200 "Seriler okunabilir (formlar icin)" '"toptanSeri":"AN1"'
+istek GET "/api/fatura/faturalar?isyeriId=$MERKEZ" "$T"
+if echo "$GOVDE" | grep -q '"isyeriId":"'"$ANK"'"'; then KOD=999; fi
+kontrol 200 "Fatura listesi isyerine suzulur" '"isyeriId":"'"$MERKEZ"'"'
+istek GET "/api/fatura/raporlar/ozet?isyeriId=$ANK" "$T"
+kontrol 200 "Ozet rapor isyerine suzulur" '"sonFaturalar":\[\{"id":"[^"]*".*"isyeriId":"'"$ANK"'"'
+istek PUT "/api/fatura/isyeri-serileri/$ANK" "$T" '{"isyeriId":"'"$ANK"'"}'
+istek GET "/api/fatura/isyeri-serileri" "$T"
+kontrol 200 "Tum seriler bosaltilinca isyeri firma serisine doner" '^\[\]$'
+
 echo; echo "SONUC: $GECEN gecti, $KALAN kaldi"
 [ "$KALAN" -eq 0 ]

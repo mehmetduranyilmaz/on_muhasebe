@@ -60,11 +60,11 @@ internal static class DemirbasIslemleri
     }
 
     // Yıl verilmezse içinde bulunulan yıl. Elden çıkarılanlar, çıkarıldıkları yıldan sonra listede yer almaz.
-    private static async Task<IResult> ListeAsync(int? yil, bool? elCikarilanlar, string? arama, KasaBankaDbContext db, TimeProvider zaman,
+    private static async Task<IResult> ListeAsync(int? yil, bool? elCikarilanlar, string? arama, Guid? isyeriId, KasaBankaDbContext db, TimeProvider zaman,
         CancellationToken cancellationToken)
     {
         var secilenYil = yil ?? TurkiyeSaati.Bugun(zaman).Year;
-        var sorgu = db.Demirbaslar.AsNoTracking().Where(d => d.EdinmeTarihi.Year <= secilenYil);
+        var sorgu = db.Demirbaslar.AsNoTracking().Where(d => d.EdinmeTarihi.Year <= secilenYil && (isyeriId == null || d.IsyeriId == isyeriId));
         sorgu = elCikarilanlar == true
             ? sorgu.Where(d => d.ElCikarmaTarihi != null)
             : sorgu.Where(d => d.ElCikarmaTarihi == null || d.ElCikarmaTarihi.Value.Year >= secilenYil);

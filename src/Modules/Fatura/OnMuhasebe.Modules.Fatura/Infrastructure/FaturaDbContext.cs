@@ -19,6 +19,7 @@ internal sealed class FaturaDbContext(DbContextOptions<FaturaDbContext> options,
     public DbSet<Irsaliye> Irsaliyeler => Set<Irsaliye>();
     public DbSet<IrsaliyeSatiri> IrsaliyeSatirlari => Set<IrsaliyeSatiri>();
     public DbSet<TeklifSiparis> TeklifSiparisler => Set<TeklifSiparis>();
+    public DbSet<IsyeriSerisi> IsyeriSerileri => Set<IsyeriSerisi>();
 
     // Firma geneli tutarlılık hesapları (sipariş karşılama, faturalanan miktar, numara sırası ve mükerrer kontrolü) işyeri
     // kısıtlı kullanıcının işleminde de tüm işyerlerinin belgelerini görmelidir.

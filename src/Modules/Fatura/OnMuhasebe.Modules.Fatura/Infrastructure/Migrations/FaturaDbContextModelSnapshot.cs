@@ -865,6 +865,77 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                     b.ToTable("irsaliye_satiri", "fatura");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.IsyeriSerisi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<string>("GiderPusulasiSeri")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("gider_pusulasi_seri");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<string>("IadeSeri")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("iade_seri");
+
+                    b.Property<string>("IrsaliyeSeri")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("irsaliye_seri");
+
+                    b.Property<Guid>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("PerakendeSeri")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("perakende_seri");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("ToptanSeri")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("toptan_seri");
+
+                    b.HasKey("Id")
+                        .HasName("pk_isyeri_serisi");
+
+                    b.HasIndex("FirmaId", "IsyeriId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_isyeri_serisi_firma_id_isyeri_id");
+
+                    b.ToTable("isyeri_serisi", "fatura");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.TeklifSiparis", b =>
                 {
                     b.Property<Guid>("Id")

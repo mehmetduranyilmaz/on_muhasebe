@@ -242,3 +242,7 @@ public sealed record FaturaOzetRaporu(
     int TaslakSayisi,
     IReadOnlyList<AylikFaturaTutari> SonAylar,
     IReadOnlyList<FaturaOzeti> SonFaturalar);
+
+// İşyerine özel seriler; boş olan firma ayarındaki seriyi kullanır.
+public sealed record IsyeriSerileri(
+    Guid IsyeriId, string? ToptanSeri, string? PerakendeSeri, string? IadeSeri, string? GiderPusulasiSeri, string? IrsaliyeSeri);

@@ -352,7 +352,8 @@ internal sealed class IrsaliyeKayitServisi(
     private async Task<Sonuc<IrsaliyeIslemSonucu>> KesinlestirAsync(Irsaliye irsaliye, FaturaAyari ayar, CancellationToken cancellationToken)
     {
         var numara = irsaliye.GidenMi && irsaliye.Numara is null
-            ? await numaraUretici.SonrakiAsync(ayar.IrsaliyeSeri, irsaliye.Tarih.Year, cancellationToken)
+            ? await numaraUretici.SonrakiAsync(
+                (await ayarServisi.IsyeriSerisiAsync(irsaliye.IsyeriId, cancellationToken))?.IrsaliyeSeri ?? ayar.IrsaliyeSeri, irsaliye.Tarih.Year, cancellationToken)
             : null;
 
         var onay = irsaliye.Onayla(numara, zaman.GetUtcNow().UtcDateTime);

@@ -95,9 +95,14 @@ internal static class FaturaIslemleri
 
     private static async Task<IResult> ListeleAsync(
         FaturaDbContext db, ICariSorgusu cariSorgusu, FaturaTuru? tur, FaturaDurumu? durum, Guid? cariId, DateOnly? baslangic, DateOnly? bitis,
-        string? arama, int? sayfa, int? boyut, CancellationToken cancellationToken)
+        string? arama, int? sayfa, int? boyut, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var sorgu = db.Faturalar.AsNoTracking();
+        if (isyeriId is { } isyeri)
+        {
+            sorgu = sorgu.Where(b => b.IsyeriId == isyeri);
+        }
+
         if (tur is not null)
         {
             sorgu = sorgu.Where(f => f.Tur == tur);

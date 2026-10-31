@@ -74,9 +74,14 @@ internal static class IrsaliyeIslemleri
 
     private static async Task<IResult> ListeleAsync(
         FaturaDbContext db, IrsaliyeTuru? tur, IrsaliyeDurumu? durum, Guid? cariId, FaturalamaDurumu? faturalama, bool? acik,
-        DateOnly? baslangic, DateOnly? bitis, string? arama, int? sayfa, int? boyut, CancellationToken cancellationToken)
+        DateOnly? baslangic, DateOnly? bitis, string? arama, int? sayfa, int? boyut, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var sorgu = db.Irsaliyeler.AsNoTracking();
+        if (isyeriId is { } isyeri)
+        {
+            sorgu = sorgu.Where(b => b.IsyeriId == isyeri);
+        }
+
         if (tur is not null)
         {
             sorgu = sorgu.Where(i => i.Tur == tur);

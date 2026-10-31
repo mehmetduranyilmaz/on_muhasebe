@@ -197,3 +197,17 @@ internal sealed class FaturaSeriSayaciConfiguration : IEntityTypeConfiguration<F
         builder.Property(x => x.Seri).HasMaxLength(3);
     }
 }
+
+internal sealed class IsyeriSerisiConfiguration : IEntityTypeConfiguration<IsyeriSerisi>
+{
+    public void Configure(EntityTypeBuilder<IsyeriSerisi> builder)
+    {
+        builder.ToTable("isyeri_serisi");
+        builder.Property(x => x.ToptanSeri).HasMaxLength(3);
+        builder.Property(x => x.PerakendeSeri).HasMaxLength(3);
+        builder.Property(x => x.IadeSeri).HasMaxLength(3);
+        builder.Property(x => x.GiderPusulasiSeri).HasMaxLength(3);
+        builder.Property(x => x.IrsaliyeSeri).HasMaxLength(3);
+        builder.HasIndex(x => new { x.FirmaId, x.IsyeriId }).IsUnique();
+    }
+}

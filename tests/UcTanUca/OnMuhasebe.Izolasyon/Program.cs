@@ -197,6 +197,7 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/yonetim/kullanicilar/", "kullaniciId", "kullanici"),
     ("/api/yonetim/roller/", "id", "rol"),
     ("/api/yonetim/isyerleri/", "id", "isyeri"),
+    ("/api/fatura/isyeri-serileri/", "isyeriId", "isyeri"),
     ("/api/fatura/irsaliyeler/", "id", "irsaliye"),
     ("/api/fatura/teklif-siparis/", "id", "teklif"),
     ("/api/fatura/raporlar/ba-bs/cari/", "cariId", "cari"),

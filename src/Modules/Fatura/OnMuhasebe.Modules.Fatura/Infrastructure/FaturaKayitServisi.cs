@@ -196,7 +196,8 @@ internal sealed class FaturaKayitServisi(
     private async Task<Sonuc<FaturaIslemSonucu>> KesinlestirAsync(FaturaBelgesi fatura, FaturaAyari ayar, CancellationToken cancellationToken)
     {
         var numara = fatura.GidenMi && fatura.Numara is null
-            ? await numaraUretici.SonrakiAsync(ayar.Seri(fatura.Tur, fatura.SatisSekli), fatura.Tarih.Year, cancellationToken)
+            ? await numaraUretici.SonrakiAsync(
+                ayar.Seri(fatura.Tur, fatura.SatisSekli, await ayarServisi.IsyeriSerisiAsync(fatura.IsyeriId, cancellationToken)), fatura.Tarih.Year, cancellationToken)
             : null;
 
         var onay = fatura.Onayla(numara, zaman.GetUtcNow().UtcDateTime);

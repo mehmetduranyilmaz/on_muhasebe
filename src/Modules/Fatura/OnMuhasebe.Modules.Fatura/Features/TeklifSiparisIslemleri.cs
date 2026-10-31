@@ -73,9 +73,14 @@ internal static class TeklifSiparisIslemleri
 
     private static async Task<IResult> ListeleAsync(
         FaturaDbContext db, TimeProvider zaman, TeklifSiparisTuru? tur, bool? teklif, TeklifSiparisDurumu? durum, Guid? cariId, bool? acik, string? arama,
-        int? sayfa, int? boyut, CancellationToken cancellationToken)
+        int? sayfa, int? boyut, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var sorgu = db.TeklifSiparisler.AsNoTracking();
+        if (isyeriId is { } isyeri)
+        {
+            sorgu = sorgu.Where(b => b.IsyeriId == isyeri);
+        }
+
         if (teklif is { } t)
         {
             sorgu = t ? sorgu.Where(b => b.Tur == TeklifSiparisTuru.SatisTeklifi) : sorgu.Where(b => b.Tur != TeklifSiparisTuru.SatisTeklifi);

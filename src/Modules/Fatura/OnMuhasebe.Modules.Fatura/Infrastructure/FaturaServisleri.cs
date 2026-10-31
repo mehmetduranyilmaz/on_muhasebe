@@ -19,6 +19,9 @@ internal sealed class FaturaAyarServisi(FaturaDbContext db)
 {
     public async Task<FaturaAyari> GetirAsync(CancellationToken cancellationToken) =>
         await db.FaturaAyarlari.SingleOrDefaultAsync(cancellationToken) ?? FaturaAyari.Varsayilan();
+
+    public Task<IsyeriSerisi?> IsyeriSerisiAsync(Guid isyeriId, CancellationToken cancellationToken) =>
+        db.IsyeriSerileri.SingleOrDefaultAsync(s => s.IsyeriId == isyeriId, cancellationToken);
 }
 
 // Numara: seri (3) + yıl (4) + sıra (9) = GİB biçimi, ör. TPT2026000000001. Açık bir IIslemKapsami içinde çağrılmalıdır;

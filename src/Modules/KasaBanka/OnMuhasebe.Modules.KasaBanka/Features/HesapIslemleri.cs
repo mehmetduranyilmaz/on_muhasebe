@@ -63,9 +63,16 @@ internal static class HesapIslemleri
     }
 
     private static async Task<IResult> ListeleAsync(
-        KasaBankaDbContext db, HesapTuru? tur, bool? aktif, string? arama, CancellationToken cancellationToken)
+        KasaBankaDbContext db, HesapTuru? tur, bool? aktif, string? arama, Guid? isyeriId, CancellationToken cancellationToken)
     {
         var sorgu = db.Hesaplar.AsNoTracking();
+
+        // İşyeri seçilince o işyerinin hesapları ile firma geneli (işyerine bağlanmamış) hesaplar listelenir.
+        if (isyeriId is { } isyeri)
+        {
+            sorgu = sorgu.Where(h => h.IsyeriId == isyeri || h.IsyeriId == null);
+        }
+
         if (tur is not null)
         {
             sorgu = sorgu.Where(h => h.Tur == tur);
