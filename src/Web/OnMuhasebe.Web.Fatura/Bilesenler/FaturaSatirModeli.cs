@@ -37,6 +37,13 @@ public sealed class FaturaSatirModeli
 
     public bool TevkifatliMi => TevkifatPayda > 0;
 
+    // İrsaliyeden aktarılan satır: ürün, birim ve depo irsaliyeyle aynı kalır; miktar faturalanmamış kalanı aşamaz.
+    public Guid? IrsaliyeSatiriId { get; set; }
+    public string? IrsaliyeNo { get; set; }
+    public decimal? AzamiMiktar { get; set; }
+
+    public bool IrsaliyeliMi => IrsaliyeSatiriId is not null;
+
     // Kod listesinden seçince oran da dolar; temizleyince tevkifat kalkar.
     public void TevkifatSec(string? kod)
     {
@@ -90,7 +97,7 @@ public sealed class FaturaSatirModeli
 
     public FaturaSatiriIstegi Istek() =>
         new(StokKartiId, Ad, StokluMu ? DepoId : null, Birim, Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3,
-            TevkifatKodu, TevkifatPay, TevkifatPayda);
+            TevkifatKodu, TevkifatPay, TevkifatPayda, IrsaliyeSatiriId);
 
     public static FaturaSatirModeli Detaydan(FaturaSatiriDetayi s) => new()
     {
@@ -112,6 +119,27 @@ public sealed class FaturaSatirModeli
         TevkifatPay = s.TevkifatPay,
         TevkifatPayda = s.TevkifatPayda,
         EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0,
-        TevkifatAcik = s.TevkifatPayda > 0
+        TevkifatAcik = s.TevkifatPayda > 0,
+        IrsaliyeSatiriId = s.IrsaliyeSatiriId
+    };
+
+    // İrsaliye fiyatı KDV hariçtir; fiyat yoksa çağıran taraf önerilen fiyatı verir.
+    public static FaturaSatirModeli Irsaliyeden(AktarilacakIrsaliyeSatiri a, decimal miktar, StokKartiDetayi kart) => new()
+    {
+        StokKartiId = a.StokKartiId,
+        StokKodu = a.StokKodu,
+        KartTuru = StokTuru.Urun,
+        TemelBirim = kart.TemelBirim,
+        EkBirimler = kart.EkBirimler,
+        Ad = a.Ad,
+        DepoId = a.DepoId,
+        Birim = a.Birim,
+        Miktar = miktar,
+        BirimFiyat = a.BirimFiyat ?? 0m,
+        KdvDahilMi = false,
+        KdvOrani = a.KdvOrani,
+        IrsaliyeSatiriId = a.IrsaliyeSatiriId,
+        IrsaliyeNo = a.IrsaliyeNo,
+        AzamiMiktar = a.KalanMiktar
     };
 }

@@ -1,5 +1,6 @@
 @inject ApiIstemcisi Api
 @inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
 
 <MudDialog>
     <DialogContent>
@@ -49,6 +50,15 @@
                     </MudItem>
                     <MudItem xs="12">
                         <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            Depolar farklı adresteyse ve mal yolda taşınıyorsa sevk irsaliyesi zorunludur (VUK 230).
+                            @if (Oturum.ModulAcikMi(ModulKodlari.Fatura))
+                            {
+                                <a href="irsaliye/yeni/depo-sevk" class="baglanti">Depolar arası sevk irsaliyesi düzenleyin</a>
+                            }
+                        </MudAlert>
                     </MudItem>
                 </MudGrid>
             </MudForm>

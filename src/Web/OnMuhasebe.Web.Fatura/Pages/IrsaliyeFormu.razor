@@ -1,0 +1,600 @@
+@page "/irsaliye/yeni/{TurYolu}"
+@page "/irsaliye/{Id:guid}/duzenle"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? "irsaliye" : $"irsaliye/{Id}")" Ikon="@IrsaliyeMetinleri.Ikon(_tur)"
+             AltBaslik="@(_numara is not null && Id is not null ? _numara : IrsaliyeMetinleri.TurAciklamasi(_tur))" />
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="480px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" lg="8">
+            <FormBolumu Baslik="İrsaliye bilgileri" Aciklama="Karşı taraf, düzenleme ve fiili sevk zamanı" Ikon="@Icons.Material.Filled.Description" Sira="0">
+                @if (DepoSevkMi)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hedefDepoId" Label="Malın gideceği depo"
+                                   Required="true" RequiredError="Hedef depo seçin.">
+                            @foreach (var d in _depolar)
+                            {
+                                <MudSelectItem T="Guid?" Value="d.Id">@d.Ad</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimAdresi" Label="Teslim adresi (hedef deponun adresi)"
+                                      MaxLength="500" Required="true" RequiredError="Teslim adresi gerekli (VUK 230)." />
+                    </MudItem>
+                    @if (_depolar.Count < 2)
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info" Dense="true">Depolar arası sevk için Stok > Depolar ekranından ikinci bir depo ekleyin.</MudAlert>
+                        </MudItem>
+                    }
+                }
+                else
+                {
+                    <MudItem xs="12" md="@(GidenMi ? 12 : 7)">
+                        <MudAutocomplete T="CariOzeti" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Cari" Value="_cari" ValueChanged="CariSecildiAsync"
+                                         SearchFunc="CariAraAsync" ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")" DebounceInterval="300"
+                                         ResetValueOnEmptyText="true" Clearable="true" Required="true" RequiredError="Cari seçin."
+                                         Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.People" MaxItems="10" />
+                    </MudItem>
+                    @if (!GidenMi)
+                    {
+                        <MudItem xs="12" md="5">
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_numara" Label="İrsaliye numarası" MaxLength="30"
+                                          HelperText="Karşı tarafın düzenlediği irsaliyedeki numara" Required="true" RequiredError="İrsaliye numarası gerekli." />
+                        </MudItem>
+                    }
+                    <MudItem xs="12">
+                        <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimAdresi" Label="Teslim adresi (cari adresinden farklıysa)" MaxLength="500" />
+                    </MudItem>
+                }
+
+                <MudItem xs="6" md="3">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Düzenleme tarihi" Date="_tarih" DateChanged="TarihDegisti"
+                                   DateFormat="dd.MM.yyyy" Required="true" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Fiili sevk tarihi" Date="_sevkTarihi" DateChanged="SevkTarihiDegistiAsync"
+                                   DateFormat="dd.MM.yyyy" Required="true" MinDate="_tarih" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudTimePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Sevk saati" @bind-Time="_sevkSaati" Required="true" AmPm="false" />
+                </MudItem>
+                @if (Dovizli)
+                {
+                    <MudItem xs="6" md="2">
+                        <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="@($"{_paraBirimi} kuru")" Value="_kur"
+                                         ValueChanged="KurGirildi" Format="0.######" HideSpinButtons="true" Min="0" />
+                    </MudItem>
+                }
+                <MudItem xs="12" md="@(Dovizli ? 2 : 4)">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" />
+                </MudItem>
+            </FormBolumu>
+
+            <FormBolumu Baslik="Taşıma bilgileri" Aciklama="Kâğıt irsaliyede isteğe bağlı; e-İrsaliye'de araç plakası ve şoför zorunludur"
+                        Ikon="@Icons.Material.Filled.LocalShipping" Sira="1">
+                <MudItem xs="6" md="3">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aracPlakasi" Label="Araç plakası" MaxLength="20" />
+                </MudItem>
+                <MudItem xs="6" md="5">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soforAdi" Label="Şoför adı soyadı" MaxLength="100" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soforTckn" Label="Şoför T.C. kimlik no" MaxLength="11" />
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tasiyiciUnvani" Label="Taşıyıcı firma (kargo/nakliye)" MaxLength="250" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tasiyiciVkn" Label="Taşıyıcı VKN/TCKN" MaxLength="11" />
+                </MudItem>
+            </FormBolumu>
+
+            <FormBolumu Baslik="Sevk edilen mallar" Aciklama="@SatirAciklamasi" Ikon="@Icons.Material.Filled.FormatListNumbered" Sira="2">
+                <MudItem xs="12">
+                    <div class="satir-ekleme-cubugu">
+                        <MudAutocomplete @key="_stokAramaAnahtari" T="StokKartiOzeti" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                         Placeholder="Ürün ara: ad, kod veya barkod" ValueChanged="StokSecildiAsync" SearchFunc="StokAraAsync"
+                                         ToStringFunc="@(k => k?.Ad ?? "")" DebounceInterval="300" MaxItems="12" Class="stok-arama"
+                                         Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search">
+                            <ItemTemplate Context="k">
+                                <div class="d-flex justify-space-between gap-4" style="width:100%">
+                                    <span><b>@k.Ad</b> <small style="opacity:.6">@k.Kod</small></span>
+                                    <small style="opacity:.75">@Bicim.Miktar(k.Miktar, k.TemelBirim)</small>
+                                </div>
+                            </ItemTemplate>
+                        </MudAutocomplete>
+                        <MudTextField @ref="_barkodAlani" T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_barkod"
+                                      Placeholder="Barkod" OnKeyUp="BarkodTusAsync" Class="barkod-alani"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.QrCodeScanner" />
+                        @if (!AlisMi && !DepoSevkMi)
+                        {
+                            <MudSwitch T="bool" @bind-Value="_fiyatli" Color="Color.Secondary" Label="Fiyatlı irsaliye" />
+                        }
+                    </div>
+                </MudItem>
+
+                <MudItem xs="12" Class="fatura-satirlari">
+                    @if (_satirlar.Count == 0)
+                    {
+                        <BosDurum Ikon="@Icons.Material.Outlined.PlaylistAdd" Baslik="Henüz satır yok" Aciklama="Ürün arayarak ya da barkod okutarak başlayın. İrsaliyeye yalnızca ürün eklenir." />
+                    }
+                    @for (var i = 0; i < _satirlar.Count; i++)
+                    {
+                        var sira = i;
+                        var s = _satirlar[i];
+                        <div class="fatura-satiri satir-belirme" @key="s.Anahtar" style="--i:@sira">
+                            <div class="fs-sira">@(sira + 1)</div>
+                            <div class="fs-ad">
+                                <div class="fs-kart">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@s.StokKodu</MudChip>
+                                    @if (s.FaturalananMiktar > 0)
+                                    {
+                                        <span class="fs-hizmet">@Bicim.Miktar(s.FaturalananMiktar, s.Birim) faturalandı</span>
+                                    }
+                                </div>
+                                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Ad" Label="Ürün" MaxLength="250" />
+                            </div>
+                            <div class="fs-miktar">
+                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Miktar" Label="Miktar"
+                                                 Format="#,0.####" HideSpinButtons="true" Min="0" Immediate="true" DebounceInterval="250" />
+                            </div>
+                            <div class="fs-birim">
+                                <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.Birim" ValueChanged="b => s.BirimDegistir(b)" Label="Birim">
+                                    @foreach (var b in s.BirimSecenekleri)
+                                    {
+                                        <MudSelectItem Value="b">@Birimler.Ad(b)</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </div>
+                            @if (FiyatGorunur)
+                            {
+                                <div class="fs-fiyat">
+                                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.BirimFiyat"
+                                                     Label="@(AlisMi ? "Tahmini maliyet" : "Birim fiyat")" Format="N2" HideSpinButtons="true" Min="0"
+                                                     Required="AlisMi" RequiredError="Gerekli" Immediate="true" DebounceInterval="250"
+                                                     Adornment="Adornment.End" AdornmentText="@ParaSimgesi" />
+                                </div>
+                            }
+                            @if (_depolar.Count > 1 || DepoSevkMi)
+                            {
+                                <div class="fs-depo">
+                                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.DepoId"
+                                               Label="@(DepoSevkMi ? "Çıkış deposu" : StokGirisiMi ? "Giriş deposu" : "Çıkış deposu")" Clearable="true" Placeholder="Varsayılan depo">
+                                        @foreach (var d in _depolar.Where(d => !DepoSevkMi || d.Id != _hedefDepoId))
+                                        {
+                                            <MudSelectItem T="Guid?" Value="d.Id">@d.Ad</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </div>
+                            }
+                            @if (FiyatGorunur)
+                            {
+                                <div class="fs-toplam">
+                                    <div class="fs-toplam-etiket">Tutar</div>
+                                    <div class="fs-toplam-deger">@(s.Tutar is { } t ? Bicim.Tutar(t) : "—")</div>
+                                </div>
+                            }
+                            <div class="fs-sil">
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" aria-label="Satırı sil" OnClick="() => _satirlar.Remove(s)" />
+                            </div>
+                        </div>
+                    }
+                </MudItem>
+            </FormBolumu>
+        </MudItem>
+
+        <MudItem xs="12" lg="4">
+            <div class="fatura-toplam-paneli kart belirme" style="--i:3">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Small" Color="Color.Secondary" /> Özet</div>
+                <dl class="toplam-listesi">
+                    <dt>Kalem</dt><dd>@_satirlar.Count</dd>
+                    @foreach (var grup in _satirlar.GroupBy(s => s.Birim))
+                    {
+                        <dt>Toplam (@Birimler.Ad(grup.Key))</dt><dd>@Bicim.Miktar(grup.Sum(s => s.Miktar), grup.Key)</dd>
+                    }
+                    @if (_sevkTarihi is { } sevk && !DepoSevkMi)
+                    {
+                        <dt>Fatura son günü</dt><dd>@Bicim.Tarih(IrsaliyeHesaplari.FaturaSonGunu(DateOnly.FromDateTime(sevk)))</dd>
+                    }
+                </dl>
+                @if (FiyatGorunur && _satirlar.Any(s => s.Tutar is not null))
+                {
+                    <div class="genel-toplam">
+                        <span>@(AlisMi ? "Tahmini maliyet (KDV hariç)" : "Mal bedeli (KDV hariç)")</span>
+                        <b>@Bicim.Tutar(_satirlar.Sum(s => s.Tutar ?? 0m), _paraBirimi)</b>
+                    </div>
+                }
+                @if (AlisMi)
+                {
+                    <div class="ozet-alt mt-2">Mal stoğa bu maliyetle girer; fatura gelince maliyet fatura tutarıyla güncellenir.</div>
+                }
+                else if (!DepoSevkMi)
+                {
+                    <div class="ozet-alt mt-2">İrsaliye cari bakiyesini etkilemez; cari, irsaliye faturalanınca borçlanır/alacaklanır.</div>
+                }
+
+                @if (Oturum.SaltOkunurMu)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">Lisans süreniz dolduğu için kayıt yapılamaz.</MudAlert>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2 mt-4">
+                        @if (TaslakAkisi && _durum == IrsaliyeDurumu.Taslak)
+                        {
+                            <IslemDugmesi Islem="() => KaydetAsync(onayla: true)" StartIcon="@Icons.Material.Filled.TaskAlt" FullWidth="true" Disabled="!KaydedilebilirMi">
+                                Kaydet ve onayla
+                            </IslemDugmesi>
+                            <IslemDugmesi Islem="() => KaydetAsync(onayla: false)" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Save" FullWidth="true"
+                                          Disabled="!KaydedilebilirMi">
+                                Taslak olarak kaydet
+                            </IslemDugmesi>
+                        }
+                        else
+                        {
+                            <IslemDugmesi Islem="() => KaydetAsync(onayla: false)" StartIcon="@Icons.Material.Filled.Save" FullWidth="true" Disabled="!KaydedilebilirMi">
+                                @(Id is null ? "İrsaliyeyi kaydet" : "Değişiklikleri kaydet")
+                            </IslemDugmesi>
+                        }
+                        <MudButton Href="@(Id is null ? "irsaliye" : $"irsaliye/{Id}")" FullWidth="true">Vazgeç</MudButton>
+                    </div>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private readonly IslemAnahtari _anahtar = new();
+
+    [Parameter] public string? TurYolu { get; set; }
+    [Parameter] public Guid? Id { get; set; }
+
+    private IrsaliyeTuru _tur = IrsaliyeTuru.Satis;
+    private IrsaliyeDurumu _durum = IrsaliyeDurumu.Taslak;
+    private FaturaAyarlari? _ayar;
+    private CariOzeti? _cari;
+    private string? _numara;
+    private DateTime? _tarih;
+    private DateTime? _sevkTarihi;
+    private TimeSpan? _sevkSaati;
+    private string _paraBirimi = ParaBirimleri.Tl;
+    private decimal? _kur;
+    private bool _kurElleGirildi;
+    private Guid? _hedefDepoId;
+    private string? _teslimAdresi;
+    private string? _aracPlakasi;
+    private string? _soforAdi;
+    private string? _soforTckn;
+    private string? _tasiyiciUnvani;
+    private string? _tasiyiciVkn;
+    private string? _aciklama;
+    private bool _fiyatli;
+    private readonly List<IrsaliyeSatirModeli> _satirlar = [];
+    private List<Depo> _depolar = [];
+    private int _stokAramaAnahtari;
+    private string? _barkod;
+    private MudTextField<string> _barkodAlani = null!;
+    private uint _surum;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    private bool DepoSevkMi => _tur == IrsaliyeTuru.DepoSevk;
+    private bool AlisMi => _tur == IrsaliyeTuru.Alis;
+    private bool GidenMi => IrsaliyeTurleri.GidenMi(_tur);
+    private bool StokGirisiMi => IrsaliyeTurleri.StokGirisiMi(_tur);
+    private bool FiyatGorunur => AlisMi || (_fiyatli && !DepoSevkMi);
+    private bool TaslakAkisi => _ayar?.KayitAkisi == KayitAkisi.TaslakOnay;
+    private bool Dovizli => _paraBirimi != ParaBirimleri.Tl;
+    private string ParaSimgesi => Dovizli ? _paraBirimi : "TL";
+
+    private string Baslik => Id is null ? $"Yeni {IrsaliyeMetinleri.Tur(_tur)}" : $"{IrsaliyeMetinleri.Tur(_tur)} Düzenle";
+
+    private string SatirAciklamasi => _satirlar.Count == 0 ? "Yalnızca ürün kartları" : $"{_satirlar.Count} kalem";
+
+    private bool KaydedilebilirMi => _satirlar.Count > 0 && _sevkSaati is not null
+                                     && (DepoSevkMi ? _hedefDepoId is not null && !string.IsNullOrWhiteSpace(_teslimAdresi) : _cari is not null)
+                                     && (GidenMi || !string.IsNullOrWhiteSpace(_numara))
+                                     && (!AlisMi || _satirlar.All(s => s.BirimFiyat is not null))
+                                     && (!Dovizli || _kur > 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var ayar = await Api.GetAsync<FaturaAyarlari>("api/fatura/ayarlar");
+        _ayar = ayar.BasariliMi ? ayar.Deger : null;
+        var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
+        _depolar = depolar.BasariliMi ? depolar.Deger.Where(d => d.AktifMi).ToList() : [];
+
+        if (Id is { } id)
+        {
+            await DuzenlemeyeYukleAsync(id);
+        }
+        else
+        {
+            _tur = IrsaliyeMetinleri.YoldanTur(TurYolu) ?? IrsaliyeTuru.Satis;
+            var simdi = Zaman.GetLocalNow();
+            (_tarih, _sevkTarihi, _sevkSaati) = (simdi.Date, simdi.Date, new TimeSpan(simdi.Hour, simdi.Minute, 0));
+            if (DepoSevkMi)
+            {
+                _hedefDepoId = _depolar.FirstOrDefault(d => !d.VarsayilanMi)?.Id;
+            }
+        }
+
+        _yukleniyor = false;
+    }
+
+    private async Task DuzenlemeyeYukleAsync(Guid id)
+    {
+        var sonuc = await Api.GetAsync<IrsaliyeDetayi>($"api/fatura/irsaliyeler/{id}");
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        var i = sonuc.Deger;
+        (_tur, _durum, _numara, _surum) = (i.Tur, i.Durum, i.Numara, i.Surum);
+        (_tarih, _sevkTarihi, _sevkSaati) = (Bicim.Takvim(i.Tarih), Bicim.Takvim(i.SevkTarihi), i.SevkSaati.ToTimeSpan());
+        (_paraBirimi, _kur, _kurElleGirildi) = (i.ParaBirimi, i.Kur, true);
+        (_hedefDepoId, _teslimAdresi, _aracPlakasi, _soforAdi, _soforTckn) = (i.HedefDepoId, i.TeslimAdresi, i.AracPlakasi, i.SoforAdi, i.SoforTckn);
+        (_tasiyiciUnvani, _tasiyiciVkn, _aciklama) = (i.TasiyiciUnvani, i.TasiyiciVkn, i.Aciklama);
+        if (i.CariHesapId is { } cariId)
+        {
+            _cari = new CariOzeti(cariId, i.CariKodu ?? "", i.CariUnvan, CariTuru.Musteri, null, i.ParaBirimi, null, true, 0m, 0m, null);
+        }
+
+        _satirlar.AddRange(i.Satirlar.Select(IrsaliyeSatirModeli.Detaydan));
+        _fiyatli = _satirlar.Any(s => s.BirimFiyat is not null);
+        foreach (var kartId in _satirlar.Select(s => s.StokKartiId).Distinct().ToList())
+        {
+            var kart = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{kartId}");
+            if (kart.BasariliMi)
+            {
+                _satirlar.Where(s => s.StokKartiId == kartId).ToList().ForEach(s => s.BirimleriAta(kart.Deger));
+            }
+        }
+    }
+
+    private async Task<IEnumerable<CariOzeti>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>(
+            $"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task CariSecildiAsync(CariOzeti? cari)
+    {
+        _cari = cari;
+        if (cari is not null && cari.ParaBirimi != _paraBirimi)
+        {
+            _paraBirimi = cari.ParaBirimi;
+            _kurElleGirildi = false;
+            await KurYukleAsync();
+        }
+    }
+
+    private void TarihDegisti(DateTime? tarih)
+    {
+        _tarih = tarih;
+        if (_sevkTarihi < tarih)
+        {
+            _sevkTarihi = tarih;
+        }
+    }
+
+    private async Task SevkTarihiDegistiAsync(DateTime? tarih)
+    {
+        _sevkTarihi = tarih;
+        await KurYukleAsync();
+    }
+
+    // Alış maliyetinin TL karşılığı sevk tarihinin TCMB döviz alış kuruyla bulunur; elle girilen kurun üzerine yazılmaz.
+    private async Task KurYukleAsync()
+    {
+        if (!Dovizli)
+        {
+            _kur = null;
+            return;
+        }
+
+        if (_kurElleGirildi || Bicim.Gun(_sevkTarihi) is not { } gun)
+        {
+            return;
+        }
+
+        var sonuc = await Api.GetAsync<KurBilgisi>($"api/doviz/islem-kuru?paraBirimi={_paraBirimi}&tarih={Bicim.Iso(gun)}");
+        _kur = sonuc.BasariliMi ? sonuc.Deger.DovizAlis : null;
+    }
+
+    private void KurGirildi(decimal? kur)
+    {
+        _kur = kur;
+        _kurElleGirildi = true;
+    }
+
+    private async Task<IEnumerable<StokKartiOzeti>> StokAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<StokKartiOzeti>>(
+            $"api/stok/kartlar?aktif=true&boyut=12&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar.Where(k => k.Tur == StokTuru.Urun) : [];
+    }
+
+    private async Task StokSecildiAsync(StokKartiOzeti? kart)
+    {
+        if (kart is not null)
+        {
+            await SatirEkleAsync(kart.Id, null);
+        }
+
+        _stokAramaAnahtari++;
+    }
+
+    // Barkod okuyucular kodu yazıp Enter gönderir. Aynı ürün ve birim zaten satırdaysa miktar artırılır.
+    private async Task BarkodTusAsync(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_barkod))
+        {
+            return;
+        }
+
+        var barkod = _barkod.Trim();
+        _barkod = null;
+        var sonuc = await Api.GetAsync<BarkodSonucu>($"api/stok/kartlar/barkod/{Uri.EscapeDataString(barkod)}");
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Warning);
+            return;
+        }
+
+        var b = sonuc.Deger;
+        if (_satirlar.FirstOrDefault(s => s.StokKartiId == b.StokKartiId && s.Birim == b.Birim) is { } mevcut)
+        {
+            mevcut.Miktar++;
+        }
+        else
+        {
+            await SatirEkleAsync(b.StokKartiId, b.Birim);
+        }
+
+        await _barkodAlani.FocusAsync();
+    }
+
+    private async Task SatirEkleAsync(Guid kartId, string? birim)
+    {
+        var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{kartId}");
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        var kart = sonuc.Deger;
+        if (kart.Tur != StokTuru.Urun)
+        {
+            Snackbar.Add("İrsaliyeye yalnızca ürün eklenebilir; hizmet sevk edilmez.", Severity.Warning);
+            return;
+        }
+
+        var satir = new IrsaliyeSatirModeli();
+        satir.KartAta(kart);
+        satir.BirimFiyat = DepoSevkMi ? null : await OnerilenFiyatAsync(kart);
+        if (birim is not null)
+        {
+            satir.BirimDegistir(birim);
+        }
+
+        _satirlar.Add(satir);
+    }
+
+    // Alış tarafında kartın alış fiyatı (tahmini maliyet), satış tarafında satış fiyatı önerilir; ikisi de KDV hariçtir
+    // ve irsaliyenin dövizine çevrilir.
+    private async Task<decimal?> OnerilenFiyatAsync(StokKartiDetayi kart)
+    {
+        decimal? fiyat = _tur is IrsaliyeTuru.Alis or IrsaliyeTuru.AlistanIade ? kart.AlisFiyati : kart.SatisFiyati;
+        if (fiyat is not { } f)
+        {
+            return null;
+        }
+
+        if (kart.ParaBirimi != _paraBirimi)
+        {
+            var kartKuru = kart.ParaBirimi == ParaBirimleri.Tl ? 1m : await IslemKuruAsync(kart.ParaBirimi);
+            var irsaliyeKuru = Dovizli ? _kur : 1m;
+            if (kartKuru is not { } kk || irsaliyeKuru is not > 0)
+            {
+                return null;
+            }
+
+            f = f * kk / irsaliyeKuru.Value;
+        }
+
+        return Math.Round(f, 4, MidpointRounding.AwayFromZero);
+    }
+
+    private async Task<decimal?> IslemKuruAsync(string paraBirimi)
+    {
+        if (Bicim.Gun(_sevkTarihi) is not { } gun)
+        {
+            return null;
+        }
+
+        var sonuc = await Api.GetAsync<KurBilgisi>($"api/doviz/islem-kuru?paraBirimi={paraBirimi}&tarih={Bicim.Iso(gun)}");
+        return sonuc.BasariliMi ? sonuc.Deger.DovizAlis : null;
+    }
+
+    private async Task KaydetAsync(bool onayla)
+    {
+        _hata = null;
+        if (Bicim.Gun(_tarih) is not { } tarih || Bicim.Gun(_sevkTarihi) is not { } sevk || _sevkSaati is not { } saat)
+        {
+            return;
+        }
+
+        var istek = new IrsaliyeKaydetIstegi(
+            _tur,
+            DepoSevkMi ? null : _cari?.Id,
+            tarih,
+            sevk,
+            TimeOnly.FromTimeSpan(saat),
+            GidenMi ? null : _numara,
+            Dovizli ? _kur : null,
+            DepoSevkMi ? _hedefDepoId : null,
+            _teslimAdresi,
+            _aracPlakasi,
+            _soforAdi,
+            _soforTckn,
+            _tasiyiciUnvani,
+            _tasiyiciVkn,
+            _aciklama,
+            _satirlar.Select(s => s.Istek(FiyatGorunur)).ToList(),
+            _surum);
+
+        var sonuc = Id is { } id
+            ? await Api.PutAsync<IrsaliyeCevabi>($"api/fatura/irsaliyeler/{id}", istek, islemAnahtari: _anahtar.Deger)
+            : await Api.PostAsync<IrsaliyeCevabi>("api/fatura/irsaliyeler", istek, islemAnahtari: _anahtar.Deger);
+        _anahtar.Sonuc(sonuc.Hata);
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        var cevap = sonuc.Deger;
+        if (onayla && cevap.Irsaliye.Durum == IrsaliyeDurumu.Taslak)
+        {
+            var onay = await Api.PostAsync<IrsaliyeCevabi>($"api/fatura/irsaliyeler/{cevap.Irsaliye.Id}/onayla", new { });
+            if (!onay.BasariliMi)
+            {
+                Snackbar.Add($"Taslak kaydedildi ancak onaylanamadı: {onay.Hata.Baslik}", Severity.Error);
+                Navigasyon.NavigateTo($"irsaliye/{cevap.Irsaliye.Id}");
+                return;
+            }
+
+            cevap = onay.Deger;
+        }
+
+        if (cevap.Uyari is { } uyari)
+        {
+            Snackbar.Add(uyari, Severity.Warning);
+        }
+
+        var i = cevap.Irsaliye;
+        Snackbar.Add(i.Durum == IrsaliyeDurumu.Taslak ? "Taslak kaydedildi." : $"{i.Numara} numaralı irsaliye kaydedildi.", Severity.Success);
+        Navigasyon.NavigateTo($"irsaliye/{i.Id}");
+    }
+}

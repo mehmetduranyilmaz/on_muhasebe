@@ -1,0 +1,130 @@
+@* İrsaliyenin A4 yazdırma görünümü (VUK 230 asgari bilgileri). Ekranda gizlidir; taslak ve iptalde filigran basılır.
+   Fiyat girilmemişse fiyat sütunları basılmaz (fiyatsız irsaliye). *@
+<div class="sadece-yazdir fatura-kagidi">
+    @if (Irsaliye.Durum != IrsaliyeDurumu.Onayli)
+    {
+        <div class="filigran">@(Irsaliye.Durum == IrsaliyeDurumu.Taslak ? "TASLAK" : "İPTAL")</div>
+    }
+
+    <header class="fk-ust">
+        <div class="fk-firma">
+            <div class="fk-firma-unvan">@(Firma?.Unvan ?? "")</div>
+            @if (Firma is { } firma)
+            {
+                @if (firma.Adres is not null)
+                {
+                    <div>@firma.Adres</div>
+                }
+                @if (Yer(firma.Ilce, firma.Il) is { Length: > 0 } yer)
+                {
+                    <div>@yer</div>
+                }
+                @if (firma.VergiNo is not null)
+                {
+                    <div>@(firma.VergiDairesi is null ? "" : $"{firma.VergiDairesi} V.D. · ")@(firma.VergiNo.Length == 11 ? "TCKN" : "VKN") @firma.VergiNo</div>
+                }
+            }
+        </div>
+        <div class="fk-baslik">
+            <div class="fk-tur">@IrsaliyeMetinleri.Tur(Irsaliye.Tur).ToUpper(_tr)</div>
+            <table class="fk-bilgi">
+                <tr><th>İrsaliye No</th><td>@(Irsaliye.Numara ?? "—")</td></tr>
+                <tr><th>Düzenleme tarihi</th><td>@Bicim.Tarih(Irsaliye.Tarih)</td></tr>
+                <tr><th>Fiili sevk</th><td>@Bicim.Tarih(Irsaliye.SevkTarihi) @Irsaliye.SevkSaati.ToString("HH:mm")</td></tr>
+                @if (Irsaliye.AracPlakasi is not null)
+                {
+                    <tr><th>Araç plakası</th><td>@Irsaliye.AracPlakasi</td></tr>
+                }
+            </table>
+        </div>
+    </header>
+
+    <section class="fk-alici">
+        <div class="fk-etiket">@(Irsaliye.Tur == IrsaliyeTuru.DepoSevk ? "TESLİM YERİ" : "SAYIN")</div>
+        @if (Irsaliye.Tur == IrsaliyeTuru.DepoSevk)
+        {
+            <div class="fk-alici-unvan">@(Firma?.Unvan) — @(Depolar.FirstOrDefault(d => d.Id == Irsaliye.HedefDepoId)?.Ad)</div>
+        }
+        else
+        {
+            <div class="fk-alici-unvan">@Irsaliye.CariUnvan</div>
+            @if (Irsaliye.Adres is not null)
+            {
+                <div>@Irsaliye.Adres</div>
+            }
+            @if (Yer(Irsaliye.Ilce, Irsaliye.Il) is { Length: > 0 } aliciYeri)
+            {
+                <div>@aliciYeri</div>
+            }
+            @if (Irsaliye.VergiNo is not null)
+            {
+                <div>@(Irsaliye.VergiDairesi is null ? "" : $"{Irsaliye.VergiDairesi} V.D. · ")@(Irsaliye.VergiNo.Length == 11 ? "TCKN" : "VKN") @Irsaliye.VergiNo</div>
+            }
+        }
+        @if (Irsaliye.TeslimAdresi is not null)
+        {
+            <div><b>Teslim adresi:</b> @Irsaliye.TeslimAdresi</div>
+        }
+    </section>
+
+    <table class="fk-satirlar">
+        <thead>
+            <tr>
+                <th>Sıra</th>
+                <th class="sol">Malın Cinsi</th>
+                <th>Miktar</th>
+                @if (Fiyatli)
+                {
+                    <th>Birim Fiyat</th>
+                    <th>Tutar</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Irsaliye.Satirlar)
+            {
+                <tr>
+                    <td>@s.Sira</td>
+                    <td class="sol">@s.Ad (@s.StokKodu)</td>
+                    <td>@Bicim.Miktar(s.Miktar, s.Birim)</td>
+                    @if (Fiyatli)
+                    {
+                        <td>@(s.BirimFiyat is { } f ? Bicim.Tutar(f) : "")</td>
+                        <td>@(s.BirimFiyat is { } f2 ? Bicim.Tutar(Math.Round(f2 * s.Miktar, 2, MidpointRounding.AwayFromZero)) : "")</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="fk-alt">
+        <div class="fk-sol">
+            @if (Irsaliye.SoforAdi is not null || Irsaliye.TasiyiciUnvani is not null)
+            {
+                <div class="fk-aciklama">
+                    <b>Taşıyan:</b> @string.Join(" · ", new[] { Irsaliye.TasiyiciUnvani, Irsaliye.SoforAdi is null ? null : $"Şoför {Irsaliye.SoforAdi}" }.Where(x => x is not null))
+                </div>
+            }
+            @if (Irsaliye.Aciklama is not null)
+            {
+                <div class="fk-aciklama"><b>Açıklama:</b> @Irsaliye.Aciklama</div>
+            }
+        </div>
+        <table class="fk-toplamlar">
+            <tr><th>Teslim eden</th><td style="min-width:140px; height:48px"></td></tr>
+            <tr><th>Teslim alan</th><td style="height:48px"></td></tr>
+        </table>
+    </div>
+</div>
+
+@code {
+    private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    [Parameter, EditorRequired] public IrsaliyeDetayi Irsaliye { get; set; } = null!;
+    [Parameter] public FirmaBilgileri? Firma { get; set; }
+    [Parameter] public IReadOnlyList<Depo> Depolar { get; set; } = [];
+
+    private bool Fiyatli => Irsaliye.Satirlar.Any(s => s.BirimFiyat is not null);
+
+    private static string Yer(string? ilce, string? il) => string.Join(" / ", new[] { ilce, il }.Where(x => !string.IsNullOrEmpty(x)));
+}

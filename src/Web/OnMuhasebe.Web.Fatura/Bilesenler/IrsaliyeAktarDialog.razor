@@ -1,0 +1,90 @@
+@* Faturaya irsaliyeden satır aktarımı: carinin açık irsaliyeleri sevk sırasıyla listelenir; satır seçilir, miktar kısmi girilebilir. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (_yukleniyor)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" Animation="Animation.Wave" />
+        }
+        else if (_secenekler.Count == 0)
+        {
+            <BosDurum Ikon="@Icons.Material.Outlined.LocalShipping" Baslik="Faturalanacak irsaliye yok"
+                      Aciklama="Bu cariye ait, faturanın türüne uygun onaylı ve faturalanmamış irsaliye bulunmuyor." />
+        }
+        else
+        {
+            <div class="ozet-alt mb-2">Fatura, sevkten itibaren 7 gün içinde kesilmelidir (VUK 231/5). Süresi geçen irsaliyeler işaretlidir.</div>
+            @foreach (var grup in _secenekler.GroupBy(s => s.Satir.IrsaliyeId))
+            {
+                var ilk = grup.First().Satir;
+                <div class="aktarim-grubu">
+                    <div class="d-flex align-center gap-2">
+                        <MudCheckBox T="bool" Value="grup.All(s => s.Secili)" ValueChanged="v => GrupSec(grup.Key, v)" Size="Size.Small" Dense="true" Color="Color.Secondary" />
+                        <b class="fatura-no">@(ilk.IrsaliyeNo ?? "—")</b>
+                        <span style="opacity:.7">sevk @Bicim.Tarih(ilk.SevkTarihi)</span>
+                        @if (ilk.SuresiGectiMi)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text" Icon="@Icons.Material.Filled.ErrorOutline">7 gün geçti</MudChip>
+                        }
+                    </div>
+                    @foreach (var s in grup)
+                    {
+                        <div class="aktarim-satiri">
+                            <MudCheckBox T="bool" @bind-Value="s.Secili" Size="Size.Small" Dense="true" Color="Color.Secondary" />
+                            <span style="flex:1; min-width:0">@s.Satir.Ad <small style="opacity:.6">@s.Satir.StokKodu</small></span>
+                            <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Miktar" Min="0" Max="s.Satir.KalanMiktar"
+                                             HideSpinButtons="true" Disabled="!s.Secili" Style="max-width:120px"
+                                             Adornment="Adornment.End" AdornmentText="@Birimler.Ad(s.Satir.Birim)"
+                                             HelperText="@($"kalan {Bicim.Miktar(s.Satir.KalanMiktar)}")" />
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Aktar" Disabled="!GecerliMi">
+            @(_secenekler.Count(s => s.Secili) is var n and > 0 ? $"{n} satırı aktar" : "Aktar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public Guid CariId { get; set; }
+    [Parameter, EditorRequired] public FaturaTuru FaturaTuru { get; set; }
+
+    // Formda zaten bulunan irsaliye satırları listelenmez.
+    [Parameter] public IReadOnlyCollection<Guid> Mevcutlar { get; set; } = [];
+
+    private List<Secenek> _secenekler = [];
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    private bool GecerliMi => _secenekler.Any(s => s.Secili) && _secenekler.Where(s => s.Secili).All(s => s.Miktar > 0 && s.Miktar <= s.Satir.KalanMiktar);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<List<AktarilacakIrsaliyeSatiri>>($"api/fatura/irsaliyeler/aktarim?cariId={CariId}&faturaTuru={FaturaTuru}");
+        _hata = sonuc.Hata;
+        _secenekler = sonuc.BasariliMi
+            ? sonuc.Deger.Where(s => !Mevcutlar.Contains(s.IrsaliyeSatiriId)).Select(s => new Secenek(s) { Miktar = s.KalanMiktar }).ToList()
+            : [];
+        _yukleniyor = false;
+    }
+
+    private void GrupSec(Guid irsaliyeId, bool secili) => _secenekler.Where(s => s.Satir.IrsaliyeId == irsaliyeId).ToList().ForEach(s => s.Secili = secili);
+
+    private void Aktar() =>
+        MudDialog.Close(DialogResult.Ok(_secenekler.Where(s => s.Secili).Select(s => new IrsaliyeAktarimi(s.Satir, s.Miktar)).ToList()));
+
+    private sealed class Secenek(AktarilacakIrsaliyeSatiri satir)
+    {
+        public AktarilacakIrsaliyeSatiri Satir { get; } = satir;
+        public bool Secili { get; set; }
+        public decimal Miktar { get; set; }
+    }
+}

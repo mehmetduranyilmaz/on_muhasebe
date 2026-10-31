@@ -1,0 +1,15 @@
+@* VUK 231/5 fatura son günü: geçtiyse kırmızı, 2 gün ya da daha az kaldıysa sarı, aksi halde sade. *@
+@if (SonGun is { } son)
+{
+    var kalan = son.DayNumber - Bugun.DayNumber;
+    <MudTooltip Text="@(kalan < 0 ? $"Fatura süresi {-kalan} gün önce doldu (VUK 231/5)" : kalan == 0 ? "Fatura bugün kesilmeli" : $"{kalan} gün kaldı")">
+        <MudChip T="string" Size="Size.Small" Variant="@(kalan <= 2 ? Variant.Filled : Variant.Text)"
+                 Color="@(kalan < 0 ? Color.Error : kalan <= 2 ? Color.Warning : Color.Default)"
+                 Icon="@(kalan < 0 ? Icons.Material.Filled.ErrorOutline : Icons.Material.Filled.Schedule)">@Bicim.Tarih(son)</MudChip>
+    </MudTooltip>
+}
+
+@code {
+    [Parameter] public DateOnly? SonGun { get; set; }
+    [Parameter] public DateOnly Bugun { get; set; }
+}

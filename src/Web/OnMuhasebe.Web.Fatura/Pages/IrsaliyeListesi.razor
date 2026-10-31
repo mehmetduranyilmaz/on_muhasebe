@@ -1,0 +1,165 @@
+@page "/irsaliye"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="İrsaliyeler" AltBaslik="Sevk irsaliyeleri, depolar arası sevk ve faturalanmamış irsaliye takibi" Ikon="@Icons.Material.Filled.LocalShipping">
+    <Islemler>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <YeniIrsaliyeMenusu />
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme yazdirma-gizle">
+    <button class="tur-sekmesi @(_tur is null ? "secili" : "")" style="--vurgu:@UygulamaTemasi.Turkuaz" @onclick="() => TurDegistiAsync(null)">Tümü</button>
+    @foreach (var tur in IrsaliyeMetinleri.Turler)
+    {
+        <button class="tur-sekmesi @(_tur == tur ? "secili" : "")" style="--vurgu:@IrsaliyeMetinleri.Renk(tur)" @onclick="() => TurDegistiAsync(tur)">
+            <MudIcon Icon="@IrsaliyeMetinleri.Ikon(tur)" Size="Size.Small" /> @IrsaliyeMetinleri.KisaTur(tur)
+        </button>
+    }
+</div>
+
+<FiltreCubugu>
+    <MudItem xs="12" md="4">
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync"
+                      Placeholder="Cari unvanı veya irsaliye no" DebounceInterval="400" Clearable="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+    <MudItem xs="12" sm="4" md="2">
+        <MudSelect T="IrsaliyeDurumu?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_durum" ValueChanged="DurumDegistiAsync" Label="Durum" Clearable="true">
+            @foreach (var durum in Enum.GetValues<IrsaliyeDurumu>())
+            {
+                <MudSelectItem T="IrsaliyeDurumu?" Value="durum">@IrsaliyeMetinleri.Durum(durum)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6" sm="4" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" Date="_baslangic" DateChanged="BaslangicDegistiAsync"
+                       Clearable="true" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="3">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" Date="_bitis" DateChanged="BitisDegistiAsync"
+                       Clearable="true" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="12">
+        <MudSwitch T="bool" Value="_acik" ValueChanged="AcikDegistiAsync" Color="Color.Secondary"
+                   Label="Yalnızca faturalanmamış (açık) irsaliyeler — fatura sevkten itibaren 7 gün içinde kesilmeli (VUK 231/5)" />
+    </MudItem>
+</FiltreCubugu>
+
+<VeriTablosu T="IrsaliyeOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+             SayfaDegisti="SayfaDegistiAsync" SatirTiklandi="@(i => Navigasyon.NavigateTo($"irsaliye/{i.Id}"))"
+             BosIkon="@Icons.Material.Outlined.LocalShipping" BosBaslik="İrsaliye bulunamadı"
+             BosAciklama="@(FiltreVarMi ? "Filtreleri değiştirmeyi deneyin." : "Mal sevk ederken ya da teslim alırken irsaliye düzenleyin.")">
+    <Basliklar>
+        <MudTh>Sevk</MudTh>
+        <MudTh>İrsaliye No</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Cari</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh>Faturalama</MudTh>
+        <MudTh>Fatura son günü</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Sevk">@Bicim.Tarih(context.SevkTarihi)</MudTd>
+        <MudTd DataLabel="İrsaliye No">
+            @if (context.Numara is null)
+            {
+                <span style="opacity:.55">Numara onayda verilir</span>
+            }
+            else
+            {
+                <span class="fatura-no">@context.Numara</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Tür"><span class="tur-rozeti" style="--vurgu:@IrsaliyeMetinleri.Renk(context.Tur)">@IrsaliyeMetinleri.KisaTur(context.Tur)</span></MudTd>
+        <MudTd DataLabel="Cari"><b>@context.CariUnvan</b> <small style="opacity:.6">· @context.SatirSayisi kalem</small></MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="IrsaliyeMetinleri.DurumRengi(context.Durum)">@IrsaliyeMetinleri.Durum(context.Durum)</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Faturalama">
+            @if (context.FaturalamaDurumu is { } fd && context.Durum == IrsaliyeDurumu.Onayli)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="IrsaliyeMetinleri.FaturalamaRengi(fd)">@IrsaliyeMetinleri.Faturalama(fd)</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Fatura son günü"><SonGunRozeti SonGun="context.FaturaSonGunu" Bugun="Bugun" /></MudTd>
+    </Satir>
+    <BosIslemler>
+        @if (!FiltreVarMi && !Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="irsaliye/yeni/satis">İlk irsaliyenizi düzenleyin</MudButton>
+        }
+    </BosIslemler>
+</VeriTablosu>
+
+@code {
+    [SupplyParameterFromQuery(Name = "acik")] public bool? AcikParametresi { get; set; }
+
+    private SayfaliSonuc<IrsaliyeOzeti>? _sonuc;
+    private IrsaliyeTuru? _tur;
+    private IrsaliyeDurumu? _durum;
+    private bool _acik;
+    private string? _arama;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+
+    private bool FiltreVarMi => _tur is not null || _durum is not null || _acik || !string.IsNullOrWhiteSpace(_arama) || _baslangic is not null || _bitis is not null;
+
+    protected override Task OnInitializedAsync()
+    {
+        _acik = AcikParametresi == true;
+        return YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/fatura/irsaliyeler?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
+                    + (_tur is { } t ? $"&tur={t}" : "")
+                    + (_durum is { } d ? $"&durum={d}" : "")
+                    + (_acik ? "&acik=true" : "")
+                    + (Bicim.Gun(_baslangic) is { } b ? $"&baslangic={Bicim.Iso(b)}" : "")
+                    + (Bicim.Gun(_bitis) is { } s ? $"&bitis={Bicim.Iso(s)}" : "");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<IrsaliyeOzeti>>(adres);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<IrsaliyeOzeti>([], 1, 20, 0);
+        _yukleniyor = false;
+    }
+
+    private Task TurDegistiAsync(IrsaliyeTuru? tur) => FiltreAsync(() => _tur = tur);
+
+    private Task DurumDegistiAsync(IrsaliyeDurumu? durum) => FiltreAsync(() => _durum = durum);
+
+    private Task AcikDegistiAsync(bool acik) => FiltreAsync(() => _acik = acik);
+
+    private Task AraAsync(string? arama) => FiltreAsync(() => _arama = arama);
+
+    private Task BaslangicDegistiAsync(DateTime? tarih) => FiltreAsync(() => _baslangic = tarih);
+
+    private Task BitisDegistiAsync(DateTime? tarih) => FiltreAsync(() => _bitis = tarih);
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}

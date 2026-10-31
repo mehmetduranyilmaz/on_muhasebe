@@ -6,6 +6,7 @@
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
 @inject TimeProvider Zaman
+@inject IDialogService DialogService
 
 <SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? "fatura" : $"fatura/{Id}")" Ikon="@FaturaMetinleri.Ikon(_tur)"
              AltBaslik="@(_numara is not null && Id is not null ? _numara : FaturaMetinleri.TurAciklamasi(_tur))" />
@@ -135,6 +136,12 @@ else
                                           Placeholder="Barkod" OnKeyUp="BarkodTusAsync" Class="barkod-alani"
                                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.QrCodeScanner" />
                         }
+                        @if (IrsaliyeAktarilabilirMi)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.LocalShipping" OnClick="IrsaliyedenAktarAsync">
+                                İrsaliyeden aktar
+                            </MudButton>
+                        }
                         <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.PlaylistAdd" OnClick="SerbestSatirEkle">
                             Serbest satır
                         </MudButton>
@@ -160,6 +167,12 @@ else
                                 {
                                     <div class="fs-kart">
                                         <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(s.StokluMu ? Color.Secondary : Color.Info)">@s.StokKodu</MudChip>
+                                        @if (s.IrsaliyeliMi)
+                                        {
+                                            <span class="fs-hizmet" title="Stok hareketi irsaliyede; ürün, birim ve depo değiştirilemez">
+                                                <MudIcon Icon="@Icons.Material.Filled.LocalShipping" Style="font-size:.9rem; vertical-align:-2px" /> İrsaliye @s.IrsaliyeNo
+                                            </span>
+                                        }
                                         @if (!s.StokluMu)
                                         {
                                             <span class="fs-hizmet" title="Hizmet satırı stok hareketi oluşturmaz">Hizmet</span>
@@ -171,10 +184,13 @@ else
                             </div>
                             <div class="fs-miktar">
                                 <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Miktar" Label="Miktar"
-                                                 Format="#,0.####" HideSpinButtons="true" Min="0" Immediate="true" DebounceInterval="250" />
+                                                 Format="#,0.####" HideSpinButtons="true" Min="0" Max="@(s.AzamiMiktar ?? decimal.MaxValue)"
+                                                 HelperText="@(s.AzamiMiktar is { } azami ? $"en çok {Bicim.Miktar(azami)}" : null)"
+                                                 Immediate="true" DebounceInterval="250" />
                             </div>
                             <div class="fs-birim">
-                                <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.Birim" ValueChanged="b => s.BirimDegistir(b)" Label="Birim">
+                                <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.Birim" ValueChanged="b => s.BirimDegistir(b)" Label="Birim"
+                                           Disabled="s.IrsaliyeliMi">
                                     @foreach (var b in s.BirimSecenekleri)
                                     {
                                         <MudSelectItem Value="b">@Birimler.Ad(b)</MudSelectItem>
@@ -251,7 +267,7 @@ else
                             {
                                 <div class="fs-depo">
                                     <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.DepoId" Label="Depo" Clearable="true"
-                                               Placeholder="Varsayılan depo">
+                                               Placeholder="Varsayılan depo" Disabled="s.IrsaliyeliMi">
                                         @foreach (var d in _depolar)
                                         {
                                             <MudSelectItem T="Guid?" Value="d.Id">@d.Ad</MudSelectItem>
@@ -403,6 +419,9 @@ else
     [Parameter] public Guid? Id { get; set; }
     [SupplyParameterFromQuery(Name = "cari")] public Guid? CariParametresi { get; set; }
 
+    // İrsaliye detayındaki "Faturala": o irsaliyenin faturalanmamış tüm satırları hazır gelir.
+    [SupplyParameterFromQuery(Name = "irsaliye")] public Guid? IrsaliyeParametresi { get; set; }
+
     private FaturaTuru _tur = FaturaTuru.Satis;
     private FaturaDurumu _durum = FaturaDurumu.Taslak;
     private SatisSekli _satisSekli = SatisSekli.Toptan;
@@ -458,6 +477,8 @@ else
         : NihaiTuketiciMi ? "Nihai tüketici satışında tahsilat hesabı seçmeniz önerilir." : "Boş bırakılırsa tutar cari hesaba borç/alacak yazılır.";
     private bool GidenMi => FaturaTurleri.GidenMi(_tur);
     private bool StokAcik => Oturum.ModulAcikMi(ModulKodlari.Stok);
+
+    private bool IrsaliyeAktarilabilirMi => StokAcik && !NihaiTuketiciMi && _cari is not null && IrsaliyeTurleri.Tur(_tur) is not null;
     private bool TaslakAkisi => _ayar?.KayitAkisi == KayitAkisi.TaslakOnay;
     private bool Dovizli => _paraBirimi != ParaBirimleri.Tl;
     private string ParaSimgesi => _paraBirimi == ParaBirimleri.Tl ? "TL" : _paraBirimi;
@@ -526,6 +547,14 @@ else
             if (CariParametresi is { } cariId && await CariGetirAsync(cariId) is { } detay)
             {
                 await CariAtaAsync(Ozet(detay), detay.VadeGun);
+                if (IrsaliyeParametresi is { } irsaliyeId && IrsaliyeAktarilabilirMi)
+                {
+                    var acik = await Api.GetAsync<List<AktarilacakIrsaliyeSatiri>>($"api/fatura/irsaliyeler/aktarim?cariId={cariId}&faturaTuru={_tur}");
+                    if (acik.BasariliMi)
+                    {
+                        await IrsaliyeSatirlariniEkleAsync(acik.Deger.Where(s => s.IrsaliyeId == irsaliyeId).Select(s => new IrsaliyeAktarimi(s, s.KalanMiktar)).ToList());
+                    }
+                }
             }
         }
 
@@ -765,6 +794,55 @@ else
         }
 
         _satirlar.Add(satir);
+    }
+
+    private async Task IrsaliyedenAktarAsync()
+    {
+        var parametreler = new DialogParameters<IrsaliyeAktarDialog>
+        {
+            { d => d.CariId, _cari!.Id },
+            { d => d.FaturaTuru, _tur },
+            { d => d.Mevcutlar, _satirlar.Where(s => s.IrsaliyeSatiriId is not null).Select(s => s.IrsaliyeSatiriId!.Value).ToList() }
+        };
+        var dialog = await DialogService.ShowAsync<IrsaliyeAktarDialog>("İrsaliyeden Aktar", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if (await dialog.Result is { Canceled: false, Data: List<IrsaliyeAktarimi> secilenler })
+        {
+            await IrsaliyeSatirlariniEkleAsync(secilenler);
+        }
+    }
+
+    // İrsaliyede fiyat yoksa kartın önerilen fiyatı (KDV hariç) kullanılır. Satır sırası irsaliye/sevk sırasını izler.
+    private async Task IrsaliyeSatirlariniEkleAsync(IReadOnlyList<IrsaliyeAktarimi> secilenler)
+    {
+        var kartlar = new Dictionary<Guid, StokKartiDetayi>();
+        foreach (var (a, miktar) in secilenler)
+        {
+            if (!kartlar.TryGetValue(a.StokKartiId, out var kart))
+            {
+                var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{a.StokKartiId}");
+                if (!sonuc.BasariliMi)
+                {
+                    Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+                    continue;
+                }
+
+                kart = kartlar[a.StokKartiId] = sonuc.Deger;
+            }
+
+            var satir = FaturaSatirModeli.Irsaliyeden(a, miktar, kart);
+            if (a.BirimFiyat is null && await OnerilenFiyatAsync(kart, false) is { } oneri)
+            {
+                satir.BirimFiyat = Math.Round(oneri * satir.Katsayi(a.Birim), 4, MidpointRounding.AwayFromZero);
+            }
+
+            _satirlar.Add(satir);
+        }
+
+        if (secilenler.Any(s => s.Satir.SuresiGectiMi))
+        {
+            Snackbar.Add("Aktarılan irsaliyelerden bazılarının sevkinden 7 günden fazla geçmiş (VUK 231/5); faturayı geciktirmeyin.", Severity.Warning);
+        }
     }
 
     private void SerbestSatirEkle() =>

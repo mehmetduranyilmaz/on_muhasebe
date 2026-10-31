@@ -1,0 +1,308 @@
+@page "/irsaliye/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+
+<HataGosterimi Hata="_hata" />
+
+@if (_irsaliye is { } i)
+{
+    var renk = IrsaliyeMetinleri.Renk(i.Tur);
+    var faturalanmisMi = i.Satirlar.Any(s => s.FaturalananMiktar > 0);
+    var duzenlenebilirMi = !Oturum.SaltOkunurMu && !faturalanmisMi && (i.Durum == IrsaliyeDurumu.Taslak
+                                                                        || (i.Durum == IrsaliyeDurumu.Onayli && _ayar?.KayitAkisi == KayitAkisi.DogrudanKayit));
+    var faturalanabilirMi = !Oturum.SaltOkunurMu && i.Durum == IrsaliyeDurumu.Onayli && i.FaturalamaDurumu is FaturalamaDurumu.Faturalanmadi or FaturalamaDurumu.KismenFaturalandi;
+
+    <div class="yazdirma-gizle">
+        <SayfaBasligi Baslik="@($"{IrsaliyeMetinleri.Tur(i.Tur)}{(i.Numara is null ? "" : $" {i.Numara}")}")" GeriAdres="irsaliye" Ikon="@IrsaliyeMetinleri.Ikon(i.Tur)">
+            <AltIcerik>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="IrsaliyeMetinleri.DurumRengi(i.Durum)">@IrsaliyeMetinleri.Durum(i.Durum)</MudChip>
+                @if (i.FaturalamaDurumu is { } fd && i.Durum == IrsaliyeDurumu.Onayli)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="IrsaliyeMetinleri.FaturalamaRengi(fd)">@IrsaliyeMetinleri.Faturalama(fd)</MudChip>
+                }
+                <span class="ml-1">Sevk @Bicim.Tarih(i.SevkTarihi) @i.SevkSaati.ToString("HH:mm")</span>
+            </AltIcerik>
+            <Islemler>
+                <DegisiklikGecmisiDugmesi Modul="fatura" KayitId="Id" />
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
+                @if (faturalanabilirMi && IrsaliyeTurleri.FaturaTuru(i.Tur) is { } faturaTuru && Oturum.ModulAcikMi(ModulKodlari.Cari))
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ReceiptLong"
+                               Href="@($"fatura/yeni/{FaturaMetinleri.Yol(faturaTuru)}?cari={i.CariHesapId}&irsaliye={i.Id}")">Faturala</MudButton>
+                }
+                @if (duzenlenebilirMi)
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="@($"irsaliye/{i.Id}/duzenle")">Düzenle</MudButton>
+                }
+                @if (i.Durum == IrsaliyeDurumu.Taslak && !Oturum.SaltOkunurMu)
+                {
+                    <IslemDugmesi Islem="OnaylaAsync" StartIcon="@Icons.Material.Filled.TaskAlt">Onayla</IslemDugmesi>
+                }
+                @if (!Oturum.SaltOkunurMu && i.Durum != IrsaliyeDurumu.Iptal && !faturalanmisMi)
+                {
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        @if (i.Durum == IrsaliyeDurumu.Onayli)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="IptalEtAsync">İptal et</MudMenuItem>
+                        }
+                        else
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="SilAsync">Taslağı sil</MudMenuItem>
+                        }
+                    </MudMenu>
+                }
+            </Islemler>
+        </SayfaBasligi>
+
+        @if (i.Durum == IrsaliyeDurumu.Iptal)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.Block">
+                Bu irsaliye iptal edildi; stok hareketleri ters kayıtla kapatıldı.
+            </MudAlert>
+        }
+        else if (i.Durum == IrsaliyeDurumu.Taslak)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.EditNote">
+                Taslak irsaliye stoğa işlenmedi. Onaylandığında numara alır ve stok hareketi oluşur.
+            </MudAlert>
+        }
+        else if (faturalanmisMi)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4" Icon="@Icons.Material.Filled.Lock">
+                Faturalanmış irsaliye düzenlenemez ve iptal edilemez; önce bağlı faturayı iptal edin.
+            </MudAlert>
+        }
+
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="12" md="4">
+                <div class="fatura-tutar-karti kart belirme" style="--i:0; --vurgu:@renk">
+                    @if (i.FaturaSonGunu is { } son)
+                    {
+                        <div class="ozet-baslik">Fatura son günü (VUK 231/5)</div>
+                        <div class="fatura-tutar"><SonGunRozeti SonGun="son" Bugun="Bugun" /></div>
+                        <div class="ozet-alt">Fatura, fiili sevk tarihinden itibaren 7 gün içinde kesilmelidir.</div>
+                    }
+                    else
+                    {
+                        <div class="ozet-baslik">Sevk</div>
+                        <div class="fatura-tutar">@Bicim.Tarih(i.SevkTarihi)</div>
+                        <div class="ozet-alt">Düzenleme @Bicim.Tarih(i.Tarih) · saat @i.SevkSaati.ToString("HH:mm")</div>
+                    }
+                    <div class="ozet-alt mt-1">@i.Satirlar.Count kalem</div>
+                    <div class="ozet-isik"></div>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart belirme" style="--i:1">
+                    @if (i.Tur == IrsaliyeTuru.DepoSevk)
+                    {
+                        <div class="ozet-baslik mb-1">Gideceği depo</div>
+                        <b>@(_depolar.FirstOrDefault(d => d.Id == i.HedefDepoId)?.Ad ?? "—")</b>
+                        <div class="ozet-alt">@i.TeslimAdresi</div>
+                    }
+                    else
+                    {
+                        <div class="ozet-baslik mb-1">@(IrsaliyeTurleri.StokGirisiMi(i.Tur) ? "Gönderen" : "Alıcı")</div>
+                        @if (i.CariHesapId is { } cariId && Oturum.ModulAcikMi(ModulKodlari.Cari))
+                        {
+                            <a href="@($"cari/{cariId}")" class="baglanti"><b>@i.CariUnvan</b></a>
+                        }
+                        else
+                        {
+                            <b>@i.CariUnvan</b>
+                        }
+                        @if (i.VergiNo is not null)
+                        {
+                            <div class="ozet-alt">@(i.VergiNo.Length == 11 ? "TCKN" : "VKN") @i.VergiNo@(i.VergiDairesi is null ? "" : $" · {i.VergiDairesi} V.D.")</div>
+                        }
+                        @if (i.TeslimAdresi is not null)
+                        {
+                            <div class="ozet-alt">Teslim: @i.TeslimAdresi</div>
+                        }
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="panel-kart kart belirme" style="--i:2">
+                    <div class="ozet-baslik mb-1">Taşıma</div>
+                    @if (i.AracPlakasi is null && i.SoforAdi is null && i.TasiyiciUnvani is null)
+                    {
+                        <div class="ozet-alt">Taşıma bilgisi girilmedi.</div>
+                    }
+                    @if (i.AracPlakasi is not null)
+                    {
+                        <div><MudIcon Icon="@Icons.Material.Filled.LocalShipping" Size="Size.Small" /> <b>@i.AracPlakasi</b></div>
+                    }
+                    @if (i.SoforAdi is not null)
+                    {
+                        <div class="ozet-alt">Şoför: @i.SoforAdi@(i.SoforTckn is null ? "" : $" ({i.SoforTckn})")</div>
+                    }
+                    @if (i.TasiyiciUnvani is not null)
+                    {
+                        <div class="ozet-alt">Taşıyıcı: @i.TasiyiciUnvani@(i.TasiyiciVkn is null ? "" : $" · {i.TasiyiciVkn}")</div>
+                    }
+                    @if (i.Aciklama is not null)
+                    {
+                        <div class="ozet-alt mt-2">@i.Aciklama</div>
+                    }
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        <div class="panel-baslik belirme" style="--i:3"><MudIcon Icon="@Icons.Material.Filled.FormatListNumbered" Color="Color.Secondary" /> Sevk edilen mallar</div>
+        <VeriTablosu T="IrsaliyeSatiriDetayi" Kayitlar="i.Satirlar" Dense="true">
+            <Basliklar>
+                <MudTh>#</MudTh>
+                <MudTh>Ürün</MudTh>
+                <MudTh>Depo</MudTh>
+                <MudTh Class="sayi">Miktar</MudTh>
+                @if (i.Satirlar.Any(s => s.BirimFiyat is not null))
+                {
+                    <MudTh Class="sayi">Birim fiyat</MudTh>
+                }
+                @if (i.Tur != IrsaliyeTuru.DepoSevk)
+                {
+                    <MudTh Class="sayi">Faturalanan</MudTh>
+                    <MudTh Class="sayi">Kalan</MudTh>
+                }
+            </Basliklar>
+            <Satir>
+                <MudTd DataLabel="#">@context.Sira</MudTd>
+                <MudTd DataLabel="Ürün">
+                    @if (Oturum.ModulAcikMi(ModulKodlari.Stok))
+                    {
+                        <a href="@($"stok/{context.StokKartiId}")" class="baglanti"><b>@context.Ad</b></a>
+                    }
+                    else
+                    {
+                        <b>@context.Ad</b>
+                    }
+                    <span class="mobil-alt-bilgi">@context.StokKodu</span>
+                </MudTd>
+                <MudTd DataLabel="Depo">@(_depolar.FirstOrDefault(d => d.Id == context.DepoId)?.Ad)</MudTd>
+                <MudTd DataLabel="Miktar" Class="sayi">@Bicim.Miktar(context.Miktar, context.Birim)</MudTd>
+                @if (i.Satirlar.Any(s => s.BirimFiyat is not null))
+                {
+                    <MudTd DataLabel="Birim fiyat" Class="sayi">@(context.BirimFiyat is { } f ? Bicim.Tutar(f, i.ParaBirimi) : "—")</MudTd>
+                }
+                @if (i.Tur != IrsaliyeTuru.DepoSevk)
+                {
+                    <MudTd DataLabel="Faturalanan" Class="sayi">@Bicim.Miktar(context.FaturalananMiktar, context.Birim)</MudTd>
+                    <MudTd DataLabel="Kalan" Class="sayi"><b>@Bicim.Miktar(context.KalanMiktar, context.Birim)</b></MudTd>
+                }
+            </Satir>
+        </VeriTablosu>
+
+        @if (i.Faturalar.Count > 0)
+        {
+            <div class="panel-kart kart belirme mt-3" style="--i:4">
+                <div class="ozet-baslik mb-1">Bağlı faturalar</div>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var f in i.Faturalar)
+                    {
+                        <MudChip T="string" Href="@($"fatura/{f.Id}")" Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" Variant="Variant.Outlined">
+                            @(f.Numara ?? "Taslak") · @Bicim.Tarih(f.Tarih)
+                        </MudChip>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <IrsaliyeKagidi Irsaliye="i" Firma="_firma" Depolar="_depolar" />
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private IrsaliyeDetayi? _irsaliye;
+    private FaturaAyarlari? _ayar;
+    private FirmaBilgileri? _firma;
+    private List<Depo> _depolar = [];
+    private ApiHatasi? _hata;
+
+    private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _irsaliye = null;
+        var sonuc = await Api.GetAsync<IrsaliyeDetayi>($"api/fatura/irsaliyeler/{Id}");
+        _hata = sonuc.Hata;
+        _irsaliye = sonuc.BasariliMi ? sonuc.Deger : null;
+
+        var ayar = await Api.GetAsync<FaturaAyarlari>("api/fatura/ayarlar");
+        _ayar = ayar.BasariliMi ? ayar.Deger : null;
+        var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
+        _firma = firma.BasariliMi ? firma.Deger : null;
+        var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
+        _depolar = depolar.BasariliMi ? depolar.Deger : [];
+    }
+
+    private async Task YazdirAsync() => await Js.InvokeVoidAsync("print");
+
+    private async Task OnaylaAsync()
+    {
+        if (!await Onay.SorAsync("İrsaliyeyi onayla", "İrsaliye numara alacak ve stoğa işlenecek.", "Onayla"))
+        {
+            return;
+        }
+
+        IslemSonucu(await Api.PostAsync<IrsaliyeCevabi>($"api/fatura/irsaliyeler/{Id}/onayla", new { }), "İrsaliye onaylandı.");
+    }
+
+    private async Task IptalEtAsync()
+    {
+        if (!await Onay.SorAsync("İrsaliyeyi iptal et",
+                "İrsaliyenin stok hareketleri ters kayıtla kapatılacak. Numara korunur ve bu işlem geri alınamaz.", "İptal et", tehlikeli: true))
+        {
+            return;
+        }
+
+        IslemSonucu(await Api.PostAsync<IrsaliyeCevabi>($"api/fatura/irsaliyeler/{Id}/iptal", new { }), "İrsaliye iptal edildi.");
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Taslağı sil", "Taslak irsaliye silinecek.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/fatura/irsaliyeler/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Taslak silindi.", Severity.Success);
+            Navigasyon.NavigateTo("irsaliye");
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private void IslemSonucu(ApiSonucu<IrsaliyeCevabi> sonuc, string mesaj)
+    {
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        _irsaliye = sonuc.Deger.Irsaliye;
+        if (sonuc.Deger.Uyari is { } uyari)
+        {
+            Snackbar.Add(uyari, Severity.Warning);
+        }
+
+        Snackbar.Add(mesaj, Severity.Success);
+    }
+}

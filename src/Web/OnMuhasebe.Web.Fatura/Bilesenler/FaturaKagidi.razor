@@ -46,6 +46,10 @@
                 {
                     <tr><th>Döviz / Kur</th><td>@Fatura.ParaBirimi · @Bicim.Kur(Fatura.Kur)</td></tr>
                 }
+                @if (Fatura.Irsaliyeler.Count > 0)
+                {
+                    <tr><th>İrsaliye</th><td>@string.Join(", ", Fatura.Irsaliyeler.Select(i => $"{i.Numara} ({Bicim.Tarih(i.Tarih)})"))</td></tr>
+                }
             </table>
         </div>
     </header>
@@ -108,6 +112,10 @@
             {
                 <div class="fk-aciklama"><b>Açıklama:</b> @Fatura.Aciklama</div>
             }
+            @if (IrsaliyeYerineGecerMi)
+            {
+                <div class="fk-aciklama"><b>İrsaliye yerine geçer.</b> Fiili sevk tarihi: @Bicim.Tarih(Fatura.Tarih)</div>
+            }
             <div class="fk-ettn">ETTN: @Fatura.Ettn</div>
         </div>
         <table class="fk-toplamlar">
@@ -147,6 +155,9 @@
 
     [Parameter, EditorRequired] public FaturaDetayi Fatura { get; set; } = null!;
     [Parameter] public FirmaBilgileri? Firma { get; set; }
+
+    // Bizim sevk ettiğimiz (giden) faturada irsaliyesiz ürün satırı varsa mal faturayla sevk edilmiştir: irsaliyeli fatura (VUK 231).
+    private bool IrsaliyeYerineGecerMi => FaturaTurleri.GidenMi(Fatura.Tur) && Fatura.Satirlar.Any(s => s.StokluMu && s.IrsaliyeSatiriId is null);
 
     private static string Yer(string? ilce, string? il) => string.Join(" / ", new[] { ilce, il }.Where(x => !string.IsNullOrEmpty(x)));
 }

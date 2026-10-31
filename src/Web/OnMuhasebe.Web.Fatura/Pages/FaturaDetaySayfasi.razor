@@ -132,6 +132,16 @@
                         <div class="ozet-alt mt-2">@f.Aciklama</div>
                     }
                     <div class="ozet-alt mt-2" title="e-Fatura / e-Arşiv evrensel tekil numarası">ETTN @f.Ettn</div>
+                    @if (f.Irsaliyeler.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            @foreach (var irs in f.Irsaliyeler)
+                            {
+                                <MudChip T="string" Size="Size.Small" Href="@($"irsaliye/{irs.Id}")" Icon="@Icons.Material.Filled.LocalShipping"
+                                         Variant="Variant.Outlined" Color="Color.Secondary">@irs.Numara · sevk @Bicim.Tarih(irs.Tarih)</MudChip>
+                            }
+                        </div>
+                    }
                 </div>
             </MudItem>
         </MudGrid>
@@ -160,7 +170,7 @@
                     }
                     @if (context.StokKodu is not null)
                     {
-                        <span class="mobil-alt-bilgi">@context.StokKodu</span>
+                        <span class="mobil-alt-bilgi">@context.StokKodu@(context.IrsaliyeSatiriId is null ? "" : " · irsaliyeden")</span>
                     }
                 </MudTd>
                 <MudTd DataLabel="Miktar" Class="sayi">@Bicim.Miktar(context.Miktar, context.Birim)</MudTd>

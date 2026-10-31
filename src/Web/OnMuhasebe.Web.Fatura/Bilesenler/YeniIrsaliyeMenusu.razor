@@ -1,0 +1,23 @@
+@* "Yeni İrsaliye" düğmesi: türü açıklamasıyla seçtirir. *@
+<MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+    <ActivatorContent Context="menu">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                   OnClick="menu.ToggleAsync">
+            Yeni İrsaliye
+        </MudButton>
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var tur in IrsaliyeMetinleri.Turler)
+        {
+            <MudMenuItem Href="@($"irsaliye/yeni/{IrsaliyeMetinleri.Yol(tur)}")">
+                <div class="yeni-fatura-secenegi" style="--vurgu:@IrsaliyeMetinleri.Renk(tur)">
+                    <span class="ikon"><MudIcon Icon="@IrsaliyeMetinleri.Ikon(tur)" Size="Size.Small" /></span>
+                    <span>
+                        <b>@IrsaliyeMetinleri.Tur(tur)</b>
+                        <small>@IrsaliyeMetinleri.TurAciklamasi(tur)</small>
+                    </span>
+                </div>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
