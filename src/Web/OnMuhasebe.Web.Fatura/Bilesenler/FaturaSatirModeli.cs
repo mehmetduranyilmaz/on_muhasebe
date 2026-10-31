@@ -69,9 +69,43 @@ public sealed class FaturaSatirModeli
     public decimal Katsayi(string birim) =>
         birim == TemelBirim ? 1m : EkBirimler.FirstOrDefault(b => b.BirimKodu == birim)?.Katsayi ?? 1m;
 
+    // Fiyat listesinden ya da karttan gelen öneri; miktar/birim değişince ulaşılan kademenin fiyatı ve iskontosu uygulanır.
+    // Kullanıcı fiyatı elle değiştirirse öneri bırakılır (elle girilen fiyat korunur).
+    public FiyatOnerisi? Oneri { get; set; }
+
+    public string? FiyatListesi => Oneri?.ListeAdi;
+
+    public void OneriUygula()
+    {
+        if (Oneri?.Kademe(Miktar * Katsayi(Birim)) is { } k)
+        {
+            BirimFiyat = Math.Round(k.Fiyat * Katsayi(Birim), 4, MidpointRounding.AwayFromZero);
+            Iskonto1 = k.Iskonto;
+        }
+    }
+
+    public void MiktarDegistir(decimal miktar)
+    {
+        Miktar = miktar;
+        OneriUygula();
+    }
+
+    public void FiyatGir(decimal fiyat)
+    {
+        BirimFiyat = fiyat;
+        Oneri = null;
+    }
+
     // Birim değişince fiyat da çevrilir: adet fiyatı 10 ise koli (12) fiyatı 120 olur.
     public void BirimDegistir(string yeni)
     {
+        if (Oneri is not null)
+        {
+            Birim = yeni;
+            OneriUygula();
+            return;
+        }
+
         if (KartliMi && yeni != Birim)
         {
             BirimFiyat = Math.Round(BirimFiyat / Katsayi(Birim) * Katsayi(yeni), 4, MidpointRounding.AwayFromZero);

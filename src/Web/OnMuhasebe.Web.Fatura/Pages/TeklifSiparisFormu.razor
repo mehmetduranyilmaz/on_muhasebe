@@ -152,6 +152,8 @@ else
     private readonly List<FaturaSatirModeli> _satirlar = [];
     private List<Depo> _depolar = [];
     private uint _surum;
+    private Guid? _cariGrupId;
+    private Guid? _grupCariId;
     private bool _yukleniyor = true;
     private ApiHatasi? _hata;
 
@@ -250,6 +252,20 @@ else
         }
     }
 
+    // Carinin grubu fiyat listesi seçiminde gerekir; cari değişince bir kez okunur.
+    private async Task<FiyatBaglami> FiyatBaglamiAsync()
+    {
+        var cari = Aday ? null : _cari;
+        if (cari is not null && _grupCariId != cari.Id)
+        {
+            _cariGrupId = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{cari.Id}") is { BasariliMi: true } d ? d.Deger.GrupId : null;
+            _grupCariId = cari.Id;
+        }
+
+        return new FiyatBaglami(TeklifSiparisTurleri.SatisMi(_tur), false, cari?.Id, cari is null ? null : _cariGrupId, _paraBirimi, _kur,
+            Bicim.Gun(_tarih) ?? DateOnly.FromDateTime(DateTime.Today));
+    }
+
     private async Task KartEkleAsync(Guid kartId, string? birim)
     {
         var sonuc = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{kartId}");
@@ -261,8 +277,8 @@ else
 
         var satir = new FaturaSatirModeli { KdvDahilMi = false };
         satir.KartAta(sonuc.Deger);
-        satir.BirimFiyat = await new FiyatOnerici(Api).OnerAsync(sonuc.Deger, TeklifSiparisTurleri.SatisMi(_tur), false, false, _paraBirimi,
-            _kur, Bicim.Gun(_tarih) ?? DateOnly.FromDateTime(DateTime.Today)) ?? 0m;
+        satir.Oneri = await new FiyatOnerici(Api).OnerAsync(sonuc.Deger, await FiyatBaglamiAsync(), satir.KdvDahilMi);
+        satir.OneriUygula();
         if (birim is not null)
         {
             satir.BirimDegistir(birim);

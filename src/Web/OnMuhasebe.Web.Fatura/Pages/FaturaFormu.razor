@@ -179,6 +179,12 @@ else
                                                 <MudIcon Icon="@Icons.Material.Filled.LocalShipping" Style="font-size:.9rem; vertical-align:-2px" /> İrsaliye @s.IrsaliyeNo
                                             </span>
                                         }
+                                        @if (s.FiyatListesi is { } liste)
+                                        {
+                                            <span class="fs-hizmet" title="Fiyat ve iskonto bu listeden; miktar değişince kademe yeniden uygulanır">
+                                                <MudIcon Icon="@Icons.Material.Filled.PriceChange" Style="font-size:.9rem; vertical-align:-2px" /> @liste
+                                            </span>
+                                        }
                                         @if (s.SiparisliMi)
                                         {
                                             <span class="fs-hizmet" title="Siparişi karşılar; ürün ve birim değiştirilemez">
@@ -195,7 +201,7 @@ else
                                               Required="@(!s.KartliMi)" RequiredError="Ad gerekli." />
                             </div>
                             <div class="fs-miktar">
-                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Miktar" Label="Miktar"
+                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.Miktar" ValueChanged="m => s.MiktarDegistir(m)" Label="Miktar"
                                                  Format="#,0.####" HideSpinButtons="true" Min="0" Max="@(s.AzamiMiktar ?? decimal.MaxValue)"
                                                  HelperText="@(s.AzamiMiktar is { } azami ? $"en çok {Bicim.Miktar(azami)}" : null)"
                                                  Immediate="true" DebounceInterval="250" />
@@ -210,7 +216,7 @@ else
                                 </MudSelect>
                             </div>
                             <div class="fs-fiyat">
-                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.BirimFiyat"
+                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.BirimFiyat" ValueChanged="f => s.FiyatGir(f)"
                                                  Label="@($"Fiyat{(s.KdvDahilMi ? " (KDV dahil)" : "")}")" Format="N2" HideSpinButtons="true" Min="0"
                                                  Immediate="true" DebounceInterval="250" Adornment="Adornment.End" AdornmentText="@ParaSimgesi" />
                             </div>
@@ -446,6 +452,8 @@ else
     private SatisSekli _satisSekli = SatisSekli.Toptan;
     private FaturaAyarlari? _ayar;
     private CariOzeti? _cari;
+    private Guid? _cariGrupId;
+    private Guid? _grupCariId;
     private bool _nihaiTuketici;
     private string? _nihaiAd;
     private string? _nihaiTckn;
@@ -795,7 +803,7 @@ else
         var b = sonuc.Deger;
         if (_satirlar.FirstOrDefault(s => s.StokKartiId == b.StokKartiId && s.Birim == b.Birim) is { } mevcut)
         {
-            mevcut.Miktar++;
+            mevcut.MiktarDegistir(mevcut.Miktar + 1);
         }
         else
         {
@@ -827,7 +835,8 @@ else
         {
             satir.KdvOrani = 0;
         }
-        satir.BirimFiyat = await OnerilenFiyatAsync(kart, satir.KdvDahilMi) ?? 0m;
+        satir.Oneri = await new FiyatOnerici(Api).OnerAsync(kart, await FiyatBaglamiAsync(), satir.KdvDahilMi);
+        satir.OneriUygula();
         if (birim is not null)
         {
             satir.BirimDegistir(birim);
@@ -871,9 +880,10 @@ else
             }
 
             var satir = FaturaSatirModeli.Irsaliyeden(a, miktar, kart);
-            if (a.BirimFiyat is null && await OnerilenFiyatAsync(kart, false) is { } oneri)
+            if (a.BirimFiyat is null)
             {
-                satir.BirimFiyat = Math.Round(oneri * satir.Katsayi(a.Birim), 4, MidpointRounding.AwayFromZero);
+                satir.Oneri = await new FiyatOnerici(Api).OnerAsync(kart, await FiyatBaglamiAsync(), false);
+                satir.OneriUygula();
             }
 
             _satirlar.Add(satir);
@@ -939,47 +949,18 @@ else
             ? _ayar?.PerakendeKdvDahil ?? true
             : _ayar?.ToptanKdvDahil ?? false;
 
-    // Satışta toptan/perakende fiyatı, alışta alış fiyatı önerilir. Perakende fiyatı KDV dahil, diğerleri hariç tutulur;
-    // satırın KDV dahil seçimine ve fatura dövizine çevrilir.
-    private async Task<decimal?> OnerilenFiyatAsync(StokKartiDetayi kart, bool satirKdvDahil)
+    // Fiyat önerisinin bağlamı: taraf, toptan/perakende, cari ve grubu (fiyat listesi), döviz. Carinin grubu cari değişince bir kez okunur.
+    private async Task<FiyatBaglami> FiyatBaglamiAsync()
     {
-        var perakendeMi = SatisTarafiMi && _satisSekli == SatisSekli.Perakende && kart.PerakendeFiyati is not null;
-        decimal? fiyat = !SatisTarafiMi ? kart.AlisFiyati : perakendeMi ? kart.PerakendeFiyati : kart.SatisFiyati;
-        if (fiyat is not { } f)
+        var cari = NihaiTuketiciMi ? null : _cari;
+        if (cari is not null && _grupCariId != cari.Id)
         {
-            return null;
+            _cariGrupId = await CariGetirAsync(cari.Id) is { } d ? d.GrupId : null;
+            _grupCariId = cari.Id;
         }
 
-        var kdvCarpani = 1m + kart.KdvOrani / 100m;
-        if (perakendeMi != satirKdvDahil)
-        {
-            f = perakendeMi ? f / kdvCarpani : f * kdvCarpani;
-        }
-
-        if (kart.ParaBirimi != _paraBirimi)
-        {
-            var kartKuru = kart.ParaBirimi == ParaBirimleri.Tl ? 1m : await IslemKuruAsync(kart.ParaBirimi);
-            var faturaKuru = Dovizli ? _kur : 1m;
-            if (kartKuru is not { } kk || faturaKuru is not > 0)
-            {
-                return null;
-            }
-
-            f = f * kk / faturaKuru.Value;
-        }
-
-        return Math.Round(f, 4, MidpointRounding.AwayFromZero);
-    }
-
-    private async Task<decimal?> IslemKuruAsync(string paraBirimi)
-    {
-        if (Bicim.Gun(_tarih) is not { } gun)
-        {
-            return null;
-        }
-
-        var sonuc = await Api.GetAsync<KurBilgisi>($"api/doviz/islem-kuru?paraBirimi={paraBirimi}&tarih={Bicim.Iso(gun)}");
-        return sonuc.BasariliMi ? sonuc.Deger.DovizAlis : null;
+        return new FiyatBaglami(SatisTarafiMi, _satisSekli == SatisSekli.Perakende, cari?.Id, cari is null ? null : _cariGrupId, _paraBirimi,
+            Dovizli ? _kur : null, Bicim.Gun(_tarih) ?? DateOnly.FromDateTime(DateTime.Today));
     }
 
     private async Task KaydetAsync(bool onayla)

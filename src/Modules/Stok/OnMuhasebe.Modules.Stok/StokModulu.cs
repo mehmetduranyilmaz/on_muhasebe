@@ -43,5 +43,6 @@ public sealed class StokModulu : IModul
         StokHareketIslemleri.Map(grup);
         StokTanimIslemleri.Map(grup);
         StokRaporlari.Map(grup);
+        FiyatListesiIslemleri.Map(grup);
     }
 }

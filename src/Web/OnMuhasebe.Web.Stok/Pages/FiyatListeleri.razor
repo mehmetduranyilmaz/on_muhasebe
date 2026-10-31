@@ -1,0 +1,77 @@
+@page "/fiyat-listesi"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Fiyat Listeleri" AltBaslik="Belgeye ürün eklenirken carinin listesindeki fiyat ve iskonto önerilir; listede olmayan üründe kart fiyatı geçerlidir"
+              Ikon="@Icons.Material.Filled.PriceChange">
+    <Islemler>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="fiyat-listesi/yeni">Yeni Liste</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme">
+    @foreach (var (etiket, tur) in new (string, FiyatListesiTuru?)[] { ("Tümü", null), ("Satış", FiyatListesiTuru.Satis), ("Alış", FiyatListesiTuru.Alis) })
+    {
+        <button type="button" class="tur-sekmesi @(_tur == tur ? "secili" : "")" style="--vurgu:@(tur == FiyatListesiTuru.Alis ? "#F59E0B" : "#14B8A6")"
+                @onclick="() => TurAsync(tur)">@etiket</button>
+    }
+</div>
+
+<VeriTablosu T="FiyatListesiOzeti" Kayitlar="_listeler" Yukleniyor="_yukleniyor" SatirTiklandi="@(l => Navigasyon.NavigateTo($"fiyat-listesi/{l.Id}"))"
+             BosIkon="@Icons.Material.Outlined.PriceChange" BosBaslik="Fiyat listesi yok"
+             BosAciklama="Bayi, toptan ya da kampanya fiyatlarınızı liste olarak tanımlayıp carilere atayın.">
+    <Basliklar>
+        <MudTh>Ad</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Uygulandığı</MudTh>
+        <MudTh>Geçerlilik</MudTh>
+        <MudTh Class="sayi">Ürün</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Ad"><b>@context.Ad</b> <span class="mobil-alt-bilgi">@context.ParaBirimi · @(context.KdvDahilMi ? "KDV dahil" : "KDV hariç")</span></MudTd>
+        <MudTd DataLabel="Tür">
+            <span class="tur-rozeti" style="--vurgu:@(context.Tur == FiyatListesiTuru.Alis ? "#F59E0B" : "#14B8A6")">@(context.Tur == FiyatListesiTuru.Satis ? "Satış" : "Alış")</span>
+        </MudTd>
+        <MudTd DataLabel="Uygulandığı">@(context.HedefSayisi == 0 ? "Tüm cariler (genel)" : $"{context.HedefSayisi} cari/grup")</MudTd>
+        <MudTd DataLabel="Geçerlilik">
+            @(context.BaslangicTarihi is null && context.BitisTarihi is null ? "Süresiz" : $"{Bicim.Tarih(context.BaslangicTarihi)} – {Bicim.Tarih(context.BitisTarihi)}")
+        </MudTd>
+        <MudTd DataLabel="Ürün" Class="sayi">@context.SatirSayisi</MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(context.GecerliMi ? Color.Success : Color.Default)">
+                @(context.GecerliMi ? "Geçerli" : context.AktifMi ? "Süre dışı" : "Pasif")
+            </MudChip>
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private FiyatListesiTuru? _tur;
+    private List<FiyatListesiOzeti>? _listeler;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task TurAsync(FiyatListesiTuru? tur)
+    {
+        _tur = tur;
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<List<FiyatListesiOzeti>>($"api/stok/fiyat-listeleri{(_tur is { } t ? $"?tur={t}" : "")}");
+        _hata = sonuc.Hata;
+        _listeler = sonuc.BasariliMi ? sonuc.Deger : [];
+        _yukleniyor = false;
+    }
+}

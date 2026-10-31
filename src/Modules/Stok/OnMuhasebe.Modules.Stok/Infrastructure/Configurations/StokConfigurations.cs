@@ -103,3 +103,46 @@ internal sealed class StokAyariConfiguration : IEntityTypeConfiguration<StokAyar
         builder.HasIndex(x => x.FirmaId).IsUnique();
     }
 }
+
+internal sealed class FiyatListesiConfiguration : IEntityTypeConfiguration<FiyatListesi>
+{
+    public void Configure(EntityTypeBuilder<FiyatListesi> builder)
+    {
+        builder.ToTable("fiyat_listesi");
+        builder.Property(x => x.Ad).HasMaxLength(100);
+        builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.ParaBirimi).HasMaxLength(3);
+        builder.Property(x => x.Aciklama).HasMaxLength(500);
+        builder.HasIndex(x => new { x.FirmaId, x.Ad }).IsUnique();
+        builder.HasMany(x => x.Satirlar).WithOne().HasForeignKey(x => x.FiyatListesiId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Satirlar).HasField("_satirlar");
+        builder.HasMany(x => x.Atamalar).WithOne().HasForeignKey(x => x.FiyatListesiId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Atamalar).HasField("_atamalar");
+    }
+}
+
+internal sealed class FiyatListesiSatiriConfiguration : IEntityTypeConfiguration<FiyatListesiSatiri>
+{
+    public void Configure(EntityTypeBuilder<FiyatListesiSatiri> builder)
+    {
+        builder.ToTable("fiyat_listesi_satiri");
+        builder.Property(x => x.MinMiktar).HasPrecision(18, StokHareket.MiktarOndalik);
+        builder.Property(x => x.Fiyat).HasPrecision(18, 4);
+        builder.Property(x => x.Iskonto).HasPrecision(5, 2);
+        builder.HasIndex(x => new { x.FiyatListesiId, x.StokKartiId, x.MinMiktar }).IsUnique();
+        builder.HasIndex(x => x.StokKartiId);
+        builder.HasOne<StokKarti>().WithMany().HasForeignKey(x => x.StokKartiId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class FiyatListesiAtamasiConfiguration : IEntityTypeConfiguration<FiyatListesiAtamasi>
+{
+    public void Configure(EntityTypeBuilder<FiyatListesiAtamasi> builder)
+    {
+        builder.ToTable("fiyat_listesi_atamasi");
+        builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.Ad).HasMaxLength(250);
+        builder.HasIndex(x => new { x.FiyatListesiId, x.Tur, x.HedefId }).IsUnique();
+        builder.HasIndex(x => x.HedefId);
+    }
+}

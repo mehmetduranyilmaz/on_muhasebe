@@ -1,0 +1,346 @@
+@page "/fiyat-listesi/yeni"
+@page "/fiyat-listesi/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="@(Id is null ? "Yeni Fiyat Listesi" : _ad)" GeriAdres="fiyat-listesi" Ikon="@Icons.Material.Filled.PriceChange"
+              AltBaslik="Fiyatlar ve kademe eşikleri ürünün temel birimindedir">
+    <Islemler>
+        @if (Id is not null && !Oturum.SaltOkunurMu)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Listeyi sil" OnClick="SilAsync" />
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" lg="8">
+            <FormBolumu Baslik="Liste bilgileri" Aciklama="Tür, döviz ve geçerlilik" Ikon="@Icons.Material.Filled.Description" Sira="0">
+                <MudItem xs="12" md="6">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Liste adı" MaxLength="100" Required="true"
+                                  Placeholder="ör. Bayi 2026, Kampanya Kasım" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudSelect T="FiyatListesiTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür">
+                        <MudSelectItem Value="FiyatListesiTuru.Satis">Satış</MudSelectItem>
+                        <MudSelectItem Value="FiyatListesiTuru.Alis">Alış</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_paraBirimi" Label="Para birimi">
+                        @foreach (var p in ParaBirimleri.Tumu)
+                        {
+                            <MudSelectItem Value="p.Kod">@p.Kod</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" @bind-Date="_baslangic" DateFormat="dd.MM.yyyy" Clearable="true" />
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" @bind-Date="_bitis" DateFormat="dd.MM.yyyy" Clearable="true" MinDate="_baslangic" />
+                </MudItem>
+                <MudItem xs="6" md="3" Class="d-flex align-center">
+                    <MudSwitch T="bool" @bind-Value="_kdvDahil" Color="Color.Secondary" Label="Fiyatlar KDV dahil" />
+                </MudItem>
+                <MudItem xs="6" md="3" Class="d-flex align-center">
+                    <MudSwitch T="bool" @bind-Value="_aktif" Color="Color.Success" Label="Aktif" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+                </MudItem>
+            </FormBolumu>
+
+            <FormBolumu Baslik="Ürünler ve fiyatlar" Aciklama="@($"{_satirlar.Count} satır · aynı ürüne farklı eşikle satır ekleyerek kademeli fiyat verin")"
+                        Ikon="@Icons.Material.Filled.FormatListNumbered" Sira="1">
+                <MudItem xs="12">
+                    <div class="satir-ekleme-cubugu">
+                        <MudAutocomplete @key="_stokAramaAnahtari" T="StokKartiOzeti" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                         Placeholder="Ürün ya da hizmet ara: ad, kod veya barkod" ValueChanged="KartEkleAsync" SearchFunc="StokAraAsync"
+                                         ToStringFunc="@(k => k?.Ad ?? "")" DebounceInterval="300" MaxItems="12" Class="stok-arama"
+                                         Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search">
+                            <ItemTemplate Context="k">
+                                <span><b>@k.Ad</b> <small style="opacity:.6">@k.Kod</small></span>
+                            </ItemTemplate>
+                        </MudAutocomplete>
+                        <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_topluOran" Label="Toplu değişim %"
+                                         HideSpinButtons="true" Style="max-width:150px" HelperText="+10 zam, -5 indirim" />
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Percent" Disabled="@(_topluOran == 0 || _satirlar.Count == 0)"
+                                   OnClick="TopluUygula">Uygula</MudButton>
+                    </div>
+                </MudItem>
+                <MudItem xs="12" Class="fatura-satirlari">
+                    @if (_satirlar.Count == 0)
+                    {
+                        <BosDurum Ikon="@Icons.Material.Outlined.PlaylistAdd" Baslik="Henüz ürün yok" Aciklama="Ürün arayarak ekleyin; kart fiyatı başlangıç değeri olarak gelir." />
+                    }
+                    @foreach (var s in _satirlar.OrderBy(s => s.Kod).ThenBy(s => s.MinMiktar))
+                    {
+                        <div class="fatura-satiri" @key="s.Anahtar">
+                            <div class="fs-ad">
+                                <div class="fs-kart"><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@s.Kod</MudChip></div>
+                                <b>@s.Ad</b>
+                            </div>
+                            <div class="fs-miktar">
+                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.MinMiktar" Label="Eşik (en az)" Min="0"
+                                                 Format="#,0.####" HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="@Birimler.Ad(s.TemelBirim)" />
+                            </div>
+                            <div class="fs-fiyat">
+                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Fiyat" Label="Fiyat" Min="0" Format="N2"
+                                                 HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="@_paraBirimi" />
+                            </div>
+                            <div class="fs-iskonto">
+                                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Iskonto" Label="İsk. %" Min="0" Max="100" HideSpinButtons="true" />
+                            </div>
+                            <div class="fs-toplam">
+                                <div class="fs-toplam-etiket">Net</div>
+                                <div class="fs-toplam-deger">@Bicim.Tutar(Math.Round(s.Fiyat * (1 - s.Iskonto / 100m), 2), _paraBirimi)</div>
+                            </div>
+                            <div class="fs-sil">
+                                <MudIconButton Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small" aria-label="Kademe ekle" title="Bu ürüne kademe ekle" OnClick="() => KademeEkle(s)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" aria-label="Satırı sil" OnClick="() => _satirlar.Remove(s)" />
+                            </div>
+                        </div>
+                    }
+                </MudItem>
+            </FormBolumu>
+        </MudItem>
+
+        <MudItem xs="12" lg="4">
+            <div class="fatura-toplam-paneli kart belirme" style="--i:2">
+                <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Color="Color.Secondary" /> Uygulandığı cariler</div>
+                <div class="ozet-alt mb-2">
+                    Boş bırakılırsa liste geneldir (tüm carilere). Öncelik: cariye özel liste, sonra cari grubu, sonra genel liste; aynı düzeyde en geç başlayan geçerlidir.
+                </div>
+                @if (Oturum.ModulAcikMi(ModulKodlari.Cari))
+                {
+                    <MudAutocomplete @key="_cariAramaAnahtari" T="CariSecenegi" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Cari ekle"
+                                     SearchFunc="CariAraAsync" ValueChanged="CariEkle" ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")" DebounceInterval="300" />
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Cari grubu ekle" Value="@((Guid?)null)" ValueChanged="GrupEkle" Class="mt-2">
+                        @foreach (var g in _cariGruplari)
+                        {
+                            <MudSelectItem T="Guid?" Value="g.Id">@g.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                <div class="d-flex flex-wrap gap-1 mt-3">
+                    @if (_hedefler.Count == 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Public">Tüm cariler</MudChip>
+                    }
+                    @foreach (var h in _hedefler.ToList())
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(h.Tur == FiyatHedefTuru.Cari ? Color.Primary : Color.Secondary)"
+                                 Icon="@(h.Tur == FiyatHedefTuru.Cari ? Icons.Material.Filled.Person : Icons.Material.Filled.Groups)" OnClose="@(_ => _hedefler.Remove(h))">
+                            @h.Ad
+                        </MudChip>
+                    }
+                </div>
+
+                @if (Oturum.SaltOkunurMu)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-4">Lisans süreniz dolduğu için kayıt yapılamaz.</MudAlert>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-2 mt-4">
+                        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" FullWidth="true" Disabled="@string.IsNullOrWhiteSpace(_ad)">
+                            @(Id is null ? "Listeyi kaydet" : "Değişiklikleri kaydet")
+                        </IslemDugmesi>
+                        <MudButton Href="fiyat-listesi" FullWidth="true">Vazgeç</MudButton>
+                    </div>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private string? _ad;
+    private FiyatListesiTuru _tur = FiyatListesiTuru.Satis;
+    private string _paraBirimi = ParaBirimleri.Tl;
+    private bool _kdvDahil;
+    private bool _aktif = true;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private string? _aciklama;
+    private uint _surum;
+    private decimal _topluOran;
+    private readonly List<Satir> _satirlar = [];
+    private readonly List<FiyatListesiHedefi> _hedefler = [];
+    private List<GrupOzeti> _cariGruplari = [];
+    private int _stokAramaAnahtari;
+    private int _cariAramaAnahtari;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Oturum.ModulAcikMi(ModulKodlari.Cari))
+        {
+            var gruplar = await Api.GetAsync<List<GrupOzeti>>("api/cari/gruplar");
+            _cariGruplari = gruplar.BasariliMi ? gruplar.Deger : [];
+        }
+
+        if (Id is { } id)
+        {
+            var sonuc = await Api.GetAsync<FiyatListesiDetayi>($"api/stok/fiyat-listeleri/{id}");
+            if (sonuc.BasariliMi)
+            {
+                Yukle(sonuc.Deger);
+            }
+            else
+            {
+                _hata = sonuc.Hata;
+            }
+        }
+
+        _yukleniyor = false;
+    }
+
+    private void Yukle(FiyatListesiDetayi d)
+    {
+        (_ad, _tur, _paraBirimi, _kdvDahil, _aktif, _aciklama, _surum) = (d.Ad, d.Tur, d.ParaBirimi, d.KdvDahilMi, d.AktifMi, d.Aciklama, d.Surum);
+        (_baslangic, _bitis) = (Bicim.Takvim(d.BaslangicTarihi), Bicim.Takvim(d.BitisTarihi));
+        _satirlar.Clear();
+        _satirlar.AddRange(d.Satirlar.Select(s => new Satir(s.StokKartiId, s.StokKodu, s.StokAdi, s.TemelBirim) { MinMiktar = s.MinMiktar, Fiyat = s.Fiyat, Iskonto = s.Iskonto }));
+        _hedefler.Clear();
+        _hedefler.AddRange(d.Hedefler);
+    }
+
+    private async Task<IEnumerable<StokKartiOzeti>> StokAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<StokKartiOzeti>>($"api/stok/kartlar?aktif=true&boyut=12&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    // Kart fiyatı (temel birim) başlangıç değeridir; döviz ya da KDV dahil/hariç farkı varsa kullanıcı düzeltir.
+    private async Task KartEkleAsync(StokKartiOzeti? kart)
+    {
+        _stokAramaAnahtari++;
+        if (kart is null)
+        {
+            return;
+        }
+
+        if (_satirlar.Any(s => s.StokKartiId == kart.Id))
+        {
+            Snackbar.Add("Ürün listede var; kademe eklemek için satırdaki + düğmesini kullanın.", Severity.Info);
+            return;
+        }
+
+        var detay = await Api.GetAsync<StokKartiDetayi>($"api/stok/kartlar/{kart.Id}");
+        var fiyat = detay.BasariliMi && detay.Deger.ParaBirimi == _paraBirimi
+            ? (_tur == FiyatListesiTuru.Alis ? detay.Deger.AlisFiyati : detay.Deger.SatisFiyati) ?? 0m
+            : 0m;
+        _satirlar.Add(new Satir(kart.Id, kart.Kod, kart.Ad, kart.TemelBirim) { Fiyat = fiyat });
+    }
+
+    private void KademeEkle(Satir s)
+    {
+        var enYuksek = _satirlar.Where(x => x.StokKartiId == s.StokKartiId).Max(x => x.MinMiktar);
+        _satirlar.Add(new Satir(s.StokKartiId, s.Kod, s.Ad, s.TemelBirim) { MinMiktar = enYuksek == 0 ? 10 : enYuksek * 2, Fiyat = s.Fiyat, Iskonto = s.Iskonto });
+    }
+
+    private void TopluUygula()
+    {
+        var carpan = 1m + _topluOran / 100m;
+        _satirlar.ForEach(s => s.Fiyat = Math.Round(s.Fiyat * carpan, 2, MidpointRounding.AwayFromZero));
+        Snackbar.Add($"Tüm fiyatlar %{_topluOran:0.##} değiştirildi; kaydetmeyi unutmayın.", Severity.Info);
+        _topluOran = 0;
+    }
+
+    private async Task<IEnumerable<CariSecenegi>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariSecenegi>>($"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private void CariEkle(CariSecenegi? cari)
+    {
+        _cariAramaAnahtari++;
+        if (cari is not null && !_hedefler.Any(h => h.Tur == FiyatHedefTuru.Cari && h.HedefId == cari.Id))
+        {
+            _hedefler.Add(new FiyatListesiHedefi(FiyatHedefTuru.Cari, cari.Id, cari.Unvan));
+        }
+    }
+
+    private void GrupEkle(Guid? grupId)
+    {
+        if (_cariGruplari.FirstOrDefault(g => g.Id == grupId) is { } g && !_hedefler.Any(h => h.Tur == FiyatHedefTuru.CariGrubu && h.HedefId == g.Id))
+        {
+            _hedefler.Add(new FiyatListesiHedefi(FiyatHedefTuru.CariGrubu, g.Id, g.Ad));
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        _hata = null;
+        var istek = new FiyatListesiKaydetIstegi(_ad!, _tur, _paraBirimi, _kdvDahil, Bicim.Gun(_baslangic), Bicim.Gun(_bitis), _aktif, _aciklama,
+            _hedefler, _satirlar.Select(s => new FiyatListesiSatiriIstegi(s.StokKartiId, s.MinMiktar, s.Fiyat, s.Iskonto)).ToList(), _surum);
+        var sonuc = Id is { } id
+            ? await Api.PutAsync<FiyatListesiDetayi>($"api/stok/fiyat-listeleri/{id}", istek)
+            : await Api.PostAsync<FiyatListesiDetayi>("api/stok/fiyat-listeleri", istek);
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        Snackbar.Add("Fiyat listesi kaydedildi.", Severity.Success);
+        if (Id is null)
+        {
+            Navigasyon.NavigateTo($"fiyat-listesi/{sonuc.Deger.Id}");
+        }
+        else
+        {
+            Yukle(sonuc.Deger);
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Listeyi sil", "Fiyat listesi silinecek; kesilmiş belgeler etkilenmez.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/stok/fiyat-listeleri/{Id}");
+        if (sonuc.BasariliMi)
+        {
+            Navigasyon.NavigateTo("fiyat-listesi");
+        }
+        else
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+        }
+    }
+
+    private sealed class Satir(Guid stokKartiId, string kod, string ad, string temelBirim)
+    {
+        public Guid Anahtar { get; } = Guid.NewGuid();
+        public Guid StokKartiId { get; } = stokKartiId;
+        public string Kod { get; } = kod;
+        public string Ad { get; } = ad;
+        public string TemelBirim { get; } = temelBirim;
+        public decimal MinMiktar { get; set; }
+        public decimal Fiyat { get; set; }
+        public decimal Iskonto { get; set; }
+    }
+
+    // Cari modülünün özet kaydından yalnızca seçim için gerekenler (Stok ekranı Cari sözleşmelerine bağlanmaz).
+    private sealed record CariSecenegi(Guid Id, string Kod, string Unvan);
+}

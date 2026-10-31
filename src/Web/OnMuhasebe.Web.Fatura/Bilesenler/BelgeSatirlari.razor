@@ -48,13 +48,19 @@
                         {
                             <span class="fs-hizmet">@Bicim.Miktar(karsilanan) karşılandı</span>
                         }
+                        @if (s.FiyatListesi is { } liste)
+                        {
+                            <span class="fs-hizmet" title="Fiyat ve iskonto bu listeden; miktar değişince kademe yeniden uygulanır">
+                                <MudIcon Icon="@Icons.Material.Filled.PriceChange" Style="font-size:.9rem; vertical-align:-2px" /> @liste
+                            </span>
+                        }
                     </div>
                 }
                 <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Ad" Label="Ürün / hizmet" MaxLength="250"
                               Required="@(!s.KartliMi)" RequiredError="Ad gerekli." />
             </div>
             <div class="fs-miktar">
-                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Miktar" Label="Miktar"
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.Miktar" ValueChanged="m => s.MiktarDegistir(m)" Label="Miktar"
                                  Format="#,0.####" HideSpinButtons="true" Min="0" Immediate="true" DebounceInterval="250" />
             </div>
             <div class="fs-birim">
@@ -66,7 +72,7 @@
                 </MudSelect>
             </div>
             <div class="fs-fiyat">
-                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.BirimFiyat"
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" Value="s.BirimFiyat" ValueChanged="f => s.FiyatGir(f)"
                                  Label="@($"Fiyat{(s.KdvDahilMi ? " (KDV dahil)" : "")}")" Format="N2" HideSpinButtons="true" Min="0"
                                  Immediate="true" DebounceInterval="250" Adornment="Adornment.End" AdornmentText="@ParaSimgesi" />
             </div>
@@ -169,7 +175,7 @@
 
         if (Satirlar.FirstOrDefault(s => s.StokKartiId == sonuc.Deger.StokKartiId && s.Birim == sonuc.Deger.Birim) is { } mevcut)
         {
-            mevcut.Miktar++;
+            mevcut.MiktarDegistir(mevcut.Miktar + 1);
         }
         else
         {

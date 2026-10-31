@@ -16,4 +16,7 @@ internal sealed class StokDbContext(DbContextOptions<StokDbContext> options, IMe
     public DbSet<StokGrubu> StokGruplari => Set<StokGrubu>();
     public DbSet<Depo> Depolar => Set<Depo>();
     public DbSet<StokAyari> StokAyarlari => Set<StokAyari>();
+    public DbSet<FiyatListesi> FiyatListeleri => Set<FiyatListesi>();
+    public DbSet<FiyatListesiSatiri> FiyatListesiSatirlari => Set<FiyatListesiSatiri>();
+    public DbSet<FiyatListesiAtamasi> FiyatListesiAtamalari => Set<FiyatListesiAtamasi>();
 }
