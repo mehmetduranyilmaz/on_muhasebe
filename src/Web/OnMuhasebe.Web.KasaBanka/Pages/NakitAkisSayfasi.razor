@@ -93,6 +93,7 @@
                     <th class="sayi">Cari ödeme</th>
                     <th class="sayi">Çek/senet ödeme</th>
                     <th class="sayi">Kredi kartı</th>
+                    <th class="sayi">Kredi taksiti</th>
                     <th class="sayi">Net</th>
                     <th class="sayi">Bakiye</th>
                 </tr>
@@ -100,7 +101,7 @@
             <tbody>
                 <tr style="cursor:default">
                     <td><b>Açılış</b></td>
-                    <td colspan="7"></td>
+                    <td colspan="8"></td>
                     <td class="sayi"><b>@Tl(r.AcilisTl)</b></td>
                 </tr>
                 @for (var i = 0; i < r.Donemler.Count; i++)
@@ -115,6 +116,7 @@
                         <td class="sayi">@Hucre(-d.CariOdeme)</td>
                         <td class="sayi">@Hucre(-d.CekSenetOdeme)</td>
                         <td class="sayi">@Hucre(-d.KrediKartiOdeme)</td>
+                        <td class="sayi">@Hucre(-d.KrediTaksiti)</td>
                         <td class="sayi @(d.Net < 0 ? "bakiye-borclu" : "bakiye-alacakli")">@Tl(d.Net)</td>
                         <td class="sayi @(d.Kumulatif < 0 ? "eksi-bakiye" : "")"><b>@Tl(d.Kumulatif)</b></td>
                     </tr>
@@ -273,6 +275,7 @@ else if (_hata is null)
         NakitKaynagi.CariOdeme => "Cari ödeme",
         NakitKaynagi.CekSenetOdeme => "Çek/senet ödemesi",
         NakitKaynagi.KrediKartiOdeme => "Kredi kartı ödemesi",
+        NakitKaynagi.KrediTaksiti => "Kredi taksiti",
         _ => k.ToString()
     };
 
@@ -281,6 +284,7 @@ else if (_hata is null)
         NakitBaglantisi.Fatura => $"fatura/{k.BaglantiId}",
         NakitBaglantisi.Evrak => $"cek-senet/{k.BaglantiId}",
         NakitBaglantisi.Hesap => $"kasabanka/{k.BaglantiId}",
+        NakitBaglantisi.Kredi => $"krediler/{k.BaglantiId}",
         _ => $"cari/{k.BaglantiId}"
     };
 }

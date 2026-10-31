@@ -128,3 +128,33 @@ internal sealed class GelirGiderKategorisiConfiguration : IEntityTypeConfigurati
         builder.HasIndex(x => new { x.FirmaId, x.Tur, x.Ad }).IsUnique();
     }
 }
+
+internal sealed class KrediConfiguration : IEntityTypeConfiguration<Kredi>
+{
+    public void Configure(EntityTypeBuilder<Kredi> builder)
+    {
+        builder.ToTable("kredi");
+        builder.Property(x => x.Kod).HasMaxLength(20);
+        builder.Property(x => x.Ad).HasMaxLength(150);
+        builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(20);
+        builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(10);
+        builder.Property(x => x.ParaBirimi).HasMaxLength(3);
+        builder.Property(x => x.AylikFaizOrani).HasPrecision(9, 4);
+        builder.Property(x => x.Aciklama).HasMaxLength(1000);
+        builder.Ignore(x => x.KalanAnapara);
+        builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
+        builder.HasMany(x => x.Taksitler).WithOne().HasForeignKey(x => x.KrediId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Taksitler).HasField("_taksitler");
+    }
+}
+
+internal sealed class KrediTaksitiConfiguration : IEntityTypeConfiguration<KrediTaksiti>
+{
+    public void Configure(EntityTypeBuilder<KrediTaksiti> builder)
+    {
+        builder.ToTable("kredi_taksiti");
+        builder.Ignore(x => x.Toplam);
+        builder.Ignore(x => x.OdendiMi);
+        builder.HasIndex(x => new { x.KrediId, x.Sira }).IsUnique();
+    }
+}

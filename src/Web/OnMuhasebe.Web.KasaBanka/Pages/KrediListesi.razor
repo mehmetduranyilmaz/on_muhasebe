@@ -1,0 +1,97 @@
+@page "/krediler"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="Krediler" AltBaslik="Nakdi banka kredileri, ödeme planları ve kalan anapara" Ikon="@Icons.Material.Filled.AccountBalance">
+    <Islemler>
+        @if (!Oturum.SaltOkunurMu)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="krediler/yeni">Yeni Kredi</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_krediler is { } liste)
+{
+    var aciklar = liste.Where(k => k.Durum == KrediDurumu.Acik).ToList();
+    <MudGrid Spacing="3" Class="mb-2">
+        @foreach (var (pb, i) in aciklar.Select(k => k.ParaBirimi).Distinct().Select((pb, i) => (pb, i)))
+        {
+            <MudItem xs="6" lg="3">
+                <OzetKarti Baslik="@($"Kalan anapara ({pb})")" Deger="aciklar.Where(k => k.ParaBirimi == pb).Sum(k => k.KalanAnapara)"
+                           Bicimle="@(d => Bicim.Tutar(d, pb))" Ikon="@Icons.Material.Filled.AccountBalance" Renk="#DC2626" Sira="i"
+                           AltMetin="@($"{aciklar.Count(k => k.ParaBirimi == pb)} açık kredi")" />
+            </MudItem>
+        }
+        @if (aciklar.Where(k => k.SonrakiVade is not null).OrderBy(k => k.SonrakiVade).FirstOrDefault() is { } yakin)
+        {
+            <MudItem xs="6" lg="3">
+                <OzetKarti Baslik="Sıradaki taksit" Deger="yakin.SonrakiTaksit ?? 0" Bicimle="@(d => Bicim.Tutar(d, yakin.ParaBirimi))"
+                           Ikon="@Icons.Material.Filled.Event" Renk="#F59E0B" Sira="5" AltMetin="@($"{Bicim.Tarih(yakin.SonrakiVade!.Value)} · {yakin.Ad}")" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<VeriTablosu T="KrediOzeti" Kayitlar="_krediler" Yukleniyor="_krediler is null && _hata is null" SatirTiklandi="@(k => Navigasyon.NavigateTo($"krediler/{k.Id}"))"
+             BosIkon="@Icons.Material.Outlined.AccountBalance" BosBaslik="Kredi yok" BosAciklama="Bankadan kullandığınız kredileri ödeme planıyla birlikte girin.">
+    <Basliklar>
+        <MudTh>Kredi</MudTh>
+        <MudTh>Banka hesabı</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh Class="sayi">Tutar</MudTh>
+        <MudTh Class="sayi">Kalan anapara</MudTh>
+        <MudTh>Taksit</MudTh>
+        <MudTh>Sıradaki</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Kredi"><b>@context.Ad</b> <span class="mobil-alt-bilgi">@context.Kod · @Tur(context.Tur)</span></MudTd>
+        <MudTd DataLabel="Banka hesabı">@context.HesapAdi</MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                     Color="@(context.Durum == KrediDurumu.Acik ? Color.Warning : context.Durum == KrediDurumu.Kapandi ? Color.Success : Color.Error)">@Durum(context.Durum)</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.Tutar, context.ParaBirimi)</MudTd>
+        <MudTd DataLabel="Kalan anapara" Class="sayi"><b>@Bicim.Tutar(context.KalanAnapara, context.ParaBirimi)</b></MudTd>
+        <MudTd DataLabel="Taksit">@context.OdenenTaksit / @context.TaksitSayisi</MudTd>
+        <MudTd DataLabel="Sıradaki">
+            @if (context.SonrakiVade is { } vade)
+            {
+                <span class="@(vade < Bugun ? "bakiye-borclu" : "")">@Bicim.Tarih(vade) · @Bicim.Tutar(context.SonrakiTaksit ?? 0, context.ParaBirimi)</span>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private List<KrediOzeti>? _krediler;
+    private ApiHatasi? _hata;
+
+    private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<List<KrediOzeti>>("api/kasabanka/krediler");
+        _hata = sonuc.Hata;
+        _krediler = sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    internal static string Tur(KrediTuru t) => t switch
+    {
+        KrediTuru.TaksitliTicari => "Taksitli ticari",
+        KrediTuru.Rotatif => "Rotatif",
+        KrediTuru.Spot => "Spot",
+        _ => "Diğer"
+    };
+
+    internal static string Durum(KrediDurumu d) => d switch
+    {
+        KrediDurumu.Acik => "Açık",
+        KrediDurumu.Kapandi => "Kapandı",
+        _ => "İptal"
+    };
+}

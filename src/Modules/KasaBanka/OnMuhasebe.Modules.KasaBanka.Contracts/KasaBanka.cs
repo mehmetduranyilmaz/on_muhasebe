@@ -52,7 +52,10 @@ public enum KasaHareketTuru
     Gider,
     // Çek/senet tahsili (hesaba giriş) ve verilen evrakın ödenmesi (hesaptan çıkış).
     CekSenetTahsil,
-    CekSenetOdeme
+    CekSenetOdeme,
+    // Nakdi kredi: kullandırımda hesaba giriş, taksitte çıkış (faiz ve vergiler ayrıca gider kaydıdır).
+    KrediKullanim,
+    KrediOdeme
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<GelirGiderTuru>))]

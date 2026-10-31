@@ -64,6 +64,8 @@ public static class KasaMetinleri
         KasaHareketTuru.Gider => "Gider",
         KasaHareketTuru.CekSenetTahsil => "Çek/senet tahsili",
         KasaHareketTuru.CekSenetOdeme => "Çek/senet ödemesi",
+        KasaHareketTuru.KrediKullanim => "Kredi kullanımı",
+        KasaHareketTuru.KrediOdeme => "Kredi taksiti",
         _ => tur.ToString()
     };
 

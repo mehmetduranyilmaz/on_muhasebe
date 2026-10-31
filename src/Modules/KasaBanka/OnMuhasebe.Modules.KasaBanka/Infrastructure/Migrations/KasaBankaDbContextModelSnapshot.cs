@@ -1648,6 +1648,183 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                     b.ToTable("kasa_hesabi", "kasabanka");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Kredi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("ad");
+
+                    b.Property<decimal>("AylikFaizOrani")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)")
+                        .HasColumnName("aylik_faiz_orani");
+
+                    b.Property<string>("Durum")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("durum");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid>("HesapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hesap_id");
+
+                    b.Property<string>("Kod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kod");
+
+                    b.Property<Guid>("KullandirimIslemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kullandirim_islem_id");
+
+                    b.Property<decimal>("KullandirimMasrafi")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("kullandirim_masrafi");
+
+                    b.Property<DateOnly>("KullandirimTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("kullandirim_tarihi");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("ParaBirimi")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("para_birimi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Tur")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tur");
+
+                    b.Property<decimal>("Tutar")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("tutar");
+
+                    b.HasKey("Id")
+                        .HasName("pk_kredi");
+
+                    b.HasIndex("FirmaId", "Kod")
+                        .IsUnique()
+                        .HasDatabaseName("ix_kredi_firma_id_kod");
+
+                    b.ToTable("kredi", "kasabanka");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.KrediTaksiti", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Anapara")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("anapara");
+
+                    b.Property<decimal>("Faiz")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("faiz");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid>("KrediId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kredi_id");
+
+                    b.Property<Guid?>("OdemeIslemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("odeme_islem_id");
+
+                    b.Property<DateOnly?>("OdemeTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("odeme_tarihi");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("integer")
+                        .HasColumnName("sira");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateOnly>("Vade")
+                        .HasColumnType("date")
+                        .HasColumnName("vade");
+
+                    b.Property<decimal>("Vergi")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("vergi");
+
+                    b.HasKey("Id")
+                        .HasName("pk_kredi_taksiti");
+
+                    b.HasIndex("KrediId", "Sira")
+                        .IsUnique()
+                        .HasDatabaseName("ix_kredi_taksiti_kredi_id_sira");
+
+                    b.ToTable("kredi_taksiti", "kasabanka");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Sube", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2055,6 +2232,16 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasConstraintName("fk_kasa_hesabi_subeler_sube_id");
                 });
 
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.KrediTaksiti", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.KasaBanka.Domain.Kredi", null)
+                        .WithMany("Taksitler")
+                        .HasForeignKey("KrediId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_kredi_taksiti_kredi_kredi_id");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.CekSenet.Evrak", b =>
                 {
                     b.Navigation("Hareketler");
@@ -2073,6 +2260,11 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
             modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.EkstreAktarimi", b =>
                 {
                     b.Navigation("Satirlar");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.KasaBanka.Domain.Kredi", b =>
+                {
+                    b.Navigation("Taksitler");
                 });
 #pragma warning restore 612, 618
         }

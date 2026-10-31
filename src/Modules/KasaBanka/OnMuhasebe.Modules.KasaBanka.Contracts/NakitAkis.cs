@@ -18,7 +18,8 @@ public enum NakitKaynagi
     PosAktarim,
     CariOdeme,
     CekSenetOdeme,
-    KrediKartiOdeme
+    KrediKartiOdeme,
+    KrediTaksiti
 }
 
 // Kalemin ekranda açılacağı kayıt.
@@ -28,7 +29,8 @@ public enum NakitBaglantisi
     Cari,
     Fatura,
     Evrak,
-    Hesap
+    Hesap,
+    Kredi
 }
 
 public static class NakitKaynaklari
@@ -58,6 +60,7 @@ public sealed record NakitDonemi(
     decimal CariOdeme,
     decimal CekSenetOdeme,
     decimal KrediKartiOdeme,
+    decimal KrediTaksiti,
     decimal Giris,
     decimal Cikis,
     decimal Net,
@@ -82,6 +85,7 @@ public sealed record NakitAkisRaporu(
     IReadOnlyList<NakitKalemi> Kalemler,
     IReadOnlyList<string> KurBulunamayanlar);
 
+// Kalem ve sütunlar NakitKaynagi sırasıyladır; yeni kaynak eklenince NakitDonemi'ne de alanı eklenir.
 // Nakit akışının dönemlere bölünmesi ve toplanması. Saf fonksiyonlardır; veritabanına dokunmaz.
 // İhtiyatlılık: vadesi geçmiş borçlar ilk dönemde ödenecek sayılır; vadesi geçmiş alacaklar tahsil edilecek sayılmaz
 // (istenirse ilk döneme dahil edilir).
@@ -110,7 +114,7 @@ public static class NakitAkisHesaplayici
     public static IReadOnlyList<NakitDonemi> Hesapla(
         decimal acilis, IEnumerable<NakitKalemi> kalemler, IReadOnlyList<(DateOnly Baslangic, DateOnly Bitis)> donemler, bool gecikmisAlacakDahil)
     {
-        var tutarlar = new decimal[donemler.Count, 6];
+        var tutarlar = new decimal[donemler.Count, Enum.GetValues<NakitKaynagi>().Length];
         foreach (var k in kalemler)
         {
             if (k.GecikmisMi && NakitKaynaklari.GirisMi(k.Kaynak) && !gecikmisAlacakDahil)
@@ -130,11 +134,13 @@ public static class NakitAkisHesaplayici
         var kumulatif = acilis;
         for (var i = 0; i < donemler.Count; i++)
         {
-            var giris = tutarlar[i, 0] + tutarlar[i, 1] + tutarlar[i, 2];
-            var cikis = tutarlar[i, 3] + tutarlar[i, 4] + tutarlar[i, 5];
+            decimal T(NakitKaynagi k) => tutarlar[i, (int)k];
+            var giris = Enum.GetValues<NakitKaynagi>().Where(NakitKaynaklari.GirisMi).Sum(T);
+            var cikis = Enum.GetValues<NakitKaynagi>().Where(k => !NakitKaynaklari.GirisMi(k)).Sum(T);
             kumulatif += giris - cikis;
             sonuc.Add(new NakitDonemi(donemler[i].Baslangic, donemler[i].Bitis,
-                tutarlar[i, 0], tutarlar[i, 1], tutarlar[i, 2], tutarlar[i, 3], tutarlar[i, 4], tutarlar[i, 5],
+                T(NakitKaynagi.CariTahsilat), T(NakitKaynagi.CekSenetTahsil), T(NakitKaynagi.PosAktarim), T(NakitKaynagi.CariOdeme),
+                T(NakitKaynagi.CekSenetOdeme), T(NakitKaynagi.KrediKartiOdeme), T(NakitKaynagi.KrediTaksiti),
                 giris, cikis, giris - cikis, kumulatif));
         }
 

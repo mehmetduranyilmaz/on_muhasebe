@@ -1,0 +1,163 @@
+@page "/krediler/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OnayServisi Onay
+@inject OturumYoneticisi Oturum
+@inject TimeProvider Zaman
+
+<HataGosterimi Hata="_hata" />
+
+@if (_kredi is { } k)
+{
+    <SayfaBasligi Baslik="@k.Ad" GeriAdres="krediler" Ikon="@Icons.Material.Filled.AccountBalance"
+                  AltBaslik="@($"{k.Kod} · {KrediListesi.Tur(k.Tur)} · {k.HesapAdi} · {Bicim.Tarih(k.KullandirimTarihi)}")">
+        <Islemler>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                     Color="@(k.Durum == KrediDurumu.Acik ? Color.Warning : k.Durum == KrediDurumu.Kapandi ? Color.Success : Color.Error)">@KrediListesi.Durum(k.Durum)</MudChip>
+            @if (!Oturum.SaltOkunurMu && k.Durum == KrediDurumu.Acik && k.Taksitler.All(t => t.OdemeIslemId is null))
+            {
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" aria-label="Diğer işlemler" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Block" OnClick="IptalAsync">Krediyi iptal et</MudMenuItem>
+                </MudMenu>
+            }
+        </Islemler>
+    </SayfaBasligi>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Kredi tutarı" Deger="k.Tutar" Bicimle="Tutar" Ikon="@Icons.Material.Filled.AccountBalance" Renk="#3B82F6" Sira="0"
+                       AltMetin="@($"Aylık faiz %{k.AylikFaizOrani:0.####}")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Kalan anapara" Deger="k.KalanAnapara" Bicimle="Tutar" Ikon="@Icons.Material.Filled.HourglassBottom" Renk="#DC2626" Sira="1" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Toplam faiz + vergi" Deger="k.ToplamFaiz + k.ToplamVergi" Bicimle="Tutar" Ikon="@Icons.Material.Filled.Percent" Renk="#F59E0B" Sira="2"
+                       AltMetin="@($"Faiz {Tutar(k.ToplamFaiz)} · vergi {Tutar(k.ToplamVergi)}")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Ödenen" Deger="k.OdenenToplam" Bicimle="Tutar" Ikon="@Icons.Material.Filled.TaskAlt" Renk="#16A34A" Sira="3"
+                       AltMetin="@($"{k.Taksitler.Count(t => t.OdemeIslemId is not null)} / {k.Taksitler.Count} taksit")" />
+        </MudItem>
+    </MudGrid>
+
+    <div class="panel-kart kart belirme" style="overflow-x:auto">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small" Color="Color.Secondary" /> Ödeme planı</div>
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead><tr><th>#</th><th>Vade</th><th class="sayi">Anapara</th><th class="sayi">Faiz</th><th class="sayi">Vergi</th><th class="sayi">Toplam</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var t in k.Taksitler)
+                {
+                    var odendi = t.OdemeIslemId is not null;
+                    <tr>
+                        <td>@t.Sira</td>
+                        <td class="@(!odendi && t.Vade < Bugun ? "bakiye-borclu" : "")">@Bicim.Tarih(t.Vade)</td>
+                        <td class="sayi">@Tutar(t.Anapara)</td>
+                        <td class="sayi">@Tutar(t.Faiz)</td>
+                        <td class="sayi">@Tutar(t.Vergi)</td>
+                        <td class="sayi"><b>@Tutar(t.Toplam)</b></td>
+                        <td>
+                            @if (odendi)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success">@Bicim.Tarih(t.OdemeTarihi!.Value) ödendi</MudChip>
+                            }
+                            else if (t.Vade < Bugun)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Error">Gecikti</MudChip>
+                            }
+                        </td>
+                        <td style="text-align:right; white-space:nowrap">
+                            @if (!Oturum.SaltOkunurMu && k.Durum != KrediDurumu.Iptal)
+                            {
+                                @if (odendi)
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => GeriAlAsync(t.Sira)">Geri al</MudButton>
+                                }
+                                else if (_odenecek == t.Sira)
+                                {
+                                    <div class="d-inline-flex align-center gap-1">
+                                        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_odemeTarihi" DateFormat="dd.MM.yyyy" Style="max-width:140px" />
+                                        <IslemDugmesi Islem="() => OdeAsync(t.Sira)" Size="Size.Small">Onayla</IslemDugmesi>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="() => _odenecek = null" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                                               OnClick="@(() => { _odenecek = t.Sira; _odemeTarihi = Bicim.Takvim(t.Vade < Bugun ? Bugun : t.Vade); })">Öde</MudButton>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+        <div class="ozet-alt mt-2">
+            Taksit, kredinin banka hesabından tek çıkış olarak işlenir; faiz ve vergiler "Kredi faiz ve masrafları" gider kategorisine yazılır.
+            Erken kapama ve faiz değişikliği için bankanın yeni planını yeni kredi olarak girin.
+        </div>
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private KrediDetayi? _kredi;
+    private int? _odenecek;
+    private DateTime? _odemeTarihi;
+    private ApiHatasi? _hata;
+
+    private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+
+    private string Tutar(decimal d) => Bicim.Tutar(d, _kredi?.ParaBirimi ?? ParaBirimleri.Tl);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var sonuc = await Api.GetAsync<KrediDetayi>($"api/kasabanka/krediler/{Id}");
+        _hata = sonuc.Hata;
+        _kredi = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task OdeAsync(int sira)
+    {
+        if (Bicim.Gun(_odemeTarihi) is not { } tarih)
+        {
+            return;
+        }
+
+        Sonuc(await Api.PostAsync<KrediDetayi>($"api/kasabanka/krediler/{Id}/taksitler/{sira}/ode", new TaksitOdemeIstegi(tarih, null)), $"{sira}. taksit ödendi.");
+        _odenecek = null;
+    }
+
+    private async Task GeriAlAsync(int sira)
+    {
+        if (await Onay.SorAsync("Ödemeyi geri al", $"{sira}. taksitin banka çıkışı ve faiz gideri ters kayıtla kapatılacak.", "Geri al", tehlikeli: true))
+        {
+            Sonuc(await Api.PostAsync<KrediDetayi>($"api/kasabanka/krediler/{Id}/taksitler/{sira}/geri-al", new { }), "Ödeme geri alındı.");
+        }
+    }
+
+    private async Task IptalAsync()
+    {
+        if (await Onay.SorAsync("Krediyi iptal et", "Kullandırım hesaba girişi ve masrafı ters kayıtla kapatılacak.", "İptal et", tehlikeli: true))
+        {
+            Sonuc(await Api.PostAsync<KrediDetayi>($"api/kasabanka/krediler/{Id}/iptal", new { }), "Kredi iptal edildi.");
+        }
+    }
+
+    private void Sonuc(ApiSonucu<KrediDetayi> sonuc, string mesaj)
+    {
+        if (!sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Hata.Baslik, Severity.Error);
+            return;
+        }
+
+        _kredi = sonuc.Deger;
+        Snackbar.Add(mesaj, Severity.Success);
+    }
+}

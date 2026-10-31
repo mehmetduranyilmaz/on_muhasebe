@@ -21,6 +21,7 @@ public static class ModulMenusu
         .. Tumu,
         new(ModulKodlari.Fatura, "İrsaliyeler", "irsaliye", Icons.Material.Filled.LocalShipping, "Sevk irsaliyeleri, depolar arası sevk ve faturalanmamış irsaliye takibi"),
         new(ModulKodlari.KasaBanka, "Nakit Akış", "nakit-akis", Icons.Material.Filled.Timeline, "13 haftalık nakit planı: beklenen tahsilat ve ödemeler, nakit açığı uyarısı"),
+        new(ModulKodlari.KasaBanka, "Krediler", "krediler", Icons.Material.Filled.AccountBalance, "Nakdi banka kredileri, ödeme planları ve taksit ödemeleri"),
         new(ModulKodlari.KasaBanka, "Çek / Senet", "cek-senet", Icons.Material.Filled.RequestQuote, "Alınan ve verilen çek/senetler, portföy ve vade takvimi"),
         new(ModulKodlari.KasaBanka, "Teminatlar", "teminatlar", Icons.Material.Filled.Shield, "Alınan ve verilen teminatlar: teminat mektubu, ipotek, rehin, kefalet")
     ];

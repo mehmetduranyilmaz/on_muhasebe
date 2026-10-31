@@ -99,6 +99,23 @@ internal static class NakitAkisIslemleri
                 NakitBaglantisi.Evrak, e.Id);
         }
 
+        // Açık kredilerin ödenmemiş taksitleri vadesinde çıkıştır (anapara + faiz + vergi).
+        var taksitler = await (
+                from t in db.KrediTaksitleri.AsNoTracking()
+                join kr in db.Krediler on t.KrediId equals kr.Id
+                where kr.Durum == KrediDurumu.Acik && t.OdemeIslemId == null && t.Vade <= ufuk
+                select new { kr.Id, kr.Ad, kr.Kod, kr.ParaBirimi, t.Sira, t.Vade, Toplam = t.Anapara + t.Faiz + t.Vergi })
+            .ToListAsync(cancellationToken);
+        foreach (var pb in taksitler.Select(t => t.ParaBirimi).Distinct().Where(pb => !kurlar.ContainsKey(pb)))
+        {
+            kurlar[pb] = (await kurSorgusu.IslemKuruAsync(pb, bugun, cancellationToken))?.DovizAlis;
+        }
+
+        foreach (var t in taksitler)
+        {
+            Ekle(t.Vade, NakitKaynagi.KrediTaksiti, $"Kredi taksiti {t.Sira}: {t.Ad}", t.Kod, t.ParaBirimi, t.Toplam, NakitBaglantisi.Kredi, t.Id);
+        }
+
         foreach (var k in cariKalemler)
         {
             var fatura = k.KaynakBelgeId is not null && FaturaHareketiMi(k.Tur);

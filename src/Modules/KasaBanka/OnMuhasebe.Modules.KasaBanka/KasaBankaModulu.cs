@@ -33,6 +33,7 @@ public sealed class KasaBankaModulu : IModul
         services.AddScoped<KategoriServisi>();
         services.AddScoped<CariDovizServisi>();
         services.AddScoped<KasaIslemServisi>();
+        services.AddScoped<KrediServisi>();
         services.AddScoped<CekSenetServisi>();
         services.AddScoped<IBildirimKaynagi, CekSenetBildirimKaynagi>();
         services.AddScoped<EvrakRiskServisi>();
@@ -55,5 +56,6 @@ public sealed class KasaBankaModulu : IModul
         EkstreIslemleri.Map(grup);
         CekSenetIslemleri.Map(grup);
         TeminatIslemleri.Map(grup);
+        KrediIslemleri.Map(grup);
     }
 }

@@ -1,0 +1,198 @@
+@page "/krediler/yeni"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject ISnackbar Snackbar
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="Yeni Kredi" GeriAdres="krediler" Ikon="@Icons.Material.Filled.AccountBalance"
+             AltBaslik="Bankanın ödeme planını girin; eşit taksit hesaplayıcısı ön doldurma içindir" />
+
+<HataGosterimi Hata="_hata" />
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" lg="8">
+        <FormBolumu Baslik="Kredi bilgileri" Ikon="@Icons.Material.Filled.Description" Sira="0">
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Kredi adı" MaxLength="150" Required="true"
+                              Placeholder="ör. X Bankası taksitli ticari kredi" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect T="KrediTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür">
+                    @foreach (var t in Enum.GetValues<KrediTuru>())
+                    {
+                        <MudSelectItem Value="t">@KrediListesi.Tur(t)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesapId" Label="Banka hesabı" Required="true">
+                    @foreach (var h in _hesaplar)
+                    {
+                        <MudSelectItem T="Guid?" Value="h.Id">@h.Ad (@h.ParaBirimi)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_kullandirim" Label="Kullandırım tarihi" DateFormat="dd.MM.yyyy" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="Kredi tutarı" Format="N2" Min="0"
+                                 HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="@ParaBirimi" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aylikFaiz" Label="Aylık faiz" Format="0.####" Min="0"
+                                 HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="%" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_masraf" Label="Kullandırım masrafı" Format="N2" Min="0"
+                                 HideSpinButtons="true" HelperText="Dosya masrafı vb." />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" />
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="Ödeme planı" Aciklama="Bankanın tablosuyla birebir aynı olmalı" Ikon="@Icons.Material.Filled.CalendarMonth" Sira="1">
+            <MudItem xs="6" md="2">
+                <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_taksitSayisi" Label="Taksit sayısı" Min="1" Max="360" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_ilkVade" Label="İlk taksit vadesi" DateFormat="dd.MM.yyyy" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudSelect T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aralik" Label="Ödeme aralığı">
+                    <MudSelectItem Value="1">Aylık</MudSelectItem>
+                    <MudSelectItem Value="3">3 aylık</MudSelectItem>
+                    <MudSelectItem Value="6">6 aylık</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_vergiOrani" Label="BSMV+KKDF" Format="0.##" Min="0"
+                                 HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="%" HelperText="Faiz üzerinden" />
+            </MudItem>
+            <MudItem xs="12" md="3" Class="d-flex align-center">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Calculate" OnClick="PlanHesapla"
+                           Disabled="_tutar <= 0 || _ilkVade is null">Eşit taksit hesapla</MudButton>
+            </MudItem>
+            <MudItem xs="12" Style="overflow-x:auto">
+                @if (_taksitler.Count > 0)
+                {
+                    <MudSimpleTable Dense="true">
+                        <thead><tr><th>#</th><th>Vade</th><th class="sayi">Anapara</th><th class="sayi">Faiz</th><th class="sayi">Vergi</th><th class="sayi">Toplam</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var t in _taksitler)
+                            {
+                                <tr>
+                                    <td>@(_taksitler.IndexOf(t) + 1)</td>
+                                    <td><MudDatePicker Variant="Variant.Text" Margin="Margin.Dense" @bind-Date="t.Vade" DateFormat="dd.MM.yyyy" Style="max-width:130px" /></td>
+                                    <td><MudNumericField T="decimal" Variant="Variant.Text" Margin="Margin.Dense" @bind-Value="t.Anapara" Format="N2" HideSpinButtons="true" Immediate="true" /></td>
+                                    <td><MudNumericField T="decimal" Variant="Variant.Text" Margin="Margin.Dense" @bind-Value="t.Faiz" Format="N2" HideSpinButtons="true" Immediate="true" /></td>
+                                    <td><MudNumericField T="decimal" Variant="Variant.Text" Margin="Margin.Dense" @bind-Value="t.Vergi" Format="N2" HideSpinButtons="true" Immediate="true" /></td>
+                                    <td class="sayi"><b>@Bicim.Tutar(t.Anapara + t.Faiz + t.Vergi)</b></td>
+                                    <td><MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" OnClick="() => SatirSil(t)" /></td>
+                                </tr>
+                            }
+                            <tr>
+                                <td colspan="2"><b>Toplam</b></td>
+                                <td class="sayi"><b>@Bicim.Tutar(_taksitler.Sum(t => t.Anapara))</b></td>
+                                <td class="sayi">@Bicim.Tutar(_taksitler.Sum(t => t.Faiz))</td>
+                                <td class="sayi">@Bicim.Tutar(_taksitler.Sum(t => t.Vergi))</td>
+                                <td class="sayi"><b>@Bicim.Tutar(_taksitler.Sum(t => t.Anapara + t.Faiz + t.Vergi))</b></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" OnClick="SatirEkle" Class="mt-1">Taksit ekle</MudButton>
+            </MudItem>
+        </FormBolumu>
+    </MudItem>
+
+    <MudItem xs="12" lg="4">
+        <div class="fatura-toplam-paneli kart belirme">
+            <dl class="toplam-listesi">
+                <dt>Kredi tutarı</dt><dd>@Bicim.Tutar(_tutar, ParaBirimi)</dd>
+                <dt>Toplam faiz</dt><dd>@Bicim.Tutar(_taksitler.Sum(t => t.Faiz))</dd>
+                <dt>Toplam vergi</dt><dd>@Bicim.Tutar(_taksitler.Sum(t => t.Vergi))</dd>
+                <dt>Kullandırım masrafı</dt><dd>@Bicim.Tutar(_masraf)</dd>
+            </dl>
+            <div class="genel-toplam"><span>Toplam geri ödeme</span><b>@Bicim.Tutar(_taksitler.Sum(t => t.Anapara + t.Faiz + t.Vergi), ParaBirimi)</b></div>
+            @if (PlanHatasi is { } hata)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">@hata</MudAlert>
+            }
+            <div class="ozet-alt mt-3">Kaydedince kredi tutarı kullandırım tarihinde banka hesabına giriş olarak işlenir; masraf gider yazılır.</div>
+            <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Save" FullWidth="true" Class="mt-3"
+                          Disabled="@(PlanHatasi is not null || string.IsNullOrWhiteSpace(_ad) || _hesapId is null)">Krediyi kaydet</IslemDugmesi>
+        </div>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private string? _ad;
+    private KrediTuru _tur = KrediTuru.TaksitliTicari;
+    private Guid? _hesapId;
+    private DateTime? _kullandirim;
+    private decimal _tutar;
+    private decimal _aylikFaiz;
+    private decimal _masraf;
+    private string? _aciklama;
+    private int _taksitSayisi = 12;
+    private DateTime? _ilkVade;
+    private int _aralik = 1;
+    private decimal _vergiOrani = KrediPlaniHesaplayici.VarsayilanVergiOrani;
+    private List<HesapOzeti> _hesaplar = [];
+    private readonly List<Satir> _taksitler = [];
+    private ApiHatasi? _hata;
+
+    private string ParaBirimi => _hesaplar.FirstOrDefault(h => h.Id == _hesapId)?.ParaBirimi ?? ParaBirimleri.Tl;
+
+    private List<KrediTaksitiGirdisi> Girdiler => _taksitler
+        .Select((t, i) => new KrediTaksitiGirdisi(i + 1, Bicim.Gun(t.Vade) ?? DateOnly.MinValue, t.Anapara, t.Faiz, t.Vergi)).ToList();
+
+    private string? PlanHatasi => Bicim.Gun(_kullandirim) is { } k ? KrediPlaniHesaplayici.Hata(_tutar, k, Girdiler) : "Kullandırım tarihi girin.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow().Date;
+        (_kullandirim, _ilkVade) = (bugun, bugun.AddMonths(1));
+        var sonuc = await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?aktif=true");
+        _hesaplar = sonuc.BasariliMi ? sonuc.Deger.Where(h => h.Tur == HesapTuru.Banka).ToList() : [];
+        _hesapId = _hesaplar.FirstOrDefault()?.Id;
+    }
+
+    private void PlanHesapla()
+    {
+        _taksitler.Clear();
+        _taksitler.AddRange(KrediPlaniHesaplayici.EsitTaksit(_tutar, _aylikFaiz, _taksitSayisi, Bicim.Gun(_ilkVade)!.Value, _vergiOrani, _aralik)
+            .Select(t => new Satir { Vade = Bicim.Takvim(t.Vade), Anapara = t.Anapara, Faiz = t.Faiz, Vergi = t.Vergi }));
+    }
+
+    private void SatirEkle() =>
+        _taksitler.Add(new Satir { Vade = _taksitler.LastOrDefault()?.Vade?.AddMonths(_aralik) ?? _ilkVade });
+
+    private void SatirSil(Satir s) => _taksitler.Remove(s);
+
+    private async Task KaydetAsync()
+    {
+        _hata = null;
+        var istek = new KrediKaydetIstegi(_ad!, _tur, _hesapId!.Value, Bicim.Gun(_kullandirim)!.Value, _tutar, _aylikFaiz, _masraf, _aciklama, Girdiler);
+        var sonuc = await Api.PostAsync<KrediDetayi>("api/kasabanka/krediler", istek);
+        if (!sonuc.BasariliMi)
+        {
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        Snackbar.Add($"{sonuc.Deger.Kod} kaydedildi; kredi tutarı hesaba işlendi.", Severity.Success);
+        Navigasyon.NavigateTo($"krediler/{sonuc.Deger.Id}");
+    }
+
+    private sealed class Satir
+    {
+        public DateTime? Vade { get; set; }
+        public decimal Anapara { get; set; }
+        public decimal Faiz { get; set; }
+        public decimal Vergi { get; set; }
+    }
+}

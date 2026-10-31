@@ -15,6 +15,15 @@ internal static class KasaBankaHatalari
     public static readonly Hata KodKullaniliyor = Hata.Cakisma("kod_kullaniliyor", "Bu hesap kodu başka bir hesapta kullanılıyor.");
     public static readonly Hata KategoriAdiKullaniliyor = Hata.Cakisma("kategori_adi_kullaniliyor", "Bu isimde bir kategori zaten var.");
     public static readonly Hata PasifHesap = Hata.IsKurali("pasif_hesap", "Pasif hesaba işlem yapılamaz.");
+    public static readonly Hata KrediBulunamadi = Hata.Bulunamadi("kredi_bulunamadi", "Kredi bulunamadı.");
+    public static readonly Hata KrediBankaHesabiGerekli = Hata.IsKurali("kredi_banka_hesabi", "Kredi bir banka hesabına kullandırılır; banka hesabı seçin.");
+    public static readonly Hata KrediIptal = Hata.IsKurali("kredi_iptal", "İptal edilmiş kredide işlem yapılamaz.");
+    public static readonly Hata TaksitBulunamadi = Hata.Bulunamadi("taksit_bulunamadi", "Taksit bulunamadı.");
+    public static readonly Hata TaksitOdenmis = Hata.IsKurali("taksit_odenmis", "Bu taksit zaten ödenmiş.");
+    public static readonly Hata TaksitOdenmemis = Hata.IsKurali("taksit_odenmemis", "Bu taksit ödenmemiş.");
+    public static readonly Hata TaksitTarihi = Hata.Dogrulama("taksit_tarihi", "Taksit ödeme tarihi kullandırım tarihinden önce olamaz.");
+    public static readonly Hata TaksitHesapDovizi = Hata.IsKurali("taksit_hesap_dovizi", "Taksit, kredinin dövizindeki bir hesaptan ödenmelidir.");
+    public static readonly Hata OdenmisKrediIptalEdilemez = Hata.IsKurali("odenmis_kredi_iptal", "Taksiti ödenmiş kredi iptal edilemez; önce ödemeleri geri alın.");
     public static readonly Hata PasifCari = Hata.IsKurali("pasif_cari", "Pasif cariye işlem yapılamaz.");
     public static readonly Hata HareketliHesapSilinemez = Hata.IsKurali("hareketli_hesap_silinemez", "Hareketi olan hesap silinemez; pasifleştirebilirsiniz.");
     public static readonly Hata HareketliHesapDegistirilemez = Hata.IsKurali("hareketli_hesap", "Hareketi olan hesabın türü ve para birimi değiştirilemez.");
