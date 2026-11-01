@@ -5,7 +5,7 @@ COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/ src/
 RUN dotnet publish src/Api/OnMuhasebe.Api -c Release -o /yayin -p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:8af87eba5e7cdafb1514d7388be287365da97c132509e84dfe252ffd552398ca
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee
 WORKDIR /app
 COPY --from=derleme /yayin .
 ENV ASPNETCORE_HTTP_PORTS=8080 \
