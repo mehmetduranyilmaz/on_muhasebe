@@ -159,6 +159,7 @@ var maasDonemi = await Post(a, "api/personel/donemler", new { yil = 2026, ay = 1
 id["maasDonemi"] = maasDonemi["id"]!.GetValue<string>();
 id["maasSatiri"] = maasDonemi["satirlar"]![0]!["id"]!.GetValue<string>();
 id["personelAvans"] = (await Post(a, "api/personel/avanslar", new { personelId = id["personel"], tarih = "2026-01-05", tutar = 100, taksitSayisi = 1, hesapId = id["kasaHesap"], aciklama = "SIZINTI" }))["id"]!.GetValue<string>();
+id["personelOdeme"] = JsonNode.Parse(await a.GetStringAsync($"api/personel/kartlar/{id["personel"]}/odemeler"))![0]!["id"]!.GetValue<string>();
 id["personelMasraf"] = (await Post(a, "api/personel/masraflar", new { personelId = id["personel"], tarih = "2026-01-05", kategori = "Yemek", tutar = 100, aciklama = "SIZINTI" }))["id"]!.GetValue<string>();
 id["zimmet"] = (await Post(a, "api/personel/zimmetler", new { personelId = id["personel"], ad = "SIZINTI Telefon", verilisTarihi = "2026-01-05" }))["id"]!.GetValue<string>();
 id["dosyaTur"] = "cari";
@@ -237,6 +238,8 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/personel/donemler/", "satirId", "maasSatiri"),
     ("/api/personel/avanslar/", "id", "personelAvans"),
     ("/api/personel/masraflar/", "id", "personelMasraf"),
+    ("/api/personel/benim/masraflar/", "id", "personelMasraf"),
+    ("/api/personel/odemeler/", "id", "personelOdeme"),
     ("/api/personel/zimmetler/", "id", "zimmet"),
     ("/api/satinalma/talepler/", "id", "satinalmaTalebi"),
     ("/api/bakim/ekipmanlar/", "id", "ekipman"),
