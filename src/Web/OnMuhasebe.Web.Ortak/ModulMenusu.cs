@@ -20,7 +20,8 @@ public static class ModulMenusu
         new(ModulKodlari.Muhasebe, "Muhasebe Aktarımı", "muhasebe", Icons.Material.Filled.SyncAlt, "Yevmiye fişleri, mali müşavire Excel/CSV aktarımı", "muhasebe.aktarim"),
         new(ModulKodlari.EvrakTakip, "Evrak Takibi", "evrak-takibi", Icons.Material.Filled.EventNote, "Ruhsat, poliçe, sözleşme gibi süreli evrakların bitiş takibi ve hatırlatması", "evraktakip.kayit"),
         new(ModulKodlari.Arac, "Araç Takibi", "arac", Icons.Material.Filled.DirectionsCar, "Sigorta, muayene ve MTV süreleri; yakıt, masraf ve hasar takibi", "arac.kart"),
-        new(ModulKodlari.Bakim, "Bakım Takibi", "bakim", Icons.Material.Filled.Build, "Ekipman bakım planları, yasal kontroller, arıza iş emirleri ve duruş takibi", "bakim.ekipman")
+        new(ModulKodlari.Bakim, "Bakım Takibi", "bakim", Icons.Material.Filled.Build, "Ekipman bakım planları, yasal kontroller, arıza iş emirleri ve duruş takibi", "bakim.ekipman"),
+        new(ModulKodlari.Satinalma, "Satın Alma", "satinalma", Icons.Material.Filled.ShoppingCart, "Satın alma talepleri, tutara göre onay akışı ve siparişe dönüşüm", "satinalma.talep")
     ];
 
     // Menüde modül altındaki ek bölümler; aynı lisans ve aynı lazy paketle açılır (adres -> modül eşlemesi de bunu kullanır).

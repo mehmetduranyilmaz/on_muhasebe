@@ -1,0 +1,15 @@
+@page "/satinalma/onay-kurallari"
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Onay Kuralları" GeriAdres="satinalma" Ikon="@Icons.Material.Filled.Rule" AltBaslik="Satın alma taleplerinin tutara göre onay basamakları" />
+
+<div class="panel-kart kart belirme">
+    @if (Oturum.YetkiVarMi(SatinalmaYetkileri.Kural, YetkiIslemleri.Goruntule))
+    {
+        <OnayKuraliFormu />
+    }
+    else
+    {
+        <MudText Typo="Typo.body2">Onay kurallarını görme yetkiniz yok.</MudText>
+    }
+</div>

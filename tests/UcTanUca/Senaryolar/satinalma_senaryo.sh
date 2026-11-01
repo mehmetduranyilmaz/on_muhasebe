@@ -141,6 +141,31 @@ istek GET "/api/fatura/teklif-siparis/$SIP" "$T"
 kontrol 200 "Siparis taslak, tedarikci ve satirlar geldi" '"tur":"SatinalmaSiparisi".*"durum":"Taslak"'
 istek POST "$S/talepler/$K/siparise-donustur" "$T" '{"tedarikciId":"'"$C"'"}'
 kontrol 422 "Ikinci kez donusturulmez" talep_onaylanmadi
+istek GET "$S/talepler/$K" "$T"
+kontrol 200 "Tutar asilmadiysa uyari yok, yeniden donusum kapali" '"sipariseDonusebilirMi":false.*"siparisUyarisi":null'
+istek GET "/api/fatura/teklif-siparis/$SIP" "$T"; SS=$(alan surum)
+istek PUT "/api/fatura/teklif-siparis/$SIP" "$T" '{"tur":"SatinalmaSiparisi","cariHesapId":"'"$C"'","tarih":"2026-11-01","paraBirimi":"TRY","genelIskontoTuru":"Yuzde","genelIskonto":0,"satirlar":[{"ad":"Kalem","birim":"ADET","miktar":1,"birimFiyat":900,"kdvDahilMi":false,"kdvOrani":20,"iskonto1":0,"iskonto2":0,"iskonto3":0}],"surum":'"$SS"'}'
+kontrol 200 "Siparis fiyati artirildi"
+istek GET "$S/talepler/$K" "$T"
+kontrol 200 "Siparis onaylanani asinca uyari" '"siparisTutari":900.*"siparisUyarisi":"Sipari'
+istek DELETE "/api/fatura/teklif-siparis/$SIP" "$T"
+kontrol 204 "Taslak siparis silindi"
+istek GET "$S/talepler/$K" "$T"
+kontrol 200 "Silinen siparisten sonra bag kalkti, yeniden donusum acik" '"sipariseDonusebilirMi":true,"siparisId":null'
+istek POST "$S/talepler/$K/siparise-donustur" "$T" '{"tedarikciId":"'"$C"'"}'
+kontrol 200 "Talep yeni siparise baglandi" '"durum":"SipariseDonustu"'; SIP2=$(alan siparisId)
+if [ "$SIP2" = "$SIP" ]; then KOD=ayni; fi
+kontrol 200 "Yeni siparis eskisinden farkli"
+istek POST "/api/fatura/teklif-siparis/$SIP2/onayla" "$T" '{}'
+kontrol 200 "Siparis onaylandi"
+istek GET "$S/talepler/$K" "$T"
+kontrol 200 "Onayli siparis varken yeniden donusum kapali" '"sipariseDonusebilirMi":false,"siparisId":"'
+istek POST "/api/fatura/teklif-siparis/$SIP2/iptal" "$T" '{}'
+kontrol 200 "Onayli siparis iptal edildi"
+istek GET "$S/talepler/$K" "$T"
+kontrol 200 "Iptal siparisten sonra yeniden donusum acik" '"sipariseDonusebilirMi":true'
+istek POST "$S/talepler/$K/siparise-donustur" "$T" '{"tedarikciId":"'"$C"'"}'
+kontrol 200 "Iptalden sonra yeni siparis" '"durum":"SipariseDonustu"'
 istek GET "/api/muhasebe/fisler?baslangic=2026-10-01&bitis=2026-12-31" "$T"
 kontrol 200 "Talep ve taslak siparis muhasebe fisi uretmez" '"fisler":\[\]'
 istek POST "$S/talepler/$K/iptal" "$T" '{}'

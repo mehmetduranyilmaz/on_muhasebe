@@ -1,0 +1,109 @@
+@* Onay basamakları: Ayarlar paneli ve Satın Alma ekranındaki sayfa aynı formu kullanır. *@
+@inject ApiIstemcisi Api
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_kural is null)
+{
+    <MudSkeleton Height="160px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" />
+}
+else
+{
+    <div class="ayar-aciklama mb-3">
+        Talep, tutarının ulaştığı tüm basamaklardan küçükten büyüğe sırayla geçer. Hiç basamak yoksa onayı yönetici verir.
+        Kural değişikliği onaydaki talepleri etkilemez. Kimse kendi talebini onaylayamaz; seçilen rolde onay yetkisi olmalıdır.
+    </div>
+    @if (_satirlar.Count > 0)
+    {
+        <div style="overflow-x:auto">
+            <MudSimpleTable Dense="true" Elevation="0" Class="onay-basamaklari">
+                <thead><tr><th style="width:180px">En az tutar (TL)</th><th>Onaylayan</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var s in _satirlar)
+                    {
+                        <tr @key="s">
+                            <td><MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.EnAzTutar" Min="0" Format="N2" HideSpinButtons="true" Disabled="@(!Yazabilir)" aria-label="En az tutar" /></td>
+                            <td>
+                                <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.Secim" Label="Onaylayan" Disabled="@(!Yazabilir)">
+                                    @foreach (var r in _kural.Roller)
+                                    {
+                                        <MudSelectItem T="string" Value="@($"r:{r.Id}")">Rol: @r.Ad</MudSelectItem>
+                                    }
+                                    @foreach (var k in _kural.Kullanicilar)
+                                    {
+                                        <MudSelectItem T="string" Value="@($"k:{k.Id}")">Kişi: @k.Ad</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </td>
+                            <td style="text-align:right">
+                                @if (Yazabilir)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Basamağı çıkar" OnClick="@(() => _satirlar.Remove(s))" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">Basamak yok: talepleri yönetici onaylar.</MudText>
+    }
+
+    @if (Yazabilir)
+    {
+        <div class="d-flex gap-2 mt-3">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _satirlar.Add(new Satir()))">Basamak Ekle</MudButton>
+            <IslemDugmesi Variant="Variant.Filled" Color="Color.Primary" Islem="KaydetAsync">Kuralları Kaydet</IslemDugmesi>
+        </div>
+    }
+}
+
+@code {
+    private sealed class Satir
+    {
+        public decimal EnAzTutar { get; set; }
+        public string? Secim { get; set; }
+    }
+
+    private OnayKuraliCevabi? _kural;
+    private List<Satir> _satirlar = [];
+    private ApiHatasi? _hata;
+
+    private bool Yazabilir => Oturum.YazabilirMi(SatinalmaYetkileri.Kural, YetkiIslemleri.Duzenle);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<OnayKuraliCevabi>("api/satinalma/onay-kurali");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Al(sonuc.Deger);
+        }
+    }
+
+    private void Al(OnayKuraliCevabi k)
+    {
+        _kural = k;
+        _satirlar = k.Basamaklar.Select(b => new Satir { EnAzTutar = b.EnAzTutar, Secim = b.RolId is { } r ? $"r:{r}" : $"k:{b.KullaniciId}" }).ToList();
+    }
+
+    private static Guid? Kimlik(string? secim, string onek) =>
+        secim is not null && secim.StartsWith(onek, StringComparison.Ordinal) ? Guid.Parse(secim[onek.Length..]) : null;
+
+    private async Task KaydetAsync()
+    {
+        var istek = new OnayKuraliIstegi(_satirlar.Select(s => new OnayBasamagiIstegi(s.EnAzTutar, Kimlik(s.Secim, "r:"), Kimlik(s.Secim, "k:"))).ToList());
+        var sonuc = await Api.PutAsync<OnayKuraliCevabi>("api/satinalma/onay-kurali", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Al(sonuc.Deger);
+            Snackbar.Add("Onay kuralları kaydedildi.", Severity.Success);
+        }
+    }
+}

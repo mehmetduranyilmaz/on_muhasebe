@@ -59,7 +59,7 @@ public sealed record TalepOnayCevabi(int GonderimNo, int Sira, string Onaylayan,
 // SiparisUyarisi: sipariş tutarı onaylanan tutarı aşıyorsa.
 public sealed record TalepDetayi(
     Guid Id, string Kod, Guid TalepEdenId, string TalepEden, DateOnly Tarih, DateOnly? GerekliTarih, string Gerekce, Guid? IsyeriId, Guid? MasrafMerkeziId, TalepDurumu Durum, decimal Toplam,
-    IReadOnlyList<TalepKalemiCevabi> Kalemler, IReadOnlyList<TalepOnayCevabi> Onaylar, bool OnaylayabilirMi, Guid? SiparisId, string? SiparisNo, decimal? SiparisTutari, string? SiparisUyarisi, uint Surum);
+    IReadOnlyList<TalepKalemiCevabi> Kalemler, IReadOnlyList<TalepOnayCevabi> Onaylar, bool OnaylayabilirMi, bool SipariseDonusebilirMi, Guid? SiparisId, string? SiparisNo, decimal? SiparisTutari, string? SiparisUyarisi, uint Surum);
 
 public sealed record TalepOzeti(
     Guid Id, string Kod, string TalepEden, DateOnly Tarih, DateOnly? GerekliTarih, string Gerekce, TalepDurumu Durum, decimal Toplam, string? BekleyenOnay, Guid? IsyeriId);

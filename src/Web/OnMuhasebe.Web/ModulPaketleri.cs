@@ -55,6 +55,11 @@ public static class ModulPaketleri
         [
             "OnMuhasebe.Web.Bakim.wasm",
             "OnMuhasebe.Modules.Bakim.Contracts.wasm"
+        ],
+        [ModulKodlari.Satinalma] =
+        [
+            "OnMuhasebe.Web.Satinalma.wasm",
+            "OnMuhasebe.Modules.Satinalma.Contracts.wasm"
         ]
     };
 
@@ -71,7 +76,8 @@ public static class ModulPaketleri
     {
         [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokAyarPaneli",
         [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaAyarPaneli",
-        [ModulKodlari.KasaBanka] = "OnMuhasebe.Web.KasaBanka.Bilesenler.KasaBankaAyarPaneli"
+        [ModulKodlari.KasaBanka] = "OnMuhasebe.Web.KasaBanka.Bilesenler.KasaBankaAyarPaneli",
+        [ModulKodlari.Satinalma] = "OnMuhasebe.Web.Satinalma.Bilesenler.SatinalmaAyarPaneli"
     };
 
     // Adresin ilk parçası modülün yoludur (ör. "cari/123/ekstre" -> cari).

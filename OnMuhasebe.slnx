@@ -53,6 +53,7 @@
     <Project Path="src/Modules/Satinalma/OnMuhasebe.Modules.Satinalma.Contracts/OnMuhasebe.Modules.Satinalma.Contracts.csproj" />
     <Project Path="src/Modules/Satinalma/OnMuhasebe.Modules.Satinalma/OnMuhasebe.Modules.Satinalma.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Bakim/OnMuhasebe.Web.Bakim.csproj" />
+    <Project Path="src/Web/OnMuhasebe.Web.Satinalma/OnMuhasebe.Web.Satinalma.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Cari/OnMuhasebe.Web.Cari.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.EvrakTakip/OnMuhasebe.Web.EvrakTakip.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Fatura/OnMuhasebe.Web.Fatura.csproj" />

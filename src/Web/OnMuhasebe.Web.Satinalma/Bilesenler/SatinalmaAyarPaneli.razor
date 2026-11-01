@@ -1,0 +1,15 @@
+@* Ayarlar ekranındaki Satın Alma paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@inject OturumYoneticisi Oturum
+
+@if (Oturum.YetkiVarMi(SatinalmaYetkileri.Kural, YetkiIslemleri.Goruntule))
+{
+    <FormBolumu Baslik="Satın Alma Onayı" Aciklama="Tutara göre sıralı onay basamakları" Ikon="@Icons.Material.Filled.Rule" Sira="Sira">
+        <MudItem xs="12">
+            <OnayKuraliFormu />
+        </MudItem>
+    </FormBolumu>
+}
+
+@code {
+    [Parameter] public int Sira { get; set; }
+}

@@ -403,16 +403,19 @@ internal static class TalepIslemleri
         var onaylayabilir = benimId != t.TalepEdenId && t.BekleyenOnay is { } s && OnayKurallari.YetkiliMi(s.RolId, s.KullaniciId, benimId, rolId, tamYetkili)
                             && await yetki.VarMiAsync(OnaycilarServisi.OnayYetkisi, ct);
 
+        // Taslak sipariş silindiyse bağ görünmez; Fatura lisansı yoksa sipariş okunamaz, kayıtlı bağ gösterilir.
         SatinalmaSiparisiOzeti? sip = null;
+        var bagliSiparis = t.SiparisId;
         if (t.SiparisId is { } siparisId && ((await lisans.GetirAsync(kullanici.FirmaId!.Value, ct))?.Moduller ?? []).Contains(ModulKodlari.Fatura))
         {
             sip = await siparis.GetirAsync(siparisId, ct);
+            bagliSiparis = sip?.Id;
         }
 
         var uyari = sip is { } o && o.TutarTl > t.Toplam ? "Sipariş tutarı onaylanan talep tutarını aşıyor." : null;
         return new TalepDetayi(t.Id, t.Kod, t.TalepEdenId, t.TalepEden, t.Tarih, t.GerekliTarih, t.Gerekce, t.IsyeriId, t.MasrafMerkeziId, t.Durum, t.Toplam,
             t.Kalemler.Select(k => new TalepKalemiCevabi(k.StokKartiId, k.Ad, k.Birim, k.Miktar, k.TahminiBirimFiyat, k.KdvOrani, k.Tutar)).ToList(),
             t.Onaylar.OrderBy(o => o.GonderimNo).ThenBy(o => o.Sira).Select(o => new TalepOnayCevabi(o.GonderimNo, o.Sira, o.Onaylayan, o.Durum, o.KararVeren, o.KararTarihi, o.Not)).ToList(),
-            onaylayabilir, t.SiparisId, sip?.Numara, sip?.TutarTl, uyari, t.Surum);
+            onaylayabilir, t.SipariseDonusebilirMi(sip is not null && sip.Durum != TeklifSiparisDurumu.Iptal).BasariliMi, bagliSiparis, sip?.Numara, sip?.TutarTl, uyari, t.Surum);
     }
 }

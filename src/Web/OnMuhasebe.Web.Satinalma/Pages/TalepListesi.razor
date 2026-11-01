@@ -1,0 +1,110 @@
+@page "/satinalma"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Satın Alma" AltBaslik="Satın alma talepleri, onay akışı ve siparişe dönüşüm" Ikon="@Icons.Material.Filled.ShoppingCart">
+    <Islemler>
+        @if (Oturum.YetkiVarMi(SatinalmaYetkileri.Kural, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Rule" Href="satinalma/onay-kurallari">Onay Kuralları</MudButton>
+        }
+        @if (Oturum.YazabilirMi(SatinalmaYetkileri.Talep, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="satinalma/yeni">Yeni Talep</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme">
+    @if (Oturum.YetkiVarMi(SatinalmaYetkileri.Onay, YetkiIslemleri.Goruntule))
+    {
+        <button type="button" class="tur-sekmesi @(_bekleyenler ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="() => SecAsync(true, null)">Onayımı bekleyenler</button>
+    }
+    <button type="button" class="tur-sekmesi @(!_bekleyenler && _durum is null ? "secili" : "")" style="--vurgu:#2563EB" @onclick="() => SecAsync(false, null)">Tümü</button>
+    @foreach (var d in Enum.GetValues<TalepDurumu>())
+    {
+        <button type="button" class="tur-sekmesi @(!_bekleyenler && _durum == d ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => SecAsync(false, d)">@SatinalmaMetinleri.Durum(d)</button>
+    }
+</div>
+
+<div class="d-flex flex-wrap gap-3 align-center mb-3 belirme">
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Label="Ara" Placeholder="No, gerekçe ya da talep eden" Immediate="true" DebounceInterval="350" Style="max-width:320px" Disabled="_bekleyenler" />
+</div>
+
+<VeriTablosu T="TalepOzeti" Kayitlar="_kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_toplamSayfa" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+             SatirTiklandi="@(t => Navigasyon.NavigateTo($"satinalma/{t.Id}"))" BosIkon="@Icons.Material.Outlined.ShoppingCart" BosBaslik="@(_bekleyenler ? "Onayınızı bekleyen talep yok" : "Talep yok")">
+    <Basliklar>
+        <MudTh>No</MudTh>
+        <MudTh>Tarih</MudTh>
+        <MudTh>Talep eden</MudTh>
+        <MudTh>Gerekçe</MudTh>
+        <MudTh>Gerekli tarih</MudTh>
+        <MudTh Class="sayi">Tahmini tutar</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="No"><b>@context.Kod</b></MudTd>
+        <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+        <MudTd DataLabel="Talep eden">@context.TalepEden</MudTd>
+        <MudTd DataLabel="Gerekçe">@context.Gerekce</MudTd>
+        <MudTd DataLabel="Gerekli tarih">@Bicim.Tarih(context.GerekliTarih)</MudTd>
+        <MudTd DataLabel="Tahmini tutar" Class="sayi">@Bicim.Tutar(context.Toplam)</MudTd>
+        <MudTd DataLabel="Durum">@SatinalmaMetinleri.Durum(context.Durum)@(context.BekleyenOnay is { } b ? $": {b}" : "")</MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private IReadOnlyList<TalepOzeti>? _kayitlar;
+    private bool _bekleyenler;
+    private TalepDurumu? _durum;
+    private string? _arama;
+    private int _sayfa = 1;
+    private int _toplamSayfa;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        if (_bekleyenler)
+        {
+            var bekleyen = await Api.GetAsync<List<TalepOzeti>>("api/satinalma/talepler/bekleyenler");
+            _hata = bekleyen.Hata;
+            _kayitlar = bekleyen.BasariliMi ? bekleyen.Deger : null;
+            _toplamSayfa = 1;
+        }
+        else
+        {
+            var filtre = (_durum is { } d ? $"&durum={d}" : "") + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
+            var sonuc = await Api.GetAsync<SayfaliSonuc<TalepOzeti>>($"api/satinalma/talepler?sayfa={_sayfa}{filtre}");
+            _hata = sonuc.Hata;
+            _kayitlar = sonuc.BasariliMi ? sonuc.Deger.Kayitlar : null;
+            _toplamSayfa = sonuc.BasariliMi ? sonuc.Deger.ToplamSayfa : 0;
+        }
+
+        _yukleniyor = false;
+    }
+
+    private async Task SecAsync(bool bekleyenler, TalepDurumu? durum)
+    {
+        (_bekleyenler, _durum, _sayfa) = (bekleyenler, durum, 1);
+        await YukleAsync();
+    }
+
+    private async Task AraAsync(string? arama)
+    {
+        (_arama, _sayfa) = (arama, 1);
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}
