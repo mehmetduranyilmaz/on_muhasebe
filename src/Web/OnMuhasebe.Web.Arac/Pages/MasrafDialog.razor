@@ -1,0 +1,119 @@
+@* Yakıt ve masraf takip kaydı: muhasebeye yazılmaz. Fatura lisansı ve yetkisi varsa kayıt bir faturaya bağlanabilir. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudSelect T="AracMasrafTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür">
+                    @foreach (var t in Enum.GetValues<AracMasrafTuru>())
+                    {
+                        <MudSelectItem T="AracMasrafTuru" Value="t">@AracMetinleri.Masraf(t)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Tarih" DateFormat="dd.MM.yyyy" Required="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="Tutar (KDV dahil TL)" Min="0" Format="N2" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_km" Label="Km" Min="0" HideSpinButtons="true" />
+            </MudItem>
+            @if (_tur == AracMasrafTuru.Yakit)
+            {
+                <MudItem xs="6">
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_litre" Label="Litre" Min="0" HideSpinButtons="true" />
+                </MudItem>
+            }
+            <MudItem xs="6">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tedarikci" Label="Tedarikçi" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeNo" Label="Belge no" MaxLength="100" />
+            </MudItem>
+            @if (FaturaBaglanabilir)
+            {
+                <MudItem xs="12">
+                    <MudAutocomplete T="FaturaSecim" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bağlı fatura" @bind-Value="_fatura" SearchFunc="FaturaAraAsync"
+                                     ToStringFunc="@(f => f is null ? "" : f.Etiket)" DebounceInterval="300" ResetValueOnEmptyText="true" Clearable="true" MaxItems="10"
+                                     HelperText="Gider muhasebeye bu faturayla girmiştir; numara ya da cari adıyla arayın" />
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid AracId { get; set; }
+    [Parameter] public MasrafCevabi? Kayit { get; set; }
+
+    private sealed record FaturaSecim(Guid Id, string? Numara, string CariUnvan, decimal GenelToplamTl)
+    {
+        public string Etiket => $"{Numara ?? "Numarasız"} · {CariUnvan} · {Bicim.Tutar(GenelToplamTl)} TL";
+    }
+
+    private AracMasrafTuru _tur = AracMasrafTuru.Yakit;
+    private DateTime? _tarih = DateTime.Today;
+    private decimal _tutar;
+    private int? _km;
+    private decimal? _litre;
+    private string? _tedarikci;
+    private string? _belgeNo;
+    private string? _aciklama;
+    private FaturaSecim? _fatura;
+    private ApiHatasi? _hata;
+
+    private bool FaturaBaglanabilir => Oturum.ModulAcikMi(ModulKodlari.Fatura) && Oturum.YetkiVarMi("fatura.belge.goruntule");
+
+    protected override void OnInitialized()
+    {
+        if (Kayit is { } k)
+        {
+            (_tur, _tarih, _tutar, _km, _litre) = (k.Tur, k.Tarih.ToDateTime(TimeOnly.MinValue), k.Tutar, k.Km, k.Litre);
+            (_tedarikci, _belgeNo, _aciklama) = (k.Tedarikci, k.BelgeNo, k.Aciklama);
+            if (k.FaturaId is { } id)
+            {
+                _fatura = new FaturaSecim(id, k.BelgeNo ?? "Bağlı fatura", "", 0);
+            }
+        }
+    }
+
+    private async Task<IEnumerable<FaturaSecim>> FaturaAraAsync(string? arama, CancellationToken ct)
+    {
+        var adres = "api/fatura/faturalar?durum=Onayli&boyut=10" + (string.IsNullOrWhiteSpace(arama) ? "" : $"&arama={Uri.EscapeDataString(arama)}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<FaturaSecim>>(adres, ct);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_tarih is null)
+        {
+            _hata = new ApiHatasi("Tarih gerekli.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var istek = new MasrafKaydetIstegi(_tur, Bicim.Gun(_tarih)!.Value, _tutar, _km, _litre, _tedarikci, _belgeNo, _fatura?.Id ?? (FaturaBaglanabilir ? null : Kayit?.FaturaId), _aciklama);
+        var sonuc = Kayit is { } k
+            ? await Api.PutAsync<MasrafCevabi>($"api/arac/masraflar/{k.Id}", istek)
+            : await Api.PostAsync<MasrafCevabi>($"api/arac/araclar/{AracId}/masraflar", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}

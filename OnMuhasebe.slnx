@@ -47,6 +47,7 @@
     <Project Path="src/Modules/Dosya/OnMuhasebe.Modules.Dosya/OnMuhasebe.Modules.Dosya.csproj" />
     <Project Path="src/Modules/EvrakTakip/OnMuhasebe.Modules.EvrakTakip.Contracts/OnMuhasebe.Modules.EvrakTakip.Contracts.csproj" />
     <Project Path="src/Modules/EvrakTakip/OnMuhasebe.Modules.EvrakTakip/OnMuhasebe.Modules.EvrakTakip.csproj" />
+    <Project Path="src/Web/OnMuhasebe.Web.Arac/OnMuhasebe.Web.Arac.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Cari/OnMuhasebe.Web.Cari.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.EvrakTakip/OnMuhasebe.Web.EvrakTakip.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Fatura/OnMuhasebe.Web.Fatura.csproj" />

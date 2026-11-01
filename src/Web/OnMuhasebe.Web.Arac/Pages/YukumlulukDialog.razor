@@ -1,0 +1,106 @@
+@* Sigorta, muayene gibi süreli kayıt. Yenileme yeni dönem kaydı açar, eskisi geçmişte kalır. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="YukumlulukTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür" Disabled="Yenileme">
+                    @foreach (var t in Enum.GetValues<YukumlulukTuru>())
+                    {
+                        <MudSelectItem T="YukumlulukTuru" Value="t">@AracMetinleri.Yukumluluk(t)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                @if (_tur == YukumlulukTuru.Diger)
+                {
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" MaxLength="100" Required="true" />
+                }
+            </MudItem>
+            <MudItem xs="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_baslangic" Label="Başlangıç" DateFormat="dd.MM.yyyy" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_bitis" Label="Bitiş tarihi" DateFormat="dd.MM.yyyy" Required="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeNo" Label="Poliçe / belge no" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sirket" Label="Şirket / istasyon" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="Tutar (TL)" Min="0" Format="N2" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hatirlatmaGun" Label="Kaç gün önce hatırlatılsın" Min="1" Max="365" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid AracId { get; set; }
+    [Parameter] public YukumlulukCevabi? Kayit { get; set; }
+    [Parameter] public bool Yenileme { get; set; }
+
+    private YukumlulukTuru _tur = YukumlulukTuru.TrafikSigortasi;
+    private string? _ad;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private string? _belgeNo;
+    private string? _sirket;
+    private decimal? _tutar;
+    private int _hatirlatmaGun = 30;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        if (Kayit is not { } k)
+        {
+            return;
+        }
+
+        (_tur, _ad, _sirket, _hatirlatmaGun) = (k.Tur, k.Ad, k.Sirket, k.HatirlatmaGun);
+        if (Yenileme)
+        {
+            // Yeni dönem eskinin bitişinden başlar; bitiş ve poliçe no yeni girilir.
+            _baslangic = k.BitisTarihi.ToDateTime(TimeOnly.MinValue);
+        }
+        else
+        {
+            _baslangic = k.BaslangicTarihi?.ToDateTime(TimeOnly.MinValue);
+            _bitis = k.BitisTarihi.ToDateTime(TimeOnly.MinValue);
+            (_belgeNo, _tutar) = (k.BelgeNo, k.Tutar);
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_bitis is null)
+        {
+            _hata = new ApiHatasi("Bitiş tarihi gerekli.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var istek = new YukumlulukKaydetIstegi(_tur, _ad, Bicim.Gun(_baslangic), Bicim.Gun(_bitis)!.Value, _belgeNo, _sirket, _tutar, _hatirlatmaGun);
+        var sonuc = Yenileme
+            ? await Api.PostAsync<YukumlulukCevabi>($"api/arac/yukumlulukler/{Kayit!.Id}/yenile", istek)
+            : Kayit is { } k
+                ? await Api.PutAsync<YukumlulukCevabi>($"api/arac/yukumlulukler/{k.Id}", istek)
+                : await Api.PostAsync<YukumlulukCevabi>($"api/arac/araclar/{AracId}/yukumlulukler", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}

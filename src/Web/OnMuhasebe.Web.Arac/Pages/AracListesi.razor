@@ -1,0 +1,150 @@
+@page "/arac"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+@inject IsyeriYoneticisi Isyerleri
+
+<SayfaBasligi Baslik="Araç Takibi" AltBaslik="Sigorta, muayene, MTV süreleri; yakıt, masraf ve hasar kayıtları" Ikon="@Icons.Material.Filled.DirectionsCar">
+    <Islemler>
+        @if (Oturum.YetkiVarMi(AracYetkileri.Rapor, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Assessment" Href="arac/maliyet">Maliyet Raporu</MudButton>
+        }
+        @if (Oturum.YazabilirMi(AracYetkileri.Kart, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="YeniAsync">Yeni Araç</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yaklasanlar.Count > 0)
+{
+    <div class="panel-kart kart belirme mb-3" style="overflow-x:auto">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Size="Size.Small" Color="Color.Warning" /> Süresi yaklaşan ve dolan yükümlülükler</div>
+        <MudSimpleTable Dense="true" Elevation="0" Hover="true" Class="yaklasan-yukumlulukler">
+            <thead>
+                <tr><th>Plaka</th><th>Yükümlülük</th><th>Bitiş</th><th>Kalan</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var y in _yaklasanlar)
+                {
+                    <tr style="cursor:pointer" @onclick="@(() => Navigasyon.NavigateTo($"arac/{y.AracId}"))">
+                        <td><b>@y.Plaka</b></td>
+                        <td>@(y.Tur == YukumlulukTuru.Diger && y.Ad is not null ? y.Ad : AracMetinleri.Yukumluluk(y.Tur))</td>
+                        <td>@Bicim.Tarih(y.BitisTarihi)</td>
+                        <td><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(y.Durum == SureDurumu.SuresiDoldu ? Color.Error : Color.Warning)">@(y.KalanGun < 0 ? $"{-y.KalanGun} gün geçti" : $"{y.KalanGun} gün")</MudChip></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </div>
+}
+
+<div class="d-flex flex-wrap align-center gap-2 mb-3">
+    <div class="tur-sekmeleri mb-0">
+        @foreach (var durum in Enum.GetValues<AracDurumu>())
+        {
+            <button type="button" class="tur-sekmesi @(_durum == durum ? "secili" : "")" style="--vurgu:#1E3A5F" @onclick="() => DurumSecAsync(durum)">@AracMetinleri.Durum(durum)</button>
+        }
+    </div>
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Placeholder="Plaka, marka, model ya da sürücü" DebounceInterval="400"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:320px" />
+</div>
+
+<VeriTablosu T="AracOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+             SatirTiklandi="@(a => Navigasyon.NavigateTo($"arac/{a.Id}"))" BosIkon="@Icons.Material.Outlined.DirectionsCar" BosBaslik="Araç yok"
+             BosAciklama="Araçlarınızı ekleyin; sigorta, muayene ve MTV süreleri dolmadan hatırlatalım.">
+    <Basliklar>
+        <MudTh>Plaka</MudTh>
+        <MudTh>Araç</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Sürücü</MudTh>
+        <MudTh Class="sayi">Km</MudTh>
+        <MudTh>En yakın süre</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Plaka"><b>@context.Plaka</b></MudTd>
+        <MudTd DataLabel="Araç">@context.Marka @context.Model @context.ModelYili</MudTd>
+        <MudTd DataLabel="Tür">@AracMetinleri.Tur(context.Tur)</MudTd>
+        <MudTd DataLabel="Sürücü">@context.Surucu</MudTd>
+        <MudTd DataLabel="Km" Class="sayi">@(context.GuncelKm?.ToString("N0", Bicim.Kultur))</MudTd>
+        <MudTd DataLabel="En yakın süre">
+            @if (context.EnYakinBitis is { } bitis)
+            {
+                <span>@context.EnYakinYukumluluk · @Bicim.Tarih(bitis)</span>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@SureRengi(context.EnYakinDurum)">@AracMetinleri.Sure(context.EnYakinDurum ?? SureDurumu.Gecerli)</MudChip>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<AracOzeti>? _sonuc;
+    private List<YaklasanYukumluluk> _yaklasanlar = [];
+    private AracDurumu _durum = AracDurumu.Aktif;
+    private string? _arama;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Isyerleri.YukleAsync();
+        if (Oturum.YetkiVarMi(AracYetkileri.Islem, YetkiIslemleri.Goruntule)
+            && await Api.GetAsync<List<YaklasanYukumluluk>>("api/arac/yaklasanlar") is { BasariliMi: true } yaklasanlar)
+        {
+            _yaklasanlar = yaklasanlar.Deger;
+        }
+
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var arama = string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}";
+        var sonuc = await Api.GetAsync<SayfaliSonuc<AracOzeti>>($"api/arac/araclar?sayfa={_sayfa}&durum={_durum}{arama}{Isyerleri.Sorgu()}");
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task DurumSecAsync(AracDurumu durum)
+    {
+        _durum = durum;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task YeniAsync()
+    {
+        var dialog = await DialogService.ShowAsync<AracDialog>("Yeni Araç", new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false, Data: AracDetayi arac })
+        {
+            Navigasyon.NavigateTo($"arac/{arac.Id}");
+        }
+    }
+
+    private static Color SureRengi(SureDurumu? durum) => durum switch
+    {
+        SureDurumu.SuresiDoldu => Color.Error,
+        SureDurumu.Yaklasiyor => Color.Warning,
+        _ => Color.Success
+    };
+}

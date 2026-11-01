@@ -1,0 +1,411 @@
+@page "/arac/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_arac is { } a)
+{
+    <SayfaBasligi Baslik="@a.Plaka" GeriAdres="arac" Ikon="@Icons.Material.Filled.DirectionsCar">
+        <AltIcerik>
+            <span>@a.Marka @a.Model @a.ModelYili · @AracMetinleri.Tur(a.Tur) · @AracMetinleri.Mulkiyet(a.Mulkiyet)@(a.GuncelKm is { } km ? $" · {km.ToString("N0", Bicim.Kultur)} km" : "")</span>
+            @if (a.Durum != AracDurumu.Aktif)
+            {
+                <MudChip T="string" Size="Size.Small" Class="ml-1">@AracMetinleri.Durum(a.Durum)</MudChip>
+            }
+        </AltIcerik>
+        <Islemler>
+            <DosyalarDugmesi Tur="@DosyaKayitTurleri.Arac" KayitId="Id" />
+            <DegisiklikGecmisiDugmesi Modul="arac" KayitId="Id" />
+            @if (Oturum.YazabilirMi(AracYetkileri.Kart, YetkiIslemleri.Duzenle))
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="DuzenleAsync">Düzenle</MudButton>
+            }
+            @if (Oturum.YazabilirMi(AracYetkileri.Kart, YetkiIslemleri.Sil))
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Aracı sil" OnClick="SilAsync" />
+            }
+        </Islemler>
+    </SayfaBasligi>
+
+    @if (a.Surucu is not null)
+    {
+        <MudText Typo="Typo.body2" Class="mb-3"><MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="vertical-align:middle" /> @a.Surucu @a.SurucuTelefon</MudText>
+    }
+
+    <div class="tur-sekmeleri belirme">
+        @foreach (var (sekme, ad) in _sekmeler)
+        {
+            <button type="button" class="tur-sekmesi @(_sekme == sekme ? "secili" : "")" style="--vurgu:#1E3A5F" @onclick="() => SekmeSecAsync(sekme)">@ad</button>
+        }
+    </div>
+
+    <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+        @switch (_sekme)
+        {
+            case Sekme.Sureler:
+                <div class="d-flex justify-end mb-2">
+                    @if (IslemEkler)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => YukumlulukAcAsync(null, false))">Yeni Süre</MudButton>
+                    }
+                </div>
+                @if (_yukumlulukler.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.Shield" Baslik="Kayıt yok" Aciklama="Trafik sigortası, kasko ve muayene bitiş tarihlerini ekleyin." />
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Elevation="0" Class="arac-sureleri">
+                        <thead><tr><th>Tür</th><th>Belge no</th><th>Şirket</th><th>Bitiş</th><th class="sayi">Tutar</th><th>Durum</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var y in _yukumlulukler)
+                            {
+                                <tr style="@(y.YenilendiMi ? "opacity:.55" : "")">
+                                    <td>@(y.Tur == YukumlulukTuru.Diger && y.Ad is not null ? y.Ad : AracMetinleri.Yukumluluk(y.Tur))</td>
+                                    <td>@y.BelgeNo</td>
+                                    <td>@y.Sirket</td>
+                                    <td>@Bicim.Tarih(y.BitisTarihi)</td>
+                                    <td class="sayi">@(y.Tutar is { } t ? Bicim.Tutar(t) : "")</td>
+                                    <td>
+                                        @if (y.YenilendiMi)
+                                        {
+                                            <span>Yenilendi</span>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(y.Durum == SureDurumu.SuresiDoldu ? Color.Error : y.Durum == SureDurumu.Yaklasiyor ? Color.Warning : Color.Success)">@AracMetinleri.Sure(y.Durum)</MudChip>
+                                        }
+                                    </td>
+                                    <td style="text-align:right; white-space:nowrap">
+                                        <DosyalarDugmesi Tur="@DosyaKayitTurleri.AracYukumluluk" KayitId="y.Id" />
+                                        @if (!y.YenilendiMi && IslemDuzenler)
+                                        {
+                                            <MudButton Size="Size.Small" OnClick="@(() => YukumlulukAcAsync(y, true))">Yenile</MudButton>
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="@(() => YukumlulukAcAsync(y, false))" />
+                                        }
+                                        @if (IslemSiler)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="@(() => KayitSilAsync($"api/arac/yukumlulukler/{y.Id}"))" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                break;
+
+            case Sekme.Mtv:
+                <div class="d-flex justify-end mb-2">
+                    @if (IslemEkler)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="MtvAcAsync">Yeni Taksit</MudButton>
+                    }
+                </div>
+                @if (_mtvler.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.AccountBalance" Baslik="Kayıt yok" Aciklama="MTV taksitlerini ekleyin; ödenmeyen taksit son ödemeden önce hatırlatılır." />
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Elevation="0" Class="arac-mtv">
+                        <thead><tr><th>Yıl</th><th>Taksit</th><th class="sayi">Tutar</th><th>Son ödeme</th><th>Ödeme</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var m in _mtvler)
+                            {
+                                <tr>
+                                    <td>@m.Yil</td>
+                                    <td>@(m.Taksit == 1 ? "1. (Ocak)" : "2. (Temmuz)")</td>
+                                    <td class="sayi">@Bicim.Tutar(m.Tutar)</td>
+                                    <td>@Bicim.Tarih(m.SonOdemeTarihi)</td>
+                                    <td>@(m.OdemeTarihi is { } o ? Bicim.Tarih(o) : "Ödenmedi")</td>
+                                    <td style="text-align:right; white-space:nowrap">
+                                        @if (IslemDuzenler)
+                                        {
+                                            @if (m.OdemeTarihi is null)
+                                            {
+                                                <MudButton Size="Size.Small" OnClick="@(() => MtvOdeAsync(m))">Ödendi</MudButton>
+                                            }
+                                            else
+                                            {
+                                                <MudButton Size="Size.Small" OnClick="@(() => MtvGeriAlAsync(m))">Geri al</MudButton>
+                                            }
+                                        }
+                                        @if (IslemSiler)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="@(() => KayitSilAsync($"api/arac/mtv/{m.Id}"))" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                break;
+
+            case Sekme.Masraf:
+                <div class="d-flex align-center justify-space-between mb-2 flex-wrap gap-2">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Takip kaydıdır, muhasebeye yazılmaz. Gider muhasebeye faturayla girer; kaydı o faturaya bağlayabilirsiniz.</MudText>
+                    @if (IslemEkler)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => MasrafAcAsync(null))">Yeni Masraf</MudButton>
+                    }
+                </div>
+                @if (_masraflar.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.LocalGasStation" Baslik="Kayıt yok" Aciklama="Yakıt alımlarını km ve litreyle girin; tüketim ve km başına maliyet hesaplansın." />
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Elevation="0" Class="arac-masraflari">
+                        <thead><tr><th>Tarih</th><th>Tür</th><th>Tedarikçi</th><th>Belge</th><th class="sayi">Km</th><th class="sayi">Litre</th><th class="sayi">Tutar</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var m in _masraflar)
+                            {
+                                <tr>
+                                    <td>@Bicim.Tarih(m.Tarih)</td>
+                                    <td>@AracMetinleri.Masraf(m.Tur)</td>
+                                    <td>@m.Tedarikci</td>
+                                    <td>
+                                        @m.BelgeNo
+                                        @if (m.FaturaId is { } faturaId)
+                                        {
+                                            <MudLink Href="@($"fatura/{faturaId}")" Typo="Typo.caption"> (fatura)</MudLink>
+                                        }
+                                    </td>
+                                    <td class="sayi">@(m.Km?.ToString("N0", Bicim.Kultur))</td>
+                                    <td class="sayi">@(m.Litre is { } l ? Bicim.Miktar(l) : "")</td>
+                                    <td class="sayi">@Bicim.Tutar(m.Tutar)</td>
+                                    <td style="text-align:right; white-space:nowrap">
+                                        @if (IslemDuzenler)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="@(() => MasrafAcAsync(m))" />
+                                        }
+                                        @if (IslemSiler)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="@(() => KayitSilAsync($"api/arac/masraflar/{m.Id}"))" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                break;
+
+            case Sekme.Hasar:
+                <div class="d-flex justify-end mb-2">
+                    @if (IslemEkler)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => HasarAcAsync(null))">Yeni Hasar</MudButton>
+                    }
+                </div>
+                @if (_hasarlar.Count == 0)
+                {
+                    <BosDurum Ikon="@Icons.Material.Outlined.CarCrash" Baslik="Hasar kaydı yok" />
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Elevation="0" Class="arac-hasarlari">
+                        <thead><tr><th>Tarih</th><th>Kusur</th><th>Dosya no</th><th>Açıklama</th><th class="sayi">Onarım</th><th class="sayi">Sigorta</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var h in _hasarlar)
+                            {
+                                <tr>
+                                    <td>@Bicim.Tarih(h.Tarih)</td>
+                                    <td>@AracMetinleri.Kusur(h.Kusur)</td>
+                                    <td>@h.DosyaNo</td>
+                                    <td>@h.Aciklama</td>
+                                    <td class="sayi">@Bicim.Tutar(h.OnarimTutari)</td>
+                                    <td class="sayi">@Bicim.Tutar(h.SigortaOdemesi)</td>
+                                    <td style="text-align:right; white-space:nowrap">
+                                        @if (IslemDuzenler)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="Düzenle" OnClick="@(() => HasarAcAsync(h))" />
+                                        }
+                                        @if (IslemSiler)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Sil" OnClick="@(() => KayitSilAsync($"api/arac/hasarlar/{h.Id}"))" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                break;
+        }
+    </div>
+}
+
+@code {
+    private enum Sekme { Sureler, Mtv, Masraf, Hasar }
+
+    private static readonly (Sekme, string)[] _sekmeler =
+        [(Sekme.Sureler, "Sigorta ve muayene"), (Sekme.Mtv, "MTV"), (Sekme.Masraf, "Yakıt ve masraf"), (Sekme.Hasar, "Hasar")];
+
+    [Parameter] public Guid Id { get; set; }
+
+    private AracDetayi? _arac;
+    private Sekme _sekme = Sekme.Sureler;
+    private List<YukumlulukCevabi> _yukumlulukler = [];
+    private List<MtvCevabi> _mtvler = [];
+    private List<MasrafCevabi> _masraflar = [];
+    private List<HasarCevabi> _hasarlar = [];
+    private ApiHatasi? _hata;
+
+    private bool IslemEkler => Oturum.YazabilirMi(AracYetkileri.Islem, YetkiIslemleri.Ekle);
+    private bool IslemDuzenler => Oturum.YazabilirMi(AracYetkileri.Islem, YetkiIslemleri.Duzenle);
+    private bool IslemSiler => Oturum.YazabilirMi(AracYetkileri.Islem, YetkiIslemleri.Sil);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await AracYukleAsync();
+        await SekmeYukleAsync();
+    }
+
+    private async Task AracYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<AracDetayi>($"api/arac/araclar/{Id}");
+        _hata = sonuc.Hata;
+        _arac = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task SekmeSecAsync(Sekme sekme)
+    {
+        _sekme = sekme;
+        await SekmeYukleAsync();
+    }
+
+    private async Task SekmeYukleAsync()
+    {
+        if (!Oturum.YetkiVarMi(AracYetkileri.Islem, YetkiIslemleri.Goruntule))
+        {
+            return;
+        }
+
+        switch (_sekme)
+        {
+            case Sekme.Sureler:
+                _yukumlulukler = await ListeAsync<YukumlulukCevabi>("yukumlulukler");
+                break;
+            case Sekme.Mtv:
+                _mtvler = await ListeAsync<MtvCevabi>("mtv");
+                break;
+            case Sekme.Masraf:
+                var masraflar = await Api.GetAsync<SayfaliSonuc<MasrafCevabi>>($"api/arac/araclar/{Id}/masraflar?boyut=100");
+                _hata = masraflar.Hata;
+                _masraflar = masraflar.BasariliMi ? masraflar.Deger.Kayitlar.ToList() : [];
+                break;
+            case Sekme.Hasar:
+                _hasarlar = await ListeAsync<HasarCevabi>("hasarlar");
+                break;
+        }
+    }
+
+    private async Task<List<T>> ListeAsync<T>(string yol)
+    {
+        var sonuc = await Api.GetAsync<List<T>>($"api/arac/araclar/{Id}/{yol}");
+        _hata = sonuc.Hata;
+        return sonuc.BasariliMi ? sonuc.Deger : [];
+    }
+
+    private static readonly DialogOptions _secenek = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    private async Task DuzenleAsync()
+    {
+        var dialog = await DialogService.ShowAsync<AracDialog>("Aracı Düzenle", new DialogParameters<AracDialog> { { d => d.Arac, _arac } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await AracYukleAsync();
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (await Onay.SorAsync("Araç silinsin mi?", $"{_arac!.Plaka} ve kayıtları listeden kalkacak. Satılan araç için Düzenle'den durumu değiştirin; geçmişi korunur.", "Sil", tehlikeli: true))
+        {
+            var sonuc = await Api.DeleteAsync($"api/arac/araclar/{Id}");
+            _hata = sonuc.Hata;
+            if (sonuc.BasariliMi)
+            {
+                Navigasyon.NavigateTo("arac");
+            }
+        }
+    }
+
+    private async Task YukumlulukAcAsync(YukumlulukCevabi? kayit, bool yenileme)
+    {
+        var parametreler = new DialogParameters<YukumlulukDialog> { { d => d.AracId, Id }, { d => d.Kayit, kayit }, { d => d.Yenileme, yenileme } };
+        var baslik = yenileme ? "Yenile" : kayit is null ? "Yeni Süre" : "Düzenle";
+        var dialog = await DialogService.ShowAsync<YukumlulukDialog>(baslik, parametreler, _secenek);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await SekmeYukleAsync();
+        }
+    }
+
+    private async Task MtvAcAsync()
+    {
+        var dialog = await DialogService.ShowAsync<MtvDialog>("Yeni MTV Taksiti", new DialogParameters<MtvDialog> { { d => d.AracId, Id } }, _secenek);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await SekmeYukleAsync();
+        }
+    }
+
+    private async Task MtvOdeAsync(MtvCevabi mtv)
+    {
+        var sonuc = await Api.PostAsync<MtvCevabi>($"api/arac/mtv/{mtv.Id}/ode", new MtvOdemeIstegi(DateOnly.FromDateTime(DateTime.Today)));
+        _hata = sonuc.Hata;
+        await SekmeYukleAsync();
+    }
+
+    private async Task MtvGeriAlAsync(MtvCevabi mtv)
+    {
+        var sonuc = await Api.PostAsync<MtvCevabi>($"api/arac/mtv/{mtv.Id}/odeme-geri-al", new { });
+        _hata = sonuc.Hata;
+        await SekmeYukleAsync();
+    }
+
+    private async Task MasrafAcAsync(MasrafCevabi? kayit)
+    {
+        var dialog = await DialogService.ShowAsync<MasrafDialog>(kayit is null ? "Yeni Masraf" : "Masrafı Düzenle",
+            new DialogParameters<MasrafDialog> { { d => d.AracId, Id }, { d => d.Kayit, kayit } }, _secenek);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await AracYukleAsync();
+            await SekmeYukleAsync();
+        }
+    }
+
+    private async Task HasarAcAsync(HasarCevabi? kayit)
+    {
+        var dialog = await DialogService.ShowAsync<HasarDialog>(kayit is null ? "Yeni Hasar" : "Hasarı Düzenle",
+            new DialogParameters<HasarDialog> { { d => d.AracId, Id }, { d => d.Kayit, kayit } }, _secenek);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await SekmeYukleAsync();
+        }
+    }
+
+    private async Task KayitSilAsync(string adres)
+    {
+        if (await Onay.SorAsync("Kayıt silinsin mi?", "Bu kayıt kalıcı olarak silinecek.", "Sil", tehlikeli: true))
+        {
+            var sonuc = await Api.DeleteAsync(adres);
+            _hata = sonuc.Hata;
+            if (sonuc.BasariliMi)
+            {
+                Snackbar.Add("Kayıt silindi.", Severity.Success);
+                await SekmeYukleAsync();
+            }
+        }
+    }
+}

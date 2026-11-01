@@ -1,0 +1,50 @@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yil" Label="Yıl" Min="2000" Max="2100" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudSelect T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_taksit" Label="Taksit">
+                    <MudSelectItem T="int" Value="1">1. taksit (Ocak)</MudSelectItem>
+                    <MudSelectItem T="int" Value="2">2. taksit (Temmuz)</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="Tutar (TL)" Min="0" Format="N2" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_sonOdeme" Label="Son ödeme" DateFormat="dd.MM.yyyy" HelperText="Boş: dönem sonu" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid AracId { get; set; }
+
+    private int _yil = DateTime.Today.Year;
+    private int _taksit = DateTime.Today.Month <= 6 ? 1 : 2;
+    private decimal _tutar;
+    private DateTime? _sonOdeme;
+    private ApiHatasi? _hata;
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PostAsync<MtvCevabi>($"api/arac/araclar/{AracId}/mtv", new MtvKaydetIstegi(_yil, _taksit, _tutar, Bicim.Gun(_sonOdeme)));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}

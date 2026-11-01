@@ -18,7 +18,8 @@ public static class ModulMenusu
         new(ModulKodlari.Fatura, "Fatura", "fatura", Icons.Material.Filled.ReceiptLong, "Alış ve satış faturaları", "fatura.belge"),
         new(ModulKodlari.KasaBanka, "Kasa / Banka", "kasabanka", Icons.Material.Filled.AccountBalance, "Tahsilat, ödeme, kasa ve banka hareketleri", "kasabanka.hesap"),
         new(ModulKodlari.Muhasebe, "Muhasebe Aktarımı", "muhasebe", Icons.Material.Filled.SyncAlt, "Yevmiye fişleri, mali müşavire Excel/CSV aktarımı", "muhasebe.aktarim"),
-        new(ModulKodlari.EvrakTakip, "Evrak Takibi", "evrak-takibi", Icons.Material.Filled.EventNote, "Ruhsat, poliçe, sözleşme gibi süreli evrakların bitiş takibi ve hatırlatması", "evraktakip.kayit")
+        new(ModulKodlari.EvrakTakip, "Evrak Takibi", "evrak-takibi", Icons.Material.Filled.EventNote, "Ruhsat, poliçe, sözleşme gibi süreli evrakların bitiş takibi ve hatırlatması", "evraktakip.kayit"),
+        new(ModulKodlari.Arac, "Araç Takibi", "arac", Icons.Material.Filled.DirectionsCar, "Sigorta, muayene ve MTV süreleri; yakıt, masraf ve hasar takibi", "arac.kart")
     ];
 
     // Menüde modül altındaki ek bölümler; aynı lisans ve aynı lazy paketle açılır (adres -> modül eşlemesi de bunu kullanır).

@@ -1,0 +1,177 @@
+@* Araç kartı formu. Demirbaş ve masraf merkezi Kasa/Banka lisansı ve yetkisi varsa seçilir. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_plaka" Label="Plaka" MaxLength="20" Required="true" HelperText="İş makinesinde tescil no" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_marka" Label="Marka" MaxLength="100" Required="true" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_model" Label="Model" MaxLength="100" Required="true" />
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_modelYili" Label="Model yılı" Min="1950" Max="2100" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudSelect T="AracTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Araç türü">
+                    @foreach (var t in Enum.GetValues<AracTuru>())
+                    {
+                        <MudSelectItem T="AracTuru" Value="t">@AracMetinleri.Tur(t)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudSelect T="YakitTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yakit" Label="Yakıt">
+                    @foreach (var t in Enum.GetValues<YakitTuru>())
+                    {
+                        <MudSelectItem T="YakitTuru" Value="t">@AracMetinleri.Yakit(t)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <MudSelect T="AracMulkiyeti" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_mulkiyet" Label="Mülkiyet">
+                    @foreach (var t in Enum.GetValues<AracMulkiyeti>())
+                    {
+                        <MudSelectItem T="AracMulkiyeti" Value="t">@AracMetinleri.Mulkiyet(t)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sasiNo" Label="Şasi no" MaxLength="30" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_motorNo" Label="Motor no" MaxLength="30" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ruhsatSahibi" Label="Ruhsat sahibi" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_surucu" Label="Zimmetli sürücü" MaxLength="150" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_surucuTelefon" Label="Sürücü telefonu" MaxLength="30" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_km" Label="Güncel km" Min="0" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <IsyeriAlani @bind-Deger="_isyeri" BosMetni="Boş: firma geneli" />
+            </MudItem>
+            @if (_merkezler.Count > 0)
+            {
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_masrafMerkezi" Label="Masraf merkezi" Clearable="true">
+                        @foreach (var m in _merkezler)
+                        {
+                            <MudSelectItem T="Guid?" Value="@m.Id">@m.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            }
+            @if (_demirbaslar.Count > 0)
+            {
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_demirbas" Label="Demirbaş kartı" Clearable="true">
+                        @foreach (var d in _demirbaslar)
+                        {
+                            <MudSelectItem T="Guid?" Value="@d.Id">@d.SicilNo @d.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            }
+            @if (Arac is not null)
+            {
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="AracDurumu" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_durum" Label="Durum" HelperText="Satılan ve hurda araç hatırlatılmaz">
+                        @foreach (var t in Enum.GetValues<AracDurumu>())
+                        {
+                            <MudSelectItem T="AracDurumu" Value="t">@AracMetinleri.Durum(t)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" Lines="2" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public AracDetayi? Arac { get; set; }
+
+    private sealed record Merkez(Guid Id, string Ad);
+    private sealed record DemirbasSecim(Guid Id, string SicilNo, string Ad);
+    private sealed record DemirbasListe(List<DemirbasSecim> Kalemler);
+
+    private string _plaka = "";
+    private string _marka = "";
+    private string _model = "";
+    private int? _modelYili;
+    private AracTuru _tur = AracTuru.Binek;
+    private YakitTuru _yakit = YakitTuru.Dizel;
+    private AracMulkiyeti _mulkiyet = AracMulkiyeti.OzMal;
+    private AracDurumu _durum = AracDurumu.Aktif;
+    private string? _sasiNo;
+    private string? _motorNo;
+    private string? _ruhsatSahibi;
+    private string? _surucu;
+    private string? _surucuTelefon;
+    private int? _km;
+    private Guid? _isyeri;
+    private Guid? _masrafMerkezi;
+    private Guid? _demirbas;
+    private string? _aciklama;
+    private List<Merkez> _merkezler = [];
+    private List<DemirbasSecim> _demirbaslar = [];
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Arac is { } a)
+        {
+            (_plaka, _marka, _model, _modelYili, _tur, _yakit, _mulkiyet, _durum) = (a.Plaka, a.Marka, a.Model, a.ModelYili, a.Tur, a.Yakit, a.Mulkiyet, a.Durum);
+            (_sasiNo, _motorNo, _ruhsatSahibi, _surucu, _surucuTelefon, _km) = (a.SasiNo, a.MotorNo, a.RuhsatSahibi, a.Surucu, a.SurucuTelefon, a.GuncelKm);
+            (_isyeri, _masrafMerkezi, _demirbas, _aciklama) = (a.IsyeriId, a.MasrafMerkeziId, a.DemirbasId, a.Aciklama);
+        }
+
+        if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka))
+        {
+            if (Oturum.YetkiVarMi("kasabanka.tanim.goruntule") && await Api.GetAsync<List<Merkez>>("api/kasabanka/masraf-merkezleri") is { BasariliMi: true } merkezler)
+            {
+                _merkezler = merkezler.Deger;
+            }
+
+            if (Oturum.YetkiVarMi("kasabanka.demirbas.goruntule") && await Api.GetAsync<DemirbasListe>("api/kasabanka/demirbaslar") is { BasariliMi: true } demirbaslar)
+            {
+                _demirbaslar = demirbaslar.Deger.Kalemler;
+            }
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new AracKaydetIstegi(_plaka, _marka, _model, _modelYili, _tur, _yakit, _sasiNo, _motorNo, _ruhsatSahibi, _mulkiyet, _isyeri, _surucu, _surucuTelefon, _km, _durum,
+            _demirbas, _masrafMerkezi, _aciklama, Arac?.Surum ?? 0);
+        var sonuc = Arac is { } a
+            ? await Api.PutAsync<AracDetayi>($"api/arac/araclar/{a.Id}", istek)
+            : await Api.PostAsync<AracDetayi>("api/arac/araclar", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

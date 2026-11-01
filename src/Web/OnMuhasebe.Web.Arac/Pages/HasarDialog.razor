@@ -1,0 +1,78 @@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Hasar tarihi" DateFormat="dd.MM.yyyy" Required="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudSelect T="HasarKusuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kusur" Label="Kusur durumu">
+                    @foreach (var k in Enum.GetValues<HasarKusuru>())
+                    {
+                        <MudSelectItem T="HasarKusuru" Value="k">@AracMetinleri.Kusur(k)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_onarim" Label="Onarım tutarı (TL)" Min="0" Format="N2" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sigorta" Label="Sigorta ödemesi (TL)" Min="0" Format="N2" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_dosyaNo" Label="Hasar dosya no" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" Lines="2" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid AracId { get; set; }
+    [Parameter] public HasarCevabi? Kayit { get; set; }
+
+    private DateTime? _tarih = DateTime.Today;
+    private HasarKusuru _kusur = HasarKusuru.Belirsiz;
+    private decimal _onarim;
+    private decimal _sigorta;
+    private string? _dosyaNo;
+    private string? _aciklama;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        if (Kayit is { } k)
+        {
+            (_tarih, _kusur, _onarim, _sigorta, _dosyaNo, _aciklama) = (k.Tarih.ToDateTime(TimeOnly.MinValue), k.Kusur, k.OnarimTutari, k.SigortaOdemesi, k.DosyaNo, k.Aciklama);
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (_tarih is null)
+        {
+            _hata = new ApiHatasi("Tarih gerekli.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var istek = new HasarKaydetIstegi(Bicim.Gun(_tarih)!.Value, _kusur, _aciklama, _onarim, _sigorta, _dosyaNo);
+        var sonuc = Kayit is { } k
+            ? await Api.PutAsync<HasarCevabi>($"api/arac/hasarlar/{k.Id}", istek)
+            : await Api.PostAsync<HasarCevabi>($"api/arac/araclar/{AracId}/hasarlar", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}
