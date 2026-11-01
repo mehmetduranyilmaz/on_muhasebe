@@ -35,8 +35,7 @@ public sealed class PersonelModulu : IModul
         services.AddScoped<IBildirimKaynagi, PersonelBildirimKaynagi>();
         services.AddDosyaKaynagi<PersonelDbContext>(DosyaKayitTurleri.Personel, ModulKodlari.Personel, PersonelYetkileri.Maas,
             (db, id, ct) => db.Personeller.AnyAsync(p => p.Id == id, ct));
-        services.AddDosyaKaynagi<PersonelDbContext>(DosyaKayitTurleri.PersonelMasrafi, ModulKodlari.Personel, PersonelYetkileri.Masraf,
-            (db, id, ct) => db.Masraflar.AnyAsync(m => m.Id == id, ct));
+        services.AddScoped<IDosyaKaynagi, MasrafDosyaKaynagi>();
         services.AddDosyaKaynagi<PersonelDbContext>(DosyaKayitTurleri.Zimmet, ModulKodlari.Personel, PersonelYetkileri.Zimmet,
             (db, id, ct) => db.Zimmetler.AnyAsync(z => z.Id == id, ct));
     }

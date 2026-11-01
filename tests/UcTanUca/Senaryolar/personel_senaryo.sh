@@ -148,6 +148,24 @@ istek GET "$P/kartlar/$A" "$TC"
 kontrol 403 "Calisan kartlari goremez" yetki_yok
 istek POST "$P/masraflar/$MK/onayla" "$TC" '{}'
 kontrol 403 "Calisan onaylayamaz" yetki_yok
+istek POST $Y/roller "$T" '{"ad":"Calisan Dosyali","yetkiler":["personel.kendi.goruntule","personel.kendi.ekle","dosya.ek.goruntule","dosya.ek.ekle"]}'
+davet_kabul "$T" '{"ad":"Deniz","soyad":"Fisli","eposta":"pfisli'"$U"'@ornek.com","sifre":"Sifre1234","rol":"Calisan Dosyali"}'; TF=$(alan accessToken)
+istek GET $P/kartlar/kullanicilar "$T"
+UF=$(echo "$GOVDE" | sed 's/},{/}\n{/g' | grep 'Deniz Fisli' | grep -o '"id":"[^"]*' | cut -d'"' -f4)
+istek POST $P/kartlar "$T" '{"ad":"Deniz","soyad":"Fisli","iseGiris":"2026-01-01","kullaniciId":"'"$UF"'"}'
+istek POST $P/benim/masraflar "$TF" '{"tarih":"2026-03-22","kategori":"Yemek","tutar":80,"aciklama":"Fisli masraf"}'; MF=$(alan id)
+printf '%%PDF-1.4 fis' > "$DIR/fis.pdf"
+dosya_yukle() { KOD=$(curl "${CURL_EK[@]}" -s -o "$DIR/govde" -w "%{http_code}" -X POST "$KOK/api/dosya/kayit/personel-masrafi/$1" -H "Authorization: Bearer $2" -F "dosya=@$DIR/fis.pdf"); GOVDE=$(cat "$DIR/govde"); }
+dosya_yukle "$MF" "$TF"
+kontrol 201 "Calisan kendi masrafina fis ekledi" '"ad":"fis.pdf"'
+dosya_yukle "$MK" "$TF"
+kontrol 403 "Calisan baskasinin masrafina fis ekleyemez" yetki_yok
+istek GET "/api/dosya/kayit/personel-masrafi/$MF" "$TF"
+kontrol 200 "Calisan kendi fisini gorur" 'fis.pdf'
+istek GET "/api/dosya/kayit/personel-masrafi/$MF" "$T"
+kontrol 200 "Yonetici ayni fisi gorur" 'fis.pdf'
+istek GET "/api/dosya/kayit/personel-masrafi/$MK" "$TF"
+kontrol 403 "Calisan baskasinin fisini goremez" yetki_yok
 istek POST "$P/masraflar/$MK/reddet" "$TO" '{"not":" "}'
 kontrol 400 "Red gerekce ister" red_gerekcesi
 istek POST "$P/masraflar/$MK/reddet" "$TO" '{"not":"Fis eksik"}'

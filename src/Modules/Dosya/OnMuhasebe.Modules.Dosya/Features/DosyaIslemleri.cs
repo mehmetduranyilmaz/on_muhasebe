@@ -204,7 +204,7 @@ internal static class DosyaIslemleri
             return LisansHatalari.SuresiDoldu;
         }
 
-        if (!await yetki.VarMiAsync(kaynak.GorunumYetkisi, ct))
+        if (!await kaynak.ErisebilirMiAsync(yetki, kayitId, ct))
         {
             return Hata.Yetki("yetki_yok", "Bu kaydı görme yetkiniz olmadığı için dosyalarına erişemezsiniz.");
         }

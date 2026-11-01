@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 
 namespace OnMuhasebe.Shared.Infrastructure.Dosyalar;
 
@@ -13,6 +14,10 @@ public interface IDosyaKaynagi
     string GorunumYetkisi { get; }
 
     Task<bool> KayitVarMiAsync(Guid kayitId, CancellationToken cancellationToken);
+
+    // Varsayılan: kaynağın görüntüleme yetkisi. Kişinin kendi kaydına erişebildiği kaynaklar kayda göre karar verir.
+    Task<bool> ErisebilirMiAsync(IYetkiDenetimi yetki, Guid kayitId, CancellationToken cancellationToken) =>
+        yetki.VarMiAsync(GorunumYetkisi, cancellationToken);
 }
 
 public static class DosyaKaynagiExtensions

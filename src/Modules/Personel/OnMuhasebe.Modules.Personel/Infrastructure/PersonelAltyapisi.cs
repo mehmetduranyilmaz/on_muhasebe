@@ -4,9 +4,12 @@ using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Personel.Contracts;
 using OnMuhasebe.Modules.Personel.Domain;
 using OnMuhasebe.Shared.Contracts.Bildirimler;
+using OnMuhasebe.Shared.Contracts.Dosyalar;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Bildirimler;
+using OnMuhasebe.Shared.Infrastructure.Dosyalar;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -146,6 +149,32 @@ internal sealed class ZimmetConfiguration : IEntityTypeConfiguration<Zimmet>
         b.Property(x => x.Durum).HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.Not).HasMaxLength(500);
         b.HasIndex(x => new { x.FirmaId, x.PersonelId });
+    }
+}
+
+// Masraf fişi: masraf yetkisi olan gördüğü masrafa, çalışan yalnız kendi masrafına erişir. Fiş aynı kayda eklendiği için onaylayan da görür.
+internal sealed class MasrafDosyaKaynagi(PersonelDbContext db, IMevcutKullanici kullanici) : IDosyaKaynagi
+{
+    public string Tur => DosyaKayitTurleri.PersonelMasrafi;
+
+    public string ModulKodu => ModulKodlari.Personel;
+
+    public string GorunumYetkisi => PersonelYetkileri.Masraf.Yetki(YetkiIslemleri.Goruntule);
+
+    public async Task<bool> ErisebilirMiAsync(IYetkiDenetimi yetki, Guid kayitId, CancellationToken cancellationToken) =>
+        await yetki.VarMiAsync(GorunumYetkisi, cancellationToken)
+        || (await yetki.VarMiAsync(PersonelYetkileri.Kendi.Yetki(YetkiIslemleri.Goruntule), cancellationToken) && await KendisininMiAsync(kayitId, cancellationToken));
+
+    public async Task<bool> KayitVarMiAsync(Guid kayitId, CancellationToken cancellationToken) =>
+        await db.Masraflar.AnyAsync(m => m.Id == kayitId, cancellationToken) || await KendisininMiAsync(kayitId, cancellationToken);
+
+    private async Task<bool> KendisininMiAsync(Guid kayitId, CancellationToken cancellationToken)
+    {
+        var id = kullanici.KullaniciId;
+        return id is not null && await (from m in db.Masraflar.IgnoreQueryFilters([ModulDbContext.IsyeriFiltresi])
+                                        join p in db.TumPersoneller on m.PersonelId equals p.Id
+                                        where m.Id == kayitId && p.KullaniciId == id
+                                        select m.Id).AnyAsync(cancellationToken);
     }
 }
 
