@@ -62,8 +62,8 @@ internal sealed class FaturaKayitServisi(
         return await islemKapsami.CalistirAsync(ct => KesinlestirAsync(fatura, ayar, ct), cancellationToken);
     }
 
-    // Tekrar planından: işyeri plan kaydedilirken denetlendi (arka planda oturum yok). Taslak mı kesin mi kararı planındır, firma akışı değil.
-    public async Task<Sonuc<FaturaIslemSonucu>> PlandanOlusturAsync(FaturaKaydetIstegi istek, Guid isyeriId, bool kesinlestir, CancellationToken cancellationToken)
+    // Tekrar planı ve belgeden okuma: işyeri çağıran tarafta belirlendi (arka planda oturum yok). Taslak mı kesin mi kararı da çağıranındır, firma akışı değil.
+    public async Task<Sonuc<FaturaIslemSonucu>> IsyeriyleOlusturAsync(FaturaKaydetIstegi istek, Guid isyeriId, bool kesinlestir, CancellationToken cancellationToken)
     {
         var bilgiler = await hazirlayici.HazirlaAsync(istek, cancellationToken);
         if (!bilgiler.BasariliMi)

@@ -69,7 +69,7 @@ internal sealed class TekrarUretici(FaturaDbContext db, FaturaKayitServisi kayit
             var sonuc = await islemKapsami.CalistirAsync<Guid>(async c =>
             {
                 var artis = plan.ArtisUygula(donem);
-                var fatura = await kayit.PlandanOlusturAsync(plan.FaturaIstegi(donem), plan.IsyeriId!.Value, plan.OtomatikKesinlestir, c);
+                var fatura = await kayit.IsyeriyleOlusturAsync(plan.FaturaIstegi(donem), plan.IsyeriId!.Value, plan.OtomatikKesinlestir, c);
                 if (!fatura.BasariliMi)
                 {
                     return fatura.Hata;

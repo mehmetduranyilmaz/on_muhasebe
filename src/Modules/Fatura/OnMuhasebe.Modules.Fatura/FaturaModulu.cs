@@ -60,6 +60,7 @@ public sealed class FaturaModulu : IModul
         IrsaliyeIslemleri.Map(grup);
         TeklifSiparisIslemleri.Map(grup);
         TekrarFaturaIslemleri.Map(grup);
+        BelgeOkumaIslemleri.Map(grup);
         FaturaAyarIslemleri.Map(grup);
         FaturaRaporlari.Map(grup);
     }

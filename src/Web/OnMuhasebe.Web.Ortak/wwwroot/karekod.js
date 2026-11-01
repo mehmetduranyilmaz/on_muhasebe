@@ -103,8 +103,8 @@ function bolum(resim, sx, sy, en, boy, enBuyuk) {
 // ZXing'in Data Matrix bulucusu aramaya görüntünün ortasından başlar; tüm çekin fotoğrafında köşedeki karekod ancak onu ortalayan
 // bir pencerede bulunur.
 function* adaylar(resim) {
-    const en = resim.naturalWidth;
-    const boy = resim.naturalHeight;
+    const en = resim.naturalWidth ?? resim.width;
+    const boy = resim.naturalHeight ?? resim.height;
     yield bolum(resim, 0, 0, en, boy, 2000);
     yield bolum(resim, 0, 0, en, boy, 1000);
     for (const oran of [0.5, 0.35, 0.25]) {
@@ -145,4 +145,44 @@ export async function dosyadanOku(girdi) {
         URL.revokeObjectURL(adres);
         girdi.value = '';
     }
+}
+
+// Fatura PDF'indeki karekod: ilk sayfalar yüksek çözünürlükte tuvale çizilip okunur. pdf.js yalnız PDF seçilince yüklenir, belge sunucuya gitmez.
+async function pdfOku(dosya) {
+    const pdfjs = await import(new URL('./pdfjs/pdf.min.mjs', import.meta.url).href);
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('./pdfjs/pdf.worker.min.mjs', import.meta.url).href;
+    const belge = await pdfjs.getDocument({ data: await dosya.arrayBuffer(), isEvalSupported: false }).promise;
+    const Z = await yukle();
+    const okuyucu = yeniOkuyucu(Z);
+    try {
+        for (let no = 1; no <= Math.min(belge.numPages, 3); no++) {
+            const sayfa = await belge.getPage(no);
+            const gorunum = sayfa.getViewport({ scale: 3 });
+            const tuval = document.createElement('canvas');
+            tuval.width = gorunum.width;
+            tuval.height = gorunum.height;
+            await sayfa.render({ canvasContext: tuval.getContext('2d'), viewport: gorunum }).promise;
+            for (const adres of adaylar(tuval)) {
+                try {
+                    return (await okuyucu.decodeFromImageUrl(adres)).getText();
+                } catch {
+                    // Bu pencerede karekod yok; sıradaki denenir.
+                }
+            }
+        }
+
+        return null;
+    } finally {
+        await belge.destroy();
+    }
+}
+
+// Fatura belgesi: PDF ya da fotoğraf.
+export async function belgeKarekodu(girdi) {
+    const dosya = girdi?.files?.[0];
+    if (!dosya) {
+        return null;
+    }
+
+    return dosya.type === 'application/pdf' || dosya.name.toLowerCase().endsWith('.pdf') ? await pdfOku(dosya) : await dosyadanOku(girdi);
 }

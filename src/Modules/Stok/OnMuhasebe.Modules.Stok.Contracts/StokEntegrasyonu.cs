@@ -26,6 +26,9 @@ public interface IStokSorgusu
 {
     Task<IReadOnlyList<StokKartiBilgisi>> KartlariGetirAsync(IReadOnlyCollection<Guid> kartIdleri, CancellationToken cancellationToken = default);
 
+    // Belgedeki ürün kodu: stok kodu ya da barkoduna göre kart. Anahtar aranan koddur.
+    Task<IReadOnlyDictionary<string, StokKartiBilgisi>> KodlaBulAsync(IReadOnlyCollection<string> kodlar, CancellationToken cancellationToken = default);
+
     // Depo verilmezse firmanın varsayılan deposu kullanılır (yoksa açılır). Pasif ya da başka firmanın deposu null döner.
     Task<Guid?> DepoCozAsync(Guid? depoId, CancellationToken cancellationToken = default);
 

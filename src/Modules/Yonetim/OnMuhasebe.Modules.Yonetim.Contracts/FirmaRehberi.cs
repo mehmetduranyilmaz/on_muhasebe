@@ -14,6 +14,8 @@ public interface IFirmaRehberi
     // Firmanın aktif kullanıcıları (pasifleştirilen ya da hesabı kapatılan hariç).
     Task<IReadOnlyList<FirmaAlicisi>> KullanicilarAsync(Guid firmaId, CancellationToken cancellationToken = default);
 
+    Task<string?> VergiNoAsync(Guid firmaId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<FirmaRolOzeti>> RollerAsync(Guid firmaId, CancellationToken cancellationToken = default);
 
     // Aktif kullanıcıların rolleri: rol bazlı onay ve benzeri akışlar için.

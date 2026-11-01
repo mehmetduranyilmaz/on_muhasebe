@@ -20,6 +20,9 @@ internal sealed class FirmaRehberi(YonetimDbContext db) : IFirmaRehberi
                 u.Rol.TamYetkiliMi ? Roller.Yonetici : Roller.Kullanici))
             .ToListAsync(cancellationToken);
 
+    public async Task<string?> VergiNoAsync(Guid firmaId, CancellationToken cancellationToken = default) =>
+        await db.Firmalar.IgnoreQueryFilters().AsNoTracking().Where(f => f.Id == firmaId).Select(f => f.VergiNo).FirstOrDefaultAsync(cancellationToken);
+
     public async Task<IReadOnlyList<FirmaRolOzeti>> RollerAsync(Guid firmaId, CancellationToken cancellationToken = default) =>
         await db.Roller
             .IgnoreQueryFilters([ModulDbContext.FirmaFiltresi])

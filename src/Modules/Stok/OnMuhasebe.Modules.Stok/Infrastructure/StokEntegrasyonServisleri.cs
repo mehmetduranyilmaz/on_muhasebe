@@ -47,6 +47,26 @@ internal sealed class StokSorgusu(StokDbContext db, DepoServisi depoServisi, Sto
             .ToList();
     }
 
+    public async Task<IReadOnlyDictionary<string, StokKartiBilgisi>> KodlaBulAsync(IReadOnlyCollection<string> kodlar, CancellationToken cancellationToken = default)
+    {
+        var bulunan = await db.StokKartlari.AsNoTracking()
+            .Where(k => kodlar.Contains(k.Kod) || (k.Barkod != null && kodlar.Contains(k.Barkod)))
+            .Select(k => new { k.Id, k.Kod, k.Barkod })
+            .ToListAsync(cancellationToken);
+        var kartlar = (await KartlariGetirAsync(bulunan.Select(k => k.Id).ToList(), cancellationToken)).ToDictionary(k => k.Id);
+        var sonuc = new Dictionary<string, StokKartiBilgisi>();
+        foreach (var k in bulunan)
+        {
+            sonuc.TryAdd(k.Kod, kartlar[k.Id]);
+            if (k.Barkod is { } barkod)
+            {
+                sonuc.TryAdd(barkod, kartlar[k.Id]);
+            }
+        }
+
+        return sonuc;
+    }
+
     public async Task<IReadOnlyList<StokKartiBilgisi>> KartlariGetirAsync(
         IReadOnlyCollection<Guid> kartIdleri, CancellationToken cancellationToken = default)
     {

@@ -1,5 +1,6 @@
 @page "/fatura"
 @inject IsyeriYoneticisi Isyerleri
+@inject IDialogService DialogService
 @inject ApiIstemcisi Api
 @inject NavigationManager Navigasyon
 @inject OturumYoneticisi Oturum
@@ -15,6 +16,7 @@
         </Yetkili>
         @if (Oturum.YazabilirMi(FaturaYetkileri.Belge, YetkiIslemleri.Ekle))
         {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DocumentScanner" OnClick="BelgeOkuAsync">Belgeden Oluştur</MudButton>
             <YeniFaturaMenusu />
         }
     </Islemler>
@@ -111,6 +113,8 @@
 </VeriTablosu>
 
 @code {
+    private Task BelgeOkuAsync() => DialogService.ShowAsync<BelgeOkuDialog>("Gelen faturayı oku", new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
     private SayfaliSonuc<FaturaOzeti>? _sonuc;
     private FaturaTuru? _tur;
     private FaturaDurumu? _durum;

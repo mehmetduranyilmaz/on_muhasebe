@@ -1,0 +1,219 @@
+@* Gelen e-Fatura XML'i, PDF'i ya da fotoğrafından taslak alış faturası. PDF ve fotoğraftaki karekod tarayıcıda okunur, görüntü sunucuya gönderilmeden çözülür. *@
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+@inject ISnackbar Snackbar
+@inject IsyeriYoneticisi Isyerleri
+@implements IAsyncDisposable
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (_onizleme is null)
+        {
+            <div class="belge-secim">
+                <MudText Typo="Typo.body2" Class="mb-3">
+                    e-Fatura <b>XML</b>'i tüm satırları okur. <b>PDF</b> ya da <b>fotoğraftan</b> yalnız karekod okunur: tedarikçi, numara, tarih ve KDV toplamları gelir, ürün satırları gelmez.
+                </MudText>
+                <InputFile @ref="_girdi" OnChange="DosyaSecildiAsync" accept=".xml,.pdf,.png,.jpg,.jpeg,.webp" disabled="@_yukleniyor" />
+                @if (_yukleniyor)
+                {
+                    <MudProgressLinear Indeterminate="true" Class="mt-3" />
+                }
+            </div>
+        }
+        else
+        {
+            var b = _onizleme.Belge;
+            @foreach (var u in _onizleme.Uyarilar)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2 belge-uyarisi">@u</MudAlert>
+            }
+
+            @if (_onizleme.MevcutFaturaId is { } mevcut)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">Bu fatura zaten kayıtlı. <MudLink Href="@($"fatura/{mevcut}")">Faturayı aç</MudLink></MudAlert>
+            }
+
+            <MudSimpleTable Dense="true" Elevation="0" Class="mb-3 belge-bilgisi">
+                <tbody>
+                    <tr><th>Kaynak</th><td>@(b.Kaynak == BelgeKaynagi.Xml ? "e-Fatura XML" : "Karekod")</td></tr>
+                    <tr><th>Tür</th><td>@FaturaMetinleri.Tur(b.Tur)</td></tr>
+                    <tr><th>Numara</th><td><b>@b.Numara</b></td></tr>
+                    <tr><th>Tarih</th><td>@Bicim.Tarih(b.Tarih)@(b.VadeTarihi is { } v ? $" · vade {Bicim.Tarih(v)}" : "")</td></tr>
+                    <tr><th>Tedarikçi</th><td>@(b.TedarikciUnvan ?? "Unvan karekodda yok") · VKN @b.TedarikciVkn</td></tr>
+                    @if (b.Odenecek is { } odenecek)
+                    {
+                        <tr><th>Ödenecek</th><td>@Bicim.Tutar(odenecek, b.ParaBirimi)</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+
+            <MudAutocomplete T="CariOzeti" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Cari" @bind-Value="_cari" SearchFunc="CariAraAsync" ToStringFunc="@(c => c is null ? "" : $"{c.Unvan} ({c.Kod})")"
+                             DebounceInterval="300" ResetValueOnEmptyText="true" MaxItems="10" Class="mb-2" />
+            @if (_cari is null && Oturum.YazabilirMi("cari.hesap.ekle") && b.TedarikciVkn is not null)
+            {
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yeniUnvan" Label="Yeni cari unvanı" MaxLength="250" Class="mb-2" />
+                <IslemDugmesi Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PersonAdd" Disabled="@string.IsNullOrWhiteSpace(_yeniUnvan)" Islem="CariAcAsync">Cari kartı aç</IslemDugmesi>
+            }
+
+            <div class="mt-3 mb-1"><b>@b.Satirlar.Count satır</b>@(_onizleme.EslesenStokSatiri > 0 ? $", {_onizleme.EslesenStokSatiri} tanesi stok kartına bağlandı" : "")</div>
+            <div style="overflow-x:auto;max-height:220px">
+                <MudSimpleTable Dense="true" Elevation="0" Class="belge-satirlari">
+                    <thead><tr><th>Kalem</th><th class="sayi">Miktar</th><th class="sayi">Fiyat</th><th class="sayi">KDV</th></tr></thead>
+                    <tbody>
+                        @foreach (var s in b.Satirlar)
+                        {
+                            <tr>
+                                <td>@s.Ad @(s.StokKartiId is null ? "" : "(stoktan)")</td>
+                                <td class="sayi">@Bicim.Miktar(s.Miktar, s.Birim)</td>
+                                <td class="sayi">@Bicim.Tutar(s.BirimFiyat)</td>
+                                <td class="sayi">%@s.KdvOrani</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        @if (_onizleme is not null)
+        {
+            <MudButton OnClick="Sifirla">Başka dosya</MudButton>
+            <IslemDugmesi Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_cari is null || _onizleme.MevcutFaturaId is not null)" Islem="OlusturAsync">Taslak Fatura Aç</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private InputFile _girdi = null!;
+    private IJSObjectReference? _modul;
+    private BelgeOnizleme? _onizleme;
+    private CariOzeti? _cari;
+    private string? _yeniUnvan;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+    private byte[]? _dosya;
+    private string? _dosyaAdi;
+
+    private const long AzamiBoyut = 20 * 1024 * 1024;
+
+    private async Task DosyaSecildiAsync(InputFileChangeEventArgs e)
+    {
+        var dosya = e.File;
+        (_hata, _yukleniyor) = (null, true);
+        try
+        {
+            if (dosya.Size > AzamiBoyut)
+            {
+                _hata = new ApiHatasi("Dosya en fazla 20 MB olabilir.", null, new Dictionary<string, string[]>());
+                return;
+            }
+
+            await using var akis = dosya.OpenReadStream(AzamiBoyut);
+            using var bellek = new MemoryStream();
+            await akis.CopyToAsync(bellek);
+            (_dosya, _dosyaAdi) = (bellek.ToArray(), dosya.Name);
+
+            ApiSonucu<BelgeOnizleme> sonuc;
+            if (dosya.Name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+            {
+                sonuc = await Api.DosyaYukleAsync<BelgeOnizleme>("api/fatura/belge-okuma/xml", "dosya", new MemoryStream(_dosya), dosya.Name);
+            }
+            else
+            {
+                _modul ??= await Js.InvokeAsync<IJSObjectReference>("import", "./_content/OnMuhasebe.Web.Ortak/karekod.js");
+                var metin = await _modul.InvokeAsync<string?>("belgeKarekodu", _girdi.Element);
+                if (string.IsNullOrEmpty(metin))
+                {
+                    _hata = new ApiHatasi("Dosyada karekod bulunamadı. XML'i yüklemeyi ya da daha net bir görüntüyü deneyin.", null, new Dictionary<string, string[]>());
+                    return;
+                }
+
+                sonuc = await Api.PostAsync<BelgeOnizleme>("api/fatura/belge-okuma/karekod", new BelgeKarekodIstegi(metin));
+            }
+
+            _hata = sonuc.Hata;
+            if (sonuc.BasariliMi)
+            {
+                _onizleme = sonuc.Deger;
+                _yeniUnvan = sonuc.Deger.Belge.TedarikciUnvan;
+                await CariYukleAsync(sonuc.Deger);
+            }
+        }
+        finally
+        {
+            _yukleniyor = false;
+        }
+    }
+
+    private async Task CariYukleAsync(BelgeOnizleme o)
+    {
+        _cari = null;
+        if (o.CariHesapId is { } id && await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{id}") is { BasariliMi: true } c)
+        {
+            var d = c.Deger;
+            _cari = new CariOzeti(d.Id, d.Kod, d.Unvan, d.Tur, d.GrupAdi, d.ParaBirimi, d.Telefon, d.AktifMi, d.Bakiye, d.BakiyeTl, d.RiskLimiti);
+        }
+    }
+
+    private void Sifirla() => (_onizleme, _cari, _hata, _dosya) = (null, null, null, null);
+
+    private async Task<IEnumerable<CariOzeti>> CariAraAsync(string? arama, CancellationToken cancellationToken)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>($"api/cari/hesaplar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", cancellationToken);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task CariAcAsync()
+    {
+        var b = _onizleme!.Belge;
+        var kisiTipi = b.TedarikciVkn?.Length == 11 ? "Sahis" : "Tuzel";
+        var sonuc = await Api.PostAsync<CariDetayi>("api/cari/hesaplar", new { unvan = _yeniUnvan, tur = "Tedarikci", kisiTipi, vergiNo = b.TedarikciVkn, vergiDairesi = b.VergiDairesi, paraBirimi = b.ParaBirimi });
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            var d = sonuc.Deger;
+            _cari = new CariOzeti(d.Id, d.Kod, d.Unvan, d.Tur, d.GrupAdi, d.ParaBirimi, d.Telefon, d.AktifMi, d.Bakiye, d.BakiyeTl, d.RiskLimiti);
+        }
+    }
+
+    private sealed record Olusan(Guid Id);
+
+    private async Task OlusturAsync()
+    {
+        var sonuc = await Api.PostAsync<Olusan>("api/fatura/belge-okuma/olustur", new BelgedenFaturaIstegi(_onizleme!.Belge, _cari!.Id, Isyerleri.Secili));
+        _hata = sonuc.Hata;
+        if (!sonuc.BasariliMi)
+        {
+            return;
+        }
+
+        // Asıl belge faturaya eklenir; kota doluysa fatura yine açıktır, kullanıcı yalnız uyarılır.
+        if (_dosya is not null && Oturum.YazabilirMi("dosya.ek.ekle"))
+        {
+            var ek = await Api.DosyaYukleAsync<object>($"api/dosya/kayit/{DosyaKayitTurleri.Fatura}/{sonuc.Deger.Id}", "dosya", new MemoryStream(_dosya), _dosyaAdi ?? "belge");
+            if (!ek.BasariliMi)
+            {
+                Snackbar.Add($"Belge eklenemedi: {ek.Hata.Baslik}", Severity.Warning);
+            }
+        }
+
+        Snackbar.Add("Taslak fatura açıldı. Kontrol edip onaylayın.", Severity.Success);
+        MudDialog.Close(DialogResult.Ok(true));
+        Navigasyon.NavigateTo($"fatura/{sonuc.Deger.Id}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_modul is not null)
+        {
+            await _modul.DisposeAsync();
+        }
+    }
+}
