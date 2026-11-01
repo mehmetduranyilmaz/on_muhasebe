@@ -1,6 +1,8 @@
+@using OnMuhasebe.Shared.Contracts.Dosyalar
 @page "/abonelik"
 @attribute [Authorize]
 @inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject IJSRuntime Js
@@ -53,6 +55,13 @@ else
                 <MudIcon Icon="@Icons.Material.Filled.Store" Size="Size.Small" />
                 İşyerleri: <b>@d.IsyeriSayisi</b> / @(d.IsyeriLimiti?.ToString() ?? "sınırsız")
             </div>
+            @if (_depolama is { } depo)
+            {
+                <div class="abonelik-satir">
+                    <MudIcon Icon="@Icons.Material.Filled.Cloud" Size="Size.Small" />
+                    Depolama: <b>@Bicim.Boyut(depo.KullanilanBayt)</b> / @(depo.KotaBayt is { } kota ? Bicim.Boyut(kota) : "sınırsız")
+                </div>
+            }
         </div>
     </div>
 
@@ -100,6 +109,7 @@ else
                 <ul class="paket-ozellikleri">
                     <li><MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" /> @(p.KullaniciLimiti is { } l ? $"{l} kullanıcı" : "Sınırsız kullanıcı")</li>
                     <li><MudIcon Icon="@Icons.Material.Filled.Store" Size="Size.Small" /> @(p.IsyeriLimiti is { } il ? (il == 1 ? "Tek işyeri" : $"{il} işyeri") : "Sınırsız işyeri")</li>
+                    <li><MudIcon Icon="@Icons.Material.Filled.Cloud" Size="Size.Small" /> @(p.DepolamaKotasiMb is { } mb ? $"{Bicim.Boyut(mb * 1024L * 1024L)} depolama" : "Sınırsız depolama")</li>
                     @foreach (var modul in p.TumModullerMi ? ModulMenusu.Tumu.Select(m => m.Kod) : p.Moduller)
                     {
                         <li><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /> @ModulMenusu.Ad(modul)</li>
@@ -174,6 +184,7 @@ else
 }
 
 @code {
+    private DepolamaKullanimi? _depolama;
     private const int UyariGunu = 7;
     private AbonelikDurumu? _durum;
     private bool _yillik;
@@ -186,6 +197,11 @@ else
         var sonuc = await Api.GetAsync<AbonelikDurumu>("api/yonetim/abonelik");
         _hata = sonuc.Hata;
         _durum = sonuc.BasariliMi ? sonuc.Deger : null;
+        if (Oturum.YetkiVarMi(DosyaYetkileri.Ek, YetkiIslemleri.Goruntule) && await Api.GetAsync<DepolamaKullanimi>("api/dosya/kullanim") is { BasariliMi: true } depolama)
+        {
+            _depolama = depolama.Deger;
+        }
+
         _yillik = _durum?.Paketler.Any(p => p.AylikUcret is null && p.YillikUcret is not null) == true
                   && _durum.Paketler.All(p => p.AylikUcret is null);
     }

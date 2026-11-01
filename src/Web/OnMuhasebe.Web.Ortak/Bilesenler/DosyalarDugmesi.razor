@@ -1,0 +1,27 @@
+@* Kaydın dosyalarını açan düğme; yalnızca dosya görme yetkisi olana görünür. Kayıt türü DosyaKayitTurleri'nden verilir. *@
+@using OnMuhasebe.Shared.Contracts.Dosyalar
+@using OnMuhasebe.Shared.Contracts.Kimlik
+@inject OturumYoneticisi Oturum
+@inject IDialogService DialogService
+
+@if (Oturum.YetkiVarMi(DosyaYetkileri.Ek, YetkiIslemleri.Goruntule))
+{
+    <MudTooltip Text="Dosyalar">
+        <MudIconButton Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" Class="dosyalar-dugmesi" OnClick="AcAsync" aria-label="Dosyalar" />
+    </MudTooltip>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Tur { get; set; } = "";
+    [Parameter, EditorRequired] public Guid KayitId { get; set; }
+
+    private async Task AcAsync()
+    {
+        var parametreler = new DialogParameters<DosyalarDialog>
+        {
+            { d => d.Tur, Tur },
+            { d => d.KayitId, KayitId }
+        };
+        await DialogService.ShowAsync<DosyalarDialog>("Dosyalar", parametreler, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+}

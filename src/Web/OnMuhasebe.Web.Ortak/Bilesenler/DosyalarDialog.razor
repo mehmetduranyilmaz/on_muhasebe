@@ -1,0 +1,203 @@
+@* Kaydın dosyaları: yükleme, indirme, silme ve çöp kutusundan geri alma. Altta firmanın depolama kullanımı görünür. *@
+@using Microsoft.AspNetCore.Components.Forms
+@using OnMuhasebe.Shared.Contracts.Dosyalar
+@using OnMuhasebe.Shared.Contracts.Kimlik
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject OturumYoneticisi Oturum
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <div class="d-flex align-center gap-3 flex-wrap mb-3">
+            @if (Oturum.YazabilirMi(DosyaYetkileri.Ek, YetkiIslemleri.Ekle))
+            {
+                <InputFile OnChange="DosyalarSecildiAsync" multiple accept="@DosyaSinirlari.KabulEdilenler" disabled="@_islemde" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">PDF, JPG, PNG, Word, Excel ya da XML; dosya başına en çok 20 MB.</MudText>
+            }
+            <MudSpacer />
+            <MudSwitch T="bool" Value="_silinenler" ValueChanged="SilinenlerDegistiAsync" Color="Color.Secondary" Label="Silinenler" />
+        </div>
+        @if (_islemde)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+        }
+
+        @if (_dosyalar.Count == 0 && !_islemde)
+        {
+            <BosDurum Ikon="@Icons.Material.Outlined.AttachFile" Baslik="@(_silinenler ? "Silinen dosya yok" : "Henüz dosya eklenmemiş")"
+                      Aciklama="@(_silinenler ? "Silinen dosyalar 30 gün burada kalır, sonra kalıcı silinir." : "Sözleşme, fatura görseli gibi belgeleri bu kayda ekleyebilirsiniz.")" />
+        }
+        else if (_dosyalar.Count > 0)
+        {
+            <div style="overflow-x:auto">
+                <MudSimpleTable Dense="true" Elevation="0" Class="dosya-listesi">
+                    <thead>
+                        <tr><th>Dosya</th><th class="sayi">Boyut</th><th>Yükleyen</th><th>Tarih</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in _dosyalar)
+                        {
+                            <tr @key="d.Id">
+                                <td style="word-break:break-word">@d.Ad</td>
+                                <td class="sayi">@Bicim.Boyut(d.Boyut)</td>
+                                <td>@d.Yukleyen</td>
+                                <td>@d.YuklemeTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Bicim.Kultur)</td>
+                                <td style="text-align:right; white-space:nowrap">
+                                    @if (d.SilinmeTarihi is null)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Download" Size="Size.Small" aria-label="@($"{d.Ad} indir")" OnClick="@(() => IndirAsync(d))" />
+                                        @if (Oturum.YazabilirMi(DosyaYetkileri.Ek, YetkiIslemleri.Sil))
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="@($"{d.Ad} sil")" OnClick="@(() => SilAsync(d))" />
+                                        }
+                                    }
+                                    else if (Oturum.YazabilirMi(DosyaYetkileri.Ek, YetkiIslemleri.Sil))
+                                    {
+                                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => GeriAlAsync(d))">Geri al</MudButton>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </div>
+        }
+
+        @if (_kullanim is { } k)
+        {
+            <div class="mt-3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Depolama: @Bicim.Boyut(k.KullanilanBayt) / @(k.KotaBayt is { } kota ? Bicim.Boyut(kota) : "sınırsız")
+                </MudText>
+                @if (k.KotaBayt is > 0)
+                {
+                    <MudProgressLinear Value="@Math.Min(100d, 100d * k.KullanilanBayt / k.KotaBayt.Value)" Size="Size.Small"
+                                       Color="@(k.KullanilanBayt * 10 >= k.KotaBayt.Value * 9 ? Color.Warning : Color.Primary)" />
+                }
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public string Tur { get; set; } = "";
+    [Parameter, EditorRequired] public Guid KayitId { get; set; }
+
+    private const int EnCokDosya = 10;
+
+    private List<DosyaEkiOzeti> _dosyalar = [];
+    private DepolamaKullanimi? _kullanim;
+    private ApiHatasi? _hata;
+    private bool _silinenler;
+    private bool _islemde;
+
+    private string Adres => $"api/dosya/kayit/{Tur}/{KayitId}";
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var liste = await Api.GetAsync<List<DosyaEkiOzeti>>($"{Adres}?silinenler={(_silinenler ? "true" : "false")}");
+        _hata = liste.Hata;
+        _dosyalar = liste.BasariliMi ? liste.Deger : [];
+        var kullanim = await Api.GetAsync<DepolamaKullanimi>("api/dosya/kullanim");
+        if (kullanim.BasariliMi)
+        {
+            _kullanim = kullanim.Deger;
+        }
+    }
+
+    private async Task SilinenlerDegistiAsync(bool deger)
+    {
+        _silinenler = deger;
+        await YukleAsync();
+    }
+
+    // Her dosya ayrı yüklenir: biri reddedilse de diğerleri eklenir, reddedilenin nedeni gösterilir.
+    private async Task DosyalarSecildiAsync(InputFileChangeEventArgs e)
+    {
+        _islemde = true;
+        var eklenen = 0;
+        ApiHatasi? sonHata = null;
+        foreach (var dosya in e.GetMultipleFiles(EnCokDosya))
+        {
+            if (dosya.Size > DosyaSinirlari.AzamiBoyut)
+            {
+                Snackbar.Add($"{dosya.Name}: dosya en fazla 20 MB olabilir.", Severity.Error);
+                continue;
+            }
+
+            try
+            {
+                await using var akis = dosya.OpenReadStream(DosyaSinirlari.AzamiBoyut);
+                var sonuc = await Api.DosyaYukleAsync<DosyaEkiOzeti>(Adres, "dosya", akis, dosya.Name);
+                if (sonuc.BasariliMi)
+                {
+                    eklenen++;
+                }
+                else
+                {
+                    sonHata = sonuc.Hata;
+                    Snackbar.Add($"{dosya.Name}: {sonuc.Hata!.Baslik}", Severity.Error);
+                }
+            }
+            catch (IOException)
+            {
+                Snackbar.Add($"{dosya.Name}: dosya okunamadı.", Severity.Error);
+            }
+        }
+
+        _silinenler = false;
+        await YukleAsync();
+        _hata = sonHata;
+        _islemde = false;
+        if (eklenen > 0)
+        {
+            Snackbar.Add($"{eklenen} dosya eklendi.", Severity.Success);
+        }
+    }
+
+    private async Task IndirAsync(DosyaEkiOzeti dosya)
+    {
+        var sonuc = await Api.DosyaGetirAsync($"api/dosya/{dosya.Id}/indir");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            await Js.InvokeVoidAsync("omDosya.indir", dosya.Ad, "application/octet-stream", sonuc.Deger);
+        }
+    }
+
+    private async Task SilAsync(DosyaEkiOzeti dosya)
+    {
+        if (!await Onay.SorAsync("Dosya silinsin mi?", $"{dosya.Ad} silinecek. 30 gün içinde Silinenler bölümünden geri alabilirsiniz.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/dosya/{dosya.Id}");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            await YukleAsync();
+        }
+    }
+
+    private async Task GeriAlAsync(DosyaEkiOzeti dosya)
+    {
+        var sonuc = await Api.PostAsync($"api/dosya/{dosya.Id}/geri-al");
+        if (sonuc.BasariliMi)
+        {
+            await YukleAsync();
+            Snackbar.Add("Dosya geri alındı.", Severity.Success);
+        }
+        else
+        {
+            _hata = sonuc.Hata;
+        }
+    }
+}

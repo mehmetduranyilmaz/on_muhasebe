@@ -12,6 +12,7 @@
     <SayfaBasligi Baslik="@k.Ad" GeriAdres="krediler" Ikon="@Icons.Material.Filled.AccountBalance"
                   AltBaslik="@($"{k.Kod} · {KrediListesi.Tur(k.Tur)} · {k.HesapAdi} · {Bicim.Tarih(k.KullandirimTarihi)}")">
         <Islemler>
+            <DosyalarDugmesi Tur="@DosyaKayitTurleri.Kredi" KayitId="Id" />
             <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
                      Color="@(k.Durum == KrediDurumu.Acik ? Color.Warning : k.Durum == KrediDurumu.Kapandi ? Color.Success : Color.Error)">@KrediListesi.Durum(k.Durum)</MudChip>
             @if (Oturum.YazabilirMi(KasaBankaYetkileri.Kredi, YetkiIslemleri.Iptal) && k.Durum == KrediDurumu.Acik && k.Taksitler.All(t => t.OdemeIslemId is null))

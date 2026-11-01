@@ -51,7 +51,7 @@ internal static class AbonelikIslemleri
         var paketler = await db.Paketler.AsNoTracking()
             .Where(p => p.SatistaMi)
             .OrderBy(p => p.Sira).ThenBy(p => p.Ad)
-            .Select(p => new SatistakiPaket(p.Kod, p.Ad, p.Aciklama, p.TumModullerMi, p.Moduller, p.KullaniciLimiti, p.AylikUcret, p.YillikUcret, p.IsyeriLimiti))
+            .Select(p => new SatistakiPaket(p.Kod, p.Ad, p.Aciklama, p.TumModullerMi, p.Moduller, p.KullaniciLimiti, p.AylikUcret, p.YillikUcret, p.IsyeriLimiti, p.DepolamaKotasiMb))
             .ToListAsync(ct);
         var odeme = SistemAbonelikIslemleri.OdemeBilgileriOlustur(await db.SistemAyarlari.AsNoTracking().FirstOrDefaultAsync(ct));
         var bildirimler = await SistemAbonelikIslemleri

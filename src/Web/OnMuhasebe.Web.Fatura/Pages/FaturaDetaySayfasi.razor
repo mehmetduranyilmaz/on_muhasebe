@@ -30,6 +30,7 @@
                 <span class="ml-1">@Bicim.Tarih(f.Tarih)@(f.VadeTarihi is { } v ? $" · vade {Bicim.Tarih(v)}" : "")</span>
             </AltIcerik>
             <Islemler>
+                <DosyalarDugmesi Tur="@DosyaKayitTurleri.Fatura" KayitId="Id" />
                 <DegisiklikGecmisiDugmesi Modul="fatura" KayitId="Id" />
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
                 @if (f.Durum == FaturaDurumu.Onayli)

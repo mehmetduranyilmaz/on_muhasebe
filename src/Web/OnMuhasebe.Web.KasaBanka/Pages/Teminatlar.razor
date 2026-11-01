@@ -35,6 +35,7 @@
         <MudTh class="sayi">Tutar</MudTh>
         <MudTh>Vade</MudTh>
         <MudTh>Durum</MudTh>
+        <MudTh></MudTh>
     </Basliklar>
     <Satir>
         <MudTd DataLabel="Tür">
@@ -54,6 +55,7 @@
         <MudTd DataLabel="Durum">
             <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Style="@($"color:{TeminatMetinleri.DurumRengi(context.Durum)};font-weight:600")">@TeminatMetinleri.Durum(context.Durum)</MudChip>
         </MudTd>
+        <MudTd Style="text-align:right" @onclick:stopPropagation="true"><DosyalarDugmesi Tur="@DosyaKayitTurleri.Teminat" KayitId="context.Id" /></MudTd>
     </Satir>
 </VeriTablosu>
 

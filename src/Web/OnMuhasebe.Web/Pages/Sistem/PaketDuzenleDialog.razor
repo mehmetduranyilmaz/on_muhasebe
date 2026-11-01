@@ -39,6 +39,10 @@
                                      HelperText="Boş: sınırsız (merkez dahil)" HideSpinButtons="true" />
                 </MudItem>
                 <MudItem xs="4">
+                    <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_depolamaKotasi" Label="Depolama (MB)" Min="1"
+                                     HelperText="Boş: sınırsız" HideSpinButtons="true" />
+                </MudItem>
+                <MudItem xs="4">
                     <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aylik" Label="Aylık (TL)" Min="0" Format="N2"
                                      HelperText="Boş: satılmaz" HideSpinButtons="true" />
                 </MudItem>
@@ -74,6 +78,7 @@
     private IReadOnlyCollection<string> _moduller = [];
     private int? _limit;
     private int? _isyeriLimiti;
+    private int? _depolamaKotasi;
     private decimal? _aylik;
     private decimal? _yillik;
     private bool _satista;
@@ -87,6 +92,7 @@
             (_kod, _ad, _aciklama, _tumModuller, _moduller, _limit, _aylik, _yillik, _satista, _sira) =
                 (p.Kod, p.Ad, p.Aciklama, p.TumModullerMi, p.Moduller.ToList(), p.KullaniciLimiti, p.AylikUcret, p.YillikUcret, p.SatistaMi, p.Sira);
             _isyeriLimiti = p.IsyeriLimiti;
+            _depolamaKotasi = p.DepolamaKotasiMb;
         }
     }
 
@@ -99,7 +105,7 @@
         }
 
         var istek = new PaketKaydetIstegi(_kod!.Trim(), _ad!.Trim(), string.IsNullOrWhiteSpace(_aciklama) ? null : _aciklama.Trim(), _tumModuller,
-            _tumModuller ? [] : _moduller.ToList(), _limit, _aylik, _yillik, _satista, _sira, _isyeriLimiti);
+            _tumModuller ? [] : _moduller.ToList(), _limit, _aylik, _yillik, _satista, _sira, _isyeriLimiti, _depolamaKotasi);
         var sonuc = Paket is null
             ? await Api.PostAsync<PaketOzeti>("api/yonetim/sistem/paketler", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PutAsync<PaketOzeti>($"api/yonetim/sistem/paketler/{Paket.Kod}", istek);

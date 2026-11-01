@@ -16,6 +16,7 @@
             <span>@CekSenetMetinleri.Yon(e.Yon) · @(e.CariUnvan)</span>
         </AltIcerik>
         <Islemler>
+            <DosyalarDugmesi Tur="@DosyaKayitTurleri.CekSenet" KayitId="Id" />
             <DegisiklikGecmisiDugmesi Modul="kasabanka" KayitId="Id" />
             @if (e.GeriAlinabilirMi && Oturum.YazabilirMi(KasaBankaYetkileri.Cek, YetkiIslemleri.Iptal))
             {

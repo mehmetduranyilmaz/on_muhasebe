@@ -31,6 +31,19 @@ public static class Bicim
 
     public static string Miktar(decimal miktar, string birim) => $"{Miktar(miktar)} {Birimler.Ad(birim)}";
 
+    // 1024 tabanlı dosya boyutu: 512 KB, 1,5 MB, 2 GB.
+    public static string Boyut(long bayt)
+    {
+        const double Kb = 1024, Mb = Kb * 1024, Gb = Mb * 1024;
+        return bayt switch
+        {
+            < 1024 => $"{bayt} B",
+            < 1024 * 1024 => $"{(bayt / Kb).ToString("0.#", _tr)} KB",
+            < 1024 * 1024 * 1024 => $"{(bayt / Mb).ToString("0.#", _tr)} MB",
+            _ => $"{(bayt / Gb).ToString("0.#", _tr)} GB"
+        };
+    }
+
     public static string Tarih(DateOnly tarih) => tarih.ToString("dd.MM.yyyy", _tr);
 
     public static string Tarih(DateOnly? tarih) => tarih is { } t ? Tarih(t) : "";
