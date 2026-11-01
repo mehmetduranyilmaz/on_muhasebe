@@ -44,6 +44,8 @@
   <Folder Name="/src/Web/">
     <Project Path="src/Modules/Arac/OnMuhasebe.Modules.Arac.Contracts/OnMuhasebe.Modules.Arac.Contracts.csproj" />
     <Project Path="src/Modules/Arac/OnMuhasebe.Modules.Arac/OnMuhasebe.Modules.Arac.csproj" />
+    <Project Path="src/Modules/Bakim/OnMuhasebe.Modules.Bakim.Contracts/OnMuhasebe.Modules.Bakim.Contracts.csproj" />
+    <Project Path="src/Modules/Bakim/OnMuhasebe.Modules.Bakim/OnMuhasebe.Modules.Bakim.csproj" />
     <Project Path="src/Modules/Dosya/OnMuhasebe.Modules.Dosya/OnMuhasebe.Modules.Dosya.csproj" />
     <Project Path="src/Modules/EvrakTakip/OnMuhasebe.Modules.EvrakTakip.Contracts/OnMuhasebe.Modules.EvrakTakip.Contracts.csproj" />
     <Project Path="src/Modules/EvrakTakip/OnMuhasebe.Modules.EvrakTakip/OnMuhasebe.Modules.EvrakTakip.csproj" />

@@ -149,6 +149,9 @@ id["aracYukumluluk"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/yukumluluk
 id["aracMtv"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/mtv", new { yil = 2026, taksit = 1, tutar = 100 }))["id"]!.GetValue<string>();
 id["aracMasraf"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/masraflar", new { tur = "Yakit", tarih = "2026-10-01", tutar = 100, aciklama = "SIZINTI" }))["id"]!.GetValue<string>();
 id["aracHasar"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/hasarlar", new { tarih = "2026-10-01", kusur = "Belirsiz", aciklama = "SIZINTI", onarimTutari = 100, sigortaOdemesi = 0 }))["id"]!.GetValue<string>();
+id["ekipman"] = (await Post(a, "api/bakim/ekipmanlar", new { ad = "SIZINTI Makine", tur = "Makine", sayacBirimi = "Yok", durum = "Calisiyor" }))["id"]!.GetValue<string>();
+id["bakimPlani"] = (await Post(a, $"api/bakim/ekipmanlar/{id["ekipman"]}/planlar", new { ad = "SIZINTI Plan", yasalMi = false, periyotGun = 30, hatirlatmaGun = 7 }))["id"]!.GetValue<string>();
+id["isEmri"] = (await Post(a, "api/bakim/is-emirleri", new { ekipmanId = id["ekipman"], tur = "Ariza", baslik = "SIZINTI Ariza", makineDurduMu = true, iscilikTutari = 0, disServisTutari = 0 }))["id"]!.GetValue<string>();
 id["dosyaTur"] = "cari";
 using (var form = new MultipartFormDataContent { { new ByteArrayContent("%PDF-1.4 SIZINTI"u8.ToArray()), "dosya", "sizinti.pdf" } })
 {
@@ -220,6 +223,10 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/muhasebe/eslemeler/", "kartId", "cari"),
     ("/api/muhasebe/aktarimlar/", "id", "muhasebeAktarim"),
     ("/api/evrak-takibi/", "id", "takipEvraki"),
+    ("/api/bakim/ekipmanlar/", "id", "ekipman"),
+    ("/api/bakim/ekipmanlar/", "ekipmanId", "ekipman"),
+    ("/api/bakim/planlar/", "id", "bakimPlani"),
+    ("/api/bakim/is-emirleri/", "id", "isEmri"),
     ("/api/arac/araclar/", "id", "arac"),
     ("/api/arac/araclar/", "aracId", "arac"),
     ("/api/arac/yukumlulukler/", "id", "aracYukumluluk"),

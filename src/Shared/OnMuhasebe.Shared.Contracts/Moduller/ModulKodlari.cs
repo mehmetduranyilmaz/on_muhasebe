@@ -16,5 +16,8 @@ public static class ModulKodlari
     // Araç kartı, sigorta/muayene/MTV süreleri, yakıt ve masraf takibi.
     public const string Arac = "arac";
 
-    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip, Arac];
+    // Ekipman kartı, periyodik bakım ve yasal kontrol, arıza iş emirleri.
+    public const string Bakim = "bakim";
+
+    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip, Arac, Bakim];
 }
