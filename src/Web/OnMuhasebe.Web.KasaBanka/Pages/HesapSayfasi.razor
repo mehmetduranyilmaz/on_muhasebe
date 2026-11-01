@@ -26,6 +26,10 @@
             {
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" Href="@($"kasabanka/{h.Id}/ekstre-aktar")">Ekstre içe aktar</MudButton>
             }
+            @if (h.Tur != HesapTuru.Kasa && Oturum.YetkiVarMi(KasaBankaYetkileri.Rapor, YetkiIslemleri.Goruntule))
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Balance" Href="@($"kasabanka/{h.Id}/mutabakat")">Mutabakat</MudButton>
+            }
             @if (h.AktifMi && Oturum.YazabilirMi(KasaBankaYetkileri.Islem, YetkiIslemleri.Ekle))
             {
                 <IslemMenusu HesapId="h.Id" Donus="@($"kasabanka/{h.Id}")" Turler="@IslemSecenekleri(h)" />

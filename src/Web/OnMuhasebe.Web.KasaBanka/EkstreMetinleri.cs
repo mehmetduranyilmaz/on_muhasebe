@@ -19,6 +19,7 @@ public static class EkstreMetinleri
         EkstreIslemTuru.Gelir => "Gelir",
         EkstreIslemTuru.Gider => "Gider",
         EkstreIslemTuru.Virman => "Virman",
+        EkstreIslemTuru.Evrak => "Çek/Senet",
         _ => "Atla"
     };
 
@@ -29,6 +30,7 @@ public static class EkstreMetinleri
         EkstreIslemTuru.Gelir => Icons.Material.Filled.TrendingUp,
         EkstreIslemTuru.Gider => Icons.Material.Filled.TrendingDown,
         EkstreIslemTuru.Virman => Icons.Material.Filled.SwapHoriz,
+        EkstreIslemTuru.Evrak => Icons.Material.Filled.RequestQuote,
         _ => Icons.Material.Filled.DoNotDisturbOn
     };
 
@@ -37,6 +39,7 @@ public static class EkstreMetinleri
         EkstreIslemTuru.Tahsilat or EkstreIslemTuru.Gelir => "#16A34A",
         EkstreIslemTuru.Odeme or EkstreIslemTuru.Gider => "#DC2626",
         EkstreIslemTuru.Virman => "#3B82F6",
+        EkstreIslemTuru.Evrak => "#8B5CF6",
         _ => "#64748B"
     };
 
@@ -62,7 +65,9 @@ public static class EkstreMetinleri
     };
 
     public static string? Eksik(EkstreSatiriDetayi s) =>
-        s.Durum is EkstreSatirDurumu.Bekliyor or EkstreSatirDurumu.Hatali ? Eksik(s.IslemTuru, s.CariHesapId, s.KategoriId, s.KarsiHesapId) : null;
+        s.Durum is not (EkstreSatirDurumu.Bekliyor or EkstreSatirDurumu.Hatali) ? null
+        : s.IslemTuru == EkstreIslemTuru.Evrak && s.EvrakId is null ? "Çek/senet seçilmedi"
+        : Eksik(s.IslemTuru, s.CariHesapId, s.KategoriId, s.KarsiHesapId);
 
     public static bool DuzenlenebilirMi(EkstreSatiriDetayi s) =>
         s.Durum is EkstreSatirDurumu.Bekliyor or EkstreSatirDurumu.Hatali or EkstreSatirDurumu.ZatenKayitli;

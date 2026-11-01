@@ -3,7 +3,10 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Domain;
 using OnMuhasebe.Modules.KasaBanka.Domain.Ekstre;
+using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
+using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using EkstreSatiri = OnMuhasebe.Modules.KasaBanka.Domain.EkstreSatiri;
 
 namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Ekstre;
@@ -13,8 +16,12 @@ internal sealed class EkstreServisi(
     KasaBankaDbContext db,
     KasaIslemServisi islemServisi,
     ICariSorgusu cariSorgusu,
+    CekSenetServisi cekSenet,
+    IYetkiDenetimi yetki,
     TimeProvider zaman)
 {
+    private static readonly string CekYetkisi = KasaBankaYetkileri.Cek.Yetki(YetkiIslemleri.Duzenle);
+
     public const int OnizlemeSatirSayisi = 15;
 
     public async Task<Sonuc<EkstreAktarimi>> YukleAsync(Guid hesapId, string dosyaAdi, byte[] icerik, CancellationToken ct)
@@ -49,7 +56,13 @@ internal sealed class EkstreServisi(
                 return KasaBankaHatalari.EkstreBos;
             }
 
-            await HazirlaAsync(aktarim, hesap, null, mt940.Satirlar, BakiyeKontrolu.Kontrol(mt940.Satirlar, mt940.AcilisBakiyesi, mt940.KapanisBakiyesi), ct);
+            if (mt940.ParaBirimleri.FirstOrDefault(p => EkstreDosyaKontrolu.ParaBirimiUyarMi(p, hesap.ParaBirimi)) is { } farkliPara)
+            {
+                return KasaBankaHatalari.EkstreParaBirimi(farkliPara, hesap.ParaBirimi);
+            }
+
+            await HazirlaAsync(aktarim, hesap, null, mt940.Satirlar, BakiyeKontrolu.Kontrol(mt940.Satirlar, mt940.AcilisBakiyesi, mt940.KapanisBakiyesi),
+                EkstreDosyaKontrolu.HesapUyarisi(mt940.Hesaplar, hesap.Iban, hesap.HesapNo), mt940.KapanisBakiyesi, ct);
         }
         else
         {
@@ -69,7 +82,7 @@ internal sealed class EkstreServisi(
             var sablon = await db.EkstreSablonlari.AsNoTracking().SingleOrDefaultAsync(s => s.HesapId == hesapId, ct);
             if (sablon is not null && OkumayiDene(() => SatirCozucu.Coz(tablo, sablon.Esleme)) is { BasariliMi: true, Deger: { Satirlar.Count: > 0 } cozum })
             {
-                await HazirlaAsync(aktarim, hesap, sablon.Esleme, cozum.Satirlar, BakiyeKontrolu.Kontrol(cozum.Satirlar), ct);
+                await HazirlaAsync(aktarim, hesap, sablon.Esleme, cozum.Satirlar, BakiyeKontrolu.Kontrol(cozum.Satirlar), null, MutabakatHesabi.Kapanis(cozum.Satirlar), ct);
             }
         }
 
@@ -104,7 +117,7 @@ internal sealed class EkstreServisi(
         }
 
         var hesap = await db.Hesaplar.SingleAsync(h => h.Id == aktarim.HesapId, ct);
-        await HazirlaAsync(aktarim, hesap, istek.Esleme, cozum.Satirlar, BakiyeKontrolu.Kontrol(cozum.Satirlar), ct);
+        await HazirlaAsync(aktarim, hesap, istek.Esleme, cozum.Satirlar, BakiyeKontrolu.Kontrol(cozum.Satirlar), null, MutabakatHesabi.Kapanis(cozum.Satirlar), ct);
 
         if (istek.SablonuKaydet)
         {
@@ -141,9 +154,15 @@ internal sealed class EkstreServisi(
             return hata;
         }
 
-        satir.Duzenle(istek.IslemTuru, istek.CariHesapId, istek.KategoriId, istek.KarsiHesapId, istek.EslesmeyiKaldir);
+        var secim = await SecimiDogrulaAsync(satir, istek, ct);
+        if (!secim.BasariliMi)
+        {
+            return secim.Hata;
+        }
 
-        if (!string.IsNullOrWhiteSpace(istek.HatirlanacakKelime) && istek.IslemTuru != EkstreIslemTuru.Atla)
+        satir.Duzenle(istek.IslemTuru, istek.CariHesapId, istek.KategoriId, istek.KarsiHesapId, istek.EslesmeyiKaldir, secim.Deger.Belge, secim.Deger.Evrak);
+
+        if (!string.IsNullOrWhiteSpace(istek.HatirlanacakKelime) && istek.IslemTuru is not (EkstreIslemTuru.Atla or EkstreIslemTuru.Evrak))
         {
             var yon = satir.GirisMi ? KuralYonu.Giris : KuralYonu.Cikis;
             var anahtar = EkstreMetni.Normalize(istek.HatirlanacakKelime);
@@ -262,7 +281,32 @@ internal sealed class EkstreServisi(
                 }
 
                 return await islemServisi.TahsilatOdemeAsync(
-                    new TahsilatOdemeIstegi(hesap.Id, cariId, s.Tarih, tutar, null, null, s.Referans, aciklama), s.GirisMi, ct);
+                    new TahsilatOdemeIstegi(hesap.Id, cariId, s.Tarih, tutar, null, null, s.Referans, aciklama, s.KapatilacakBelgeId), s.GirisMi, ct);
+
+            case EkstreIslemTuru.Evrak:
+                if (s.EvrakId is not { } evrakId)
+                {
+                    return KasaBankaHatalari.SatirEvrakGerekli;
+                }
+
+                if (!await yetki.VarMiAsync(CekYetkisi, ct))
+                {
+                    return KasaBankaHatalari.SatirEvrakYetkisi;
+                }
+
+                // Aktarıma kadar durum değişmiş olabilir: uygunluk burada yeniden denetlenir, işlemi çek/senet servisi yazar.
+                if (!(await EvrakAdaylariAsync(hesap, s.GirisMi, Math.Abs(s.Tutar), ct)).Any(e => e.Id == evrakId))
+                {
+                    return KasaBankaHatalari.SatirEvrakGecersiz;
+                }
+
+                var bordro = await cekSenet.IslemAsync(new EvrakIslemIstegi(s.GirisMi ? EvrakIslemi.Tahsil : EvrakIslemi.Odeme, s.Tarih, [evrakId], null, null, null, null, null, aciklama), ct);
+                if (!bordro.BasariliMi)
+                {
+                    return bordro.Hata;
+                }
+
+                return await db.EvrakHareketleri.AsNoTracking().Where(h => h.BordroId == bordro.Deger.BordroId && h.EvrakId == evrakId).Select(h => h.IslemId).FirstAsync(ct);
 
             case EkstreIslemTuru.Gelir or EkstreIslemTuru.Gider:
                 if (s.KategoriId is not { } kategoriId)
@@ -302,7 +346,7 @@ internal sealed class EkstreServisi(
 
     // Satırlar için parmak izi, tekrar kontrolü, mutabakat ve öneri hesaplanır.
     private async Task HazirlaAsync(
-        EkstreAktarimi aktarim, KasaHesabi hesap, KolonEslemesi? esleme, IReadOnlyList<CozulmusSatir> cozulmus, string? uyari, CancellationToken ct)
+        EkstreAktarimi aktarim, KasaHesabi hesap, KolonEslemesi? esleme, IReadOnlyList<CozulmusSatir> cozulmus, string? uyari, string? hesapUyarisi, decimal? kapanis, CancellationToken ct)
     {
         var izler = ParmakIzi.Hesapla(hesap.Id, cozulmus);
         var onceden = (await db.EkstreSatirlari.AsNoTracking()
@@ -326,27 +370,37 @@ internal sealed class EkstreServisi(
             .Select(h => new KendiHesabi(h.Id, h.Iban, h.HesapNo))
             .ToListAsync(ct);
         var cariler = await cariSorgusu.EslestirmeAdaylariAsync(ct);
+        var eslestirici = new BelgeEslestirici(
+            (await FaturaAdaylariAsync(hesap, ct)).Select(f => new FaturaAdayi(f.Aday.BelgeId, f.Aday.BelgeNo ?? "", f.Aday.CariHesapId, f.GirisIcin, f.Aday.Kalan)),
+            await yetki.VarMiAsync(CekYetkisi, ct) ? await TumEvrakAdaylariAsync(hesap, ct) : []);
 
         var satirlar = new List<EkstreSatiri>(cozulmus.Count);
         for (var i = 0; i < cozulmus.Count; i++)
         {
             var c = cozulmus[i];
             var satir = EkstreSatiri.Olustur(aktarim.Id, hesap.Id, i + 1, c, izler[i]);
-            satir.OneriUygula(OneriMotoru.Oner(c, hesap.Tur, kurallar, cariler, kendiHesaplari));
+            var oneri = OneriMotoru.Oner(c, hesap.Tur, kurallar, cariler, kendiHesaplari);
             if (onceden.Contains(izler[i]))
             {
+                satir.OneriUygula(oneri);
                 satir.DahaOnceAktarildiIsaretle();
             }
             else if (Mutabakat.Bul(c, adaylar) is { } eslesen)
             {
+                satir.OneriUygula(oneri);
                 satir.EslesmeAta(eslesen.HareketId);
                 adaylar.Remove(eslesen);
+            }
+            else
+            {
+                // Faturayı ya da çeki yalnız gerçekten yazılacak satır tüketir.
+                satir.OneriUygula(eslestirici.Uygula(c, oneri, hesap.Tur));
             }
 
             satirlar.Add(satir);
         }
 
-        aktarim.SatirlariYukle(esleme, satirlar, uyari);
+        aktarim.SatirlariYukle(esleme, satirlar, uyari, hesapUyarisi, kapanis);
     }
 
     public static List<string[]>? Tablo(EkstreAktarimi aktarim) =>
@@ -389,6 +443,86 @@ internal sealed class EkstreServisi(
 
         return karsiHesapId is { } h && !await db.Hesaplar.AnyAsync(x => x.Id == h, ct) ? KasaBankaHatalari.HesapBulunamadi : null;
     }
+
+    // Satır düzenleme ekranı için yönü ve para birimi uyan açık faturalar ile çek/senetler.
+    public async Task<Sonuc<EkstreSatirAdaylari>> AdaylarAsync(Guid aktarimId, Guid satirId, Guid? cariId, CancellationToken ct)
+    {
+        var satir = await db.EkstreSatirlari.AsNoTracking().SingleOrDefaultAsync(s => s.Id == satirId && s.AktarimId == aktarimId, ct);
+        if (satir is null)
+        {
+            return KasaBankaHatalari.AktarimBulunamadi;
+        }
+
+        var hesap = await db.Hesaplar.AsNoTracking().SingleAsync(h => h.Id == satir.HesapId, ct);
+        var tutar = Math.Abs(satir.Tutar);
+        var faturalar = (await FaturaAdaylariAsync(hesap, ct))
+            .Where(f => f.GirisIcin == satir.GirisMi && (cariId is null || f.Aday.CariHesapId == cariId))
+            .Select(f => f.Aday)
+            .OrderByDescending(f => f.Kalan == tutar).ThenBy(f => f.Vade)
+            .Take(AzamiAday)
+            .ToList();
+        IReadOnlyList<EkstreEvrakAdayi> evraklar = [];
+        if (await yetki.VarMiAsync(CekYetkisi, ct))
+        {
+            var idler = (await EvrakAdaylariAsync(hesap, satir.GirisMi, tutar, ct)).Select(e => e.Id).ToList();
+            evraklar = await db.Evraklar.AsNoTracking().Where(e => idler.Contains(e.Id)).OrderBy(e => e.VadeTarihi).Take(AzamiAday)
+                .Select(e => new EkstreEvrakAdayi(e.Id, e.Tur, e.SeriNo, e.VadeTarihi, e.Tutar, e.Durum)).ToListAsync(ct);
+        }
+
+        return new EkstreSatirAdaylari(faturalar, evraklar);
+    }
+
+    private const int AzamiAday = 50;
+
+    private async Task<Sonuc<((Guid, string?)? Belge, (Guid, string)? Evrak)>> SecimiDogrulaAsync(EkstreSatiri satir, SatirGuncelleIstegi istek, CancellationToken ct)
+    {
+        var hesap = await db.Hesaplar.AsNoTracking().SingleAsync(h => h.Id == satir.HesapId, ct);
+        if (istek.IslemTuru == EkstreIslemTuru.Evrak)
+        {
+            if (istek.EvrakId is not { } evrakId)
+            {
+                return KasaBankaHatalari.SatirEvrakGerekli;
+            }
+
+            if (!await yetki.VarMiAsync(CekYetkisi, ct))
+            {
+                return KasaBankaHatalari.SatirEvrakYetkisi;
+            }
+
+            return (await EvrakAdaylariAsync(hesap, satir.GirisMi, Math.Abs(satir.Tutar), ct)).FirstOrDefault(e => e.Id == evrakId) is { } evrak
+                ? (((Guid, string?)?)null, (evrak.Id, evrak.No))
+                : KasaBankaHatalari.SatirEvrakGecersiz;
+        }
+
+        if (istek.KapatilacakBelgeId is not { } belgeId || istek.IslemTuru is not (EkstreIslemTuru.Tahsilat or EkstreIslemTuru.Odeme))
+        {
+            return (((Guid, string?)?)null, ((Guid, string)?)null);
+        }
+
+        return (await FaturaAdaylariAsync(hesap, ct)).FirstOrDefault(f => f.Aday.BelgeId == belgeId && f.Aday.CariHesapId == istek.CariHesapId && f.GirisIcin == satir.GirisMi) is { Aday: not null } fatura
+            ? ((fatura.Aday.BelgeId, fatura.Aday.BelgeNo), ((Guid, string)?)null)
+            : KasaBankaHatalari.SatirBelgeGecersiz;
+    }
+
+    // Faturalardan doğan açık kalemler; satış faturası giren parayla, alış faturası çıkan parayla kapanır.
+    private async Task<List<(EkstreFaturaAdayi Aday, bool GirisIcin)>> FaturaAdaylariAsync(KasaHesabi hesap, CancellationToken ct) =>
+        (await cariSorgusu.AcikKalemlerAsync(ct))
+        .Where(k => k.KaynakBelgeId is not null && k.ParaBirimi == hesap.ParaBirimi
+                    && k.Tur is CariHareketTuru.SatisFaturasi or CariHareketTuru.AlisFaturasi or CariHareketTuru.SatistanIadeFaturasi or CariHareketTuru.AlistanIadeFaturasi)
+        .Select(k => (new EkstreFaturaAdayi(k.KaynakBelgeId!.Value, k.BelgeNo, k.CariHesapId, k.Unvan, k.Vade, k.Kalan), k.Yon == HareketYonu.Borc))
+        .ToList();
+
+    // Bankada görünebilecek evrak: bu hesapta tahsile verilmiş alınan evrak ya da bu hesaptan verilmiş evrak. Portföydeki evrak bankada değildir.
+    private async Task<List<EvrakAdayi>> TumEvrakAdaylariAsync(KasaHesabi hesap, CancellationToken ct) =>
+        await db.Evraklar.AsNoTracking()
+            .Where(e => e.ParaBirimi == hesap.ParaBirimi
+                        && ((e.Yon == EvrakYonu.Alinan && e.Durum == EvrakDurumu.Tahsilde && e.KonumHesapId == hesap.Id)
+                            || (e.Yon == EvrakYonu.Verilen && e.Durum == EvrakDurumu.Verildi && e.KendiHesapId == hesap.Id)))
+            .Select(e => new EvrakAdayi(e.Id, e.SeriNo, e.CariHesapId, e.Yon == EvrakYonu.Alinan, e.Tutar, e.VadeTarihi))
+            .ToListAsync(ct);
+
+    private async Task<List<EvrakAdayi>> EvrakAdaylariAsync(KasaHesabi hesap, bool giris, decimal tutar, CancellationToken ct) =>
+        (await TumEvrakAdaylariAsync(hesap, ct)).Where(e => e.GirisIcin == giris && e.Tutar == tutar).ToList();
 
     public static KolonEslemesi? Tahmin(EkstreAktarimi aktarim) => Tablo(aktarim) is { } tablo ? KolonTahmincisi.Tahmin(tablo) : null;
 

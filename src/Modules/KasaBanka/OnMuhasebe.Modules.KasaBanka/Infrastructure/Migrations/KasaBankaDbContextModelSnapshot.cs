@@ -1002,9 +1002,19 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("hesap_id");
 
+                    b.Property<string>("HesapUyarisi")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("hesap_uyarisi");
+
                     b.Property<byte[]>("Icerik")
                         .HasColumnType("bytea")
                         .HasColumnName("icerik");
+
+                    b.Property<decimal?>("KapanisBakiyesi")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("kapanis_bakiyesi");
 
                     b.Property<Guid?>("OlusturanId")
                         .HasColumnType("uuid")
@@ -1206,6 +1216,15 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("eslesen_hareket_id");
 
+                    b.Property<Guid?>("EvrakId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("evrak_id");
+
+                    b.Property<string>("EvrakNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("evrak_no");
+
                     b.Property<DateTime?>("GuncellemeTarihi")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("guncelleme_tarihi");
@@ -1232,6 +1251,15 @@ namespace OnMuhasebe.Modules.KasaBanka.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)")
                         .HasColumnName("islem_turu");
+
+                    b.Property<Guid?>("KapatilacakBelgeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kapatilacak_belge_id");
+
+                    b.Property<string>("KapatilacakBelgeNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("kapatilacak_belge_no");
 
                     b.Property<Guid?>("KarsiHesapId")
                         .HasColumnType("uuid")

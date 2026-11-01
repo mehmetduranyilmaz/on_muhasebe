@@ -13,6 +13,8 @@ internal sealed class EkstreAktarimiConfiguration : IEntityTypeConfiguration<Eks
         builder.Property(x => x.Bicim).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.BakiyeUyarisi).HasMaxLength(500);
+        builder.Property(x => x.HesapUyarisi).HasMaxLength(500);
+        builder.Property(x => x.KapanisBakiyesi).HasPrecision(18, 2);
         builder.HasIndex(x => new { x.FirmaId, x.HesapId });
         builder.HasOne<KasaHesabi>().WithMany().HasForeignKey(x => x.HesapId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(x => x.Satirlar).WithOne().HasForeignKey(x => x.AktarimId).OnDelete(DeleteBehavior.Cascade);
@@ -31,6 +33,8 @@ internal sealed class EkstreSatiriConfiguration : IEntityTypeConfiguration<Ekstr
         builder.Property(x => x.Durum).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.IslemTuru).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.OneriKaynagi).HasMaxLength(30);
+        builder.Property(x => x.KapatilacakBelgeNo).HasMaxLength(50);
+        builder.Property(x => x.EvrakNo).HasMaxLength(50);
         builder.Property(x => x.Hata).HasMaxLength(500);
         builder.Ignore(x => x.GirisMi);
 

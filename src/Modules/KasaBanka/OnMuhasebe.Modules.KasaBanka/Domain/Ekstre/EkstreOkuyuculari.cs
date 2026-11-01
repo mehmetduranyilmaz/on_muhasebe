@@ -6,7 +6,8 @@ namespace OnMuhasebe.Modules.KasaBanka.Domain.Ekstre;
 // Ekstrenin çözülmüş hali. Tutar işaretlidir: artı hesaba giriş, eksi çıkış.
 internal sealed record CozulmusSatir(DateOnly Tarih, string Aciklama, decimal Tutar, decimal? Bakiye, string? Referans);
 
-internal sealed record Mt940Ekstresi(IReadOnlyList<CozulmusSatir> Satirlar, decimal? AcilisBakiyesi, decimal? KapanisBakiyesi);
+internal sealed record Mt940Ekstresi(
+    IReadOnlyList<CozulmusSatir> Satirlar, decimal? AcilisBakiyesi, decimal? KapanisBakiyesi, IReadOnlyList<string> Hesaplar, IReadOnlyList<string> ParaBirimleri);
 
 internal static class CsvOkuyucu
 {
@@ -110,13 +111,23 @@ internal static partial class Mt940Okuyucu
         var etiketler = Etiketler(CsvOkuyucu.Metin(icerik));
         var satirlar = new List<CozulmusSatir>();
         decimal? acilis = null, kapanis = null;
+        var hesaplar = new List<string>();
+        var paraBirimleri = new List<string>();
         for (var i = 0; i < etiketler.Count; i++)
         {
             var (etiket, deger) = etiketler[i];
             switch (etiket)
             {
+                case "25":
+                    hesaplar.Add(deger.Trim());
+                    break;
                 case "60F" or "60M":
                     acilis ??= Bakiye(deger);
+                    if (deger.Trim() is { Length: >= 10 } bakiye)
+                    {
+                        paraBirimleri.Add(bakiye[7..10].ToUpperInvariant());
+                    }
+
                     break;
                 case "62F" or "62M":
                     kapanis = Bakiye(deger);
@@ -133,7 +144,7 @@ internal static partial class Mt940Okuyucu
             }
         }
 
-        return new Mt940Ekstresi(satirlar, acilis, kapanis);
+        return new Mt940Ekstresi(satirlar, acilis, kapanis, hesaplar.Distinct().ToList(), paraBirimleri.Distinct().ToList());
     }
 
     private static List<(string Etiket, string Deger)> Etiketler(string metin)

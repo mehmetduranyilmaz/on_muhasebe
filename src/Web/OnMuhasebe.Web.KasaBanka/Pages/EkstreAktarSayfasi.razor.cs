@@ -312,7 +312,8 @@ public partial class EkstreAktarSayfasi
 
     private string? Hedef(EkstreSatiriDetayi s) => s.IslemTuru switch
     {
-        EkstreIslemTuru.Tahsilat or EkstreIslemTuru.Odeme => s.CariUnvan,
+        EkstreIslemTuru.Tahsilat or EkstreIslemTuru.Odeme => s.KapatilacakBelgeId is null ? s.CariUnvan : $"{s.CariUnvan} · Fatura {s.KapatilacakBelgeNo}",
+        EkstreIslemTuru.Evrak => s.EvrakNo is { } no ? $"No {no}" : null,
         EkstreIslemTuru.Gelir or EkstreIslemTuru.Gider => s.KategoriId is { } k ? _kategoriler.FirstOrDefault(x => x.Id == k)?.Ad : null,
         EkstreIslemTuru.Virman => s.KarsiHesapId is { } h ? _hesaplar.FirstOrDefault(x => x.Id == h)?.Ad : null,
         _ => null

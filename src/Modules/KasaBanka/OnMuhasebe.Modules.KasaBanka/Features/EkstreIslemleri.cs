@@ -29,6 +29,7 @@ internal static class EkstreIslemleri
         grup.MapGet("/ekstre-aktarimlari/{id:guid}", GetirAsync);
         grup.MapPut("/ekstre-aktarimlari/{id:guid}/esleme", EslemeAsync).Dogrula<EslemeIstegi>();
         grup.MapPut("/ekstre-aktarimlari/{id:guid}/satirlar/{satirId:guid}", SatirGuncelleAsync).Dogrula<SatirGuncelleIstegi>();
+        grup.MapGet("/ekstre-aktarimlari/{id:guid}/satirlar/{satirId:guid}/adaylar", AdaylarAsync);
         grup.MapPost("/ekstre-aktarimlari/{id:guid}/aktar", AktarAsync);
         grup.MapDelete("/ekstre-aktarimlari/{id:guid}", SilAsync);
 
@@ -78,7 +79,7 @@ internal static class EkstreIslemleri
         {
             RuleFor(x => x.AnahtarKelime).NotEmpty().MinimumLength(3).MaximumLength(100);
             RuleFor(x => x.Yon).IsInEnum();
-            RuleFor(x => x.IslemTuru).IsInEnum();
+            RuleFor(x => x.IslemTuru).IsInEnum().NotEqual(EkstreIslemTuru.Evrak).WithMessage("Çek/senet eşleşmesi kural olarak kaydedilemez.");
         }
     }
 
@@ -131,6 +132,12 @@ internal static class EkstreIslemleri
         return sonuc.BasariliMi ? TypedResults.Ok(await DetayAsync(sonuc.Deger, db, cariSorgusu, ct)) : sonuc.HttpSonucu();
     }
 
+    private static async Task<IResult> AdaylarAsync(Guid id, Guid satirId, Guid? cariId, EkstreServisi servis, CancellationToken ct)
+    {
+        var sonuc = await servis.AdaylarAsync(id, satirId, cariId, ct);
+        return sonuc.BasariliMi ? TypedResults.Ok(sonuc.Deger) : sonuc.HttpSonucu();
+    }
+
     private static async Task<IResult> AktarAsync(Guid id, EkstreServisi servis, KasaBankaDbContext db, ICariSorgusu cariSorgusu, CancellationToken ct)
     {
         var sonuc = await servis.AktarAsync(id, ct);
@@ -173,13 +180,13 @@ internal static class EkstreIslemleri
         var tablo = a.Durum == AktarimDurumu.Tamamlandi ? null : EkstreServisi.Tablo(a);
         var esleme = a.Esleme ?? (a.Durum == AktarimDurumu.EslemeBekliyor && tablo is not null ? Domain.Ekstre.KolonTahmincisi.Tahmin(tablo) : null);
         return new AktarimDetayi(
-            a.Id, a.HesapId, hesap.Ad, hesap.ParaBirimi, a.DosyaAdi, a.Bicim, a.Durum, a.OlusturmaTarihi, a.Baslangic, a.Bitis, a.BakiyeUyarisi, esleme,
+            a.Id, a.HesapId, hesap.Ad, hesap.ParaBirimi, a.DosyaAdi, a.Bicim, a.Durum, a.OlusturmaTarihi, a.Baslangic, a.Bitis, a.BakiyeUyarisi, a.HesapUyarisi, esleme,
             tablo?.Take(EkstreServisi.OnizlemeSatirSayisi).Select(r => (IReadOnlyList<string>)r).ToList() ?? [],
             a.Satirlar.OrderBy(s => s.Sira).Select(s => new EkstreSatiriDetayi(
                 s.Id, s.Sira, s.Tarih, s.Aciklama, s.Tutar, s.Bakiye, s.Referans, s.Durum, s.IslemTuru,
                 s.CariHesapId, s.CariHesapId is { } c ? unvanlar.GetValueOrDefault(c) : null, s.KategoriId, s.KarsiHesapId,
                 s.EslesenHareketId, s.EslesenHareketId is { } h && hareketTarihleri.TryGetValue(h, out var t) ? t : null,
-                s.IslemId, s.OneriKaynagi, s.Hata, s.ElleDuzenlendi)).ToList());
+                s.IslemId, s.OneriKaynagi, s.Hata, s.ElleDuzenlendi, s.KapatilacakBelgeId, s.KapatilacakBelgeNo, s.EvrakId, s.EvrakNo)).ToList());
     }
 
     private static async Task<IResult> KurallariListeleAsync(KasaBankaDbContext db, ICariSorgusu cariSorgusu, CancellationToken ct)

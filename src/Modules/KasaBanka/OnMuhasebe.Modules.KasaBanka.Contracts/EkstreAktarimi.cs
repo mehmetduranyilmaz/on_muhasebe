@@ -41,7 +41,9 @@ public enum EkstreIslemTuru
     Gelir,
     Gider,
     Virman,
-    Atla
+    Atla,
+    // Tahsildeki alınan çek/senetin tahsili ya da verilen çek/senetin ödenmesi.
+    Evrak
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<KuralYonu>))]
@@ -87,7 +89,11 @@ public sealed record EkstreSatiriDetayi(
     Guid? IslemId,
     string? OneriKaynagi,
     string? Hata,
-    bool ElleDuzenlendi);
+    bool ElleDuzenlendi,
+    Guid? KapatilacakBelgeId = null,
+    string? KapatilacakBelgeNo = null,
+    Guid? EvrakId = null,
+    string? EvrakNo = null);
 
 // IlkSatirlar: kolon eşleme ekranı için dosyanın ilk satırları (Excel/CSV).
 public sealed record AktarimDetayi(
@@ -102,6 +108,7 @@ public sealed record AktarimDetayi(
     DateOnly? Baslangic,
     DateOnly? Bitis,
     string? BakiyeUyarisi,
+    string? HesapUyarisi,
     KolonEslemesi? Esleme,
     IReadOnlyList<IReadOnlyList<string>> IlkSatirlar,
     IReadOnlyList<EkstreSatiriDetayi> Satirlar);
@@ -126,7 +133,37 @@ public sealed record SatirGuncelleIstegi(
     Guid? KategoriId,
     Guid? KarsiHesapId,
     bool EslesmeyiKaldir,
-    string? HatirlanacakKelime);
+    string? HatirlanacakKelime,
+    Guid? KapatilacakBelgeId = null,
+    Guid? EvrakId = null);
+
+// Satırın yönüne ve para birimine uyan seçenekler; tutarı birebir tutanlar önce gelir.
+public sealed record EkstreFaturaAdayi(Guid BelgeId, string? BelgeNo, Guid CariHesapId, string Unvan, DateOnly Vade, decimal Kalan);
+
+public sealed record EkstreEvrakAdayi(Guid Id, EvrakTuru Tur, string SeriNo, DateOnly Vade, decimal Tutar, EvrakDurumu Durum);
+
+public sealed record EkstreSatirAdaylari(IReadOnlyList<EkstreFaturaAdayi> Faturalar, IReadOnlyList<EkstreEvrakAdayi> Evraklar);
+
+public sealed record MutabakatHareketi(Guid Id, DateOnly Tarih, KasaHareketTuru Tur, string? Aciklama, decimal Tutar);
+
+public sealed record MutabakatEkstreSatiri(DateOnly Tarih, string Aciklama, string? Referans, EkstreSatirDurumu Durum, decimal Tutar);
+
+// EkstreBakiyesi verilmezse dönem sonuna en yakın aktarımın kapanış bakiyesi kullanılır (EkstreTarihi, EkstreDosyasi).
+// Tutarlar işaretlidir: artı hesaba giriş. Fark = ekstre - program.
+public sealed record MutabakatRaporu(
+    Guid HesapId,
+    string HesapAdi,
+    string ParaBirimi,
+    DateOnly Baslangic,
+    DateOnly Bitis,
+    decimal ProgramBakiyesi,
+    decimal? EkstreBakiyesi,
+    DateOnly? EkstreTarihi,
+    string? EkstreDosyasi,
+    decimal? Fark,
+    decimal? AciklanamayanFark,
+    IReadOnlyList<MutabakatHareketi> YalnizProgramda,
+    IReadOnlyList<MutabakatEkstreSatiri> YalnizEkstrede);
 
 public sealed record AktarimSonucu(int Aktarilan, int ZatenKayitli, int Atlanan, int Hatali, AktarimDetayi Aktarim);
 

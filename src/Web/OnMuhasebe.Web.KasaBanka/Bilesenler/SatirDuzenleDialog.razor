@@ -30,8 +30,31 @@
             </div>
         }
 
-        <HedefSecici Secim="_secim" Turler="EkstreMetinleri.UygunTurler(GirisMi)" Kategoriler="Kategoriler" Hesaplar="Hesaplar"
-                     HesapId="HesapId" ParaBirimi="ParaBirimi" Degisti="StateHasChanged" />
+        <HedefSecici Secim="_secim" Turler="_turler" Kategoriler="Kategoriler" Hesaplar="Hesaplar"
+                     HesapId="HesapId" ParaBirimi="ParaBirimi" Degisti="SecimDegistiAsync" />
+
+        @if (Satirlar.Count == 1 && EkstreMetinleri.CariGerekliMi(_secim.Tur) && _secim.Cari is not null)
+        {
+            <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeId" Label="Kapatılacak fatura" Class="mt-3"
+                       ToStringFunc="@(id => id is null ? "Otomatik: en eski borçtan" : _faturalar.FirstOrDefault(f => f.BelgeId == id) is { } f ? FaturaEtiketi(f) : (Satirlar[0].KapatilacakBelgeNo ?? "Fatura"))">
+                <MudSelectItem T="Guid?" Value="null">Otomatik: en eski borçtan</MudSelectItem>
+                @foreach (var f in _faturalar)
+                {
+                    <MudSelectItem T="Guid?" Value="f.BelgeId">@FaturaEtiketi(f)</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        @if (_secim.Tur == EkstreIslemTuru.Evrak)
+        {
+            <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_evrakId" Label="Çek / senet" Class="mt-3"
+                       HelperText="@(GirisMi == true ? "Tahsilde olan alınan evrak tahsil edilmiş sayılır." : "Verilen evrak ödenmiş sayılır.")">
+                @foreach (var e in _evraklar)
+                {
+                    <MudSelectItem T="Guid?" Value="e.Id">@(e.Tur == EvrakTuru.Cek ? "Çek" : "Senet") @e.SeriNo · vade @Bicim.Tarih(e.Vade) · @Bicim.Tutar(e.Tutar)</MudSelectItem>
+                }
+            </MudSelect>
+        }
 
         @if (Satirlar.Any(x => x.Durum == EkstreSatirDurumu.ZatenKayitli))
         {
@@ -43,7 +66,7 @@
             </MudAlert>
         }
 
-        @if (Satirlar.Count == 1 && _secim.Tur != EkstreIslemTuru.Atla)
+        @if (Satirlar.Count == 1 && _secim.Tur is not (EkstreIslemTuru.Atla or EkstreIslemTuru.Evrak))
         {
             <div class="kural-hatirla mt-4">
                 <MudSwitch T="bool" @bind-Value="_hatirla" Color="Color.Secondary" Label="Bu seçimi hatırla" />
@@ -58,7 +81,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
-        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_hatirla && (_kelime?.Trim().Length ?? 0) < 3)">Uygula</IslemDugmesi>
+        <IslemDugmesi Islem="KaydetAsync" StartIcon="@Icons.Material.Filled.Check" Disabled="@((_hatirla && (_kelime?.Trim().Length ?? 0) < 3) || (_secim.Tur == EkstreIslemTuru.Evrak && _evrakId is null))">Uygula</IslemDugmesi>
     </DialogActions>
 </MudDialog>
 
@@ -73,6 +96,12 @@
     [Parameter, EditorRequired] public IReadOnlyList<HesapOzeti> Hesaplar { get; set; } = [];
 
     private EkstreSecimi _secim = new();
+    private IReadOnlyList<EkstreIslemTuru> _turler = [];
+    private IReadOnlyList<EkstreFaturaAdayi> _faturalar = [];
+    private IReadOnlyList<EkstreEvrakAdayi> _evraklar = [];
+    private Guid? _adayCari;
+    private Guid? _belgeId;
+    private Guid? _evrakId;
     private bool _eslesmeyiKaldir;
     private bool _hatirla;
     private string? _kelime;
@@ -80,18 +109,54 @@
 
     private bool? GirisMi => Satirlar.All(s => s.Tutar > 0) ? true : Satirlar.All(s => s.Tutar < 0) ? false : null;
 
-    protected override void OnInitialized()
+    private static string FaturaEtiketi(EkstreFaturaAdayi f) => $"{f.BelgeNo ?? "Numarasız"} · vade {Bicim.Tarih(f.Vade)} · kalan {Bicim.Tutar(f.Kalan)}";
+
+    protected override async Task OnInitializedAsync()
     {
         var ilk = Satirlar[0];
+        (_belgeId, _evrakId) = (ilk.KapatilacakBelgeId, ilk.EvrakId);
         var uygun = EkstreMetinleri.UygunTurler(GirisMi);
+        _turler = ilk.IslemTuru == EkstreIslemTuru.Evrak && Satirlar.Count == 1 ? [.. uygun.Take(1), EkstreIslemTuru.Evrak, .. uygun.Skip(1)] : uygun;
         _secim = new EkstreSecimi
         {
-            Tur = uygun.Contains(ilk.IslemTuru) ? ilk.IslemTuru : uygun[0],
+            Tur = _turler.Contains(ilk.IslemTuru) ? ilk.IslemTuru : uygun[0],
             Cari = ilk.CariHesapId is { } c ? new CariSecim(c, ilk.CariUnvan ?? "Cari") : null,
             KategoriId = ilk.KategoriId,
             KarsiHesapId = ilk.KarsiHesapId
         };
         _kelime = EkstreMetinleri.OnerilenKelime(ilk.Aciklama);
+
+        // Düğmeler beklemeden görünür; çek/senet seçeneği bu satıra uyan evrak gelince eklenir.
+        if (Satirlar.Count == 1)
+        {
+            await AdaylariYukleAsync(ilk.CariHesapId);
+            if (_evraklar.Count > 0 && !_turler.Contains(EkstreIslemTuru.Evrak))
+            {
+                _turler = [.. uygun.Take(1), EkstreIslemTuru.Evrak, .. uygun.Skip(1)];
+            }
+        }
+    }
+
+    private async Task AdaylariYukleAsync(Guid? cariId)
+    {
+        var sonuc = await Api.GetAsync<EkstreSatirAdaylari>($"api/kasabanka/ekstre-aktarimlari/{AktarimId}/satirlar/{Satirlar[0].Id}/adaylar" + (cariId is { } c ? $"?cariId={c}" : ""));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            (_faturalar, _evraklar, _adayCari) = (cariId is null ? [] : sonuc.Deger.Faturalar, sonuc.Deger.Evraklar, cariId);
+        }
+    }
+
+    // Cari değişince faturalar o carininkilerle yenilenir; önceki seçim başka cariye ait kalmasın.
+    private async Task SecimDegistiAsync()
+    {
+        if (Satirlar.Count == 1 && _secim.Cari?.Id != _adayCari)
+        {
+            _belgeId = null;
+            await AdaylariYukleAsync(_secim.Cari?.Id);
+        }
+
+        StateHasChanged();
     }
 
     private async Task KaydetAsync()
@@ -103,7 +168,9 @@
             var istek = new SatirGuncelleIstegi(
                 _secim.Tur, _secim.GonderilecekCari, _secim.GonderilecekKategori, _secim.GonderilecekKarsiHesap,
                 _eslesmeyiKaldir && s.Durum == EkstreSatirDurumu.ZatenKayitli,
-                _hatirla && Satirlar.Count == 1 && _secim.Tur != EkstreIslemTuru.Atla ? _kelime?.Trim() : null);
+                _hatirla && Satirlar.Count == 1 && _secim.Tur is not (EkstreIslemTuru.Atla or EkstreIslemTuru.Evrak) ? _kelime?.Trim() : null,
+                Satirlar.Count == 1 && EkstreMetinleri.CariGerekliMi(_secim.Tur) ? _belgeId : null,
+                _secim.Tur == EkstreIslemTuru.Evrak ? _evrakId : null);
             var sonuc = await Api.PutAsync<AktarimDetayi>($"api/kasabanka/ekstre-aktarimlari/{AktarimId}/satirlar/{s.Id}", istek);
             // Toplu düzenlemede önceki satırlar kaydedilmiş olabilir; çağıran ekran diyalog kapanınca aktarımı yeniden yükler.
             if (!sonuc.BasariliMi)

@@ -284,6 +284,11 @@ else if (_hata is null)
         {
             <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3 belirme">@a.BakiyeUyarisi</MudAlert>
         }
+
+        @if (a.HesapUyarisi is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3 belirme hesap-uyarisi">@a.HesapUyarisi</MudAlert>
+        }
         @if (a.Durum == AktarimDurumu.Tamamlandi)
         {
             <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3 belirme">Bu ekstre aktarıldı. Satırlar artık değiştirilemez; hareketleri hesap sayfasından iptal edebilirsiniz.</MudAlert>
@@ -384,7 +389,7 @@ else if (_hata is null)
                         }
                         @if (s.OneriKaynagi is { } kaynak && kaynak is not ("Varsayılan" or "Elle") && s.Durum == EkstreSatirDurumu.Bekliyor)
                         {
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" Icon="@Icons.Material.Filled.AutoAwesome" Class="oneri-cipi">@kaynak</MudChip>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(kaynak == "Yalnız tutar tuttu" ? Color.Warning : Color.Secondary)" Icon="@Icons.Material.Filled.AutoAwesome" Class="oneri-cipi">@kaynak</MudChip>
                         }
                     }
                 </MudTd>

@@ -23,6 +23,8 @@ internal sealed class EkstreAktarimi : FirmaEntity
     public DateOnly? Baslangic { get; private set; }
     public DateOnly? Bitis { get; private set; }
     public string? BakiyeUyarisi { get; private set; }
+    public string? HesapUyarisi { get; private set; }
+    public decimal? KapanisBakiyesi { get; private set; }
     public DateTime? TamamlanmaTarihi { get; private set; }
 
     public IReadOnlyCollection<EkstreSatiri> Satirlar => _satirlar;
@@ -37,8 +39,9 @@ internal sealed class EkstreAktarimi : FirmaEntity
     };
 
     // Çözülmüş satırlar yüklenir; varsa önceki (aktarılmamış) satırların yerini alır.
-    public void SatirlariYukle(KolonEslemesi? esleme, IReadOnlyList<EkstreSatiri> satirlar, string? bakiyeUyarisi)
+    public void SatirlariYukle(KolonEslemesi? esleme, IReadOnlyList<EkstreSatiri> satirlar, string? bakiyeUyarisi, string? hesapUyarisi, decimal? kapanisBakiyesi)
     {
+        (HesapUyarisi, KapanisBakiyesi) = (hesapUyarisi, kapanisBakiyesi);
         Esleme = esleme;
         _satirlar.Clear();
         _satirlar.AddRange(satirlar);
@@ -83,6 +86,10 @@ internal sealed class EkstreSatiri : BaseEntity
     public Guid? EslesenHareketId { get; private set; }
     public Guid? IslemId { get; private set; }
     public Guid? KuralId { get; private set; }
+    public Guid? KapatilacakBelgeId { get; private set; }
+    public string? KapatilacakBelgeNo { get; private set; }
+    public Guid? EvrakId { get; private set; }
+    public string? EvrakNo { get; private set; }
     public string? OneriKaynagi { get; private set; }
     public string? Hata { get; private set; }
     public bool ElleDuzenlendi { get; private set; }
@@ -107,6 +114,7 @@ internal sealed class EkstreSatiri : BaseEntity
     {
         (IslemTuru, CariHesapId, KategoriId, KarsiHesapId, KuralId, OneriKaynagi) =
             (o.IslemTuru, o.CariHesapId, o.KategoriId, o.KarsiHesapId, o.KuralId, o.Kaynak);
+        (KapatilacakBelgeId, KapatilacakBelgeNo, EvrakId, EvrakNo) = (o.KapatilacakBelgeId, o.KapatilacakBelgeNo, o.EvrakId, o.EvrakNo);
     }
 
     public void DahaOnceAktarildiIsaretle() => Durum = EkstreSatirDurumu.DahaOnceAktarildi;
@@ -117,9 +125,10 @@ internal sealed class EkstreSatiri : BaseEntity
         Durum = EkstreSatirDurumu.ZatenKayitli;
     }
 
-    public void Duzenle(EkstreIslemTuru tur, Guid? cariId, Guid? kategoriId, Guid? karsiHesapId, bool eslesmeyiKaldir)
+    public void Duzenle(EkstreIslemTuru tur, Guid? cariId, Guid? kategoriId, Guid? karsiHesapId, bool eslesmeyiKaldir, (Guid Id, string? No)? belge = null, (Guid Id, string No)? evrak = null)
     {
         (IslemTuru, CariHesapId, KategoriId, KarsiHesapId) = (tur, cariId, kategoriId, karsiHesapId);
+        (KapatilacakBelgeId, KapatilacakBelgeNo, EvrakId, EvrakNo) = (belge?.Id, belge?.No, evrak?.Id, evrak?.No);
         if (eslesmeyiKaldir && Durum == EkstreSatirDurumu.ZatenKayitli)
         {
             EslesenHareketId = null;

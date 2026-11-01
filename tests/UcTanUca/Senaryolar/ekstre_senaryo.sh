@@ -139,7 +139,7 @@ kontrol 200 "Duzeltilen satir aktarildi, aktarim tamamlandi" '"aktarilan":1,"zat
 bakiye "$BANKA" "Banka bakiyesi ekstre kapanisiyla ayni: 10.470" 10470
 istek POST "/api/kasabanka/ekstre-aktarimlari/$A1/aktar" "$T"
 kontrol 422 "Tamamlanan aktarim tekrar aktarilamaz" aktarim_hazir_degil
-istek GET "/api/kasabanka/raporlar/gelir-gider?baslangic=2026-10-01&bitis=2026-10-31" "$T"
+istek GET "/api/kasabanka/raporlar/gelir-gider?baslangic=2026-10-01&bitisTarihi=2026-10-31" "$T"
 kontrol 200 "Ekstreden gelen elektrik giderleri rapora yansidi (920)" '"Elektrik[^}]*920(\.0+)?[,}]'
 
 echo "--- Tekrar yukleme ve sablon"
@@ -219,6 +219,129 @@ istek DELETE "/api/kasabanka/ekstre-kurallari/$K1" "$T"
 kontrol 204 "Kural silindi"
 istek DELETE "/api/kasabanka/ekstre-kurallari/$K1" "$T"
 kontrol 404 "Silinen kural bulunamaz"
+
+echo "--- Acik fatura ve cek/senet eslestirme"
+kayit_ol '{"firmaUnvani":"Eslesme Test AS","ad":"Esra","soyad":"Lale","eposta":"eslesme'"$U"'@ornek.com","sifre":"Sifre1234"}'
+T=$(alan accessToken)
+fatura_ac() { # TUR CARI FIYAT NUMARA
+  istek POST /api/fatura/faturalar "$T" '{"tur":"'"$1"'","cariHesapId":"'"$2"'","tarih":"2026-10-10","genelIskontoTuru":"Yuzde","genelIskonto":0,"satirlar":[{"ad":"Hizmet","birim":"ADET","miktar":1,"birimFiyat":'"$3"',"kdvOrani":20,"kdvDahilMi":false,"iskonto1":0,"iskonto2":0,"iskonto3":0}]'"${4:+,\"numara\":\"$4\"}"'}'
+  echo "$GOVDE" | grep -o '"fatura":{"id":"[^"]*' | sed -E 's/.*:"//'
+}
+fatura_no() { istek GET "/api/fatura/faturalar/$1" "$T"; echo "$GOVDE" | grep -o '"numara":"[^"]*' | head -1 | cut -d'"' -f4; }
+yukle_yol() { # HESAP DOSYAYOLU
+  KOD=$(curl "${CURL_EK[@]}" -s -o "$DIR/govde" -w "%{http_code}" -X POST "$KOK/api/kasabanka/hesaplar/$1/ekstre-aktarimlari" -H "Authorization: Bearer $T" -F "dosya=@$2"); GOVDE=$(cat "$DIR/govde")
+}
+istek POST /api/cari/hesaplar "$T" '{"unvan":"Yildiz Market","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; YILDIZ=$(alan id)
+istek POST /api/cari/hesaplar "$T" '{"unvan":"Kuzey Metal","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; KUZEY=$(alan id)
+istek POST /api/cari/hesaplar "$T" '{"unvan":"Gunes Tedarik","tur":"Tedarikci","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; GUNES=$(alan id)
+istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Ana Banka","tur":"Banka","paraBirimi":"TRY","iban":"TR330006100519786457841326"}'; AB=$(alan id)
+istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Dolar Banka","tur":"Banka","paraBirimi":"USD"}'; DB=$(alan id)
+istek POST /api/kasabanka/islemler/acilis "$T" '{"hesapId":"'"$AB"'","tarih":"2026-10-01","tutar":10000}'
+FN1=$(fatura_ac Satis "$YILDIZ" 1000); NO1=$(fatura_no "$FN1")   # 1200, numarayla
+FN2=$(fatura_ac Satis "$KUZEY" 500); NO2=$(fatura_no "$FN2")     # 600, cari + tutar
+FN3=$(fatura_ac Satis "$KUZEY" 250)                              # 300, ayni cari, tutar tutmuyor
+FN4=$(fatura_ac Alis "$GUNES" 2000 "GNS2026000000001")           # 2400, yalniz tutar
+FN5=$(fatura_ac Satis "$YILDIZ" 700); FN6=$(fatura_ac Satis "$KUZEY" 700)  # 840 iki aday: secilmez
+FN7=$(fatura_ac Satis "$YILDIZ" 900)                             # 1080, en eski borc degil: FIFO'yu gecer
+cek_gir() { # CARI SERI TUTAR VADE
+  istek POST /api/kasabanka/cek-senet/giris "$T" '{"cariHesapId":"'"$1"'","tarih":"2026-10-05","riskOnaylandi":true,"evraklar":[{"tur":"Cek","seriNo":"'"$2"'","vadeTarihi":"'"$4"'","tutar":'"$3"',"paraBirimi":"TRY","borclu":{"ad":"Ahmet Yilmaz","kimlikNo":"10000000146"},"bankaAdi":"Ziraat","sube":"Merkez","hesapNo":"123"}]}'
+  echo "$GOVDE" | grep -o '"evrakIdleri":\["[^"]*' | sed -E 's/.*\["//'
+}
+istek POST /api/cari/hesaplar "$T" '{"unvan":"Cekli Musteri","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; CM=$(alan id)
+istek POST /api/cari/hesaplar "$T" '{"unvan":"Cekli Tedarikci","tur":"Tedarikci","kisiTipi":"Tuzel","paraBirimi":"TRY"}'; CT=$(alan id)
+CEK1=$(cek_gir "$CM" 7001 5000 2026-10-20)    # numarayla
+CEK2=$(cek_gir "$CM" 7002 3300 2026-10-21)     # tutar + vade
+CEK3=$(cek_gir "$CM" 7003 4400 2026-10-21)     # portfoyde: eslesmez
+for c in "$CEK1" "$CEK2"; do istek POST /api/kasabanka/cek-senet/islemler "$T" '{"islem":"TahsileVerme","tarih":"2026-10-12","evrakIdleri":["'"$c"'"],"hesapId":"'"$AB"'"}'; done
+istek POST /api/kasabanka/cek-senet/cikis "$T" '{"cariHesapId":"'"$CT"'","tarih":"2026-10-12","evraklar":[{"tur":"Cek","seriNo":"9001","vadeTarihi":"2026-10-22","tutar":1500,"paraBirimi":"TRY","kendiHesapId":"'"$AB"'"}]}'
+VER=$(echo "$GOVDE" | grep -o '"evrakIdleri":\["[^"]*' | sed -E 's/.*\["//')
+ESTA="$DIR/eslesme.sta"
+cat > "$ESTA" <<STA
+:20:STMT1
+:25:TR330006100519786457841326
+:28C:00001/001
+:60F:C261014TRY10000,00
+:61:2610151015C600,00NTRFNONREF
+:86:EFT GELEN KUZEY METAL
+:61:2610161016C1200,00NTRFNONREF
+:86:HAVALE FATURA $NO1 ODEMESI
+:61:2610171017D2400,00NTRFNONREF
+:86:GIDEN HAVALE 88123
+:61:2610181018C840,00NTRFNONREF
+:86:GELEN HAVALE 77451
+:61:2610201020C5000,00NCHKNONREF
+:86:TAKAS TAHSIL CEK 7001
+:61:2610211021C3300,00NCHKNONREF
+:86:TAKAS TAHSILAT 55120
+:61:2610221022D1500,00NCHKNONREF
+:86:CEK ODEMESI 66230
+:61:2610231023C4400,00NTRFNONREF
+:86:GELEN HAVALE 99340
+:62F:C261023TRY21440,00
+-
+STA
+yukle_yol "$DB" "$ESTA"
+kontrol 422 "Para birimi farkli MT940 reddedildi" ekstre_para_birimi
+istek POST /api/kasabanka/hesaplar "$T" '{"ad":"Baska Hesap","tur":"Banka","paraBirimi":"TRY","hesapNo":"99887766"}'; BI=$(alan id)
+yukle_yol "$BI" "$ESTA"
+kontrol 201 "Baska hesaba yuklemede uyari" '"hesapUyarisi":"Dosyadaki hesap'
+istek DELETE "/api/kasabanka/ekstre-aktarimlari/$(alan id)" "$T"
+yukle_yol "$AB" "$ESTA"
+kontrol 201 "Dogru hesapta uyari yok" '"bakiyeUyarisi":null,"hesapUyarisi":null'
+AE=$(alan id)
+satir_kontrol "EFT GELEN KUZEY" "Cari + tutar: tek acik fatura" '"islemTuru":"Tahsilat".*"oneriKaynagi":"Fatura tutar.*"kapatilacakBelgeId":"'"$FN2"'"'
+satir_kontrol "HAVALE FATURA" "Fatura numarasindan cari ve fatura" '"cariHesapId":"'"$YILDIZ"'".*"oneriKaynagi":"Fatura no".*"kapatilacakBelgeId":"'"$FN1"'"'
+satir_kontrol "GIDEN HAVALE" "Yalniz tutar: isaretli oneri" '"islemTuru":"Odeme".*"cariHesapId":"'"$GUNES"'".*"oneriKaynagi":"Yaln[^"]*tuttu".*"kapatilacakBelgeId":"'"$FN4"'"'
+satir_kontrol "GELEN HAVALE 77451" "Iki aday: fatura secilmez" '"oneriKaynagi":"Varsay[^"]*lan".*"kapatilacakBelgeId":null'
+satir_kontrol "TAKAS TAHSIL CEK" "Cek numarasi ve tutari" '"islemTuru":"Evrak".*"oneriKaynagi":"[^"]*no".*"evrakId":"'"$CEK1"'"'
+satir_kontrol "TAKAS TAHSILAT" "Tutar ve vade: tahsildeki cek" '"islemTuru":"Evrak".*"evrakId":"'"$CEK2"'"'
+satir_kontrol "CEK ODEMESI" "Verilen cek odemesi" '"islemTuru":"Evrak".*"evrakId":"'"$VER"'"'
+satir_kontrol "GELEN HAVALE 99340" "Portfoydeki cek eslesmez" '"evrakId":null'
+SATIR_IKI=$(satir_id "GELEN HAVALE 77451"); SATIR_POR=$(satir_id "GELEN HAVALE 99340"); SATIR_CEK=$(satir_id "TAKAS TAHSILAT")
+istek GET "/api/kasabanka/ekstre-aktarimlari/$AE/satirlar/$SATIR_IKI/adaylar?cariId=$YILDIZ" "$T"
+kontrol 200 "Aday listesi: cariye ait faturalar, tutari tutan once" '"faturalar":\[\{"belgeId":"'"$FN5"'"'
+istek PUT "/api/kasabanka/ekstre-aktarimlari/$AE/satirlar/$SATIR_IKI" "$T" '{"islemTuru":"Tahsilat","cariHesapId":"'"$YILDIZ"'","eslesmeyiKaldir":false,"kapatilacakBelgeId":"'"$FN2"'"}'
+kontrol 422 "Baska carinin faturasi secilemez" satir_belge_gecersiz
+istek PUT "/api/kasabanka/ekstre-aktarimlari/$AE/satirlar/$SATIR_POR" "$T" '{"islemTuru":"Evrak","eslesmeyiKaldir":false,"evrakId":"'"$CEK3"'"}'
+kontrol 422 "Portfoydeki cek elle de secilemez" satir_evrak_gecersiz
+istek PUT "/api/kasabanka/ekstre-aktarimlari/$AE/satirlar/$SATIR_POR" "$T" '{"islemTuru":"Evrak","eslesmeyiKaldir":false}'
+kontrol 400 "Evrak turunde secim zorunlu" satir_evrak_gerekli
+istek PUT "/api/kasabanka/ekstre-aktarimlari/$AE/satirlar/$SATIR_IKI" "$T" '{"islemTuru":"Tahsilat","cariHesapId":"'"$YILDIZ"'","eslesmeyiKaldir":false,"kapatilacakBelgeId":"'"$FN5"'"}'
+kontrol 200 "Elle fatura secildi" '"kapatilacakBelgeNo"'
+istek PUT "/api/kasabanka/ekstre-aktarimlari/$AE/satirlar/$SATIR_POR" "$T" '{"islemTuru":"Atla","eslesmeyiKaldir":false}'
+istek POST /api/kasabanka/ekstre-kurallari "$T" '{"anahtarKelime":"KURAL","yon":"Giris","islemTuru":"Evrak"}'
+kontrol 400 "Cek eslesmesi kural olamaz"
+echo "--- Mutabakat (aktarim oncesi)"
+istek GET "/api/kasabanka/hesaplar/$AB/mutabakat?baslangicTarihi=2026-10-01&bitisTarihi=2026-10-31" "$T"
+kontrol 200 "Dosya kapanis bakiyesi geldi, fark ekstredeki satirlardan" '"programBakiyesi":10000.*"ekstreBakiyesi":21440.*"ekstreDosyasi":"eslesme.sta","fark":11440.*"aciklanamayanFark":0'
+istek POST "/api/kasabanka/ekstre-aktarimlari/$AE/aktar" "$T"
+kontrol 200 "Fatura ve cek satirlari aktarildi" '"aktarilan":7,"zatenKayitli":0,"atlanan":1,"hatali":0.*"durum":"Tamamlandi"'
+kalan_kontrol() { istek GET "/api/fatura/faturalar/$1" "$T"; kontrol 200 "$2" "\"kalan\":$3(\.0+)?[,}]"; }
+kalan_kontrol "$FN1" "Numarayla bulunan fatura kapandi" 0
+kalan_kontrol "$FN2" "Tutari tutan fatura kapandi, eski fatura degil" 0
+kalan_kontrol "$FN3" "Ayni carinin diger faturasi acik" 300
+kalan_kontrol "$FN4" "Alis faturasi odemeyle kapandi" 0
+kalan_kontrol "$FN5" "Elle secilen fatura kapandi" 0
+kalan_kontrol "$FN6" "Secilmeyen aday acik" 840
+kalan_kontrol "$FN7" "Baska fatura acik" 1080
+evrak_durum() { istek GET "/api/kasabanka/cek-senet/evraklar/$1" "$T"; kontrol 200 "$2" "\"durum\":\"$3\""; }
+evrak_durum "$CEK1" "Cek 7001 tahsil edildi" TahsilEdildi
+evrak_durum "$CEK2" "Cek 7002 tahsil edildi" TahsilEdildi
+evrak_durum "$VER" "Verilen cek odendi" Odendi
+evrak_durum "$CEK3" "Portfoydeki cek degismedi" Portfoyde
+bakiye "$AB" "Banka bakiyesi: 10000 + aktarilanlar" 17040
+echo "--- Mutabakat (aktarim sonrasi)"
+istek GET "/api/kasabanka/hesaplar/$AB/mutabakat?baslangicTarihi=2026-10-01&bitisTarihi=2026-10-31" "$T"
+kontrol 200 "Atlanan satir farki aciklar" '"programBakiyesi":17040.*"ekstreBakiyesi":21440.*"fark":4400.*"aciklanamayanFark":0.*"yalnizProgramda":\[\].*"yalnizEkstrede":\[\{"tarih":"2026-10-23"'
+istek POST /api/kasabanka/islemler/gelir-gider "$T" '{"tur":"Gider","bicim":"Odendi","kategoriId":"'"$(istek GET /api/kasabanka/kategoriler "$T"; echo "$GOVDE" | sed 's/},{/}\n{/g' | grep 'Elektrik' | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)"'","hesapId":"'"$AB"'","tarih":"2026-10-25","tutar":100}'
+istek GET "/api/kasabanka/hesaplar/$AB/mutabakat?baslangicTarihi=2026-10-01&bitisTarihi=2026-10-31&ekstreBakiyesi=21440" "$T"
+kontrol 200 "Elle girilen hareket ekstrede yok, elle bakiye" '"programBakiyesi":16940.*"ekstreTarihi":null.*"fark":4500.*"aciklanamayanFark":0.*"yalnizProgramda":\[\{"id"'
+istek GET "/api/kasabanka/hesaplar/$AB/mutabakat?baslangicTarihi=2026-10-31&bitisTarihi=2026-10-01" "$T"
+kontrol 400 "Ters donem reddedildi" mutabakat_donemi
+istek GET "/api/kasabanka/hesaplar/$AB/mutabakat?baslangicTarihi=2026-10-01&bitisTarihi=2026-10-31" "$T2"
+kontrol 404 "Baska firma mutabakat goremez"
+istek GET "/api/kasabanka/ekstre-aktarimlari/$AE/satirlar/$SATIR_CEK/adaylar" "$T2"
+kontrol 404 "Baska firma aday goremez"
 
 echo; echo "SONUC: $GECEN gecti, $KALAN kaldi"
 [ "$KALAN" -eq 0 ]

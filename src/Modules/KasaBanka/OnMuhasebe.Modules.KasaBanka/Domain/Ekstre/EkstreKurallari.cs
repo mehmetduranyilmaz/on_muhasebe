@@ -138,7 +138,9 @@ internal sealed record KuralVerisi(Guid Id, string AnahtarKelime, KuralYonu Yon,
 
 internal sealed record KendiHesabi(Guid Id, string? Iban, string? HesapNo);
 
-internal sealed record Oneri(EkstreIslemTuru IslemTuru, Guid? CariHesapId, Guid? KategoriId, Guid? KarsiHesapId, string Kaynak, Guid? KuralId);
+internal sealed record Oneri(
+    EkstreIslemTuru IslemTuru, Guid? CariHesapId, Guid? KategoriId, Guid? KarsiHesapId, string Kaynak, Guid? KuralId,
+    Guid? KapatilacakBelgeId = null, string? KapatilacakBelgeNo = null, Guid? EvrakId = null, string? EvrakNo = null);
 
 // Satır için işlem önerir. Öncelik: öğrenilmiş kural > kendi hesabına virman > açıklamadaki VKN/IBAN/unvandan cari > yöne göre varsayılan.
 internal static partial class OneriMotoru

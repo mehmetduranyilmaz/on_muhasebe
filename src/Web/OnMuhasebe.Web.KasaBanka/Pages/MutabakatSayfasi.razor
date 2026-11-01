@@ -1,0 +1,121 @@
+@page "/kasabanka/{Id:guid}/mutabakat"
+@* Banka mutabakatı: ekstre bakiyesi, program bakiyesi ve farkı açıklayan hareketler. Kayıt yazmaz. *@
+@inject ApiIstemcisi Api
+@inject TimeProvider Zaman
+
+<SayfaBasligi Baslik="Banka Mutabakatı" AltBaslik="@_rapor?.HesapAdi" GeriAdres="@($"kasabanka/{Id}")" Ikon="@Icons.Material.Filled.Balance">
+    <Islemler>
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_baslangic" Label="Başlangıç" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+        <MudNumericField T="decimal?" Variant="Variant.Outlined" @bind-Value="_ekstreBakiyesi" Label="Ekstre bakiyesi" Style="max-width: 170px;" Margin="Margin.Dense" Format="N2" HideSpinButtons="true" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yukleniyor)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+else if (_rapor is { } r)
+{
+    <MudGrid Spacing="3" Class="mb-3">
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Ekstre bakiyesi" Deger="r.EkstreBakiyesi ?? 0" Bicimle="EkstreYazisi" Ikon="@Icons.Material.Filled.AccountBalance" Renk="#3B82F6"
+                       AltMetin="@(r.EkstreTarihi is { } t ? $"{Bicim.Tarih(t)} · {r.EkstreDosyasi}" : r.EkstreBakiyesi is null ? "Yukarıdan girin" : "Elle girildi")" Sira="0" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Program bakiyesi" Deger="r.ProgramBakiyesi" Bicimle="d => Bicim.Tutar(d, r.ParaBirimi)" Ikon="@Icons.Material.Filled.Calculate" Renk="#14B8A6" AltMetin="@Bicim.Tarih(r.Bitis)" Sira="1" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Fark" Deger="r.Fark ?? 0" Bicimle="FarkYazisi" Ikon="@Icons.Material.Filled.CompareArrows" Renk="@(r.Fark is null or 0 ? "#16A34A" : "#F59E0B")" AltMetin="Ekstre - program" Sira="2" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <OzetKarti Baslik="Açıklanamayan fark" Deger="r.AciklanamayanFark ?? 0" Bicimle="FarkYazisi" Ikon="@Icons.Material.Filled.ReportProblem" Renk="@(r.AciklanamayanFark is null or 0 ? "#16A34A" : "#DC2626")" AltMetin="Dönem öncesi dahil" Sira="3" />
+        </MudItem>
+    </MudGrid>
+
+    @if (r.AciklanamayanFark is 0 && r.Fark is 0)
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3 belirme">Mutabakat tamam: ekstre ve program bakiyesi aynı.</MudAlert>
+    }
+    else if (r.AciklanamayanFark is not null and not 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3 belirme">Farkın bir kısmı aşağıdaki listelerle açıklanamıyor: dönem öncesinden gelen fark, eksik ekstre ya da hatalı açılış bakiyesi olabilir.</MudAlert>
+    }
+
+    <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Rule" Size="Size.Small" /> Programda var, ekstrede yok (@r.YalnizProgramda.Count)</div>
+        <MudSimpleTable Dense="true" Elevation="0" Class="mutabakat-program">
+            <thead><tr><th>Tarih</th><th>İşlem</th><th>Açıklama</th><th class="sayi">Tutar</th></tr></thead>
+            <tbody>
+                @foreach (var h in r.YalnizProgramda)
+                {
+                    <tr>
+                        <td>@Bicim.Tarih(h.Tarih)</td>
+                        <td>@KasaMetinleri.HareketTuru(h.Tur)</td>
+                        <td>@h.Aciklama</td>
+                        <td class="sayi">@Bicim.Tutar(h.Tutar)</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </div>
+
+    <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.UploadFile" Size="Size.Small" /> Ekstrede var, programda yok (@r.YalnizEkstrede.Count)</div>
+        <MudSimpleTable Dense="true" Elevation="0" Class="mutabakat-ekstre">
+            <thead><tr><th>Tarih</th><th>Açıklama</th><th>Referans</th><th>Durum</th><th class="sayi">Tutar</th></tr></thead>
+            <tbody>
+                @foreach (var s in r.YalnizEkstrede)
+                {
+                    <tr>
+                        <td>@Bicim.Tarih(s.Tarih)</td>
+                        <td>@s.Aciklama</td>
+                        <td>@s.Referans</td>
+                        <td>@EkstreMetinleri.Durum(s.Durum).Metin</td>
+                        <td class="sayi">@Bicim.Tutar(s.Tutar)</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private MutabakatRaporu? _rapor;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private decimal? _ekstreBakiyesi;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    private string EkstreYazisi(decimal d) => _rapor?.EkstreBakiyesi is null ? "Girilmedi" : Bicim.Tutar(d, _rapor.ParaBirimi);
+
+    private string FarkYazisi(decimal d) => _rapor?.EkstreBakiyesi is null ? "-" : Bicim.Tutar(d, _rapor.ParaBirimi);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = Zaman.GetLocalNow().DateTime.Date;
+        (_baslangic, _bitis) = (new DateTime(bugun.Year, bugun.Month, 1).AddMonths(-1), bugun);
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var adres = $"api/kasabanka/hesaplar/{Id}/mutabakat?baslangicTarihi={Bicim.Iso(DateOnly.FromDateTime(_baslangic ?? DateTime.Today))}&bitisTarihi={Bicim.Iso(DateOnly.FromDateTime(_bitis ?? DateTime.Today))}";
+        if (_ekstreBakiyesi is { } bakiye)
+        {
+            adres += $"&ekstreBakiyesi={bakiye.ToString(CultureInfo.InvariantCulture)}";
+        }
+
+        var sonuc = await Api.GetAsync<MutabakatRaporu>(adres);
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+}

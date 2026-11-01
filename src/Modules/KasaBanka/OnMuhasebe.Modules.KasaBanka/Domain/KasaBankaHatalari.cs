@@ -44,6 +44,12 @@ internal static class KasaBankaHatalari
     public static readonly Hata DosyaOkunamadi = Hata.Dogrulama("dosya_okunamadi", "Dosya okunamadı. CSV, Excel (.xlsx/.xls) veya MT940 biçiminde bir ekstre yükleyin.");
     public static readonly Hata DosyaCokBuyuk = Hata.Dogrulama("dosya_cok_buyuk", "Ekstre dosyası en fazla 5 MB olabilir.");
     public static Hata EkstreCokBuyuk(string mesaj) => Hata.Dogrulama("ekstre_cok_buyuk", mesaj);
+    public static readonly Hata MutabakatDonemi = Hata.Dogrulama("mutabakat_donemi", "Mutabakat dönemi en çok bir yıl olabilir; bitiş başlangıçtan önce olamaz.");
+    public static readonly Hata SatirEvrakGerekli = Hata.Dogrulama("satir_evrak_gerekli", "Çek/senet seçilmeli.");
+    public static readonly Hata SatirEvrakGecersiz = Hata.IsKurali("satir_evrak_gecersiz", "Seçilen çek/senet bu satırla eşleşmiyor: yön, tutar, hesap ya da durumu uygun değil.");
+    public static readonly Hata SatirBelgeGecersiz = Hata.IsKurali("satir_belge_gecersiz", "Seçilen fatura bu cariye ait açık bir fatura değil.");
+    public static readonly Hata SatirEvrakYetkisi = Hata.Yetki("yetki_yok", "Çek/senet işlemi yapma yetkiniz yok.");
+    public static Hata EkstreParaBirimi(string dosya, string hesap) => Hata.IsKurali("ekstre_para_birimi", $"Dosyanın para birimi ({dosya}) hesabın para birimiyle ({hesap}) aynı değil.");
     public static readonly Hata EkstreBos = Hata.Dogrulama("ekstre_bos", "Dosyada aktarılacak hareket bulunamadı.");
     public static readonly Hata AktarimBulunamadi = Hata.Bulunamadi("aktarim_bulunamadi", "Ekstre aktarımı veya satırı bulunamadı.");
     public static readonly Hata EslemeDegistirilemez = Hata.IsKurali("esleme_degistirilemez", "Satırları aktarılmış ya da MT940 biçimindeki aktarımın kolon eşlemesi değiştirilemez.");
