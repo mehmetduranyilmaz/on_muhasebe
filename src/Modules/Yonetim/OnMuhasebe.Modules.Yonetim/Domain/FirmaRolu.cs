@@ -68,14 +68,17 @@ internal static class RolSablonlari
         IEnumerable<string> Sec(params string[] yetkiler) => yetkiler;
         IEnumerable<string> Islemler(string kaynak, params string[] islemler) => islemler.Select(i => $"{kaynak}.{i}");
 
+        // Görevler ayrılığı: talep onaylamak ve onay kuralını değiştirmek yalnız yöneticide başlar, firma isterse role verir.
+        string[] OnayDenetimi = ["satinalma.onay.onayla", "satinalma.kural.duzenle"];
+
         const string G = YetkiIslemleri.Goruntule, E = YetkiIslemleri.Ekle, D = YetkiIslemleri.Duzenle,
             S = YetkiIslemleri.Sil, O = YetkiIslemleri.Onayla, I = YetkiIslemleri.Iptal;
 
         List<(string Ad, string Aciklama, IEnumerable<string> Yetkiler)> sablonlar =
         [
-            ("Kullanıcı", "Yönetim ekranları dışında tüm işlemler.", Hepsi(modul)),
+            ("Kullanıcı", "Yönetim ekranları dışında tüm işlemler.", Hepsi(modul).Except(OnayDenetimi)),
             ("Muhasebe", "Tüm işlemler, maliyet ve değişiklik geçmişi; kullanıcı ve firma ayarları hariç.",
-                Hepsi(modul).Append(YonetimYetkileri.Degisiklik.Yetki(G))),
+                Hepsi(modul).Except(OnayDenetimi).Append(YonetimYetkileri.Degisiklik.Yetki(G))),
             ("Satış", "Müşteri, teklif/sipariş, satış belgeleri ve tahsilat; maliyet görmez.",
                 [.. Islemler("cari.hesap", G, E, D), .. Islemler("cari.hareket", G), .. Islemler("cari.rapor", G),
                  .. Islemler("stok.kart", G), .. Islemler("stok.fiyat", G), .. Islemler("stok.rapor", G),
@@ -84,7 +87,8 @@ internal static class RolSablonlari
             ("Satın Alma", "Tedarikçi, stok kartı, sipariş ve alış belgeleri; maliyet görür.",
                 [.. Islemler("cari.hesap", G, E, D), .. Islemler("cari.hareket", G),
                  .. Islemler("stok.kart", G, E, D), .. Islemler("stok.fiyat", G, E, D), .. Islemler("stok.rapor", G), .. Sec("stok.maliyet.goruntule"),
-                 .. Islemler("fatura.teklif", G, E, D, S, O, I), .. Islemler("fatura.belge", G, E, D), .. Islemler("fatura.irsaliye", G, E, D)]),
+                 .. Islemler("fatura.teklif", G, E, D, S, O, I), .. Islemler("fatura.belge", G, E, D), .. Islemler("fatura.irsaliye", G, E, D),
+                 .. Islemler("satinalma.talep", G, E, D, S, I)]),
             ("Depo", "Stok hareketleri, transfer ve irsaliye.",
                 [.. Islemler("stok.kart", G), .. Islemler("stok.tanim", G), .. Islemler("stok.hareket", G, E, I), .. Islemler("stok.rapor", G),
                  .. Islemler("fatura.irsaliye", G, E, D, O), .. Islemler("fatura.teklif", G)]),

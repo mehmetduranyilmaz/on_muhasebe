@@ -14,7 +14,8 @@ public enum BildirimTuru
     OdemeBildirimiSonucu,
     EvrakSuresi,
     AracSuresi,
-    BakimSuresi
+    BakimSuresi,
+    SatinalmaOnayi
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<BildirimOnemi>))]
@@ -28,7 +29,9 @@ public enum BildirimOnemi
 // Bir modülün ürettiği bildirim. Anahtar aynı olayı tekilleştirir (ör. "evrak-vade:{id}:3gun"); aynı anahtar bir kullanıcıya
 // bir kez yazılır. Baglanti, tıklanınca açılacak sayfadır (ör. "cek-senet/{id}").
 // HedefKullaniciId: bu kişi (ör. evrağın sorumlusu) tercihinden bağımsız bildirim alır; diğer kullanıcılar tercihlerine göre.
-public sealed record BildirimAdayi(BildirimTuru Tur, string Anahtar, string Baslik, string Metin, string? Baglanti, BildirimOnemi Onem, Guid? HedefKullaniciId = null);
+// YalnizHedefe: bildirim yalnız hedefe gider (sırası gelen onaycı, talep eden); başkası alamaz.
+public sealed record BildirimAdayi(
+    BildirimTuru Tur, string Anahtar, string Baslik, string Metin, string? Baglanti, BildirimOnemi Onem, Guid? HedefKullaniciId = null, bool YalnizHedefe = false);
 
 public static class BildirimTurleri
 {
@@ -43,6 +46,7 @@ public static class BildirimTurleri
         BildirimTuru.EvrakSuresi => "Evrak süresi",
         BildirimTuru.AracSuresi => "Araç sigorta, muayene ve MTV süresi",
         BildirimTuru.BakimSuresi => "Ekipman bakımı ve yasal kontrol",
+        BildirimTuru.SatinalmaOnayi => "Satın alma talebi onayı",
         BildirimTuru.OdemeBildirimiSonucu => "Ödeme bildirimi sonucu",
         _ => tur.ToString()
     };

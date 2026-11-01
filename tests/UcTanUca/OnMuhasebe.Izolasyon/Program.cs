@@ -152,6 +152,7 @@ id["aracHasar"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/hasarlar", new 
 id["ekipman"] = (await Post(a, "api/bakim/ekipmanlar", new { ad = "SIZINTI Makine", tur = "Makine", sayacBirimi = "Yok", durum = "Calisiyor" }))["id"]!.GetValue<string>();
 id["bakimPlani"] = (await Post(a, $"api/bakim/ekipmanlar/{id["ekipman"]}/planlar", new { ad = "SIZINTI Plan", yasalMi = false, periyotGun = 30, hatirlatmaGun = 7 }))["id"]!.GetValue<string>();
 id["isEmri"] = (await Post(a, "api/bakim/is-emirleri", new { ekipmanId = id["ekipman"], tur = "Ariza", baslik = "SIZINTI Ariza", makineDurduMu = true, iscilikTutari = 0, disServisTutari = 0 }))["id"]!.GetValue<string>();
+id["satinalmaTalebi"] = (await Post(a, "api/satinalma/talepler", new { tarih = "2026-10-01", gerekce = "SIZINTI Talep", kalemler = new[] { new { ad = "SIZINTI Kalem", birim = "ADET", miktar = 1, tahminiBirimFiyat = 100, kdvOrani = 20 } } }))["id"]!.GetValue<string>();
 id["dosyaTur"] = "cari";
 using (var form = new MultipartFormDataContent { { new ByteArrayContent("%PDF-1.4 SIZINTI"u8.ToArray()), "dosya", "sizinti.pdf" } })
 {
@@ -223,6 +224,7 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/muhasebe/eslemeler/", "kartId", "cari"),
     ("/api/muhasebe/aktarimlar/", "id", "muhasebeAktarim"),
     ("/api/evrak-takibi/", "id", "takipEvraki"),
+    ("/api/satinalma/talepler/", "id", "satinalmaTalebi"),
     ("/api/bakim/ekipmanlar/", "id", "ekipman"),
     ("/api/bakim/ekipmanlar/", "ekipmanId", "ekipman"),
     ("/api/bakim/planlar/", "id", "bakimPlani"),

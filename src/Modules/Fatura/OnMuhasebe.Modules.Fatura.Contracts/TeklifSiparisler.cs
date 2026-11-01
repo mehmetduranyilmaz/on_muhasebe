@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using OnMuhasebe.Shared.Domain.Results;
 
 namespace OnMuhasebe.Modules.Fatura.Contracts;
 
@@ -192,4 +193,18 @@ public static class TeklifSiparisHesaplari
 
         return liste.All(s => s.Karsilanan >= s.Miktar) ? KarsilamaDurumu.Tamamlandi : KarsilamaDurumu.Kismen;
     }
+}
+
+// Satın alma talebinin siparişe dönüşümü. Sipariş taslak açılır; düzenleme ve onay sipariş ekranında sürer. TL ve KDV hariç satırlar.
+public sealed record SatinalmaSiparisiTaslagi(
+    Guid TedarikciId, DateOnly Tarih, DateOnly? TerminTarihi, Guid? IsyeriId, string Aciklama, IReadOnlyList<FaturaSatiriIstegi> Satirlar);
+
+// TutarTl: KDV hariç.
+public sealed record SatinalmaSiparisiOzeti(Guid Id, string? Numara, TeklifSiparisDurumu Durum, decimal TutarTl);
+
+public interface ISatinalmaSiparisiServisi
+{
+    Task<Sonuc<Guid>> TaslakAcAsync(SatinalmaSiparisiTaslagi taslak, CancellationToken cancellationToken = default);
+
+    Task<SatinalmaSiparisiOzeti?> GetirAsync(Guid siparisId, CancellationToken cancellationToken = default);
 }

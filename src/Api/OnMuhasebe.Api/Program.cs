@@ -7,6 +7,7 @@ using OnMuhasebe.Modules.Bakim;
 using OnMuhasebe.Modules.Dosya;
 using OnMuhasebe.Modules.EvrakTakip;
 using OnMuhasebe.Modules.Muhasebe;
+using OnMuhasebe.Modules.Satinalma;
 using OnMuhasebe.Modules.KasaBanka;
 using OnMuhasebe.Modules.Stok;
 using OnMuhasebe.Modules.Yonetim;
@@ -45,7 +46,8 @@ builder.Services.AddModuller(builder.Configuration,
     new DosyaModulu(),
     new EvrakTakipModulu(),
     new AracModulu(),
-    new BakimModulu());
+    new BakimModulu(),
+    new SatinalmaModulu());
 
 var app = builder.Build();
 

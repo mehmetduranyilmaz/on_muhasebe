@@ -19,5 +19,8 @@ public static class ModulKodlari
     // Ekipman kartı, periyodik bakım ve yasal kontrol, arıza iş emirleri.
     public const string Bakim = "bakim";
 
-    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip, Arac, Bakim];
+    // Satın alma talebi ve tutara bağlı onay akışı.
+    public const string Satinalma = "satinalma";
+
+    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip, Arac, Bakim, Satinalma];
 }

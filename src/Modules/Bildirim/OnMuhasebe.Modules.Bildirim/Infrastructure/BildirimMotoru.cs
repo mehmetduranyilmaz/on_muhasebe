@@ -49,7 +49,7 @@ internal sealed class BildirimMotoru(
             foreach (var k in kullanicilar)
             {
                 var tercih = tercihler.GetValueOrDefault(k.KullaniciId)?.Sozlesme() ?? AliciKurallari.Varsayilan(k.Rol);
-                foreach (var a in adaylar.Where(a => (a.HedefKullaniciId == k.KullaniciId || AliciKurallari.Alir(k.Rol, tercih, a.Tur)) && !yazilmis.Contains((k.KullaniciId, a.Anahtar))))
+                foreach (var a in adaylar.Where(a => (a.HedefKullaniciId == k.KullaniciId || (!a.YalnizHedefe && AliciKurallari.Alir(k.Rol, tercih, a.Tur))) && !yazilmis.Contains((k.KullaniciId, a.Anahtar))))
                 {
                     db.Bildirimler.Add(Domain.Bildirim.Olustur(k.KullaniciId, a, tercih.Eposta != EpostaSikligi.Kapali));
                     uretilen++;

@@ -41,6 +41,7 @@ public sealed class FaturaModulu : IModul
         services.AddScoped<TeklifSiparisServisi>();
         services.AddScoped<SiparisKarsilamaServisi>();
         services.AddScoped<IFaturaMuhasebeSorgusu, FaturaMuhasebeSorgusu>();
+        services.AddScoped<ISatinalmaSiparisiServisi, SatinalmaSiparisiServisi>();
         services.AddDosyaKaynagi<FaturaDbContext>(DosyaKayitTurleri.Fatura, ModulKodlari.Fatura, FaturaYetkileri.Belge,
             (db, id, ct) => db.Faturalar.AnyAsync(f => f.Id == id, ct));
     }

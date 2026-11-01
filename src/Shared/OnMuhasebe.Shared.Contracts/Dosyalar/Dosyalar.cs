@@ -26,6 +26,7 @@ public static class DosyaKayitTurleri
     public const string AracYukumluluk = "arac-yukumluluk";
     public const string Ekipman = "ekipman";
     public const string IsEmri = "is-emri";
+    public const string SatinalmaTalebi = "satinalma-talebi";
 }
 
 public static class DosyaSinirlari
