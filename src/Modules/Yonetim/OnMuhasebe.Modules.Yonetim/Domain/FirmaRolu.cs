@@ -1,3 +1,4 @@
+using OnMuhasebe.Shared.Contracts.Dosyalar;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Domain.Entities;
 using OnMuhasebe.Shared.Domain.Results;
@@ -102,7 +103,7 @@ internal static class RolSablonlari
         return
         [
             FirmaRolu.YoneticiOlustur(firmaId),
-            .. sablonlar.Select(s => FirmaRolu.Olustur(s.Ad, s.Aciklama, s.Yetkiler.Where(gecerli.Contains), firmaId)),
+            .. sablonlar.Select(s => FirmaRolu.Olustur(s.Ad, s.Aciklama, s.Yetkiler.Concat(DosyaYetkileri.Ek.Yetkiler()).Where(gecerli.Contains), firmaId)),
             FirmaRolu.Olustur("Salt Okur (Mali Müşavir)", "Tüm kayıt ve raporları görür, maliyet dahil; muhasebe fişlerini indirir. Kullanıcı limitine sayılmaz.",
                 maliMusavir.Where(gecerli.Contains), firmaId, maliMusavirMi: true)
         ];

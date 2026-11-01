@@ -1,3 +1,6 @@
+using OnMuhasebe.Shared.Infrastructure.Dosyalar;
+using OnMuhasebe.Shared.Contracts.Dosyalar;
+using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -31,6 +34,8 @@ public sealed class CariModulu : IModul
         services.AddValidatorsFromAssemblyContaining<CariModulu>(includeInternalTypes: true);
         services.AddScoped<CariKodUretici>();
         services.AddScoped<CariAktarimServisi>();
+        services.AddDosyaKaynagi<CariDbContext>(DosyaKayitTurleri.Cari, ModulKodlari.Cari, CariYetkileri.Hesap,
+            (db, id, ct) => db.CariHesaplar.AnyAsync(k => k.Id == id, ct));
         services.AddScoped<CariKapamaServisi>();
         services.AddScoped<ICariSorgusu, CariSorgusu>();
         services.AddScoped<IBildirimKaynagi, RiskBildirimKaynagi>();

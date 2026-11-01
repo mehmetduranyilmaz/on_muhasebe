@@ -1,3 +1,6 @@
+using OnMuhasebe.Shared.Infrastructure.Dosyalar;
+using OnMuhasebe.Shared.Contracts.Dosyalar;
+using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -42,6 +45,14 @@ public sealed class KasaBankaModulu : IModul
         services.AddScoped<EvrakRiskServisi>();
         services.AddScoped<EkstreServisi>();
         services.AddScoped<IKasaBankaSorgusu, KasaBankaSorgusu>();
+        services.AddDosyaKaynagi<KasaBankaDbContext>(DosyaKayitTurleri.CekSenet, ModulKodlari.KasaBanka, KasaBankaYetkileri.Cek,
+            (db, id, ct) => db.Evraklar.AnyAsync(k => k.Id == id, ct));
+        services.AddDosyaKaynagi<KasaBankaDbContext>(DosyaKayitTurleri.Kredi, ModulKodlari.KasaBanka, KasaBankaYetkileri.Kredi,
+            (db, id, ct) => db.Krediler.AnyAsync(k => k.Id == id, ct));
+        services.AddDosyaKaynagi<KasaBankaDbContext>(DosyaKayitTurleri.Demirbas, ModulKodlari.KasaBanka, KasaBankaYetkileri.Demirbas,
+            (db, id, ct) => db.Demirbaslar.AnyAsync(k => k.Id == id, ct));
+        services.AddDosyaKaynagi<KasaBankaDbContext>(DosyaKayitTurleri.Teminat, ModulKodlari.KasaBanka, KasaBankaYetkileri.Teminat,
+            (db, id, ct) => db.Teminatlar.AnyAsync(k => k.Id == id, ct));
         services.AddScoped<IKasaBankaYazici, KasaBankaYazici>();
     }
 

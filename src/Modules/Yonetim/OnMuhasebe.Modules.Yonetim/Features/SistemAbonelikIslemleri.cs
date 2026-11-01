@@ -47,6 +47,7 @@ internal static class SistemAbonelikIslemleri
             RuleFor(x => x.Moduller).Must(m => m.Count > 0).When(x => !x.TumModullerMi && x.Moduller is not null)
                 .WithMessage("En az bir modül seçin.");
             RuleFor(x => x.KullaniciLimiti).GreaterThan(0).When(x => x.KullaniciLimiti is not null);
+            RuleFor(x => x.DepolamaKotasiMb).GreaterThan(0).When(x => x.DepolamaKotasiMb is not null);
             RuleFor(x => x.IsyeriLimiti).GreaterThan(0).When(x => x.IsyeriLimiti is not null);
             RuleFor(x => x.AylikUcret).GreaterThanOrEqualTo(0).When(x => x.AylikUcret is not null);
             RuleFor(x => x.YillikUcret).GreaterThanOrEqualTo(0).When(x => x.YillikUcret is not null);
@@ -238,8 +239,8 @@ internal static class SistemAbonelikIslemleri
         ayar is null ? null : new OdemeBilgileri(ayar.OdemeAlicisi, ayar.OdemeBankasi, ayar.OdemeIban, ayar.OdemeNotu);
 
     private static PaketBilgileri Bilgiler(PaketKaydetIstegi i) =>
-        new(i.Ad, i.Aciklama, i.TumModullerMi, i.Moduller, i.KullaniciLimiti, i.AylikUcret, i.YillikUcret, i.SatistaMi, i.Sira, i.IsyeriLimiti);
+        new(i.Ad, i.Aciklama, i.TumModullerMi, i.Moduller, i.KullaniciLimiti, i.AylikUcret, i.YillikUcret, i.SatistaMi, i.Sira, i.IsyeriLimiti, i.DepolamaKotasiMb);
 
     private static PaketOzeti Ozet(Paket p, int firmaSayisi) =>
-        new(p.Kod, p.Ad, p.TumModullerMi, p.Moduller, p.Aciklama, p.KullaniciLimiti, p.AylikUcret, p.YillikUcret, p.SatistaMi, p.Sira, firmaSayisi, p.IsyeriLimiti);
+        new(p.Kod, p.Ad, p.TumModullerMi, p.Moduller, p.Aciklama, p.KullaniciLimiti, p.AylikUcret, p.YillikUcret, p.SatistaMi, p.Sira, firmaSayisi, p.IsyeriLimiti, p.DepolamaKotasiMb);
 }

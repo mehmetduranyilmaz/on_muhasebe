@@ -43,7 +43,8 @@ public sealed record PaketOzeti(
     bool SatistaMi,
     int Sira,
     int FirmaSayisi,
-    int? IsyeriLimiti = null);
+    int? IsyeriLimiti = null,
+    int? DepolamaKotasiMb = null);
 
 // Kod yalnızca yeni pakette kullanılır (küçük harf, rakam, tire); güncellemede adresteki kod esastır.
 public sealed record PaketKaydetIstegi(
@@ -57,7 +58,8 @@ public sealed record PaketKaydetIstegi(
     decimal? YillikUcret,
     bool SatistaMi,
     int Sira,
-    int? IsyeriLimiti = null);
+    int? IsyeriLimiti = null,
+    int? DepolamaKotasiMb = null);
 
 // Firmanın kendi bilgileri; yazdırılan belgelerin (fatura) üst bilgisinde kullanılır.
 public sealed record FirmaBilgileri(

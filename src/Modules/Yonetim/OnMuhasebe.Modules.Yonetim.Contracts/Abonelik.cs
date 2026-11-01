@@ -47,7 +47,8 @@ public sealed record SatistakiPaket(
     int? KullaniciLimiti,
     decimal? AylikUcret,
     decimal? YillikUcret,
-    int? IsyeriLimiti = null);
+    int? IsyeriLimiti = null,
+    int? DepolamaKotasiMb = null);
 
 public sealed record AbonelikDurumu(
     string? PaketKodu,
@@ -61,4 +62,5 @@ public sealed record AbonelikDurumu(
     OdemeBilgileri? OdemeBilgileri,
     IReadOnlyList<OdemeBildirimiOzeti> Bildirimler,
     int IsyeriSayisi = 0,
-    int? IsyeriLimiti = null);
+    int? IsyeriLimiti = null,
+    int? DepolamaKotasiMb = null);

@@ -143,6 +143,15 @@ id["evrak"] = bordro["evrakIdleri"]![0]!.GetValue<string>();
 id["borclu"] = JsonNode.Parse(await a.GetStringAsync("api/kasabanka/cek-senet/borclular"))!["kayitlar"]![0]!["id"]!.GetValue<string>();
 var fisListesi = JsonNode.Parse(await a.GetStringAsync("api/muhasebe/fisler?baslangic=2026-01-01&bitis=2026-12-31"))!;
 id["muhasebeAktarim"] = (await Post(a, "api/muhasebe/aktarimlar", new { baslangic = "2026-01-01", bitis = "2026-12-31", parmak = fisListesi["parmak"]!.GetValue<string>() }))["id"]!.GetValue<string>();
+id["dosyaTur"] = "cari";
+using (var form = new MultipartFormDataContent { { new ByteArrayContent("%PDF-1.4 SIZINTI"u8.ToArray()), "dosya", "sizinti.pdf" } })
+{
+    var yanit = await a.PostAsync($"api/dosya/kayit/cari/{id["cari"]}", form);
+    var metin = await yanit.Content.ReadAsStringAsync();
+    if (!yanit.IsSuccessStatusCode) throw new InvalidOperationException($"api/dosya -> {(int)yanit.StatusCode} {metin}");
+    id["dosya"] = JsonNode.Parse(metin)!["id"]!.GetValue<string>();
+}
+
 var roller = JsonNode.Parse(await a.GetStringAsync("api/yonetim/roller"))!.AsArray();
 var kullaniciRolu = roller.First(r => r!["ad"]!.GetValue<string>() == "Kullanıcı")!["id"]!.GetValue<string>();
 var yoneticiRolu = roller.First(r => r!["tamYetkiliMi"]!.GetValue<bool>())!["id"]!.GetValue<string>();
@@ -204,6 +213,9 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/muhasebe/eslemeler/", "tur", "muhasebeTur"),
     ("/api/muhasebe/eslemeler/", "kartId", "cari"),
     ("/api/muhasebe/aktarimlar/", "id", "muhasebeAktarim"),
+    ("/api/dosya/kayit/", "tur", "dosyaTur"),
+    ("/api/dosya/kayit/", "kayitId", "cari"),
+    ("/api/dosya/", "id", "dosya"),
     ("/api/fatura/irsaliyeler/", "id", "irsaliye"),
     ("/api/fatura/teklif-siparis/", "id", "teklif"),
     ("/api/fatura/raporlar/ba-bs/cari/", "cariId", "cari"),
@@ -230,7 +242,7 @@ foreach (var (yol, metotlar) in openApi["paths"]!.AsObject())
     }
 }
 
-var aIdleri = id.Where(k => k.Key is not ("barkod" or "paket" or "krediSira" or "muhasebeTur")).Select(k => k.Value).ToHashSet();
+var aIdleri = id.Where(k => k.Key is not ("barkod" or "paket" or "krediSira" or "muhasebeTur" or "dosyaTur")).Select(k => k.Value).ToHashSet();
 bool SizintiVar(string govde) => govde.Contains("SIZINTI", StringComparison.Ordinal) || aIdleri.Any(x => govde.Contains(x, StringComparison.OrdinalIgnoreCase));
 
 // Silmeler en sona: yanlışlıkla başarılı olursa diğer denemeleri etkilemesin.

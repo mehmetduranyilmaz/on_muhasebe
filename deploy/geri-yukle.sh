@@ -17,5 +17,9 @@ C stop api
 C exec -T postgres pg_restore -U onmuhasebe -d onmuhasebe --clean --if-exists --single-transaction < "$DOSYA"
 # Yedek eski sürümden ise yeni migration'lar ve satır güvenliği yeniden uygulanır.
 C run --rm migrator
+# Eksik dosya ekleri yedekten tamamlanır; mevcut dosyalar değişmez.
+if [ -d "$DIZIN/yedekler/dosyalar" ]; then
+  C run --rm --no-deps -v dosya-veri:/hedef --entrypoint sh yedek -c 'cp -an /yedekler/dosyalar/. /hedef/'
+fi
 C start api
 echo "Geri yükleme tamamlandı: $DOSYA"

@@ -1,3 +1,6 @@
+using OnMuhasebe.Shared.Infrastructure.Dosyalar;
+using OnMuhasebe.Shared.Contracts.Dosyalar;
+using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +33,8 @@ public sealed class StokModulu : IModul
         services.AddValidatorsFromAssemblyContaining<StokModulu>(includeInternalTypes: true);
         services.AddScoped<StokKodUretici>();
         services.AddScoped<StokAktarimServisi>();
+        services.AddDosyaKaynagi<StokDbContext>(DosyaKayitTurleri.Stok, ModulKodlari.Stok, StokYetkileri.Kart,
+            (db, id, ct) => db.StokKartlari.AnyAsync(k => k.Id == id, ct));
         services.AddScoped<DepoServisi>();
         services.AddScoped<StokAyarServisi>();
         services.AddScoped<StokHesaplayici>();

@@ -21,6 +21,9 @@ internal sealed class Paket : BaseEntity
     // Boş: sınırsız. Firmanın aktif işyeri sayısı bunu aşamaz.
     public int? IsyeriLimiti { get; private set; }
 
+    // Dosya eki depolama kotası (MB); boşsa sınırsız.
+    public int? DepolamaKotasiMb { get; private set; }
+
     // KDV dahil TL; boş bırakılan süre seçeneği abonelik ekranında sunulmaz.
     public decimal? AylikUcret { get; private set; }
     public decimal? YillikUcret { get; private set; }
@@ -44,6 +47,7 @@ internal sealed class Paket : BaseEntity
         Moduller = b.TumModullerMi ? [] : b.Moduller.Distinct().ToList();
         KullaniciLimiti = b.KullaniciLimiti;
         IsyeriLimiti = b.IsyeriLimiti;
+        DepolamaKotasiMb = b.DepolamaKotasiMb;
         AylikUcret = b.AylikUcret;
         YillikUcret = b.YillikUcret;
         SatistaMi = b.SatistaMi;
@@ -60,4 +64,4 @@ internal sealed class Paket : BaseEntity
 
 internal sealed record PaketBilgileri(
     string Ad, string? Aciklama, bool TumModullerMi, IReadOnlyList<string> Moduller, int? KullaniciLimiti,
-    decimal? AylikUcret, decimal? YillikUcret, bool SatistaMi, int Sira, int? IsyeriLimiti = null);
+    decimal? AylikUcret, decimal? YillikUcret, bool SatistaMi, int Sira, int? IsyeriLimiti = null, int? DepolamaKotasiMb = null);

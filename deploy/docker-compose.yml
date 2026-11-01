@@ -70,6 +70,7 @@ services:
     volumes:
       - ./yedek.sh:/yedek.sh:ro
       - ./yedekler:/yedekler
+      - dosya-veri:/dosyalar:ro
     healthcheck:
       test: ["CMD-SHELL", "find /yedekler -name 'onmuhasebe-*.dump' -mmin -1560 | grep -q ."]
       interval: 1h
@@ -84,10 +85,13 @@ services:
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
+    volumes:
+      - dosya-veri:/veri/dosyalar
     mem_limit: 1g
     environment:
       <<: *api-ortami
       Guvenlik__VekilArkasinda: "true"
+      Dosya__Klasor: /veri/dosyalar
       Uygulama__WebAdresi: https://${ALAN_ADI:?}
       Jwt__Anahtar: ${JWT_ANAHTARI:?}
       Bildirim__SifrelemeAnahtari: ${BILDIRIM_SIFRELEME_ANAHTARI:?}
@@ -123,5 +127,6 @@ services:
 
 volumes:
   postgres-veri:
+  dosya-veri:
   caddy-veri:
   caddy-ayar:

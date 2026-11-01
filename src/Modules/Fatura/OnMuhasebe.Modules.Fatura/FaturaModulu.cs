@@ -1,3 +1,6 @@
+using OnMuhasebe.Shared.Infrastructure.Dosyalar;
+using OnMuhasebe.Shared.Contracts.Dosyalar;
+using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -38,6 +41,8 @@ public sealed class FaturaModulu : IModul
         services.AddScoped<TeklifSiparisServisi>();
         services.AddScoped<SiparisKarsilamaServisi>();
         services.AddScoped<IFaturaMuhasebeSorgusu, FaturaMuhasebeSorgusu>();
+        services.AddDosyaKaynagi<FaturaDbContext>(DosyaKayitTurleri.Fatura, ModulKodlari.Fatura, FaturaYetkileri.Belge,
+            (db, id, ct) => db.Faturalar.AnyAsync(f => f.Id == id, ct));
     }
 
     public void EndpointleriEkle(IEndpointRouteBuilder endpoints)

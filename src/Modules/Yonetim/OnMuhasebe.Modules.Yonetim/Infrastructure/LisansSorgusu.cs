@@ -33,7 +33,7 @@ internal sealed class LisansSorgusu(YonetimDbContext db, HybridCache cache) : IL
             .Where(l => l.FirmaId == firmaId && db.Firmalar.Any(f => f.Id == firmaId && f.AktifMi))
             .SingleOrDefaultAsync(cancellationToken);
 
-        return lisans is null ? null : new LisansDurumu(lisans.AcikModuller(), lisans.BitisTarihi);
+        return lisans is null ? null : new LisansDurumu(lisans.AcikModuller(), lisans.BitisTarihi, lisans.Paket.DepolamaKotasiMb);
     }
 
     private static string Anahtar(Guid firmaId) => $"lisans:{firmaId}";

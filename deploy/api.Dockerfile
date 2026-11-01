@@ -11,5 +11,7 @@ COPY --from=derleme /yayin .
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     DOTNET_gcServer=0
 EXPOSE 8080
+# Dosya ekleri kalıcı birimde: birim ilk bağlanışta bu sahipliği alır.
+RUN mkdir -p /veri/dosyalar && chown "$APP_UID" /veri/dosyalar
 USER $APP_UID
 ENTRYPOINT ["dotnet", "OnMuhasebe.Api.dll"]

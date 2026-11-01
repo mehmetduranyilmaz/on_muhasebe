@@ -9,7 +9,7 @@ public interface ILisansSorgusu
     Task OnbellektenKaldirAsync(Guid firmaId, CancellationToken cancellationToken = default);
 }
 
-public sealed record LisansDurumu(IReadOnlyList<string> Moduller, DateTime BitisTarihi)
+public sealed record LisansDurumu(IReadOnlyList<string> Moduller, DateTime BitisTarihi, int? DepolamaKotasiMb = null)
 {
     public bool SuresiDolduMu(DateTime simdi) => simdi >= BitisTarihi;
 }

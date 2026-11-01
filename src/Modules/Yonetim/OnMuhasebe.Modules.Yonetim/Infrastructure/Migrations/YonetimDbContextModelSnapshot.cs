@@ -930,6 +930,10 @@ namespace OnMuhasebe.Modules.Yonetim.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("aylik_ucret");
 
+                    b.Property<int?>("DepolamaKotasiMb")
+                        .HasColumnType("integer")
+                        .HasColumnName("depolama_kotasi_mb");
+
                     b.Property<DateTime?>("GuncellemeTarihi")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("guncelleme_tarihi");

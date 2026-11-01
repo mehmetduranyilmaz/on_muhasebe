@@ -15,6 +15,20 @@ al() {
   mv "$dosya.yarim" "$dosya"
   find /yedekler -name 'onmuhasebe-*.dump' -mtime +"$((YEDEK_GUN - 1))" -delete
   echo "Yedek alındı: $dosya ($(du -h "$dosya" | cut -f1))"
+  dosya_ekleri
+}
+
+# Dosya ekleri değişmez (kimlikle adlandırılır): yalnız yenileri kopyalanır. Kaynaktan kalıcı silinenler YEDEK_GUN sonra yedekten de düşer.
+dosya_ekleri() {
+  [ -d /dosyalar ] || return 0
+  mkdir -p /yedekler/dosyalar
+  cp -an /dosyalar/. /yedekler/dosyalar/
+  ( cd /yedekler/dosyalar
+    find . -type f -name '*.yarim' -delete
+    find . -type f -mtime +"$((YEDEK_GUN - 1))" | while IFS= read -r f; do
+      [ -e "/dosyalar/$f" ] || rm -f -- "$f"
+    done )
+  echo "Dosya ekleri yedeklendi: $(du -sh /yedekler/dosyalar | cut -f1)"
 }
 
 if [ "${1:-}" = "simdi" ]; then

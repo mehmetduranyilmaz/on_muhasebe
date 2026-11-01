@@ -16,7 +16,7 @@ namespace OnMuhasebe.Hesaplama.Tests;
 public class YetkiTestleri
 {
     // Kurucu, bağımlı yetkilerin katalogda olduğunu da denetler.
-    private static readonly YetkiKatalogu _katalog = new([new YonetimModulu(), new CariModulu(), new StokModulu(), new FaturaModulu(), new KasaBankaModulu(), new MuhasebeModulu()]);
+    private static readonly YetkiKatalogu _katalog = new([new YonetimModulu(), new OnMuhasebe.Modules.Dosya.DosyaModulu(), new CariModulu(), new StokModulu(), new FaturaModulu(), new KasaBankaModulu(), new MuhasebeModulu()]);
 
     private static IReadOnlyList<string> Hesapla(string[] rol, string[]? ek = null, string[]? yasak = null) =>
         YetkiHesaplayici.Hesapla(rol, ek ?? [], yasak ?? [], _katalog.Tumu);
@@ -79,7 +79,7 @@ public class YetkiTestleri
     public void Kullanici_sablonu_yonetim_disindaki_tum_yetkileri_kapsar()
     {
         var kullanici = RolSablonlari.Olustur(_katalog.Tumu, Guid.CreateVersion7()).Single(r => r.Ad == "Kullanıcı");
-        var modulYetkileri = _katalog.Tumu.Where(k => k.Modul.Length > 0).SelectMany(k => k.Yetkiler()).Order();
+        var modulYetkileri = _katalog.Tumu.Where(k => k.Modul.Length > 0 || k == OnMuhasebe.Shared.Contracts.Dosyalar.DosyaYetkileri.Ek).SelectMany(k => k.Yetkiler()).Order();
 
         Assert.Equal(modulYetkileri, kullanici.Yetkiler);
     }

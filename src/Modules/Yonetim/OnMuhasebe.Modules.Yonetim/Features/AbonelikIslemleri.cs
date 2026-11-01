@@ -70,7 +70,8 @@ internal static class AbonelikIslemleri
             odeme?.Iban is null ? null : odeme,
             bildirimler,
             isyeriSayisi,
-            lisans?.Paket.IsyeriLimiti));
+            lisans?.Paket.IsyeriLimiti,
+            lisans?.Paket.DepolamaKotasiMb));
     }
 
     private static async Task<IResult> BildirAsync(
