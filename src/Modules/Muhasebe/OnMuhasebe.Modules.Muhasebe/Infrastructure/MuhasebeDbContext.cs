@@ -14,6 +14,8 @@ internal sealed class MuhasebeDbContext(DbContextOptions<MuhasebeDbContext> opti
     public DbSet<MuhasebeAyari> Ayarlar => Set<MuhasebeAyari>();
     public DbSet<HesapKodu> HesapKodlari => Set<HesapKodu>();
     public DbSet<KodEslemesi> KodEslemeleri => Set<KodEslemesi>();
+    public DbSet<MuhasebeAktarimi> Aktarimlar => Set<MuhasebeAktarimi>();
+    public DbSet<AktarilanFis> AktarilanFisler => Set<AktarilanFis>();
 }
 
 internal sealed class MuhasebeAyariConfiguration : IEntityTypeConfiguration<MuhasebeAyari>
@@ -46,5 +48,33 @@ internal sealed class KodEslemesiConfiguration : IEntityTypeConfiguration<KodEsl
         builder.Property(x => x.KartTuru).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.Kod).HasMaxLength(30);
         builder.HasIndex(x => new { x.FirmaId, x.KartTuru, x.KartId }).IsUnique();
+    }
+}
+
+internal sealed class MuhasebeAktarimiConfiguration : IEntityTypeConfiguration<MuhasebeAktarimi>
+{
+    public void Configure(EntityTypeBuilder<MuhasebeAktarimi> builder)
+    {
+        builder.ToTable("muhasebe_aktarimi");
+        builder.Property(x => x.ToplamBorc).HasPrecision(18, 2);
+        builder.Property(x => x.Aciklama).HasMaxLength(500);
+        builder.Property(x => x.AktaranAdi).HasMaxLength(256);
+        builder.HasIndex(x => new { x.FirmaId, x.Baslangic });
+    }
+}
+
+internal sealed class AktarilanFisConfiguration : IEntityTypeConfiguration<AktarilanFis>
+{
+    public void Configure(EntityTypeBuilder<AktarilanFis> builder)
+    {
+        builder.ToTable("aktarilan_fis");
+        builder.Property(x => x.Kaynak).HasMaxLength(20);
+        builder.Property(x => x.BelgeTuru).HasMaxLength(40);
+        builder.Property(x => x.BelgeNo).HasMaxLength(100);
+        builder.Property(x => x.Ozet).HasMaxLength(32);
+        builder.HasOne<MuhasebeAktarimi>().WithMany().HasForeignKey(x => x.AktarimId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => new { x.FirmaId, x.Kaynak, x.KaynakId }).IsUnique();
+        builder.HasIndex(x => new { x.FirmaId, x.Tarih });
+        builder.HasIndex(x => x.AktarimId);
     }
 }

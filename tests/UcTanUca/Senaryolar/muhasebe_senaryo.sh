@@ -93,6 +93,69 @@ kontrol 400 "Bir yildan uzun donem reddedilir" donem
 istek GET "$M/fisler?baslangic=2026-10-01&bitis=2026-10-31" "$T2"
 kontrol 200 "Baska firma bu firmanin fislerini gormez" '"fisler":\[\]'
 
+echo "--- Dosya indirme ve aktarim takibi"
+D="baslangic=2026-10-01&bitis=2026-10-31"
+parmak() { istek GET "$M/fisler?$D" "$T"; PARMAK=$(alan parmak); }
+indir() { # SORGU
+  KOD=$(curl "${CURL_EK[@]}" -s -o "$DIR/dosya" -D "$DIR/baslik" -w "%{http_code}" "$KOK$M/fisler/indir?$D$1" -H "Authorization: Bearer $T")
+  GOVDE=$(cat "$DIR/baslik")
+}
+indir ""
+kontrol 200 "Excel indirildi" 'spreadsheetml.*|yevmiye_2026-10-01_2026-10-31\.xlsx'
+if [ "$(head -c 2 "$DIR/dosya")" = "PK" ]; then GOVDE=zip; else GOVDE=degil; fi
+kontrol 200 "Excel dosyasi gecerli zip" zip
+indir "&format=csv"
+kontrol 200 "CSV indirildi" 'text/csv'
+GOVDE=$(cat "$DIR/dosya")
+kontrol 200 "CSV noktali virgullu, virgullu ondalik" '1\.200,00|;1200,00;0,00;Fatura;Yeni'
+indir "&format=pdf"
+kontrol 400 "Gecersiz bicim reddedilir" 'HTTP'
+
+parmak
+kontrol 200 "Fisler aktarilmadi durumunda" '"aktarimDurumu":"Aktarilmadi"'
+istek POST $M/aktarimlar "$T" '{"baslangic":"2026-10-01","bitis":"2026-10-31","parmak":"yanlis"}'
+kontrol 409 "Eski listeyle aktarim reddedilir" liste_degisti
+istek POST $M/aktarimlar "$T" '{"baslangic":"2026-10-01","bitis":"2026-10-31","parmak":"'"$PARMAK"'","aciklama":"Ekim"}'
+kontrol 201 "Donem aktarildi" '"aciklama":"Ekim"'; AKTARIM=$(alan id)
+istek GET "$M/fisler?$D" "$T"
+kontrol 200 "Fisler aktarildi durumunda" '"aktarimDurumu":"Aktarildi"'
+if echo "$GOVDE" | grep -qE '"aktarimDurumu":"(Aktarilmadi|Degisti)"'; then KOD=aktarilmamis-var; fi
+kontrol 200 "Aktarilmamis fis kalmadi"
+PARMAK=$(alan parmak)
+istek POST $M/aktarimlar "$T" '{"baslangic":"2026-10-01","bitis":"2026-10-31","parmak":"'"$PARMAK"'"}'
+kontrol 422 "Degisiklik yoksa yeniden aktarilmaz" degisiklik_yok
+indir "&format=csv&yalnizYeniler=true"
+GOVDE=$(cat "$DIR/dosya")
+if echo "$GOVDE" | grep -q Fatura; then KOD=eski-fis-var; fi
+kontrol 200 "Yalniz yeniler dosyasi aktarilmislari icermez"
+
+istek PUT $M/hesap-plani "$T" '{"ayirac":".","cariAltGrup":"01","kodlar":{"YurticiSatislar":"601"}}'
+istek GET "$M/fisler?$D" "$T"
+kontrol 200 "Hesap kodu degisince fis degisti gorunur" '"belgeTuru":"Satis","tur":"Mahsup","tarih":"[^"]*","belgeNo":[^,]*,"aciklama":"[^"]*","isyeriId":"[^"]*","satirlar":\[[^]]*\],"aktarimDurumu":"Degisti"'
+PARMAK=$(alan parmak)
+istek POST $M/aktarimlar "$T" '{"baslangic":"2026-10-01","bitis":"2026-10-31","parmak":"'"$PARMAK"'"}'
+kontrol 201 "Degisen fisle yeniden aktarildi"; AKTARIM2=$(alan id)
+
+istek POST /api/kasabanka/islemler/tahsilat "$T" '{"hesapId":"'"$KASA"'","cariHesapId":"'"$C1"'","tarih":"2026-10-22","tutar":50,"belgeNo":"MAK-2"}'
+ISLEM=$(alan islemId)
+parmak
+PARMAK_ESKI=$PARMAK
+istek POST $M/aktarimlar "$T" '{"baslangic":"2026-10-01","bitis":"2026-10-31","parmak":"'"$PARMAK"'"}'
+kontrol 201 "Yeni tahsilat aktarildi"
+istek POST "/api/kasabanka/islemler/$ISLEM/iptal" "$T"
+kontrol 200 "Aktarilan tahsilat iptal edildi"
+istek GET "$M/fisler?$D" "$T"
+kontrol 200 "Iptal edilen fis kalkanlar listesinde" '"kalkanlar":\[\{"kaynakId":"[^"]*","kaynak":"KasaBanka","belgeTuru":"Tahsilat","tarih":"2026-10-22","belgeNo":"MAK-2"'
+
+istek GET $M/aktarimlar "$T"
+kontrol 200 "Aktarim gecmisi aktaran adiyla listelenir" '"aktaranAdi":"[^"]+"'
+istek POST "$M/aktarimlar/$AKTARIM2/iptal" "$T2"
+kontrol 404 "Baska firma aktarimi iptal edemez" aktarim_bulunamadi
+istek POST "$M/aktarimlar/$AKTARIM2/iptal" "$T"
+kontrol 200 "Aktarim iptal edildi" '"iptalTarihi":"'
+istek POST "$M/aktarimlar/$AKTARIM2/iptal" "$T"
+kontrol 422 "Iki kez iptal edilemez" aktarim_iptal
+
 echo "--- Mali musavir rolu"
 istek GET $Y/roller "$T"
 kontrol 200 "Hazir mali musavir rolu isaretli" '"ad":"Salt Okur \(Mali M[^"]*\)".*"maliMusavirMi":true'
@@ -109,6 +172,10 @@ istek GET $M/eslemeler/cari "$MT"
 kontrol 403 "Plan yetkisi olmayan mali musavir eslesmeleri goremez" yetki_yok
 istek GET "$M/fisler?baslangic=2026-10-01&bitis=2026-10-31" "$MT"
 kontrol 200 "Mali musavir fisleri gorur" '"belgeTuru":"Satis"'
+KOD=$(curl "${CURL_EK[@]}" -s -o /dev/null -w "%{http_code}" "$KOK$M/fisler/indir?$D" -H "Authorization: Bearer $MT"); GOVDE=""
+kontrol 200 "Mali musavir dosya indirir"
+istek GET $M/aktarimlar "$MT"
+kontrol 200 "Mali musavir aktarim gecmisini gorur"
 istek POST /api/cari/hesaplar "$MT" '{"unvan":"Yasak","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'
 kontrol 403 "Mali musavir kayit acamaz" yetki_yok
 istek GET /api/yonetim/abonelik "$T"

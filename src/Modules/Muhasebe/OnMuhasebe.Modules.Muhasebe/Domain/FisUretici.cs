@@ -77,7 +77,7 @@ internal static class FisUretici
         var tedarikciYonu = !FaturaTurleri.SatisTarafiMi(tur);
         kalemler.Insert(0, new(kodlar.Cari(f.CariHesapId, tedarikciYonu), -kalemler.Sum(k => k.Tutar), f.CariUnvan));
         var aciklama = $"{f.CariUnvan} - {BelgeAdi(tur)} {f.Numara}".TrimEnd();
-        return new MuhasebeFisi(f.Id, "Fatura", f.Tur, FisTuru.Mahsup, f.Tarih, f.Numara, aciklama, f.IsyeriId, Satirlar(kalemler, aciklama));
+        return new MuhasebeFisi(f.Id, FisKaynaklari.Fatura, f.Tur, FisTuru.Mahsup, f.Tarih, f.Numara, aciklama, f.IsyeriId, Satirlar(kalemler, aciklama));
 
         decimal Tl(decimal tutar) => Para.TlKarsiligi(tutar, f.Kur);
     }
@@ -129,7 +129,7 @@ internal static class FisUretici
             }
 
             var aciklama = ilk.Aciklama ?? ilk.Tur;
-            fisler.Add(new MuhasebeFisi(islem.Key, "KasaBanka", ilk.Tur, Tur(islem), ilk.Tarih, ilk.BelgeNo, aciklama, ilk.IsyeriId,
+            fisler.Add(new MuhasebeFisi(islem.Key, FisKaynaklari.KasaBanka, ilk.Tur, Tur(islem), ilk.Tarih, ilk.BelgeNo, aciklama, ilk.IsyeriId,
                 Satirlar(kalemler, aciklama)));
         }
 
@@ -200,7 +200,7 @@ internal static class FisUretici
             }
 
             var fisAciklamasi = $"Çek/senet bordrosu {ilk.BordroNo}: {EvrakIslemAdi(ilk.Islem)}";
-            return new MuhasebeFisi(bordro.Key, "CekSenet", ilk.Islem, FisTuru.Mahsup, ilk.Tarih, ilk.BordroNo, fisAciklamasi, null,
+            return new MuhasebeFisi(bordro.Key, FisKaynaklari.CekSenet, ilk.Islem, FisTuru.Mahsup, ilk.Tarih, ilk.BordroNo, fisAciklamasi, null,
                 Satirlar(kalemler, fisAciklamasi));
         }).ToList();
 
@@ -221,7 +221,7 @@ internal static class FisUretici
             }
 
             var aciklama = ilk.Aciklama ?? (ilk.Tur == "Gelir" ? "Gelir tahakkuku" : "Gider tahakkuku");
-            return new MuhasebeFisi(islem.Key, "Tahakkuk", ilk.Tur, FisTuru.Mahsup, ilk.Tarih, ilk.BelgeNo, aciklama, null, Satirlar(kalemler, aciklama));
+            return new MuhasebeFisi(islem.Key, FisKaynaklari.Tahakkuk, ilk.Tur, FisTuru.Mahsup, ilk.Tarih, ilk.BelgeNo, aciklama, null, Satirlar(kalemler, aciklama));
         }).ToList();
 
     private static string EvrakIslemAdi(string islem) => islem switch

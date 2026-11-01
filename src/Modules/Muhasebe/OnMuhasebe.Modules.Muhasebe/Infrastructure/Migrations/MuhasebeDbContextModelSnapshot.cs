@@ -23,6 +23,93 @@ namespace OnMuhasebe.Modules.Muhasebe.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("OnMuhasebe.Modules.Muhasebe.Domain.AktarilanFis", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AktarimId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aktarim_id");
+
+                    b.Property<string>("BelgeNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("belge_no");
+
+                    b.Property<string>("BelgeTuru")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("belge_turu");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<Guid?>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
+                    b.Property<string>("Kaynak")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kaynak");
+
+                    b.Property<Guid>("KaynakId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("kaynak_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<string>("Ozet")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("ozet");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateOnly>("Tarih")
+                        .HasColumnType("date")
+                        .HasColumnName("tarih");
+
+                    b.HasKey("Id")
+                        .HasName("pk_aktarilan_fis");
+
+                    b.HasIndex("AktarimId")
+                        .HasDatabaseName("ix_aktarilan_fis_aktarim_id");
+
+                    b.HasIndex("FirmaId", "Tarih")
+                        .HasDatabaseName("ix_aktarilan_fis_firma_id_tarih");
+
+                    b.HasIndex("FirmaId", "Kaynak", "KaynakId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_aktarilan_fis_firma_id_kaynak_kaynak_id");
+
+                    b.ToTable("aktarilan_fis", "muhasebe");
+                });
+
             modelBuilder.Entity("OnMuhasebe.Modules.Muhasebe.Domain.HesapKodu", b =>
                 {
                     b.Property<Guid>("Id")
@@ -133,6 +220,82 @@ namespace OnMuhasebe.Modules.Muhasebe.Infrastructure.Migrations
                         .HasDatabaseName("ix_kod_eslemesi_firma_id_kart_turu_kart_id");
 
                     b.ToTable("kod_eslemesi", "muhasebe");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Muhasebe.Domain.MuhasebeAktarimi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<string>("AktaranAdi")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("aktaran_adi");
+
+                    b.Property<DateOnly>("Baslangic")
+                        .HasColumnType("date")
+                        .HasColumnName("baslangic");
+
+                    b.Property<DateOnly>("Bitis")
+                        .HasColumnType("date")
+                        .HasColumnName("bitis");
+
+                    b.Property<Guid>("FirmaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("firma_id");
+
+                    b.Property<int>("FisSayisi")
+                        .HasColumnType("integer")
+                        .HasColumnName("fis_sayisi");
+
+                    b.Property<DateTime?>("GuncellemeTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("guncelleme_tarihi");
+
+                    b.Property<Guid?>("GuncelleyenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("guncelleyen_id");
+
+                    b.Property<DateTime?>("IptalTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("iptal_tarihi");
+
+                    b.Property<Guid?>("IsyeriId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("isyeri_id");
+
+                    b.Property<Guid?>("OlusturanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("OlusturmaTarihi")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("olusturma_tarihi");
+
+                    b.Property<uint>("Surum")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal>("ToplamBorc")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("toplam_borc");
+
+                    b.HasKey("Id")
+                        .HasName("pk_muhasebe_aktarimi");
+
+                    b.HasIndex("FirmaId", "Baslangic")
+                        .HasDatabaseName("ix_muhasebe_aktarimi_firma_id_baslangic");
+
+                    b.ToTable("muhasebe_aktarimi", "muhasebe");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Muhasebe.Domain.MuhasebeAyari", b =>
@@ -268,6 +431,16 @@ namespace OnMuhasebe.Modules.Muhasebe.Infrastructure.Migrations
                         .HasDatabaseName("ix_degisiklik_kaydi_firma_id_ust_kayit_id");
 
                     b.ToTable("degisiklik_kaydi", "muhasebe");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Muhasebe.Domain.AktarilanFis", b =>
+                {
+                    b.HasOne("OnMuhasebe.Modules.Muhasebe.Domain.MuhasebeAktarimi", null)
+                        .WithMany()
+                        .HasForeignKey("AktarimId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_aktarilan_fis_aktarimlar_aktarim_id");
                 });
 #pragma warning restore 612, 618
         }

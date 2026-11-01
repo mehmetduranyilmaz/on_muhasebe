@@ -141,6 +141,8 @@ var bordro = await Post(a, "api/kasabanka/cek-senet/giris", new
 id["bordro"] = bordro["bordroId"]!.GetValue<string>();
 id["evrak"] = bordro["evrakIdleri"]![0]!.GetValue<string>();
 id["borclu"] = JsonNode.Parse(await a.GetStringAsync("api/kasabanka/cek-senet/borclular"))!["kayitlar"]![0]!["id"]!.GetValue<string>();
+var fisListesi = JsonNode.Parse(await a.GetStringAsync("api/muhasebe/fisler?baslangic=2026-01-01&bitis=2026-12-31"))!;
+id["muhasebeAktarim"] = (await Post(a, "api/muhasebe/aktarimlar", new { baslangic = "2026-01-01", bitis = "2026-12-31", parmak = fisListesi["parmak"]!.GetValue<string>() }))["id"]!.GetValue<string>();
 var roller = JsonNode.Parse(await a.GetStringAsync("api/yonetim/roller"))!.AsArray();
 var kullaniciRolu = roller.First(r => r!["ad"]!.GetValue<string>() == "Kullanıcı")!["id"]!.GetValue<string>();
 var yoneticiRolu = roller.First(r => r!["tamYetkiliMi"]!.GetValue<bool>())!["id"]!.GetValue<string>();
@@ -201,6 +203,7 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/fatura/isyeri-serileri/", "isyeriId", "isyeri"),
     ("/api/muhasebe/eslemeler/", "tur", "muhasebeTur"),
     ("/api/muhasebe/eslemeler/", "kartId", "cari"),
+    ("/api/muhasebe/aktarimlar/", "id", "muhasebeAktarim"),
     ("/api/fatura/irsaliyeler/", "id", "irsaliye"),
     ("/api/fatura/teklif-siparis/", "id", "teklif"),
     ("/api/fatura/raporlar/ba-bs/cari/", "cariId", "cari"),

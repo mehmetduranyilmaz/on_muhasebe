@@ -149,10 +149,27 @@ public enum FisTuru
 
 public sealed record FisSatiri(string HesapKodu, string HesapAdi, decimal Borc, decimal Alacak, string? Aciklama);
 
-// Kaynak: "Fatura" ya da "KasaBanka"; BelgeTuru kaynak belgenin türüdür (Satis, Tahsilat...). Dengesiz fiş aktarılmaz, uyarıyla döner.
+public static class FisKaynaklari
+{
+    public const string Fatura = "Fatura";
+    public const string KasaBanka = "KasaBanka";
+    public const string CekSenet = "CekSenet";
+    public const string Tahakkuk = "Tahakkuk";
+}
+
+// Değişti: aktarıldıktan sonra tarih, belge no ya da borç/alacak satırları (hesap kodu dahil) değişmiş; yeniden aktarılmalı.
+[JsonConverter(typeof(JsonStringEnumConverter<FisAktarimDurumu>))]
+public enum FisAktarimDurumu
+{
+    Aktarilmadi,
+    Aktarildi,
+    Degisti
+}
+
+// Kaynak: FisKaynaklari; BelgeTuru kaynak belgenin türüdür (Satis, Tahsilat...). Dengesiz fiş aktarılmış sayılamaz, uyarıyla döner.
 public sealed record MuhasebeFisi(
     Guid KaynakId, string Kaynak, string BelgeTuru, FisTuru Tur, DateOnly Tarih, string? BelgeNo, string Aciklama, Guid? IsyeriId,
-    IReadOnlyList<FisSatiri> Satirlar)
+    IReadOnlyList<FisSatiri> Satirlar, FisAktarimDurumu AktarimDurumu = FisAktarimDurumu.Aktarilmadi)
 {
     public decimal ToplamBorc => Satirlar.Sum(s => s.Borc);
 
@@ -161,4 +178,16 @@ public sealed record MuhasebeFisi(
     public bool DengeliMi => ToplamBorc == ToplamAlacak;
 }
 
-public sealed record FisListesi(DateOnly Baslangic, DateOnly Bitis, IReadOnlyList<MuhasebeFisi> Fisler, IReadOnlyList<string> Uyarilar);
+// Aktarıldıktan sonra iptal edilen ya da dönemden çıkan belgenin fişi: muhasebe programında elle düzeltilmelidir.
+public sealed record KalkanFis(Guid KaynakId, string Kaynak, string BelgeTuru, DateOnly Tarih, string? BelgeNo);
+
+// Parmak: listenin içerik özeti. Aktarım bununla işaretlenir: indirilen dosyadan sonra değişen liste aktarılmış sayılmaz.
+public sealed record FisListesi(
+    DateOnly Baslangic, DateOnly Bitis, IReadOnlyList<MuhasebeFisi> Fisler, IReadOnlyList<string> Uyarilar, string Parmak,
+    IReadOnlyList<KalkanFis> Kalkanlar);
+
+public sealed record AktarimIstegi(DateOnly Baslangic, DateOnly Bitis, Guid? IsyeriId, string Parmak, string? Aciklama);
+
+public sealed record AktarimCevabi(
+    Guid Id, DateOnly Baslangic, DateOnly Bitis, Guid? IsyeriId, int FisSayisi, decimal ToplamBorc, string? Aciklama, string? AktaranAdi,
+    DateTime AktarimTarihi, DateTime? IptalTarihi);

@@ -28,6 +28,7 @@ public sealed class MuhasebeModulu : IModul
         services.AddModulDbContext<MuhasebeDbContext>(configuration);
         services.AddValidatorsFromAssemblyContaining<MuhasebeModulu>(includeInternalTypes: true);
         services.AddScoped<HesapPlaniServisi>();
+        services.AddScoped<FisServisi>();
     }
 
     public void EndpointleriEkle(IEndpointRouteBuilder endpoints)
