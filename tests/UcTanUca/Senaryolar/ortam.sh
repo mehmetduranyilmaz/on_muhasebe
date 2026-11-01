@@ -5,6 +5,8 @@ SISTEM_GIRIS='{"eposta":"'"$OM_SISTEM_EPOSTA"'","sifre":"'"$OM_SISTEM_SIFRE"'"}'
 MAILPIT="${OM_MAILPIT:-http://localhost:8025}/api/v1"
 SMTP_SUNUCU="${OM_SMTP_SUNUCU:-localhost}"
 SMTP_PORT="${OM_SMTP_PORT:-1025}"
+# Sunucu "bugün"ü Türkiye saatine göre hesaplar: UTC çalışan makinede 00.00-03.00 arası tarih bir gün kaymasın.
+export TZ=UTC-3
 DOS="${OM_DOSYALAR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../Dosyalar" && pwd)}"
 GECICI="${OM_GECICI:-${TMPDIR:-/tmp}}"
 # Kendi imzalı sertifikalı ortam (ör. deploy ile localhost): OM_GUVENSIZ_SERTIFIKA=1 sertifika doğrulamasını kapatır.
