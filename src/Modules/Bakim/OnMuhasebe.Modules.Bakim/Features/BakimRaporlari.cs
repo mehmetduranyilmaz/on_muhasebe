@@ -6,6 +6,7 @@ using OnMuhasebe.Modules.Bakim.Contracts;
 using OnMuhasebe.Modules.Bakim.Domain;
 using OnMuhasebe.Modules.Bakim.Infrastructure;
 using OnMuhasebe.Modules.Stok.Contracts;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Domain.Results;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
@@ -31,8 +32,8 @@ internal static class BakimRaporlari
             return Hata.Dogrulama("donem", "Bitiş başlangıçtan önce olamaz ve dönem en çok üç yıl olabilir.").Problem();
         }
 
-        var bas = DateTime.SpecifyKind(baslangic.ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
-        var son = DateTime.SpecifyKind(bitis.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Local).ToUniversalTime();
+        var bas = TurkiyeSaati.GunBasiUtc(baslangic);
+        var son = TurkiyeSaati.GunBasiUtc(bitis.AddDays(1));
         var ekipmanlar = await db.Ekipmanlar.AsNoTracking()
             .Where(e => (ekipmanId == null || e.Id == ekipmanId) && (isyeriId == null || e.IsyeriId == isyeriId))
             .OrderBy(e => e.Kod).Select(e => new { e.Id, e.Kod, e.Ad }).ToListAsync(ct);

@@ -204,7 +204,7 @@ internal static class IsEmriIslemleri
 
             ekipman!.SayacIlerlet(istek.SayacDegeri);
             var tarih = TurkiyeSaati.Bugun(zaman);
-            var bitisTarihi = DateOnly.FromDateTime(emir.BitisZamani!.Value.ToLocalTime());
+            var bitisTarihi = TurkiyeSaati.Gunu(emir.BitisZamani!.Value);
             if (emir.PlanId is { } planId && await db.Planlar.SingleOrDefaultAsync(p => p.Id == planId, c) is { } plan)
             {
                 plan.Yapildi(bitisTarihi > tarih ? tarih : bitisTarihi, istek.SayacDegeri ?? ekipman.Sayac);

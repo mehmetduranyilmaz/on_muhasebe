@@ -8,6 +8,14 @@ public static class TurkiyeSaati
     public static DateOnly Bugun(TimeProvider zaman) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(zaman.GetUtcNow(), _bolge).DateTime);
 
+    // UTC saklanan anın Türkiye'deki günü.
+    public static DateOnly Gunu(DateTime utc) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), _bolge));
+
+    // Türkiye'de günün başladığı an (UTC); gün aralığı sorguları için.
+    public static DateTime GunBasiUtc(DateOnly gun) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(gun.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified), _bolge);
+
     public static DateTime Simdi(TimeProvider zaman) => TimeZoneInfo.ConvertTime(zaman.GetUtcNow(), _bolge).DateTime;
 
     private static TimeZoneInfo BolgeBul()

@@ -104,7 +104,8 @@ jobs:
       - name: API ve Web'i başlat
         run: |
           mkdir -p tests/UcTanUca/cikti
-          nohup dotnet run --project src/Api/OnMuhasebe.Api -c Release --no-build --launch-profile http > tests/UcTanUca/cikti/api.log 2>&1 &
+          # Sunucu canlıdaki gibi UTC: Türkiye saati varsayımları CI'da da ortaya çıksın.
+          TZ=UTC nohup dotnet run --project src/Api/OnMuhasebe.Api -c Release --no-build --launch-profile http > tests/UcTanUca/cikti/api.log 2>&1 &
           nohup dotnet run --project src/Web/OnMuhasebe.Web -c Release --no-build --launch-profile http > tests/UcTanUca/cikti/web.log 2>&1 &
           for i in $(seq 1 90); do curl -sf http://localhost:5128/health > /dev/null && curl -sf http://localhost:5167/ > /dev/null && exit 0; sleep 2; done
           echo "API/Web açılmadı"; tail -50 tests/UcTanUca/cikti/api.log; exit 1
