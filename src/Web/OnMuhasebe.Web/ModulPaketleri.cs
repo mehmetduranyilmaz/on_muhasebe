@@ -50,6 +50,11 @@ public static class ModulPaketleri
         [
             "OnMuhasebe.Web.Arac.wasm",
             "OnMuhasebe.Modules.Arac.Contracts.wasm"
+        ],
+        [ModulKodlari.Bakim] =
+        [
+            "OnMuhasebe.Web.Bakim.wasm",
+            "OnMuhasebe.Modules.Bakim.Contracts.wasm"
         ]
     };
 

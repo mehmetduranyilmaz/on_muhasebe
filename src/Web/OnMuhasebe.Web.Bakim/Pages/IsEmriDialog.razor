@@ -1,0 +1,342 @@
+@* İş emri formu ve akışı: başlat, kapat, iptal. Stok kartlı parça iş emri kapanınca stoktan düşer. Maliyet takip kaydıdır, muhasebe fişi üretmez. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (_yukleniyor)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" Class="rounded-lg" />
+        }
+        else
+        {
+            @if (_detay is { } d)
+            {
+                <div class="d-flex align-center gap-2 mb-3 flex-wrap">
+                    <b>@d.Kod</b>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@BakimMetinleri.IsEmriDurumu(d.Durum)</MudChip>
+                    @if (d.DurusSaati is { } durus)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">Duruş: @Bicim.Tutar(durus) saat</MudChip>
+                    }
+                    <DosyalarDugmesi Tur="@DosyaKayitTurleri.IsEmri" KayitId="d.Id" />
+                </div>
+            }
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="8">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_baslik" Label="Başlık" MaxLength="200" Required="true" Disabled="@(!Duzenlenir)" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="DateTime?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_bildirim" Label="Bildirim zamanı" InputType="InputType.DateTimeLocal" Format="yyyy-MM-ddTHH:mm" Disabled="@(!Duzenlenir)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="2000" Lines="2" Disabled="@(!Duzenlenir)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudSwitch T="bool" @bind-Value="_durdu" Color="Color.Warning" Label="Makine durdu (duruş süresi hesaplansın)" Disabled="@(!Duzenlenir)" />
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_iscilik" Label="İşçilik (TL)" Min="0" Format="N2" HideSpinButtons="true" Disabled="@(!Duzenlenir)" />
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_disServis" Label="Dış servis (TL)" Min="0" Format="N2" HideSpinButtons="true" Disabled="@(!Duzenlenir)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_disFirma" Label="Servis firması" MaxLength="200" Disabled="@(!Duzenlenir)" />
+                </MudItem>
+                @if (FaturaBaglanabilir)
+                {
+                    <MudItem xs="12">
+                        <MudAutocomplete T="FaturaSecim" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bağlı fatura" @bind-Value="_fatura" SearchFunc="FaturaAraAsync" Disabled="@(!Duzenlenir)"
+                                         ToStringFunc="@(f => f is null ? "" : f.Etiket)" DebounceInterval="300" ResetValueOnEmptyText="true" Clearable="true" MaxItems="10"
+                                         HelperText="Takip kaydıdır, muhasebeye yazılmaz. Gider faturayla girer; numara ya da cari adıyla arayın" />
+                    </MudItem>
+                }
+                @if (Tur == IsEmriTuru.YasalKontrol)
+                {
+                    <MudItem xs="6">
+                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kurulus" Label="Kontrol eden kuruluş" MaxLength="200" Disabled="@(!Duzenlenir)" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_raporNo" Label="Rapor no" MaxLength="100" Disabled="@(!Duzenlenir)" />
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <div class="d-flex align-center justify-space-between mt-4 mb-1">
+                <MudText Typo="Typo.subtitle2">Yedek parçalar</MudText>
+                @if (Duzenlenir)
+                {
+                    <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="ElleParcaEkle">Elle parça</MudButton>
+                }
+            </div>
+            @if (Duzenlenir && StokAcik)
+            {
+                <MudAutocomplete @key="_stokAnahtari" T="StokSecim" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Stoktan parça ekle" SearchFunc="StokAraAsync" ToStringFunc="@(s => s is null ? "" : $"{s.Kod} {s.Ad}")"
+                                 DebounceInterval="300" MaxItems="10" ValueChanged="StokSecildi" HelperText="Stok kartlı parça iş emri kapanınca stoktan düşer" Class="mb-2" />
+            }
+            @if (_parcalar.Count > 0)
+            {
+                <MudSimpleTable Dense="true" Elevation="0" Class="is-emri-parcalari">
+                    <thead><tr><th>Parça</th><th style="width:110px">Miktar</th><th>Birim</th><th style="width:130px">Birim fiyat</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var p in _parcalar)
+                        {
+                            <tr @key="p">
+                                <td>
+                                    @if (p.StokKartiId is null)
+                                    {
+                                        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="p.Ad" MaxLength="250" Disabled="@(!Duzenlenir)" aria-label="Parça adı" />
+                                    }
+                                    else
+                                    {
+                                        <span>@p.Ad <small style="opacity:.6">(stoktan)</small></span>
+                                    }
+                                </td>
+                                <td><MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="p.Miktar" Min="0" HideSpinButtons="true" Disabled="@(!Duzenlenir)" aria-label="Miktar" /></td>
+                                <td>@(p.Birim is { } b ? Birimler.Ad(b) : "")</td>
+                                <td>
+                                    @if (p.StokKartiId is null)
+                                    {
+                                        <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="p.BirimFiyat" Min="0" Format="N2" HideSpinButtons="true" Disabled="@(!Duzenlenir)" aria-label="Birim fiyat" />
+                                    }
+                                </td>
+                                <td style="text-align:right">
+                                    @if (Duzenlenir)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="Parçayı çıkar" OnClick="@(() => _parcalar.Remove(p))" />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+
+            @if (_detay is { } acik && Duzenlenir && Oturum.YazabilirMi(BakimYetkileri.IsEmri, YetkiIslemleri.Duzenle))
+            {
+                <div class="panel-kart kart mt-3">
+                    <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.TaskAlt" Size="Size.Small" Color="Color.Success" /> İşi kapat</div>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="5">
+                            <MudTextField T="DateTime?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_bitis" Label="Bitiş zamanı" InputType="InputType.DateTimeLocal" Format="yyyy-MM-ddTHH:mm" />
+                        </MudItem>
+                        @if (SayacVarMi)
+                        {
+                            <MudItem xs="6" sm="4">
+                                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sayacDegeri" Label="Sayaç değeri" Min="0" HideSpinButtons="true" />
+                            </MudItem>
+                        }
+                        <MudItem xs="6" sm="3" Class="d-flex align-center">
+                            <IslemDugmesi Color="Color.Success" Islem="KapatAsync">Kapat</IslemDugmesi>
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_detay is { Durum: not IsEmriDurumu.Iptal } && Oturum.YazabilirMi(BakimYetkileri.IsEmri, YetkiIslemleri.Sil))
+        {
+            <MudButton Color="Color.Error" OnClick="IptalAsync">İptal Et</MudButton>
+        }
+        @if (_detay is { Durum: IsEmriDurumu.Acik } && Oturum.YazabilirMi(BakimYetkileri.IsEmri, YetkiIslemleri.Duzenle))
+        {
+            <MudButton OnClick="BaslatAsync">İşe Başla</MudButton>
+        }
+        <MudSpacer />
+        <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
+        @if (Duzenlenir)
+        {
+            <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid? Id { get; set; }
+    [Parameter, EditorRequired] public Guid EkipmanId { get; set; }
+    [Parameter] public IsEmriTuru Tur { get; set; }
+    [Parameter] public BakimPlaniCevabi? Plan { get; set; }
+    [Parameter] public bool SayacVarMi { get; set; }
+
+    private sealed class ParcaSatiri
+    {
+        public Guid? StokKartiId { get; init; }
+        public Guid? DepoId { get; init; }
+        public string? Ad { get; set; }
+        public string? Birim { get; init; }
+        public decimal Miktar { get; set; } = 1;
+        public decimal? BirimFiyat { get; set; }
+    }
+
+    private sealed record FaturaSecim(Guid Id, string? Numara, string CariUnvan, decimal GenelToplamTl)
+    {
+        public string Etiket => $"{Numara ?? "Numarasız"} · {CariUnvan} · {Bicim.Tutar(GenelToplamTl)} TL";
+    }
+
+    private sealed record StokSecim(Guid Id, string Kod, string Ad, string TemelBirim);
+
+    private IsEmriDetayi? _detay;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+    private string _baslik = "";
+    private DateTime? _bildirim = DateTime.Now;
+    private string? _aciklama;
+    private bool _durdu;
+    private decimal _iscilik;
+    private decimal _disServis;
+    private string? _disFirma;
+    private FaturaSecim? _fatura;
+    private string? _kurulus;
+    private string? _raporNo;
+    private DateTime? _bitis = DateTime.Now;
+    private decimal? _sayacDegeri;
+    private List<ParcaSatiri> _parcalar = [];
+    private int _stokAnahtari;
+
+    private bool Duzenlenir => (_detay is null || _detay.Durum is IsEmriDurumu.Acik or IsEmriDurumu.Devam)
+                               && Oturum.YazabilirMi(BakimYetkileri.IsEmri, _detay is null ? YetkiIslemleri.Ekle : YetkiIslemleri.Duzenle);
+
+    private bool FaturaBaglanabilir => Oturum.ModulAcikMi(ModulKodlari.Fatura) && Oturum.YetkiVarMi("fatura.belge.goruntule");
+
+    private bool StokAcik => Oturum.ModulAcikMi(ModulKodlari.Stok) && Oturum.YetkiVarMi("stok.kart.goruntule");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _durdu = Tur == IsEmriTuru.Ariza;
+        if (Plan is { } p)
+        {
+            _baslik = p.Ad;
+            _kurulus = p.KontrolKurulusu;
+        }
+
+        if (Id is { } id)
+        {
+            var detay = await Api.GetAsync<IsEmriDetayi>($"api/bakim/is-emirleri/{id}");
+            _hata = detay.Hata;
+            if (detay.BasariliMi)
+            {
+                Al(detay.Deger);
+            }
+        }
+
+        _yukleniyor = false;
+    }
+
+    private void Al(IsEmriDetayi d)
+    {
+        _detay = d;
+        Tur = d.Tur;
+        (_baslik, _aciklama, _durdu, _iscilik, _disServis, _disFirma, _kurulus, _raporNo) = (d.Baslik, d.Aciklama, d.MakineDurduMu, d.IscilikTutari, d.DisServisTutari, d.DisServisFirma, d.KontrolKurulusu, d.RaporNo);
+        _bildirim = d.BildirimZamani.ToLocalTime();
+        _fatura = d.FaturaId is { } faturaId ? new FaturaSecim(faturaId, "Bağlı fatura", "", 0) : null;
+        _parcalar = d.Parcalar.Select(p => new ParcaSatiri { StokKartiId = p.StokKartiId, DepoId = p.DepoId, Ad = p.Ad, Birim = p.Birim, Miktar = p.Miktar, BirimFiyat = p.BirimFiyat }).ToList();
+    }
+
+    private void ElleParcaEkle() => _parcalar.Add(new ParcaSatiri());
+
+    private void StokSecildi(StokSecim? secim)
+    {
+        if (secim is not null)
+        {
+            _parcalar.Add(new ParcaSatiri { StokKartiId = secim.Id, Ad = secim.Ad, Birim = secim.TemelBirim });
+            _stokAnahtari++;
+        }
+    }
+
+    private async Task<IEnumerable<StokSecim>> StokAraAsync(string? arama, CancellationToken ct)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<StokSecim>>("api/stok/kartlar?tur=Urun&aktif=true&boyut=10" + (string.IsNullOrWhiteSpace(arama) ? "" : $"&arama={Uri.EscapeDataString(arama)}"), ct);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task<IEnumerable<FaturaSecim>> FaturaAraAsync(string? arama, CancellationToken ct)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<FaturaSecim>>("api/fatura/faturalar?durum=Onayli&boyut=10" + (string.IsNullOrWhiteSpace(arama) ? "" : $"&arama={Uri.EscapeDataString(arama)}"), ct);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private IsEmriKaydetIstegi Istek() => new(EkipmanId, Tur, _detay?.PlanId ?? Plan?.Id, _baslik, _aciklama, _bildirim, _durdu, _iscilik, _disServis, _disFirma,
+        _fatura?.Id, _kurulus, _raporNo, _parcalar.Select(p => new IsEmriParcaIstegi(p.StokKartiId, p.DepoId, p.Ad, p.Birim, p.Miktar, p.BirimFiyat)).ToList());
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = _detay is { } d
+            ? await Api.PutAsync<IsEmriDetayi>($"api/bakim/is-emirleri/{d.Id}", Istek())
+            : await Api.PostAsync<IsEmriDetayi>("api/bakim/is-emirleri", Istek());
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add($"{sonuc.Deger.Kod} kaydedildi.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private async Task BaslatAsync()
+    {
+        var kayit = await Api.PutAsync<IsEmriDetayi>($"api/bakim/is-emirleri/{_detay!.Id}", Istek());
+        _hata = kayit.Hata;
+        if (!kayit.BasariliMi)
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync<IsEmriDetayi>($"api/bakim/is-emirleri/{_detay.Id}/baslat", new { });
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    // Ekrandaki son değişiklikler önce kaydedilir: parça ve maliyet kapanışa yansısın.
+    private async Task KapatAsync()
+    {
+        if (_bitis is null)
+        {
+            _hata = new ApiHatasi("Bitiş zamanı gerekli.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var kayit = await Api.PutAsync<IsEmriDetayi>($"api/bakim/is-emirleri/{_detay!.Id}", Istek());
+        _hata = kayit.Hata;
+        if (!kayit.BasariliMi)
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync<IsEmriDetayi>($"api/bakim/is-emirleri/{_detay.Id}/kapat", new IsEmriKapatmaIstegi(_bitis.Value.ToUniversalTime(), _sayacDegeri, _raporNo));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(sonuc.Deger.StokUyarisi ?? $"{sonuc.Deger.Kod} kapandı.", sonuc.Deger.StokUyarisi is null ? Severity.Success : Severity.Warning);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private async Task IptalAsync()
+    {
+        var kapali = _detay!.Durum == IsEmriDurumu.Kapandi;
+        var mesaj = kapali
+            ? "Stoktan düşen parçalar geri alınacak. Plandaki sonraki bakım tarihi kendiliğinden değişmez; gerekirse plandan düzeltin."
+            : "İş emri iptal edilecek.";
+        if (!await Onay.SorAsync("İş emri iptal edilsin mi?", mesaj, "İptal Et", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync<IsEmriDetayi>($"api/bakim/is-emirleri/{_detay.Id}/iptal", new { });
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}

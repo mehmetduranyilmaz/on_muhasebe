@@ -1,0 +1,91 @@
+@page "/bakim/rapor"
+@inject ApiIstemcisi Api
+@inject IsyeriYoneticisi Isyerleri
+
+<SayfaBasligi Baslik="Bakım Maliyet ve Duruş Raporu" GeriAdres="bakim" Ikon="@Icons.Material.Filled.Assessment"
+              AltBaslik="Dönemde kapanan iş emirlerinden hesaplanır; takip rakamıdır, muhasebe rakamı değildir." />
+
+<HataGosterimi Hata="_hata" />
+
+<FiltreCubugu>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_baslangic" Label="Başlangıç" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="12" md="2" Class="d-flex align-center">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
+    </MudItem>
+</FiltreCubugu>
+
+@if (_satirlar is { Count: 0 })
+{
+    <BosDurum Ikon="@Icons.Material.Outlined.Build" Baslik="Ekipman yok" />
+}
+else if (_satirlar is { } s)
+{
+    @if (s.Any(x => !x.StokMaliyetiDahilMi))
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">Stok maliyeti görme yetkiniz ya da Stok modülü olmadığı için stoktan düşen parçaların maliyeti tutarlara dahil değildir.</MudAlert>
+    }
+
+    <div class="panel-kart kart belirme mt-3 mb-4" style="overflow-x:auto">
+        <MudSimpleTable Dense="true" Elevation="0" Class="bakim-raporu">
+            <thead>
+                <tr><th>Ekipman</th><th class="sayi">Parça</th><th class="sayi">İşçilik</th><th class="sayi">Dış servis</th><th class="sayi">Toplam</th><th class="sayi">Arıza</th><th class="sayi">Bakım</th><th class="sayi">Duruş (saat)</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var m in s)
+                {
+                    <tr>
+                        <td><MudLink Href="@($"bakim/{m.EkipmanId}")"><b>@m.Kod</b> @m.Ad</MudLink></td>
+                        <td class="sayi">@Bicim.Tutar(m.ParcaMaliyeti)</td>
+                        <td class="sayi">@Bicim.Tutar(m.Iscilik)</td>
+                        <td class="sayi">@Bicim.Tutar(m.DisServis)</td>
+                        <td class="sayi"><b>@Bicim.Tutar(m.Toplam)</b></td>
+                        <td class="sayi">@m.ArizaSayisi</td>
+                        <td class="sayi">@m.BakimSayisi</td>
+                        <td class="sayi">@Bicim.Tutar(m.DurusSaati)</td>
+                    </tr>
+                }
+                <tr>
+                    <td><b>Toplam</b></td>
+                    <td class="sayi"><b>@Bicim.Tutar(s.Sum(m => m.ParcaMaliyeti))</b></td>
+                    <td class="sayi"><b>@Bicim.Tutar(s.Sum(m => m.Iscilik))</b></td>
+                    <td class="sayi"><b>@Bicim.Tutar(s.Sum(m => m.DisServis))</b></td>
+                    <td class="sayi"><b>@Bicim.Tutar(s.Sum(m => m.Toplam))</b></td>
+                    <td class="sayi"><b>@s.Sum(m => m.ArizaSayisi)</b></td>
+                    <td class="sayi"><b>@s.Sum(m => m.BakimSayisi)</b></td>
+                    <td class="sayi"><b>@Bicim.Tutar(s.Sum(m => m.DurusSaati))</b></td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+    </div>
+}
+
+@code {
+    private DateTime? _baslangic = new DateTime(DateTime.Today.Year, 1, 1);
+    private DateTime? _bitis = DateTime.Today;
+    private List<BakimMaliyeti>? _satirlar;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Isyerleri.YukleAsync();
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        if (_baslangic is null || _bitis is null)
+        {
+            _hata = new ApiHatasi("Başlangıç ve bitiş tarihi seçin.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var sonuc = await Api.GetAsync<List<BakimMaliyeti>>($"api/bakim/raporlar/maliyet?baslangic={Bicim.Iso(Bicim.Gun(_baslangic)!.Value)}&bitis={Bicim.Iso(Bicim.Gun(_bitis)!.Value)}{Isyerleri.Sorgu()}");
+        _hata = sonuc.Hata;
+        _satirlar = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+}

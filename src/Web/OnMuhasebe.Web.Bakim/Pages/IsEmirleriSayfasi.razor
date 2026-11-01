@@ -1,0 +1,68 @@
+@page "/bakim/is-emirleri"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+
+<SayfaBasligi Baslik="İş Emirleri" GeriAdres="bakim" Ikon="@Icons.Material.Filled.Assignment" AltBaslik="Açık, devam eden ve kapanan bakım ve arıza işleri" />
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme">
+    <button type="button" class="tur-sekmesi @(_aciklar ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="() => SecAsync(true, null)">Açık işler</button>
+    <button type="button" class="tur-sekmesi @(_durum == IsEmriDurumu.Kapandi ? "secili" : "")" style="--vurgu:#16A34A" @onclick="() => SecAsync(false, IsEmriDurumu.Kapandi)">Kapanan</button>
+    <button type="button" class="tur-sekmesi @(_durum == IsEmriDurumu.Iptal ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => SecAsync(false, IsEmriDurumu.Iptal)">İptal</button>
+</div>
+
+<VeriTablosu T="IsEmriOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+             SatirTiklandi="@(i => Navigasyon.NavigateTo($"bakim/{i.EkipmanId}"))" BosIkon="@Icons.Material.Outlined.Assignment" BosBaslik="İş emri yok">
+    <Basliklar>
+        <MudTh>No</MudTh>
+        <MudTh>Ekipman</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Başlık</MudTh>
+        <MudTh>Bildirim</MudTh>
+        <MudTh Class="sayi">Duruş (saat)</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="No">@context.Kod</MudTd>
+        <MudTd DataLabel="Ekipman"><b>@context.EkipmanAdi</b></MudTd>
+        <MudTd DataLabel="Tür">@BakimMetinleri.IsEmri(context.Tur)</MudTd>
+        <MudTd DataLabel="Başlık">@context.Baslik</MudTd>
+        <MudTd DataLabel="Bildirim">@context.BildirimZamani.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Bicim.Kultur)</MudTd>
+        <MudTd DataLabel="Duruş" Class="sayi">@(context.DurusSaati is { } d ? Bicim.Tutar(d) : "")</MudTd>
+        <MudTd DataLabel="Durum">@BakimMetinleri.IsEmriDurumu(context.Durum)</MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<IsEmriOzeti>? _sonuc;
+    private bool _aciklar = true;
+    private IsEmriDurumu? _durum;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var filtre = _aciklar ? "&aciklar=true" : $"&durum={_durum}";
+        var sonuc = await Api.GetAsync<SayfaliSonuc<IsEmriOzeti>>($"api/bakim/is-emirleri?sayfa={_sayfa}{filtre}");
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task SecAsync(bool aciklar, IsEmriDurumu? durum)
+    {
+        (_aciklar, _durum, _sayfa) = (aciklar, durum, 1);
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}

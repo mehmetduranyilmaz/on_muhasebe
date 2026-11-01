@@ -1,0 +1,85 @@
+@* Periyodik bakım ya da yasal kontrol planı. Periyodu kullanıcı girer; süreler ekipmana ve mevzuata göre değiştiği için programa sabit yazılmaz. *@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Plan adı" MaxLength="200" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSwitch T="bool" @bind-Value="_yasalMi" Color="Color.Secondary" Label="Yasal periyodik kontrol" />
+            </MudItem>
+            @if (_yasalMi)
+            {
+                <MudItem xs="12">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kurulus" Label="Kontrol eden kuruluş" MaxLength="200" />
+                </MudItem>
+            }
+            <MudItem xs="6">
+                <MudNumericField T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_periyotGun" Label="Periyot (gün)" Min="1" Max="3650" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_periyotSayac" Label="Periyot (sayaç)" Min="0" HideSpinButtons="true" Disabled="@(!SayacVarMi)"
+                                 HelperText="@(SayacVarMi ? "Hangisi önce gelirse" : "Ekipmanda sayaç yok")" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_sonrakiTarih" Label="Sonraki tarih" DateFormat="dd.MM.yyyy" HelperText="Boş: periyottan hesaplanır" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hatirlatmaGun" Label="Kaç gün önce hatırlatılsın" Min="1" Max="365" />
+            </MudItem>
+            @if (Plan is not null)
+            {
+                <MudItem xs="12">
+                    <MudSwitch T="bool" @bind-Value="_aktifMi" Color="Color.Secondary" Label="Plan aktif" />
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid EkipmanId { get; set; }
+    [Parameter] public bool SayacVarMi { get; set; }
+    [Parameter] public BakimPlaniCevabi? Plan { get; set; }
+
+    private string _ad = "";
+    private bool _yasalMi;
+    private string? _kurulus;
+    private int? _periyotGun;
+    private decimal? _periyotSayac;
+    private DateTime? _sonrakiTarih;
+    private int _hatirlatmaGun = 14;
+    private bool _aktifMi = true;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized()
+    {
+        if (Plan is { } p)
+        {
+            (_ad, _yasalMi, _kurulus, _periyotGun, _periyotSayac, _hatirlatmaGun, _aktifMi) = (p.Ad, p.YasalMi, p.KontrolKurulusu, p.PeriyotGun, p.PeriyotSayac, p.HatirlatmaGun, p.AktifMi);
+            _sonrakiTarih = p.SonrakiTarih?.ToDateTime(TimeOnly.MinValue);
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new BakimPlaniKaydetIstegi(_ad, _yasalMi, _kurulus, _periyotGun, _periyotSayac, Bicim.Gun(_sonrakiTarih), Plan?.SonrakiSayac, _hatirlatmaGun, _aktifMi);
+        var sonuc = Plan is { } p
+            ? await Api.PutAsync<BakimPlaniCevabi>($"api/bakim/planlar/{p.Id}", istek)
+            : await Api.PostAsync<BakimPlaniCevabi>($"api/bakim/ekipmanlar/{EkipmanId}/planlar", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}

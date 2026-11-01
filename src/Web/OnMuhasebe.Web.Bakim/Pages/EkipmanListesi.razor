@@ -1,0 +1,172 @@
+@page "/bakim"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+@inject IsyeriYoneticisi Isyerleri
+
+<SayfaBasligi Baslik="Bakım Takibi" AltBaslik="Ekipmanlar, periyodik bakım ve yasal kontroller, arıza iş emirleri" Ikon="@Icons.Material.Filled.Build">
+    <Islemler>
+        @if (Oturum.YetkiVarMi(BakimYetkileri.IsEmri, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Assignment" Href="bakim/is-emirleri">İş Emirleri</MudButton>
+        }
+        @if (Oturum.YetkiVarMi(BakimYetkileri.Rapor, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Assessment" Href="bakim/rapor">Maliyet ve Duruş</MudButton>
+        }
+        @if (Oturum.YazabilirMi(BakimYetkileri.Ekipman, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="YeniAsync">Yeni Ekipman</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_yaklasanlar.Count > 0)
+{
+    <div class="panel-kart kart belirme mb-3" style="overflow-x:auto">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Size="Size.Small" Color="Color.Warning" /> Yaklaşan ve geciken bakımlar</div>
+        <MudSimpleTable Dense="true" Elevation="0" Hover="true" Class="yaklasan-bakimlar">
+            <thead>
+                <tr><th>Ekipman</th><th>Plan</th><th>Tarih</th><th class="sayi">Sayaç / hedef</th><th>Durum</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var y in _yaklasanlar)
+                {
+                    <tr style="cursor:pointer" @onclick="@(() => Navigasyon.NavigateTo($"bakim/{y.EkipmanId}"))">
+                        <td><b>@y.EkipmanKodu</b> @y.EkipmanAdi</td>
+                        <td>
+                            @y.Plan
+                            @if (y.YasalMi)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">Yasal</MudChip>
+                            }
+                        </td>
+                        <td>@Bicim.Tarih(y.SonrakiTarih)</td>
+                        <td class="sayi">@(y.SonrakiSayac is { } h ? $"{Bicim.Miktar(y.Sayac ?? 0)} / {Bicim.Miktar(h)}" : "")</td>
+                        <td><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@PlanRengi(y.Durum)">@BakimMetinleri.Plan(y.Durum)</MudChip></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </div>
+}
+
+<div class="d-flex flex-wrap align-center gap-2 mb-3">
+    <div class="tur-sekmeleri mb-0">
+        <button type="button" class="tur-sekmesi @(_durum is null ? "secili" : "")" style="--vurgu:#1E3A5F" @onclick="() => DurumSecAsync(null)">Tümü</button>
+        @foreach (var durum in Enum.GetValues<EkipmanDurumu>())
+        {
+            <button type="button" class="tur-sekmesi @(_durum == durum ? "secili" : "")" style="--vurgu:#1E3A5F" @onclick="() => DurumSecAsync(durum)">@BakimMetinleri.Durum(durum)</button>
+        }
+    </div>
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Placeholder="Kod, ad, seri no ya da konum" DebounceInterval="400"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:320px" />
+</div>
+
+<VeriTablosu T="EkipmanOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+             SatirTiklandi="@(e => Navigasyon.NavigateTo($"bakim/{e.Id}"))" BosIkon="@Icons.Material.Outlined.Build" BosBaslik="Ekipman yok"
+             BosAciklama="Makine ve ekipmanlarınızı ekleyin; bakım zamanı ve yasal kontroller gelmeden hatırlatalım.">
+    <Basliklar>
+        <MudTh>Kod</MudTh>
+        <MudTh>Ad</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Konum</MudTh>
+        <MudTh>Sorumlu</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh>En yakın bakım</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Kod">@context.Kod</MudTd>
+        <MudTd DataLabel="Ad"><b>@context.Ad</b></MudTd>
+        <MudTd DataLabel="Tür">@BakimMetinleri.Tur(context.Tur)</MudTd>
+        <MudTd DataLabel="Konum">@context.Konum</MudTd>
+        <MudTd DataLabel="Sorumlu">@context.SorumluAdi</MudTd>
+        <MudTd DataLabel="Durum"><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@DurumRengi(context.Durum)">@BakimMetinleri.Durum(context.Durum)</MudChip></MudTd>
+        <MudTd DataLabel="En yakın bakım">
+            @if (context.EnYakinPlan is { } plan)
+            {
+                <span>@plan@(context.EnYakinTarih is { } t ? $" · {Bicim.Tarih(t)}" : "")</span>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@PlanRengi(context.EnYakinDurum ?? PlanDurumu.Zamaninda)">@BakimMetinleri.Plan(context.EnYakinDurum ?? PlanDurumu.Zamaninda)</MudChip>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<EkipmanOzeti>? _sonuc;
+    private List<YaklasanBakim> _yaklasanlar = [];
+    private EkipmanDurumu? _durum;
+    private string? _arama;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Isyerleri.YukleAsync();
+        if (await Api.GetAsync<List<YaklasanBakim>>("api/bakim/yaklasanlar") is { BasariliMi: true } yaklasanlar)
+        {
+            _yaklasanlar = yaklasanlar.Deger;
+        }
+
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var durum = _durum is { } d ? $"&durum={d}" : "";
+        var arama = string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}";
+        var sonuc = await Api.GetAsync<SayfaliSonuc<EkipmanOzeti>>($"api/bakim/ekipmanlar?sayfa={_sayfa}{durum}{arama}{Isyerleri.Sorgu()}");
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task DurumSecAsync(EkipmanDurumu? durum)
+    {
+        _durum = durum;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task YeniAsync()
+    {
+        var dialog = await DialogService.ShowAsync<EkipmanDialog>("Yeni Ekipman", new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false, Data: EkipmanDetayi ekipman })
+        {
+            Navigasyon.NavigateTo($"bakim/{ekipman.Id}");
+        }
+    }
+
+    private static Color PlanRengi(PlanDurumu durum) => durum switch
+    {
+        PlanDurumu.Gecikti => Color.Error,
+        PlanDurumu.Yaklasiyor => Color.Warning,
+        _ => Color.Success
+    };
+
+    private static Color DurumRengi(EkipmanDurumu durum) => durum switch
+    {
+        EkipmanDurumu.Arizali => Color.Error,
+        EkipmanDurumu.Bakimda => Color.Warning,
+        EkipmanDurumu.HizmetDisi => Color.Default,
+        _ => Color.Success
+    };
+}

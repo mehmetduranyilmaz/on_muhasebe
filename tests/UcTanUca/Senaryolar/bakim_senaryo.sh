@@ -127,6 +127,20 @@ kontrol 200 "Iptalde stok geri geldi" '"miktar":8'
 istek POST "$B/is-emirleri/$EMIR2/iptal" "$T" '{}'
 kontrol 422 "Iki kez iptal edilemez" is_emri_durumu
 
+echo "--- Stok yetmezse kapanmaz"
+istek PUT /api/stok/ayarlar "$T" '{"maliyetYontemi":"AgirlikliOrtalama","eksiStokDavranisi":"Engelle"}'
+istek POST $B/is-emirleri "$T" '{"ekipmanId":"'"$VINC"'","tur":"Ariza","baslik":"Fazla parca","makineDurduMu":true,"iscilikTutari":0,"disServisTutari":0,"parcalar":[{"stokKartiId":"'"$KART"'","miktar":100}]}'
+kontrol 201 "Stoktan fazla parcali is emri acilir"; FAZLA=$(alan id)
+istek POST "$B/is-emirleri/$FAZLA/kapat" "$T" '{"bitisZamani":"'"$(zaman '+0 hours')"'"}'
+kontrol 422 "Eksi stok engelliyse kapanis reddedilir" yetersiz_stok
+istek GET "$B/is-emirleri/$FAZLA" "$T"
+kontrol 200 "Reddedilen kapanista is emri acik kaldi" '"durum":"Acik"'
+istek GET "$B/ekipmanlar/$VINC" "$T"
+kontrol 200 "Reddedilen kapanista ekipman arizali kaldi" '"durum":"Arizali"'
+istek POST "$B/is-emirleri/$FAZLA/iptal" "$T" '{}'
+kontrol 200 "Acik is emri iptal edildi, ekipman duzeldi" '"durum":"Iptal"'
+istek PUT /api/stok/ayarlar "$T" '{"maliyetYontemi":"AgirlikliOrtalama","eksiStokDavranisi":"Uyar"}'
+
 echo "--- Rapor"
 istek GET "$B/raporlar/maliyet?baslangic=$(gun -1)&bitis=$(gun 1)&ekipmanId=$PRES" "$T"
 kontrol 200 "Parca (2x100 stok + 3x10 elle), iscilik, dis servis, sayilar" '"parcaMaliyeti":230(\.0+)?,"iscilik":500(\.0+)?,"disServis":1000(\.0+)?,"toplam":1730(\.0+)?,"arizaSayisi":1,"bakimSayisi":0,"durusSaati":5'

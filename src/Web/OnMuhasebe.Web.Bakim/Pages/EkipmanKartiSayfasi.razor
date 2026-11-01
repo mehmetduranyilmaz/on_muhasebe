@@ -1,0 +1,216 @@
+@page "/bakim/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OnayServisi Onay
+@inject OturumYoneticisi Oturum
+
+<HataGosterimi Hata="_hata" />
+
+@if (_ekipman is { } e)
+{
+    <SayfaBasligi Baslik="@e.Ad" GeriAdres="bakim" Ikon="@Icons.Material.Filled.Build">
+        <AltIcerik>
+            <span>@e.Kod · @BakimMetinleri.Tur(e.Tur)@(e.Konum is null ? "" : $" · {e.Konum}")@(e.Sayac is { } s ? $" · sayaç {Bicim.Miktar(s)} {(e.SayacBirimi == SayacBirimi.Saat ? "saat" : "adet")}" : "")</span>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ml-1">@BakimMetinleri.Durum(e.Durum)</MudChip>
+        </AltIcerik>
+        <Islemler>
+            <DosyalarDugmesi Tur="@DosyaKayitTurleri.Ekipman" KayitId="Id" />
+            <DegisiklikGecmisiDugmesi Modul="bakim" KayitId="Id" />
+            @if (Oturum.YazabilirMi(BakimYetkileri.Ekipman, YetkiIslemleri.Duzenle))
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="DuzenleAsync">Düzenle</MudButton>
+            }
+            @if (Oturum.YazabilirMi(BakimYetkileri.IsEmri, YetkiIslemleri.Ekle))
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.ReportProblem" OnClick="@(() => IsEmriAcAsync(null, IsEmriTuru.Ariza, null))">Arıza Bildir</MudButton>
+            }
+            @if (Oturum.YazabilirMi(BakimYetkileri.Ekipman, YetkiIslemleri.Sil))
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" aria-label="Ekipmanı sil" OnClick="SilAsync" />
+            }
+        </Islemler>
+    </SayfaBasligi>
+
+    <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+        <div class="panel-baslik d-flex justify-space-between align-center">
+            <span><MudIcon Icon="@Icons.Material.Filled.EventRepeat" Size="Size.Small" Color="Color.Secondary" /> Bakım planları ve yasal kontroller</span>
+            @if (Oturum.YazabilirMi(BakimYetkileri.Ekipman, YetkiIslemleri.Ekle))
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => PlanAcAsync(null))">Yeni Plan</MudButton>
+            }
+        </div>
+        @if (_planlar.Count == 0)
+        {
+            <BosDurum Ikon="@Icons.Material.Outlined.EventRepeat" Baslik="Plan yok" Aciklama="Periyodik bakım ya da yasal kontrol ekleyin; periyodu gün veya sayaç olarak verin." />
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Elevation="0" Class="bakim-planlari">
+                <thead><tr><th>Plan</th><th>Periyot</th><th>Son yapılma</th><th>Sonraki</th><th>Durum</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var p in _planlar)
+                    {
+                        <tr style="@(p.AktifMi ? "" : "opacity:.55")">
+                            <td>
+                                @p.Ad
+                                @if (p.YasalMi)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">Yasal</MudChip>
+                                }
+                                @if (p.KontrolKurulusu is { } kurum)
+                                {
+                                    <div class="mobil-alt-bilgi">@kurum</div>
+                                }
+                            </td>
+                            <td>@string.Join(" / ", new[] { p.PeriyotGun is { } g ? $"{g} gün" : null, p.PeriyotSayac is { } ps ? $"{Bicim.Miktar(ps)} sayaç" : null }.Where(x => x is not null))</td>
+                            <td>@Bicim.Tarih(p.SonYapilmaTarihi)</td>
+                            <td>@string.Join(" / ", new[] { p.SonrakiTarih is { } st ? Bicim.Tarih(st) : null, p.SonrakiSayac is { } ss ? Bicim.Miktar(ss) : null }.Where(x => x is not null))</td>
+                            <td><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(p.Durum == PlanDurumu.Gecikti ? Color.Error : p.Durum == PlanDurumu.Yaklasiyor ? Color.Warning : Color.Success)">@BakimMetinleri.Plan(p.Durum)</MudChip></td>
+                            <td style="text-align:right; white-space:nowrap">
+                                @if (Oturum.YazabilirMi(BakimYetkileri.IsEmri, YetkiIslemleri.Ekle) && p.AktifMi)
+                                {
+                                    <MudButton Size="Size.Small" OnClick="@(() => IsEmriAcAsync(null, p.YasalMi ? IsEmriTuru.YasalKontrol : IsEmriTuru.PlanliBakim, p))">İş emri aç</MudButton>
+                                }
+                                @if (Oturum.YazabilirMi(BakimYetkileri.Ekipman, YetkiIslemleri.Duzenle))
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" aria-label="@($"{p.Ad} düzenle")" OnClick="@(() => PlanAcAsync(p))" />
+                                }
+                                @if (Oturum.YazabilirMi(BakimYetkileri.Ekipman, YetkiIslemleri.Sil))
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="@($"{p.Ad} sil")" OnClick="@(() => PlanSilAsync(p))" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </div>
+
+    @if (Oturum.YetkiVarMi(BakimYetkileri.IsEmri, YetkiIslemleri.Goruntule))
+    {
+        <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+            <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" Color="Color.Secondary" /> İş emirleri</div>
+            @if (_emirler.Count == 0)
+            {
+                <BosDurum Ikon="@Icons.Material.Outlined.Assignment" Baslik="İş emri yok" />
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Elevation="0" Hover="true" Class="is-emirleri">
+                    <thead><tr><th>No</th><th>Tür</th><th>Başlık</th><th>Bildirim</th><th>Bitiş</th><th class="sayi">Duruş (saat)</th><th>Durum</th></tr></thead>
+                    <tbody>
+                        @foreach (var i in _emirler)
+                        {
+                            <tr style="cursor:pointer" @onclick="@(() => IsEmriAcAsync(i.Id, i.Tur, null))">
+                                <td>@i.Kod</td>
+                                <td>@BakimMetinleri.IsEmri(i.Tur)</td>
+                                <td>@i.Baslik</td>
+                                <td>@i.BildirimZamani.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Bicim.Kultur)</td>
+                                <td>@(i.BitisZamani?.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Bicim.Kultur))</td>
+                                <td class="sayi">@(i.DurusSaati is { } d ? Bicim.Tutar(d) : "")</td>
+                                <td><MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(i.Durum == IsEmriDurumu.Kapandi ? Color.Success : i.Durum == IsEmriDurumu.Iptal ? Color.Default : Color.Warning)">@BakimMetinleri.IsEmriDurumu(i.Durum)</MudChip></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private EkipmanDetayi? _ekipman;
+    private List<BakimPlaniCevabi> _planlar = [];
+    private List<IsEmriOzeti> _emirler = [];
+    private ApiHatasi? _hata;
+
+    protected override Task OnParametersSetAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<EkipmanDetayi>($"api/bakim/ekipmanlar/{Id}");
+        _hata = sonuc.Hata;
+        _ekipman = sonuc.BasariliMi ? sonuc.Deger : null;
+        if (_ekipman is null)
+        {
+            return;
+        }
+
+        if (await Api.GetAsync<List<BakimPlaniCevabi>>($"api/bakim/ekipmanlar/{Id}/planlar") is { BasariliMi: true } planlar)
+        {
+            _planlar = planlar.Deger;
+        }
+
+        if (Oturum.YetkiVarMi(BakimYetkileri.IsEmri, YetkiIslemleri.Goruntule)
+            && await Api.GetAsync<SayfaliSonuc<IsEmriOzeti>>($"api/bakim/is-emirleri?ekipmanId={Id}&boyut=50") is { BasariliMi: true } emirler)
+        {
+            _emirler = emirler.Deger.Kayitlar.ToList();
+        }
+    }
+
+    private async Task DuzenleAsync()
+    {
+        var dialog = await DialogService.ShowAsync<EkipmanDialog>("Ekipmanı Düzenle", new DialogParameters<EkipmanDialog> { { d => d.Ekipman, _ekipman } },
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (await Onay.SorAsync("Ekipman silinsin mi?", $"{_ekipman!.Ad} ve kayıtları listeden kalkacak. Kullanımdan kalkan ekipman için durumu Hizmet dışı yapın; geçmişi korunur.", "Sil", tehlikeli: true))
+        {
+            var sonuc = await Api.DeleteAsync($"api/bakim/ekipmanlar/{Id}");
+            _hata = sonuc.Hata;
+            if (sonuc.BasariliMi)
+            {
+                Navigasyon.NavigateTo("bakim");
+            }
+        }
+    }
+
+    private async Task PlanAcAsync(BakimPlaniCevabi? plan)
+    {
+        var dialog = await DialogService.ShowAsync<BakimPlaniDialog>(plan is null ? "Yeni Plan" : "Planı Düzenle",
+            new DialogParameters<BakimPlaniDialog> { { d => d.EkipmanId, Id }, { d => d.SayacVarMi, _ekipman!.SayacBirimi != SayacBirimi.Yok }, { d => d.Plan, plan } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+
+    private async Task PlanSilAsync(BakimPlaniCevabi plan)
+    {
+        if (await Onay.SorAsync("Plan silinsin mi?", $"{plan.Ad} silinecek. Geçmiş iş emirleri kalır.", "Sil", tehlikeli: true))
+        {
+            var sonuc = await Api.DeleteAsync($"api/bakim/planlar/{plan.Id}");
+            _hata = sonuc.Hata;
+            await YukleAsync();
+        }
+    }
+
+    private async Task IsEmriAcAsync(Guid? id, IsEmriTuru tur, BakimPlaniCevabi? plan)
+    {
+        var parametreler = new DialogParameters<IsEmriDialog>
+        {
+            { d => d.Id, id },
+            { d => d.EkipmanId, Id },
+            { d => d.Tur, tur },
+            { d => d.Plan, plan },
+            { d => d.SayacVarMi, _ekipman!.SayacBirimi != SayacBirimi.Yok }
+        };
+        var dialog = await DialogService.ShowAsync<IsEmriDialog>(id is null ? $"Yeni {BakimMetinleri.IsEmri(tur)}" : "İş Emri", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+}
