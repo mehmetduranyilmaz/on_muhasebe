@@ -1,0 +1,78 @@
+@page "/personel/zimmetler"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Zimmetler" GeriAdres="personel" Ikon="@Icons.Material.Filled.Devices" AltBaslik="Personele verilen eşya ve iade takibi">
+    <Islemler>
+        @if (Oturum.YazabilirMi(PersonelYetkileri.Zimmet, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => AcAsync(null))">Yeni Zimmet</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme">
+    <button type="button" class="tur-sekmesi @(_durum is null ? "secili" : "")" style="--vurgu:#2563EB" @onclick="() => SecAsync(null)">Tümü</button>
+    @foreach (var d in Enum.GetValues<ZimmetDurumu>())
+    {
+        <button type="button" class="tur-sekmesi @(_durum == d ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => SecAsync(d)">@PersonelMetinleri.Zimmet(d)</button>
+    }
+</div>
+
+<VeriTablosu T="ZimmetCevabi" Kayitlar="_liste" Yukleniyor="_yukleniyor" Sayfa="1" ToplamSayfa="1" Dense="true" SatirTiklandi="@(z => AcAsync(z))" BosIkon="@Icons.Material.Outlined.Devices" BosBaslik="Zimmet yok">
+    <Basliklar>
+        <MudTh>Personel</MudTh>
+        <MudTh>Eşya</MudTh>
+        <MudTh>Seri no</MudTh>
+        <MudTh>Veriliş</MudTh>
+        <MudTh>İade</MudTh>
+        <MudTh Class="sayi">Bedel</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Personel"><b>@context.AdSoyad</b></MudTd>
+        <MudTd DataLabel="Eşya">@context.Ad</MudTd>
+        <MudTd DataLabel="Seri no">@context.SeriNo</MudTd>
+        <MudTd DataLabel="Veriliş">@Bicim.Tarih(context.VerilisTarihi)</MudTd>
+        <MudTd DataLabel="İade">@Bicim.Tarih(context.IadeTarihi)</MudTd>
+        <MudTd DataLabel="Bedel" Class="sayi">@(context.Bedel is { } b ? Bicim.Tutar(b) : "")</MudTd>
+        <MudTd DataLabel="Durum">@PersonelMetinleri.Zimmet(context.Durum)</MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private List<ZimmetCevabi>? _liste;
+    private ZimmetDurumu? _durum;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<List<ZimmetCevabi>>("api/personel/zimmetler" + (_durum is { } d ? $"?durum={d}" : ""));
+        _hata = sonuc.Hata;
+        _liste = sonuc.BasariliMi ? sonuc.Deger : [];
+        _yukleniyor = false;
+    }
+
+    private async Task SecAsync(ZimmetDurumu? durum)
+    {
+        _durum = durum;
+        await YukleAsync();
+    }
+
+    private async Task AcAsync(ZimmetCevabi? zimmet)
+    {
+        var parametreler = new DialogParameters<ZimmetDialog> { { d => d.Zimmet, zimmet } };
+        var dialog = await DialogService.ShowAsync<ZimmetDialog>(zimmet is null ? "Yeni Zimmet" : "Zimmet", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+}

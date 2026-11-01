@@ -1,0 +1,107 @@
+@page "/personel"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Personel" AltBaslik="Personel kartları, maaş, avans, masraf ve zimmet. Bordroyu mali müşavir hazırlar." Ikon="@Icons.Material.Filled.Badge">
+    <Islemler>
+        @if (Oturum.YetkiVarMi(PersonelYetkileri.Maas, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Payments" Href="personel/maas">Maaş Dönemleri</MudButton>
+        }
+        @if (Oturum.YetkiVarMi(PersonelYetkileri.Masraf, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Receipt" Href="personel/masraflar">Masraflar</MudButton>
+        }
+        @if (Oturum.YetkiVarMi(PersonelYetkileri.Zimmet, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Devices" Href="personel/zimmetler">Zimmetler</MudButton>
+        }
+        @if (Oturum.YazabilirMi(PersonelYetkileri.Kart, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="YeniAsync">Yeni Personel</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="d-flex flex-wrap align-center gap-2 mb-3">
+    <div class="tur-sekmeleri mb-0">
+        <button type="button" class="tur-sekmesi @(_aktif == true ? "secili" : "")" style="--vurgu:#16A34A" @onclick="() => SecAsync(true)">Çalışanlar</button>
+        <button type="button" class="tur-sekmesi @(_aktif == false ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => SecAsync(false)">Ayrılanlar</button>
+        <button type="button" class="tur-sekmesi @(_aktif is null ? "secili" : "")" style="--vurgu:#2563EB" @onclick="() => SecAsync(null)">Tümü</button>
+    </div>
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Label="Ara" Placeholder="Ad, kod, görev ya da departman" Immediate="true" DebounceInterval="350" Style="max-width:320px" />
+</div>
+
+<VeriTablosu T="PersonelOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+             SatirTiklandi="@(p => Navigasyon.NavigateTo($"personel/{p.Id}"))" BosIkon="@Icons.Material.Outlined.Badge" BosBaslik="Personel yok">
+    <Basliklar>
+        <MudTh>Kod</MudTh>
+        <MudTh>Ad soyad</MudTh>
+        <MudTh>Görev</MudTh>
+        <MudTh>Departman</MudTh>
+        <MudTh>İşe giriş</MudTh>
+        <MudTh Class="sayi">Zimmet</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Kod">@context.Kod</MudTd>
+        <MudTd DataLabel="Ad soyad"><b>@context.AdSoyad</b></MudTd>
+        <MudTd DataLabel="Görev">@context.Gorev</MudTd>
+        <MudTd DataLabel="Departman">@context.Departman</MudTd>
+        <MudTd DataLabel="İşe giriş">@Bicim.Tarih(context.IseGiris)</MudTd>
+        <MudTd DataLabel="Zimmet" Class="sayi">@context.ZimmetSayisi</MudTd>
+        <MudTd DataLabel="Durum">@(context.AktifMi ? "Çalışıyor" : $"Ayrıldı: {Bicim.Tarih(context.IstenCikis)}")</MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<PersonelOzeti>? _sonuc;
+    private bool? _aktif = true;
+    private string? _arama;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var filtre = (_aktif is { } a ? $"&aktif={(a ? "true" : "false")}" : "") + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<PersonelOzeti>>($"api/personel/kartlar?sayfa={_sayfa}{filtre}");
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task SecAsync(bool? aktif)
+    {
+        (_aktif, _sayfa) = (aktif, 1);
+        await YukleAsync();
+    }
+
+    private async Task AraAsync(string? arama)
+    {
+        (_arama, _sayfa) = (arama, 1);
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task YeniAsync()
+    {
+        var dialog = await DialogService.ShowAsync<PersonelDialog>("Yeni Personel", new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false, Data: PersonelDetayi p })
+        {
+            Navigasyon.NavigateTo($"personel/{p.Id}");
+        }
+    }
+}

@@ -1,0 +1,188 @@
+@page "/personel/maas/{Id:guid}"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject IJSRuntime Js
+@inject NavigationManager Navigasyon
+@inject OnayServisi Onay
+@inject OturumYoneticisi Oturum
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="@(_d is { } b ? $"{Bicim.Kultur.DateTimeFormat.GetMonthName(b.Ay)} {b.Yil} Maaşları" : "Maaş Dönemi")" GeriAdres="personel/maas" Ikon="@Icons.Material.Filled.Payments" AltBaslik="@(_d?.Durum == MaasDonemiDurumu.Onayli ? "Onaylı: ödemeye açık" : "Taslak: tutarları düzeltip onaylayın")">
+    <Islemler>
+        @if (_d is { } d)
+        {
+            @if (d.Durum == MaasDonemiDurumu.Taslak)
+            {
+                @if (Yaz(YetkiIslemleri.Sil))
+                {
+                    <MudButton Color="Color.Error" OnClick="SilAsync">Sil</MudButton>
+                }
+                @if (Yaz(YetkiIslemleri.Onayla))
+                {
+                    <IslemDugmesi Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.TaskAlt" Islem="OnaylaAsync">Onayla</IslemDugmesi>
+                }
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" OnClick="DosyaAsync">Banka Dosyası</MudButton>
+                @if (Yaz(YetkiIslemleri.Onayla) && d.Satirlar.All(s => s.Odenen == 0))
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="GeriAlAsync">Onayı Geri Al</MudButton>
+                }
+                @if (Yaz(YetkiIslemleri.Ekle) && d.Satirlar.Any(s => s.Kalan > 0))
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Payments" OnClick="@(() => OdeAsync(null))">Tümünü Öde</MudButton>
+                }
+            }
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_d is { } r)
+{
+    <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+        <MudSimpleTable Dense="true" Elevation="0" Hover="true" Class="maas-satirlari">
+            <thead>
+                <tr><th>Personel</th><th>IBAN</th><th class="sayi">Net maaş</th><th class="sayi">Prim</th><th class="sayi">Kesinti</th><th class="sayi">Avans</th><th class="sayi">Ödenecek</th><th class="sayi">Ödenen</th><th class="sayi">Kalan</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var s in r.Satirlar)
+                {
+                    <tr>
+                        <td><b>@s.AdSoyad</b>@(s.Not is null ? "" : $" · {s.Not}")</td>
+                        <td>
+                            @if (s.Iban is null)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning">IBAN yok</MudChip>
+                            }
+                            else
+                            {
+                                @s.Iban
+                            }
+                        </td>
+                        <td class="sayi">@Bicim.Tutar(s.NetMaas)</td>
+                        <td class="sayi">@Bicim.Tutar(s.Prim)</td>
+                        <td class="sayi">@Bicim.Tutar(s.Kesinti)</td>
+                        <td class="sayi">@Bicim.Tutar(s.AvansKesintisi)</td>
+                        <td class="sayi"><b>@Bicim.Tutar(s.Odenecek)</b></td>
+                        <td class="sayi">@Bicim.Tutar(s.Odenen)</td>
+                        <td class="sayi">@Bicim.Tutar(s.Kalan)</td>
+                        <td style="text-align:right;white-space:nowrap">
+                            @if (r.Durum == MaasDonemiDurumu.Taslak && Yaz(YetkiIslemleri.Duzenle))
+                            {
+                                <MudButton Size="Size.Small" OnClick="@(() => SatirAsync(s))">Düzelt</MudButton>
+                            }
+                            @if (r.Durum == MaasDonemiDurumu.Onayli && s.Kalan > 0 && Yaz(YetkiIslemleri.Ekle))
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Success" OnClick="@(() => OdeAsync(s))">Öde</MudButton>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="2">Toplam</th>
+                    <th class="sayi">@Bicim.Tutar(r.Satirlar.Sum(s => s.NetMaas))</th>
+                    <th class="sayi">@Bicim.Tutar(r.Satirlar.Sum(s => s.Prim))</th>
+                    <th class="sayi">@Bicim.Tutar(r.Satirlar.Sum(s => s.Kesinti))</th>
+                    <th class="sayi">@Bicim.Tutar(r.Satirlar.Sum(s => s.AvansKesintisi))</th>
+                    <th class="sayi">@Bicim.Tutar(r.Satirlar.Sum(s => s.Odenecek))</th>
+                    <th class="sayi">@Bicim.Tutar(r.Satirlar.Sum(s => s.Odenen))</th>
+                    <th class="sayi">@Bicim.Tutar(r.Satirlar.Sum(s => s.Kalan))</th>
+                    <th></th>
+                </tr>
+            </tfoot>
+        </MudSimpleTable>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private MaasDonemiDetayi? _d;
+    private ApiHatasi? _hata;
+
+    private bool Yaz(string islem) => Oturum.YazabilirMi(PersonelYetkileri.Maas, islem);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var sonuc = await Api.GetAsync<MaasDonemiDetayi>($"api/personel/donemler/{Id}");
+        _hata = sonuc.Hata;
+        _d = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task SatirAsync(MaasSatirCevabi s)
+    {
+        var parametreler = new DialogParameters<MaasSatirDialog> { { d => d.DonemId, Id }, { d => d.Satir, s } };
+        var dialog = await DialogService.ShowAsync<MaasSatirDialog>(s.AdSoyad, parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false, Data: MaasDonemiDetayi d })
+        {
+            _d = d;
+        }
+    }
+
+    private async Task OnaylaAsync()
+    {
+        var sonuc = await Api.PostAsync<MaasDonemiDetayi>($"api/personel/donemler/{Id}/onayla", new { });
+        Al(sonuc, "Dönem onaylandı.");
+    }
+
+    private async Task GeriAlAsync()
+    {
+        var sonuc = await Api.PostAsync<MaasDonemiDetayi>($"api/personel/donemler/{Id}/geri-al", new { });
+        Al(sonuc, "Onay geri alındı.");
+    }
+
+    private async Task OdeAsync(MaasSatirCevabi? satir)
+    {
+        var parametreler = new DialogParameters<OdemeDialog>
+        {
+            { d => d.Baslik, "Ödemeyi" },
+            { d => d.TutarIste, satir is not null },
+            { d => d.VarsayilanTutar, satir?.Kalan },
+            { d => d.TutarNotu, "Kısmi ödeme girebilirsiniz" }
+        };
+        var dialog = await DialogService.ShowAsync<OdemeDialog>(satir?.AdSoyad ?? "Tüm Kalanları Öde", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false, Data: OdemeDialog.Secim s })
+        {
+            var istek = new MaasOdemeIstegi(s.Tarih, s.HesapId, satir is null ? null : [satir.Id], satir is null ? null : s.Tutar);
+            Al(await Api.PostAsync<MaasDonemiDetayi>($"api/personel/donemler/{Id}/ode", istek), "Ödeme kaydedildi.");
+        }
+    }
+
+    private void Al(ApiSonucu<MaasDonemiDetayi> sonuc, string mesaj)
+    {
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            _d = sonuc.Deger;
+            Snackbar.Add(mesaj, Severity.Success);
+        }
+    }
+
+    private async Task DosyaAsync()
+    {
+        var sonuc = await Api.DosyaGetirAsync($"api/personel/donemler/{Id}/banka-dosyasi");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            await Js.InvokeVoidAsync("omDosya.indir", $"maas_{_d!.Yil}_{_d.Ay:00}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", sonuc.Deger);
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (await Onay.SorAsync("Dönem silinsin mi?", "Taslak dönem ve düzeltmeler silinir.", "Sil", tehlikeli: true))
+        {
+            var sonuc = await Api.DeleteAsync($"api/personel/donemler/{Id}");
+            _hata = sonuc.Hata;
+            if (sonuc.BasariliMi)
+            {
+                Navigasyon.NavigateTo("personel/maas");
+            }
+        }
+    }
+}

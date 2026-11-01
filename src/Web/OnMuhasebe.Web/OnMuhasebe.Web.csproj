@@ -34,6 +34,8 @@
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Bakim.Contracts.wasm" />
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Web.Satinalma.wasm" />
     <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Satinalma.Contracts.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Web.Personel.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="OnMuhasebe.Modules.Personel.Contracts.wasm" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,6 +52,7 @@
     <ProjectReference Include="..\OnMuhasebe.Web.Arac\OnMuhasebe.Web.Arac.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Bakim\OnMuhasebe.Web.Bakim.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Satinalma\OnMuhasebe.Web.Satinalma.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Web.Personel\OnMuhasebe.Web.Personel.csproj" />
     <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
     <ProjectReference Include="..\..\Modules\Bildirim\OnMuhasebe.Modules.Bildirim.Contracts\OnMuhasebe.Modules.Bildirim.Contracts.csproj" />
   </ItemGroup>

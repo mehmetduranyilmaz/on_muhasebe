@@ -1,0 +1,65 @@
+@page "/masraflarim"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Masraflarım" AltBaslik="@(_bilgi?.AdSoyad ?? "Kendi masraf beyanlarınız")" Ikon="@Icons.Material.Filled.ReceiptLong">
+    <Islemler>
+        @if (_bilgi?.PersonelId is not null && Oturum.YazabilirMi(PersonelYetkileri.Kendi, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => AcAsync(null))">Masraf Ekle</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_bilgi is { PersonelId: null })
+{
+    <MudAlert Severity="Severity.Info" Class="belirme">Kullanıcınız bir personel kartına bağlı değil. Yöneticinizden kartınıza bağlamasını isteyin.</MudAlert>
+}
+else
+{
+    <VeriTablosu T="MasrafCevabi" Kayitlar="_bilgi?.Masraflar" Yukleniyor="_bilgi is null" Sayfa="1" ToplamSayfa="1" Dense="true" SatirTiklandi="@(m => AcAsync(m))" BosIkon="@Icons.Material.Outlined.Receipt" BosBaslik="Masrafınız yok">
+        <Basliklar>
+            <MudTh>Tarih</MudTh>
+            <MudTh>Kategori</MudTh>
+            <MudTh>Açıklama</MudTh>
+            <MudTh Class="sayi">Tutar</MudTh>
+            <MudTh>Durum</MudTh>
+            <MudTh>Not</MudTh>
+        </Basliklar>
+        <Satir>
+            <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+            <MudTd DataLabel="Kategori">@PersonelMetinleri.Kategori(context.Kategori)</MudTd>
+            <MudTd DataLabel="Açıklama">@context.Aciklama</MudTd>
+            <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.Tutar)</MudTd>
+            <MudTd DataLabel="Durum">@PersonelMetinleri.Masraf(context.Durum)</MudTd>
+            <MudTd DataLabel="Not">@context.Not</MudTd>
+        </Satir>
+    </VeriTablosu>
+}
+
+@code {
+    private BenimBilgim? _bilgi;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var sonuc = await Api.GetAsync<BenimBilgim>("api/personel/benim");
+        _hata = sonuc.Hata;
+        _bilgi = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task AcAsync(MasrafCevabi? masraf)
+    {
+        var parametreler = new DialogParameters<MasrafDialog> { { d => d.Masraf, masraf }, { d => d.KendiMi, true } };
+        var dialog = await DialogService.ShowAsync<MasrafDialog>(masraf is null ? "Masraf Ekle" : "Masraf", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+}

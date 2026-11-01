@@ -1,0 +1,67 @@
+@page "/personel/maas"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Maaş Dönemleri" GeriAdres="personel" Ikon="@Icons.Material.Filled.Payments" AltBaslik="Her ay çalışanlar için toplu tahakkuk, onay ve ödeme" />
+
+<HataGosterimi Hata="_hata" />
+
+@if (Oturum.YazabilirMi(PersonelYetkileri.Maas, YetkiIslemleri.Ekle))
+{
+    <div class="d-flex flex-wrap align-center gap-2 mb-3 belirme">
+        <MudSelect T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ay" Label="Ay" Style="max-width:160px">
+            @for (var i = 1; i <= 12; i++)
+            {
+                var deger = i;
+                <MudSelectItem T="int" Value="deger">@Bicim.Kultur.DateTimeFormat.GetMonthName(deger)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yil" Label="Yıl" Min="2000" Max="2100" Style="max-width:120px" />
+        <IslemDugmesi Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Islem="AcAsync">Dönem Aç</IslemDugmesi>
+    </div>
+}
+
+<VeriTablosu T="MaasDonemiOzeti" Kayitlar="_liste" Yukleniyor="_yukleniyor" Sayfa="1" ToplamSayfa="1" Dense="true"
+             SatirTiklandi="@(d => Navigasyon.NavigateTo($"personel/maas/{d.Id}"))" BosIkon="@Icons.Material.Outlined.Payments" BosBaslik="Maaş dönemi yok">
+    <Basliklar>
+        <MudTh>Dönem</MudTh>
+        <MudTh Class="sayi">Kişi</MudTh>
+        <MudTh Class="sayi">Ödenecek</MudTh>
+        <MudTh Class="sayi">Ödenen</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Dönem"><b>@Bicim.Kultur.DateTimeFormat.GetMonthName(context.Ay) @context.Yil</b></MudTd>
+        <MudTd DataLabel="Kişi" Class="sayi">@context.KisiSayisi</MudTd>
+        <MudTd DataLabel="Ödenecek" Class="sayi">@Bicim.Tutar(context.ToplamOdenecek)</MudTd>
+        <MudTd DataLabel="Ödenen" Class="sayi">@Bicim.Tutar(context.ToplamOdenen)</MudTd>
+        <MudTd DataLabel="Durum">@(context.Durum == MaasDonemiDurumu.Onayli ? "Onaylı" : "Taslak")</MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private List<MaasDonemiOzeti>? _liste;
+    private int _ay = DateTime.Today.Month;
+    private int _yil = DateTime.Today.Year;
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<List<MaasDonemiOzeti>>("api/personel/donemler");
+        _hata = sonuc.Hata;
+        _liste = sonuc.BasariliMi ? sonuc.Deger : [];
+        _yukleniyor = false;
+    }
+
+    private async Task AcAsync()
+    {
+        var sonuc = await Api.PostAsync<MaasDonemiDetayi>("api/personel/donemler", new DonemAcIstegi(_yil, _ay));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Navigasyon.NavigateTo($"personel/maas/{sonuc.Deger.Id}");
+        }
+    }
+}

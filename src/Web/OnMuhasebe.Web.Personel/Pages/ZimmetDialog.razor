@@ -1,0 +1,116 @@
+@* Zimmet formu, iade ve kayıp. İmzalı tutanak dosya eki olarak eklenir. *@
+@inject ApiIstemcisi Api
+@inject OnayServisi Onay
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (Zimmet is { } z)
+        {
+            <div class="d-flex align-center gap-2 mb-3 flex-wrap">
+                <b>@z.AdSoyad</b>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@PersonelMetinleri.Zimmet(z.Durum)</MudChip>
+                <DosyalarDugmesi Tur="@DosyaKayitTurleri.Zimmet" KayitId="z.Id" />
+            </div>
+        }
+        <MudGrid Spacing="2">
+            @if (Zimmet is null)
+            {
+                <MudItem xs="12">
+                    <MudAutocomplete T="PersonelOzeti" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Personel" @bind-Value="_personel" SearchFunc="AraAsync" ToStringFunc="@(p => p?.AdSoyad ?? "")"
+                                     DebounceInterval="300" ResetValueOnEmptyText="true" MaxItems="10" />
+                </MudItem>
+            }
+            <MudItem xs="12" sm="7"><MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Eşya" MaxLength="200" Disabled="@(!Duzenlenir)" /></MudItem>
+            <MudItem xs="12" sm="5"><MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_seri" Label="Seri no" MaxLength="100" Disabled="@(!Duzenlenir)" /></MudItem>
+            <MudItem xs="6"><MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_verilis" Label="Veriliş tarihi" DateFormat="dd.MM.yyyy" Disabled="@(!Duzenlenir)" /></MudItem>
+            <MudItem xs="6"><MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_bedel" Label="Bedel (TL)" Min="0" Format="N2" HideSpinButtons="true" Disabled="@(!Duzenlenir)" /></MudItem>
+            <MudItem xs="12"><MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_not" Label="Not" MaxLength="500" Disabled="@(!Duzenlenir)" /></MudItem>
+            @if (Zimmet is { Durum: ZimmetDurumu.Zimmette } && Duzenlenir)
+            {
+                <MudItem xs="12" sm="6"><MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_iade" Label="İade tarihi" DateFormat="dd.MM.yyyy" /></MudItem>
+                <MudItem xs="12" sm="6" Class="d-flex align-center gap-2">
+                    <IslemDugmesi Variant="Variant.Outlined" Color="Color.Success" Islem="@(() => KapatAsync(false))">İade Al</IslemDugmesi>
+                    <IslemDugmesi Variant="Variant.Outlined" Color="Color.Error" Islem="@(() => KapatAsync(true))">Kayıp</IslemDugmesi>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        @if (Zimmet is not null && Oturum.YazabilirMi(PersonelYetkileri.Zimmet, YetkiIslemleri.Sil))
+        {
+            <MudButton Color="Color.Error" OnClick="SilAsync">Sil</MudButton>
+        }
+        <MudSpacer />
+        <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
+        @if (Duzenlenir)
+        {
+            <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Disabled="@(string.IsNullOrWhiteSpace(_ad) || (Zimmet is null && _personel is null))" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public ZimmetCevabi? Zimmet { get; set; }
+
+    private PersonelOzeti? _personel;
+    private string _ad = "";
+    private string? _seri, _not;
+    private DateTime? _verilis = DateTime.Today;
+    private DateTime? _iade = DateTime.Today;
+    private decimal? _bedel;
+    private ApiHatasi? _hata;
+
+    private bool Duzenlenir => (Zimmet is null || Zimmet.Durum == ZimmetDurumu.Zimmette)
+                               && Oturum.YazabilirMi(PersonelYetkileri.Zimmet, Zimmet is null ? YetkiIslemleri.Ekle : YetkiIslemleri.Duzenle);
+
+    protected override void OnInitialized()
+    {
+        if (Zimmet is { } z)
+        {
+            (_ad, _seri, _not, _bedel, _verilis) = (z.Ad, z.SeriNo, z.Not, z.Bedel, z.VerilisTarihi.ToDateTime(TimeOnly.MinValue));
+        }
+    }
+
+    private async Task<IEnumerable<PersonelOzeti>> AraAsync(string? arama, CancellationToken ct)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<PersonelOzeti>>($"api/personel/kartlar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", ct);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new ZimmetKaydetIstegi(Zimmet?.PersonelId ?? _personel!.Id, _ad, _seri, DateOnly.FromDateTime(_verilis ?? DateTime.Today), _bedel, _not, Zimmet?.Surum ?? 0);
+        var sonuc = Zimmet is { } z
+            ? await Api.PutAsync<ZimmetCevabi>($"api/personel/zimmetler/{z.Id}", istek)
+            : await Api.PostAsync<ZimmetCevabi>("api/personel/zimmetler", istek);
+        Bitir(sonuc);
+    }
+
+    private async Task KapatAsync(bool kayipMi) =>
+        Bitir(await Api.PostAsync<ZimmetCevabi>($"api/personel/zimmetler/{Zimmet!.Id}/iade", new ZimmetIadeIstegi(DateOnly.FromDateTime(_iade ?? DateTime.Today), kayipMi, _not)));
+
+    private async Task SilAsync()
+    {
+        if (await Onay.SorAsync("Zimmet silinsin mi?", "Kayıt silinir. İade edildiyse iade kaydı olarak bırakmanız önerilir.", "Sil", tehlikeli: true))
+        {
+            var sonuc = await Api.DeleteAsync($"api/personel/zimmetler/{Zimmet!.Id}");
+            _hata = sonuc.Hata;
+            if (sonuc.BasariliMi)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+    }
+
+    private void Bitir(ApiSonucu<ZimmetCevabi> sonuc)
+    {
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

@@ -21,7 +21,8 @@ public static class ModulMenusu
         new(ModulKodlari.EvrakTakip, "Evrak Takibi", "evrak-takibi", Icons.Material.Filled.EventNote, "Ruhsat, poliçe, sözleşme gibi süreli evrakların bitiş takibi ve hatırlatması", "evraktakip.kayit"),
         new(ModulKodlari.Arac, "Araç Takibi", "arac", Icons.Material.Filled.DirectionsCar, "Sigorta, muayene ve MTV süreleri; yakıt, masraf ve hasar takibi", "arac.kart"),
         new(ModulKodlari.Bakim, "Bakım Takibi", "bakim", Icons.Material.Filled.Build, "Ekipman bakım planları, yasal kontroller, arıza iş emirleri ve duruş takibi", "bakim.ekipman"),
-        new(ModulKodlari.Satinalma, "Satın Alma", "satinalma", Icons.Material.Filled.ShoppingCart, "Satın alma talepleri, tutara göre onay akışı ve siparişe dönüşüm", "satinalma.talep")
+        new(ModulKodlari.Satinalma, "Satın Alma", "satinalma", Icons.Material.Filled.ShoppingCart, "Satın alma talepleri, tutara göre onay akışı ve siparişe dönüşüm", "satinalma.talep"),
+        new(ModulKodlari.Personel, "Personel", "personel", Icons.Material.Filled.Badge, "Personel kartı, net maaş, avans, masraf ve zimmet takibi", "personel.kart")
     ];
 
     // Menüde modül altındaki ek bölümler; aynı lisans ve aynı lazy paketle açılır (adres -> modül eşlemesi de bunu kullanır).
@@ -38,6 +39,7 @@ public static class ModulMenusu
         new(ModulKodlari.KasaBanka, "Çek / Senet", "cek-senet", Icons.Material.Filled.RequestQuote, "Alınan ve verilen çek/senetler, portföy ve vade takvimi", "kasabanka.cek"),
         new(ModulKodlari.KasaBanka, "Demirbaşlar", "demirbaslar", Icons.Material.Filled.Chair, "Sabit kıymetler, amortisman planı ve yıllık amortisman listesi", "kasabanka.demirbas"),
         new(ModulKodlari.KasaBanka, "Teminatlar", "teminatlar", Icons.Material.Filled.Shield, "Alınan ve verilen teminatlar: teminat mektubu, ipotek, rehin, kefalet", "kasabanka.teminat"),
+        new(ModulKodlari.Personel, "Masraflarım", "masraflarim", Icons.Material.Filled.ReceiptLong, "Kendi masraf beyanlarınız", "personel.kendi"),
         new(ModulKodlari.Muhasebe, "Hesap Planı", "hesap-plani", Icons.Material.Filled.AccountTree, "Muhasebe hesap kodları ve kart eşleştirmesi", "muhasebe.plan")
     ];
 

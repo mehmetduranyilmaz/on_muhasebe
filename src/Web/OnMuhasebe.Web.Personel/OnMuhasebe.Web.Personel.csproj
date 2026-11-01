@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Personel ekranları. Web uygulamasına lazy yüklenir: yalnızca lisans varsa ve modüle girilince indirilir. -->
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Personel\OnMuhasebe.Modules.Personel.Contracts\OnMuhasebe.Modules.Personel.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\KasaBanka\OnMuhasebe.Modules.KasaBanka.Contracts\OnMuhasebe.Modules.KasaBanka.Contracts.csproj" />
+    <ProjectReference Include="..\OnMuhasebe.Web.Ortak\OnMuhasebe.Web.Ortak.csproj" />
+  </ItemGroup>
+
+</Project>

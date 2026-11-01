@@ -1,0 +1,93 @@
+@page "/personel/masraflar"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Masraf Beyanları" GeriAdres="personel" Ikon="@Icons.Material.Filled.Receipt" AltBaslik="Onay bekleyen, onaylanan ve ödenen masraflar. Kimse kendi masrafını onaylayamaz.">
+    <Islemler>
+        @if (Oturum.YazabilirMi(PersonelYetkileri.Masraf, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => AcAsync(null))">Yeni Masraf</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme">
+    <button type="button" class="tur-sekmesi @(_durum is null ? "secili" : "")" style="--vurgu:#2563EB" @onclick="() => SecAsync(null)">Tümü</button>
+    @foreach (var d in Enum.GetValues<MasrafDurumu>())
+    {
+        <button type="button" class="tur-sekmesi @(_durum == d ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => SecAsync(d)">@PersonelMetinleri.Masraf(d)</button>
+    }
+</div>
+
+<VeriTablosu T="MasrafCevabi" Kayitlar="_liste" Yukleniyor="_yukleniyor" Sayfa="1" ToplamSayfa="1" Dense="true" SatirTiklandi="@(m => AcAsync(m))" BosIkon="@Icons.Material.Outlined.Receipt" BosBaslik="Masraf yok">
+    <Basliklar>
+        <MudTh>Tarih</MudTh>
+        <MudTh>Personel</MudTh>
+        <MudTh>Kategori</MudTh>
+        <MudTh>Açıklama</MudTh>
+        <MudTh Class="sayi">Tutar</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Tarih">@Bicim.Tarih(context.Tarih)</MudTd>
+        <MudTd DataLabel="Personel"><b>@context.AdSoyad</b></MudTd>
+        <MudTd DataLabel="Kategori">@PersonelMetinleri.Kategori(context.Kategori)</MudTd>
+        <MudTd DataLabel="Açıklama">@context.Aciklama</MudTd>
+        <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.Tutar)</MudTd>
+        <MudTd DataLabel="Durum">@PersonelMetinleri.Masraf(context.Durum)</MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private List<MasrafCevabi>? _liste;
+    private MasrafDurumu? _durum;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<List<MasrafCevabi>>("api/personel/masraflar" + (_durum is { } d ? $"?durum={d}" : ""));
+        _hata = sonuc.Hata;
+        _liste = sonuc.BasariliMi ? sonuc.Deger : [];
+        _yukleniyor = false;
+    }
+
+    private async Task SecAsync(MasrafDurumu? durum)
+    {
+        _durum = durum;
+        await YukleAsync();
+    }
+
+    private async Task AcAsync(MasrafCevabi? masraf)
+    {
+        var parametreler = new DialogParameters<MasrafDialog> { { d => d.Masraf, masraf } };
+        var dialog = await DialogService.ShowAsync<MasrafDialog>(masraf is null ? "Yeni Masraf" : "Masraf", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        var sonuc = await dialog.Result;
+        if (sonuc is { Canceled: false, Data: MasrafDialog.OdemeIstendi } && masraf is not null)
+        {
+            await OdeAsync(masraf);
+        }
+        else if (sonuc is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+
+    private async Task OdeAsync(MasrafCevabi masraf)
+    {
+        var parametreler = new DialogParameters<OdemeDialog> { { d => d.Baslik, "Ödemeyi" } };
+        var dialog = await DialogService.ShowAsync<OdemeDialog>("Masraf Ödemesi", parametreler, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        if (await dialog.Result is { Canceled: false, Data: OdemeDialog.Secim s })
+        {
+            var sonuc = await Api.PostAsync<MasrafCevabi>($"api/personel/masraflar/{masraf.Id}/ode", new MasrafOdemeIstegi(s.Tarih, s.HesapId));
+            _hata = sonuc.Hata;
+            await YukleAsync();
+        }
+    }
+}

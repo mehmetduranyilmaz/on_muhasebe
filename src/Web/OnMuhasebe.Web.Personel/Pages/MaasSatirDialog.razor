@@ -1,0 +1,41 @@
+@inject ApiIstemcisi Api
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="6"><MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_net" Label="Net maaş" Min="0" Format="N2" HideSpinButtons="true" /></MudItem>
+            <MudItem xs="6"><MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_prim" Label="Prim" Min="0" Format="N2" HideSpinButtons="true" /></MudItem>
+            <MudItem xs="6"><MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kesinti" Label="Kesinti" Min="0" Format="N2" HideSpinButtons="true" /></MudItem>
+            <MudItem xs="6"><MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_avans" Label="Avans kesintisi" Min="0" Format="N2" HideSpinButtons="true" HelperText="@($"Açık avans: {Bicim.Tutar(Satir.AcikAvans)}")" /></MudItem>
+            <MudItem xs="12"><MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_not" Label="Not" MaxLength="250" /></MudItem>
+            <MudItem xs="12"><b>Ödenecek: @Bicim.Tutar(_net + _prim - _kesinti - _avans) TL</b></MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter, EditorRequired] public Guid DonemId { get; set; }
+    [Parameter, EditorRequired] public MaasSatirCevabi Satir { get; set; } = null!;
+
+    private decimal _net, _prim, _kesinti, _avans;
+    private string? _not;
+    private ApiHatasi? _hata;
+
+    protected override void OnInitialized() => (_net, _prim, _kesinti, _avans, _not) = (Satir.NetMaas, Satir.Prim, Satir.Kesinti, Satir.AvansKesintisi, Satir.Not);
+
+    private async Task KaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<MaasDonemiDetayi>($"api/personel/donemler/{DonemId}/satirlar/{Satir.Id}", new MaasSatirIstegi(_net, _prim, _kesinti, _avans, _not));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

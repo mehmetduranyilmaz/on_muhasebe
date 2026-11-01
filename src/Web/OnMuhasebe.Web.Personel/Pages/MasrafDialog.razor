@@ -1,0 +1,131 @@
+@* Masraf formu ve akışı: beyan, onay, red, ödeme. KendiMi: kişi kendi masrafını girer, personel seçilmez. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (Masraf is { } m)
+        {
+            <div class="d-flex align-center gap-2 mb-3 flex-wrap">
+                <b>@m.AdSoyad</b>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@PersonelMetinleri.Masraf(m.Durum)</MudChip>
+                <DosyalarDugmesi Tur="@DosyaKayitTurleri.PersonelMasrafi" KayitId="m.Id" />
+            </div>
+            @if (m.KararVeren is not null)
+            {
+                <MudAlert Severity="@(m.Durum == MasrafDurumu.Reddedildi ? Severity.Warning : Severity.Info)" Dense="true" Class="mb-3">@m.KararVeren: @(m.Not ?? "karar verildi")</MudAlert>
+            }
+        }
+        <MudGrid Spacing="2">
+            @if (!KendiMi && Masraf is null)
+            {
+                <MudItem xs="12">
+                    <MudAutocomplete T="PersonelOzeti" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Personel" @bind-Value="_personel" SearchFunc="AraAsync" ToStringFunc="@(p => p?.AdSoyad ?? "")"
+                                     DebounceInterval="300" ResetValueOnEmptyText="true" MaxItems="10" />
+                </MudItem>
+            }
+            <MudItem xs="6"><MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Tarih" DateFormat="dd.MM.yyyy" Disabled="@(!Duzenlenir)" /></MudItem>
+            <MudItem xs="6">
+                <MudSelect T="MasrafKategorisi" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kategori" Label="Kategori" Disabled="@(!Duzenlenir)">
+                    @foreach (var k in Enum.GetValues<MasrafKategorisi>())
+                    {
+                        <MudSelectItem T="MasrafKategorisi" Value="k">@PersonelMetinleri.Kategori(k)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4"><MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="Tutar (TL)" Min="0" Format="N2" HideSpinButtons="true" Disabled="@(!Duzenlenir)" /></MudItem>
+            <MudItem xs="12" sm="8"><MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" Disabled="@(!Duzenlenir)" /></MudItem>
+            @if (Masraf is { OnaylayabilirMi: true } && !Oturum.SaltOkunurMu)
+            {
+                <MudItem xs="12"><MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_not" Label="Karar notu" MaxLength="500" HelperText="Reddederken zorunlu" /></MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
+        @if (Masraf is { OnaylayabilirMi: true } && !Oturum.SaltOkunurMu)
+        {
+            <IslemDugmesi Variant="Variant.Outlined" Color="Color.Error" Islem="@(() => KararAsync("reddet"))">Reddet</IslemDugmesi>
+            <IslemDugmesi Variant="Variant.Filled" Color="Color.Success" Islem="@(() => KararAsync("onayla"))">Onayla</IslemDugmesi>
+        }
+        @if (!KendiMi && Masraf is { Durum: MasrafDurumu.Onaylandi } && Oturum.YazabilirMi(PersonelYetkileri.Masraf, YetkiIslemleri.Onayla))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@(() => MudDialog.Close(DialogResult.Ok(OdemeIstendi)))">Öde</MudButton>
+        }
+        @if (Duzenlenir)
+        {
+            <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Disabled="@(_tutar <= 0 || string.IsNullOrWhiteSpace(_aciklama) || (!KendiMi && Masraf is null && _personel is null))" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // Ödeme penceresini liste açar: iki pencere üst üste binmesin.
+    public const string OdemeIstendi = "ode";
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public MasrafCevabi? Masraf { get; set; }
+    [Parameter] public bool KendiMi { get; set; }
+
+    private PersonelOzeti? _personel;
+    private DateTime? _tarih = DateTime.Today;
+    private MasrafKategorisi _kategori = MasrafKategorisi.Yemek;
+    private decimal _tutar;
+    private string _aciklama = "";
+    private string? _not;
+    private ApiHatasi? _hata;
+
+    private bool Duzenlenir => (Masraf is null || Masraf.Durum is MasrafDurumu.Beyan or MasrafDurumu.Reddedildi)
+                               && (KendiMi ? Oturum.YazabilirMi(PersonelYetkileri.Kendi, YetkiIslemleri.Ekle) : Oturum.YazabilirMi(PersonelYetkileri.Masraf, Masraf is null ? YetkiIslemleri.Ekle : YetkiIslemleri.Duzenle));
+
+    protected override void OnInitialized()
+    {
+        if (Masraf is { } m)
+        {
+            (_tarih, _kategori, _tutar, _aciklama) = (m.Tarih.ToDateTime(TimeOnly.MinValue), m.Kategori, m.Tutar, m.Aciklama);
+        }
+    }
+
+    private async Task<IEnumerable<PersonelOzeti>> AraAsync(string? arama, CancellationToken ct)
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<PersonelOzeti>>($"api/personel/kartlar?aktif=true&boyut=10&arama={Uri.EscapeDataString(arama ?? "")}", ct);
+        return sonuc.BasariliMi ? sonuc.Deger.Kayitlar : [];
+    }
+
+    private async Task KaydetAsync()
+    {
+        var tarih = DateOnly.FromDateTime(_tarih ?? DateTime.Today);
+        ApiSonucu<MasrafCevabi> sonuc;
+        if (KendiMi)
+        {
+            var kendi = new KendiMasrafIstegi(tarih, _kategori, _tutar, _aciklama, Masraf?.Surum ?? 0);
+            sonuc = Masraf is { } m
+                ? await Api.PutAsync<MasrafCevabi>($"api/personel/benim/masraflar/{m.Id}", kendi)
+                : await Api.PostAsync<MasrafCevabi>("api/personel/benim/masraflar", kendi);
+        }
+        else
+        {
+            var istek = new MasrafKaydetIstegi(Masraf?.PersonelId ?? _personel!.Id, tarih, _kategori, _tutar, _aciklama, Masraf?.MasrafMerkeziId, Masraf?.Surum ?? 0);
+            sonuc = Masraf is { } m
+                ? await Api.PutAsync<MasrafCevabi>($"api/personel/masraflar/{m.Id}", istek)
+                : await Api.PostAsync<MasrafCevabi>("api/personel/masraflar", istek);
+        }
+
+        Bitir(sonuc, "Masraf kaydedildi.");
+    }
+
+    private async Task KararAsync(string islem) =>
+        Bitir(await Api.PostAsync<MasrafCevabi>($"api/personel/masraflar/{Masraf!.Id}/{islem}", new MasrafKararIstegi(_not)), islem == "onayla" ? "Onaylandı." : "Reddedildi.");
+
+    private void Bitir(ApiSonucu<MasrafCevabi> sonuc, string mesaj)
+    {
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add(mesaj, Severity.Success);
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

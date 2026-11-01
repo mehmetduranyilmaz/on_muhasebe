@@ -1,0 +1,87 @@
+@* Tarih, kasa/banka hesabı ve istenirse tutar ile taksit soran ortak pencere: ödeme, avans, işten çıkış tarihi. Kasa/Banka lisansı yoksa ödeme yalnız kayıt olur. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_tarih" Label="Tarih" DateFormat="dd.MM.yyyy" />
+            </MudItem>
+            @if (TutarIste)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tutar" Label="Tutar (TL)" Min="0" Format="N2" HideSpinButtons="true" HelperText="@TutarNotu" />
+                </MudItem>
+            }
+            @if (TaksitIste)
+            {
+                <MudItem xs="6">
+                    <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_taksit" Label="Taksit" Min="1" Max="36" HelperText="Maaştan kaç ayda düşülsün" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="250" />
+                </MudItem>
+            }
+            @if (HesapIste)
+            {
+                <MudItem xs="12">
+                    @if (KasaAcik)
+                    {
+                        <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hesap" Label="Kasa / banka hesabı">
+                            @foreach (var h in _hesaplar)
+                            {
+                                <MudSelectItem T="Guid?" Value="h.Id">@h.Ad</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">Kasa/Banka modülü olmadığı için ödeme yalnız kayıt olarak tutulur.</MudAlert>
+                    }
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!Hazir)" OnClick="Tamam">@Baslik Kaydet</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public sealed record Secim(DateOnly Tarih, Guid? HesapId, decimal? Tutar, int Taksit, string? Aciklama);
+
+    private sealed record HesapSecimi(Guid Id, string Ad, HesapTuru Tur, string ParaBirimi, bool AktifMi);
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string Baslik { get; set; } = "Ödeme";
+    [Parameter] public bool HesapIste { get; set; } = true;
+    [Parameter] public bool TutarIste { get; set; }
+    [Parameter] public bool TutarZorunlu { get; set; } = true;
+    [Parameter] public decimal? VarsayilanTutar { get; set; }
+    [Parameter] public string? TutarNotu { get; set; }
+    [Parameter] public bool TaksitIste { get; set; }
+
+    private DateTime? _tarih = DateTime.Today;
+    private decimal? _tutar;
+    private int _taksit = 1;
+    private string? _aciklama;
+    private Guid? _hesap;
+    private List<HesapSecimi> _hesaplar = [];
+
+    private bool KasaAcik => Oturum.ModulAcikMi(ModulKodlari.KasaBanka);
+
+    private bool Hazir => _tarih is not null && (!HesapIste || !KasaAcik || _hesap is not null) && (!TutarIste || !TutarZorunlu || _tutar > 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _tutar = VarsayilanTutar;
+        if (HesapIste && KasaAcik && await Api.GetAsync<List<HesapSecimi>>("api/kasabanka/hesaplar") is { BasariliMi: true } hesaplar)
+        {
+            _hesaplar = hesaplar.Deger.Where(h => h.AktifMi && h.ParaBirimi == ParaBirimleri.Tl && h.Tur is HesapTuru.Kasa or HesapTuru.Banka).ToList();
+        }
+    }
+
+    private void Tamam() => MudDialog.Close(DialogResult.Ok(new Secim(DateOnly.FromDateTime(_tarih!.Value), _hesap, _tutar, _taksit, _aciklama)));
+}

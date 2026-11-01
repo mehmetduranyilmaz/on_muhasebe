@@ -1,0 +1,126 @@
+@* Personel kartı formu. TC kimlik, IBAN ve net maaş yalnız maaş yetkisiyle görünür ve değişir. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" MaxLength="100" Required="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_soyad" Label="Soyad" MaxLength="100" Required="true" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_giris" Label="İşe giriş" DateFormat="dd.MM.yyyy" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_gorev" Label="Görev" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_departman" Label="Departman" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="4"><IsyeriAlani @bind-Deger="_isyeri" /></MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_telefon" Label="Telefon" MaxLength="30" />
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_eposta" Label="E-posta" MaxLength="256" />
+            </MudItem>
+            @if (MaasYetkisi)
+            {
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tc" Label="TC kimlik" MaxLength="11" />
+                </MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_iban" Label="IBAN" MaxLength="34" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_maas" Label="Net maaş (TL)" Min="0" Format="N2" HideSpinButtons="true" />
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense="true">TC kimlik, IBAN ve maaşı yalnız maaş yetkisi olanlar girer.</MudAlert>
+                </MudItem>
+            }
+            @if (_merkezler.Count > 0)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_merkez" Label="Masraf merkezi" Clearable="true">
+                        @foreach (var m in _merkezler)
+                        {
+                            <MudSelectItem T="Guid?" Value="m.Id">@m.Ad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            }
+            <MudItem xs="12" sm="6">
+                <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kullanici" Label="Program kullanıcısı" Clearable="true" HelperText="Bağlanırsa kişi kendi masrafını girer">
+                    @foreach (var k in _kullanicilar)
+                    {
+                        <MudSelectItem T="Guid?" Value="k.Id">@k.Ad</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Vazgeç</MudButton>
+        <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Disabled="@(string.IsNullOrWhiteSpace(_ad) || string.IsNullOrWhiteSpace(_soyad) || _giris is null)" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public PersonelDetayi? Personel { get; set; }
+
+    private sealed record Merkez(Guid Id, string Ad);
+
+    private string _ad = "";
+    private string _soyad = "";
+    private DateTime? _giris = DateTime.Today;
+    private string? _gorev, _departman, _telefon, _eposta, _tc, _iban;
+    private decimal? _maas;
+    private Guid? _isyeri, _merkez, _kullanici;
+    private List<Merkez> _merkezler = [];
+    private List<KullaniciSecenegi> _kullanicilar = [];
+    private ApiHatasi? _hata;
+
+    private bool MaasYetkisi => Oturum.YetkiVarMi(PersonelYetkileri.Maas, YetkiIslemleri.Duzenle);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Personel is { } p)
+        {
+            (_ad, _soyad, _gorev, _departman, _telefon, _eposta, _tc, _iban, _maas, _isyeri, _merkez, _kullanici) =
+                (p.Ad, p.Soyad, p.Gorev, p.Departman, p.Telefon, p.Eposta, p.TcKimlik, p.Iban, p.NetMaas, p.IsyeriId, p.MasrafMerkeziId, p.KullaniciId);
+            _giris = p.IseGiris.ToDateTime(TimeOnly.MinValue);
+        }
+
+        if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka) && Oturum.YetkiVarMi("kasabanka.tanim.goruntule") && await Api.GetAsync<List<Merkez>>("api/kasabanka/masraf-merkezleri") is { BasariliMi: true } merkezler)
+        {
+            _merkezler = merkezler.Deger;
+        }
+
+        if (await Api.GetAsync<List<KullaniciSecenegi>>("api/personel/kartlar/kullanicilar") is { BasariliMi: true } kullanicilar)
+        {
+            _kullanicilar = kullanicilar.Deger;
+        }
+    }
+
+    private async Task KaydetAsync()
+    {
+        var istek = new PersonelKaydetIstegi(_ad, _soyad, _tc, DateOnly.FromDateTime(_giris!.Value), _gorev, _departman, _isyeri, _merkez, _iban, _maas, _telefon, _eposta, _kullanici, Personel?.Surum ?? 0);
+        var sonuc = Personel is { } p
+            ? await Api.PutAsync<PersonelDetayi>($"api/personel/kartlar/{p.Id}", istek)
+            : await Api.PostAsync<PersonelDetayi>("api/personel/kartlar", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(sonuc.Deger));
+        }
+    }
+}

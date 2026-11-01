@@ -60,6 +60,12 @@ public static class ModulPaketleri
         [
             "OnMuhasebe.Web.Satinalma.wasm",
             "OnMuhasebe.Modules.Satinalma.Contracts.wasm"
+        ],
+        [ModulKodlari.Personel] =
+        [
+            "OnMuhasebe.Web.Personel.wasm",
+            "OnMuhasebe.Modules.Personel.Contracts.wasm",
+            "OnMuhasebe.Modules.KasaBanka.Contracts.wasm"
         ]
     };
 

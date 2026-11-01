@@ -25,7 +25,8 @@ public static class SayfaYetkileri
         [ModulKodlari.EvrakTakip] = "evraktakip.kayit.goruntule",
         [ModulKodlari.Arac] = "arac.rapor.goruntule",
         [ModulKodlari.Bakim] = "bakim.rapor.goruntule",
-        [ModulKodlari.Satinalma] = "satinalma.talep.goruntule"
+        [ModulKodlari.Satinalma] = "satinalma.talep.goruntule",
+        [ModulKodlari.Personel] = "personel.kart.goruntule"
     };
 
     public static string? Gereken(string adres) =>
