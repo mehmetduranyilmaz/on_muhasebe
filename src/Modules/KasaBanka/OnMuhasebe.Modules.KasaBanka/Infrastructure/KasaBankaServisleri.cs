@@ -90,6 +90,8 @@ internal sealed class KasaBankaSorgusu(KasaBankaDbContext db) : IKasaBankaSorgus
                 KasaHareketTuru.CekSenetTahsil => Evrak(h.KaynakBelgeId) == EvrakTuru.Senet ? "AlacakSenetleri" : "AlinanCekler",
                 KasaHareketTuru.CekSenetOdeme => Evrak(h.KaynakBelgeId) == EvrakTuru.Senet ? "BorcSenetleri" : "VerilenCekler",
                 KasaHareketTuru.KrediKullanim or KasaHareketTuru.KrediOdeme => "BankaKredileri",
+                KasaHareketTuru.PersonelOdeme => "PersonelBorclari",
+                KasaHareketTuru.PersonelAvans => "PersonelAvanslari",
                 _ => null
             };
             var gider = h.Tur == KasaHareketTuru.KrediOdeme && taksitGiderleri.TryGetValue(h.IslemId, out var g) ? g : default;
@@ -171,6 +173,26 @@ internal sealed class KasaBankaYazici(KasaBankaDbContext db, KasaIslemServisi is
 
         var hareket = KasaHareketi.Olustur(hesap, Guid.CreateVersion7(), t.GirisMi ? KasaHareketTuru.Tahsilat : KasaHareketTuru.Odeme, t.GirisMi,
             t.Tarih, t.Tutar, t.Kur, t.BelgeNo, t.Aciklama, kaynakBelgeId: kaynakBelgeId);
+        if (!hareket.BasariliMi)
+        {
+            return hareket.Hata;
+        }
+
+        db.KasaHareketleri.Add(hareket.Deger);
+        await db.SaveChangesAsync(cancellationToken);
+        return Sonuc.Basarili();
+    }
+
+    public async Task<Sonuc> PersonelOdemesiYazAsync(Guid kaynakBelgeId, PersonelKasaOdemesi o, CancellationToken cancellationToken = default)
+    {
+        var hesap = await db.Hesaplar.SingleOrDefaultAsync(h => h.Id == o.HesapId, cancellationToken);
+        if (hesap is null)
+        {
+            return KasaBankaHatalari.HesapBulunamadi;
+        }
+
+        var hareket = KasaHareketi.Olustur(hesap, Guid.CreateVersion7(), o.AvansMi ? KasaHareketTuru.PersonelAvans : KasaHareketTuru.PersonelOdeme, false,
+            o.Tarih, o.Tutar, 1m, null, o.Aciklama, kaynakBelgeId: kaynakBelgeId);
         if (!hareket.BasariliMi)
         {
             return hareket.Hata;

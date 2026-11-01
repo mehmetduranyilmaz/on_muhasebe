@@ -22,5 +22,8 @@ public static class ModulKodlari
     // Satın alma talebi ve tutara bağlı onay akışı.
     public const string Satinalma = "satinalma";
 
-    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip, Arac, Bakim, Satinalma];
+    // Personel kartı, net maaş, avans, masraf ve zimmet. Bordro hesabı yapmaz.
+    public const string Personel = "personel";
+
+    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip, Arac, Bakim, Satinalma, Personel];
 }

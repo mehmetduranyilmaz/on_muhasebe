@@ -43,8 +43,13 @@ public sealed record BelgeTahsilati(
     string? BelgeNo,
     string? Aciklama);
 
+// Personel modülünün ödemesi. Her zaman hesaptan çıkıştır ve TL'dir; cari etkisi yoktur.
+public sealed record PersonelKasaOdemesi(Guid HesapId, bool AvansMi, DateOnly Tarih, decimal Tutar, string? Aciklama);
+
 public interface IKasaBankaYazici
 {
+    Task<Sonuc> PersonelOdemesiYazAsync(Guid kaynakBelgeId, PersonelKasaOdemesi odeme, CancellationToken cancellationToken = default);
+
     Task<Sonuc> BelgeTahsilatiYazAsync(Guid kaynakBelgeId, BelgeTahsilati tahsilat, CancellationToken cancellationToken = default);
 
     // Belgeye bağlı tüm kasa/banka işlemleri (ve onların cari hareketleri) ters kayıtla iptal edilir.

@@ -1,5 +1,6 @@
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.Muhasebe.Contracts;
+using OnMuhasebe.Modules.Personel.Contracts;
 using OnMuhasebe.Shared.Contracts.Muhasebe;
 using OnMuhasebe.Shared.Domain;
 
@@ -223,6 +224,15 @@ internal static class FisUretici
             var aciklama = ilk.Aciklama ?? (ilk.Tur == "Gelir" ? "Gelir tahakkuku" : "Gider tahakkuku");
             return new MuhasebeFisi(islem.Key, FisKaynaklari.Tahakkuk, ilk.Tur, FisTuru.Mahsup, ilk.Tarih, ilk.BelgeNo, aciklama, null, Satirlar(kalemler, aciklama));
         }).ToList();
+
+    // Ödemeler kasa hareketinden gelir. Burada kasadan geçmeyenler: onaylı masraf (gider / 335) ve maaştan düşülen avans (335 / 196).
+    public static IEnumerable<MuhasebeFisi> Personel(IEnumerable<MuhasebePersonelKaydi> kayitlar, KodCozucu kodlar) => kayitlar.Select(k =>
+    {
+        var borc = kodlar.Rol(k.Tur == MuhasebePersonelTurleri.Masraf ? HesapRolu.GenelYonetimGiderleri : HesapRolu.PersonelBorclari);
+        var alacak = kodlar.Rol(k.Tur == MuhasebePersonelTurleri.Masraf ? HesapRolu.PersonelBorclari : HesapRolu.PersonelAvanslari);
+        return new MuhasebeFisi(k.Id, FisKaynaklari.Personel, k.Tur, FisTuru.Mahsup, k.Tarih, k.BelgeNo, k.Aciklama, k.IsyeriId,
+            Satirlar([new(borc, k.Tutar, k.Aciklama), new(alacak, -k.Tutar, k.Aciklama)], k.Aciklama));
+    }).ToList();
 
     private static string EvrakIslemAdi(string islem) => islem switch
     {

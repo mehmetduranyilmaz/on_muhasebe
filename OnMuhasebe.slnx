@@ -52,6 +52,8 @@
     <Project Path="src/Web/OnMuhasebe.Web.Arac/OnMuhasebe.Web.Arac.csproj" />
     <Project Path="src/Modules/Satinalma/OnMuhasebe.Modules.Satinalma.Contracts/OnMuhasebe.Modules.Satinalma.Contracts.csproj" />
     <Project Path="src/Modules/Satinalma/OnMuhasebe.Modules.Satinalma/OnMuhasebe.Modules.Satinalma.csproj" />
+    <Project Path="src/Modules/Personel/OnMuhasebe.Modules.Personel.Contracts/OnMuhasebe.Modules.Personel.Contracts.csproj" />
+    <Project Path="src/Modules/Personel/OnMuhasebe.Modules.Personel/OnMuhasebe.Modules.Personel.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Bakim/OnMuhasebe.Web.Bakim.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Satinalma/OnMuhasebe.Web.Satinalma.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Cari/OnMuhasebe.Web.Cari.csproj" />

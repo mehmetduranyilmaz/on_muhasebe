@@ -71,12 +71,15 @@ internal static class RolSablonlari
         // Görevler ayrılığı: talep onaylamak ve onay kuralını değiştirmek yalnız yöneticide başlar, firma isterse role verir.
         string[] OnayDenetimi = ["satinalma.onay.onayla", "satinalma.kural.duzenle"];
 
+        // KVKK: maaş ve avans gibi özlük tutarları genel Kullanıcı rolünde başlamaz; kart, zimmet ve kendi masrafı açıktır.
+        string[] Ozluk = [.. new[] { "personel.maas", "personel.avans", "personel.masraf" }.SelectMany(k => katalog.Where(x => x.Kod == k).SelectMany(x => x.Yetkiler()))];
+
         const string G = YetkiIslemleri.Goruntule, E = YetkiIslemleri.Ekle, D = YetkiIslemleri.Duzenle,
             S = YetkiIslemleri.Sil, O = YetkiIslemleri.Onayla, I = YetkiIslemleri.Iptal;
 
         List<(string Ad, string Aciklama, IEnumerable<string> Yetkiler)> sablonlar =
         [
-            ("Kullanıcı", "Yönetim ekranları dışında tüm işlemler.", Hepsi(modul).Except(OnayDenetimi)),
+            ("Kullanıcı", "Yönetim ekranları dışında tüm işlemler.", Hepsi(modul).Except(OnayDenetimi).Except(Ozluk)),
             ("Muhasebe", "Tüm işlemler, maliyet ve değişiklik geçmişi; kullanıcı ve firma ayarları hariç.",
                 Hepsi(modul).Except(OnayDenetimi).Append(YonetimYetkileri.Degisiklik.Yetki(G))),
             ("Satış", "Müşteri, teklif/sipariş, satış belgeleri ve tahsilat; maliyet görmez.",

@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\Cari\OnMuhasebe.Modules.Cari.Contracts\OnMuhasebe.Modules.Cari.Contracts.csproj" />
     <ProjectReference Include="..\..\KasaBanka\OnMuhasebe.Modules.KasaBanka.Contracts\OnMuhasebe.Modules.KasaBanka.Contracts.csproj" />
     <ProjectReference Include="..\..\Fatura\OnMuhasebe.Modules.Fatura.Contracts\OnMuhasebe.Modules.Fatura.Contracts.csproj" />
+    <ProjectReference Include="..\..\Personel\OnMuhasebe.Modules.Personel.Contracts\OnMuhasebe.Modules.Personel.Contracts.csproj" />
     <ProjectReference Include="..\..\Stok\OnMuhasebe.Modules.Stok.Contracts\OnMuhasebe.Modules.Stok.Contracts.csproj" />
   </ItemGroup>
 

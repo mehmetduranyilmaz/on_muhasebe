@@ -3,6 +3,7 @@ using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Modules.Muhasebe.Contracts;
+using OnMuhasebe.Modules.Personel.Contracts;
 using OnMuhasebe.Modules.Muhasebe.Domain;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
@@ -13,7 +14,7 @@ namespace OnMuhasebe.Modules.Muhasebe.Infrastructure;
 // Dönemin fişleri ve aktarım durumları. Kaynak modülün lisansı yoksa o modülün belgeleri gelmez.
 internal sealed class FisServisi(
     MuhasebeDbContext db, HesapPlaniServisi planServisi, IFaturaMuhasebeSorgusu faturaSorgusu, IKasaBankaSorgusu kasaSorgusu, ICariSorgusu cariSorgusu,
-    ILisansSorgusu lisans, IMevcutKullanici mevcutKullanici)
+    ILisansSorgusu lisans, IMevcutKullanici mevcutKullanici, IPersonelMuhasebeSorgusu personelSorgusu)
 {
     public async Task<FisListesi> ListeleAsync(DateOnly baslangic, DateOnly bitis, Guid? isyeriId, CancellationToken ct)
     {
@@ -30,6 +31,11 @@ internal sealed class FisServisi(
         if (moduller.Contains(ModulKodlari.Fatura))
         {
             fisler.AddRange((await faturaSorgusu.OnayliAsync(baslangic, bitis, isyeriId, ct)).Select(f => FisUretici.Fatura(f, kodlar)));
+        }
+
+        if (moduller.Contains(ModulKodlari.Personel))
+        {
+            fisler.AddRange(FisUretici.Personel(await personelSorgusu.KayitlarAsync(baslangic, bitis, isyeriId, ct), kodlar));
         }
 
         if (kasaVarMi)

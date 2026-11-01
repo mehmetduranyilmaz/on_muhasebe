@@ -38,7 +38,7 @@ ALI_TOKEN=$(alan accessToken)
 grep -q om_yenile "$DIR/ali.jar" && echo "GECTI  Refresh token HttpOnly cerezde" && GECEN=$((GECEN+1)) || { echo "KALDI  Cerez yok"; KALAN=$((KALAN+1)); }
 
 istek GET /ben "$ALI_TOKEN"
-kontrol 200 "Ben: aktif firma A, deneme lisansi tum moduller" '"moduller":\["cari","stok","fatura","kasabanka","muhasebe","evraktakip","arac","bakim","satinalma"]'
+kontrol 200 "Ben: aktif firma A, deneme lisansi tum moduller" '"moduller":\["cari","stok","fatura","kasabanka","muhasebe","evraktakip","arac","bakim","satinalma","personel"]'
 FIRMA_A=$(echo "$GOVDE" | grep -o '"aktifFirma":{"id":"[^"]*"' | cut -d'"' -f6)
 
 istek POST /kayit "" "" '{"firmaUnvani":"X","ad":"A","soyad":"B","eposta":"'"$ALI"'","sifre":"Baska1234"}'

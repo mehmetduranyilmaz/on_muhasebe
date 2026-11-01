@@ -154,6 +154,13 @@ id["bakimPlani"] = (await Post(a, $"api/bakim/ekipmanlar/{id["ekipman"]}/planlar
 id["isEmri"] = (await Post(a, "api/bakim/is-emirleri", new { ekipmanId = id["ekipman"], tur = "Ariza", baslik = "SIZINTI Ariza", makineDurduMu = true, iscilikTutari = 0, disServisTutari = 0 }))["id"]!.GetValue<string>();
 id["satinalmaTalebi"] = (await Post(a, "api/satinalma/talepler", new { tarih = "2026-10-01", gerekce = "SIZINTI Talep", kalemler = new[] { new { ad = "SIZINTI Kalem", birim = "ADET", miktar = 1, tahminiBirimFiyat = 100, kdvOrani = 20 } } }))["id"]!.GetValue<string>();
 id["tekrarPlan"] = (await Post(a, "api/fatura/tekrar-planlari", new { ad = "SIZINTI Plan", cariHesapId = id["cari"], siklik = "Aylik", gun = 1, baslangic = "2030-01-01", otomatikKesinlestir = false, stopajOrani = 0, satirlar = new[] { belgeSatiri } }))["id"]!.GetValue<string>();
+id["personel"] = (await Post(a, "api/personel/kartlar", new { ad = "SIZINTI", soyad = "Personel", iseGiris = "2026-01-01", netMaas = 1000 }))["id"]!.GetValue<string>();
+var maasDonemi = await Post(a, "api/personel/donemler", new { yil = 2026, ay = 1 });
+id["maasDonemi"] = maasDonemi["id"]!.GetValue<string>();
+id["maasSatiri"] = maasDonemi["satirlar"]![0]!["id"]!.GetValue<string>();
+id["personelAvans"] = (await Post(a, "api/personel/avanslar", new { personelId = id["personel"], tarih = "2026-01-05", tutar = 100, taksitSayisi = 1, hesapId = id["kasaHesap"], aciklama = "SIZINTI" }))["id"]!.GetValue<string>();
+id["personelMasraf"] = (await Post(a, "api/personel/masraflar", new { personelId = id["personel"], tarih = "2026-01-05", kategori = "Yemek", tutar = 100, aciklama = "SIZINTI" }))["id"]!.GetValue<string>();
+id["zimmet"] = (await Post(a, "api/personel/zimmetler", new { personelId = id["personel"], ad = "SIZINTI Telefon", verilisTarihi = "2026-01-05" }))["id"]!.GetValue<string>();
 id["dosyaTur"] = "cari";
 using (var form = new MultipartFormDataContent { { new ByteArrayContent("%PDF-1.4 SIZINTI"u8.ToArray()), "dosya", "sizinti.pdf" } })
 {
@@ -225,6 +232,12 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/muhasebe/eslemeler/", "kartId", "cari"),
     ("/api/muhasebe/aktarimlar/", "id", "muhasebeAktarim"),
     ("/api/evrak-takibi/", "id", "takipEvraki"),
+    ("/api/personel/kartlar/", "id", "personel"),
+    ("/api/personel/donemler/", "id", "maasDonemi"),
+    ("/api/personel/donemler/", "satirId", "maasSatiri"),
+    ("/api/personel/avanslar/", "id", "personelAvans"),
+    ("/api/personel/masraflar/", "id", "personelMasraf"),
+    ("/api/personel/zimmetler/", "id", "zimmet"),
     ("/api/satinalma/talepler/", "id", "satinalmaTalebi"),
     ("/api/bakim/ekipmanlar/", "id", "ekipman"),
     ("/api/bakim/ekipmanlar/", "ekipmanId", "ekipman"),

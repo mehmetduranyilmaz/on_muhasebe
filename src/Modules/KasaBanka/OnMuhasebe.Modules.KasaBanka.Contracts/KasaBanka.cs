@@ -55,7 +55,10 @@ public enum KasaHareketTuru
     CekSenetOdeme,
     // Nakdi kredi: kullandırımda hesaba giriş, taksitte çıkış (faiz ve vergiler ayrıca gider kaydıdır).
     KrediKullanim,
-    KrediOdeme
+    KrediOdeme,
+    // Personel modülünden: maaş ve masraf ödemesi, personel avansı.
+    PersonelOdeme,
+    PersonelAvans
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<GelirGiderTuru>))]

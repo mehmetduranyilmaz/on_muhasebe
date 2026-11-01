@@ -47,7 +47,9 @@ public enum HesapRolu
     AlinanAvanslar,
     VerilenAvanslar,
     DigerGelirler,
-    GenelYonetimGiderleri
+    GenelYonetimGiderleri,
+    PersonelBorclari,
+    PersonelAvanslari
 }
 
 public static class HesapRolleri
@@ -82,6 +84,8 @@ public static class HesapRolleri
         HesapRolu.VerilenAvanslar => "159",
         HesapRolu.DigerGelirler => "649",
         HesapRolu.GenelYonetimGiderleri => "770",
+        HesapRolu.PersonelBorclari => "335",
+        HesapRolu.PersonelAvanslari => "196",
         _ => throw new ArgumentOutOfRangeException(nameof(rol))
     };
 
@@ -110,6 +114,8 @@ public static class HesapRolleri
         HesapRolu.KambiyoKarlari => "Kambiyo kârları (dövizli virman kur farkı)",
         HesapRolu.KambiyoZararlari => "Kambiyo zararları (dövizli virman kur farkı)",
         HesapRolu.AlinanAvanslar => "Alınan sipariş avansları",
+        HesapRolu.PersonelBorclari => "Personele borçlar",
+        HesapRolu.PersonelAvanslari => "Personel avansları",
         HesapRolu.VerilenAvanslar => "Verilen sipariş avansları",
         HesapRolu.DigerGelirler => "Diğer gelirler (gelir kategorisi varsayılanı)",
         HesapRolu.GenelYonetimGiderleri => "Genel yönetim giderleri (gider kategorisi varsayılanı)",
@@ -155,6 +161,7 @@ public static class FisKaynaklari
     public const string KasaBanka = "KasaBanka";
     public const string CekSenet = "CekSenet";
     public const string Tahakkuk = "Tahakkuk";
+    public const string Personel = "Personel";
 }
 
 // Değişti: aktarıldıktan sonra tarih, belge no ya da borç/alacak satırları (hesap kodu dahil) değişmiş; yeniden aktarılmalı.
