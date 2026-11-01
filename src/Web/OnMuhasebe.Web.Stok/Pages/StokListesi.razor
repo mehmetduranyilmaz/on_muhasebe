@@ -13,6 +13,7 @@
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Label" OnClick="GruplariAcAsync">Gruplar</MudButton>
         @if (Oturum.YazabilirMi(StokYetkileri.Kart, YetkiIslemleri.Ekle))
         {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" OnClick="ExcelAktarAsync">Excel'den Aktar</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="stok/yeni">Yeni Kart</MudButton>
         }
     </Islemler>
@@ -182,5 +183,23 @@
     {
         var dialog = await DialogService.ShowAsync<DepolarDialog>("Depolar");
         await dialog.Result;
+    }
+
+    private async Task ExcelAktarAsync()
+    {
+        var parametreler = new DialogParameters<TopluAktarimDialog>
+        {
+            { x => x.ApiYolu, "api/stok/aktarim" },
+            { x => x.SablonAdi, "stok_sablonu.xlsx" },
+            { x => x.Aciklama, "Eski programınızdan aldığınız stok listesini yükleyin. Açılış miktarları birim maliyetle, seçtiğiniz tarihte depoya girer (depo boşsa varsayılan depo). Kod, barkod ya da adı aynı olan kart atlanır." },
+            { x => x.AcilisBasligi, "Açılış miktarı" },
+            { x => x.AcilisBicimi, Bicim.Miktar }
+        };
+        var dialog = await DialogService.ShowAsync<TopluAktarimDialog>("Excel'den Aktar", parametreler, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var sonuc = await dialog.Result;
+        if (sonuc is { Canceled: false, Data: true })
+        {
+            await YukleAsync();
+        }
     }
 }

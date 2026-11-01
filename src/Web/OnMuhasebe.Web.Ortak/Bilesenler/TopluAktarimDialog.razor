@@ -1,0 +1,187 @@
+@* Excel'den toplu aktarım: şablon indir, dosya seç, satır satır önizle, aktar. Cari ve stok aynı akışı kullanır. *@
+@using Microsoft.AspNetCore.Components.Forms
+@using OnMuhasebe.Shared.Contracts.TopluAktarim
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        <MudText Typo="Typo.body2" Class="mb-3">@Aciklama</MudText>
+        <div class="d-flex align-center gap-3 flex-wrap mb-3">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" OnClick="SablonIndirAsync">Şablonu indir</MudButton>
+            <InputFile OnChange="DosyaSecildiAsync" accept=".xlsx,.xls" disabled="@_islemde" />
+            <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Açılış tarihi" DateFormat="dd.MM.yyyy" Style="max-width:170px"
+                           Date="_acilisTarihi" DateChanged="AcilisTarihiDegistiAsync" Disabled="_islemde" />
+        </div>
+        @if (_islemde)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+        }
+
+        @if (_sonuc is { } s)
+        {
+            <div class="d-flex gap-2 flex-wrap mb-2">
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">@(s.KaydedildiMi ? "Eklendi" : "Eklenecek"): @s.Eklenecek</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">Zaten var: @s.Mukerrer</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">Hatalı: @s.Hatali</MudChip>
+            </div>
+            @if (s.TaninmayanSutunlar.Count > 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Bu sütunlar tanınmadı ve alınmayacak: @string.Join(", ", s.TaninmayanSutunlar)</MudAlert>
+            }
+
+            @if (s.Hatali > 0 && !s.KaydedildiMi)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">Hatalı satırlar aktarılmaz. Dosyayı düzeltip yeniden yükleyebilir ya da hatasız satırları şimdi aktarabilirsiniz; aynı dosya sonra yeniden yüklenince aktarılanlar tekrar eklenmez.</MudAlert>
+            }
+
+            <div style="max-height:42vh; overflow:auto">
+                <MudSimpleTable Dense="true" Elevation="0" Class="toplu-aktarim-satirlari">
+                    <thead>
+                        <tr><th>Satır</th><th>Kod</th><th>Ad</th><th class="sayi">@AcilisBasligi</th><th>Durum</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var satir in s.Satirlar)
+                        {
+                            <tr>
+                                <td>@satir.SatirNo</td>
+                                <td>@satir.Kod</td>
+                                <td>@satir.Ad</td>
+                                <td class="sayi">@(satir.Acilis is { } a ? AcilisBicimi(a) : "")</td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@Renk(satir.Durum)">@DurumAdi(satir.Durum)</MudChip>
+                                    @if (satir.Mesajlar.Count > 0)
+                                    {
+                                        <div class="rol-karti-yetki">@string.Join(" ", satir.Mesajlar)</div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </div>
+            @if (s.Toplam > s.Satirlar.Count)
+            {
+                <MudText Typo="Typo.caption" Class="mt-1">Dosyada @s.Toplam satır var; ilk @s.Satirlar.Count satır gösteriliyor (önce hatalılar).</MudText>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Close(DialogResult.Ok(_eklendi))">Kapat</MudButton>
+        @if (_sonuc is { KaydedildiMi: false, Eklenecek: > 0 } hazir)
+        {
+            <IslemDugmesi StartIcon="@Icons.Material.Filled.UploadFile" Disabled="_islemde" Islem="AktarAsync">@hazir.Eklenecek kaydı aktar</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    // Ör. api/cari/aktarim; altında /sablon, /onizleme ve kök (kayıt) uçları vardır.
+    [Parameter, EditorRequired] public string ApiYolu { get; set; } = "";
+    [Parameter, EditorRequired] public string SablonAdi { get; set; } = "";
+    [Parameter] public string Aciklama { get; set; } = "";
+    [Parameter] public string AcilisBasligi { get; set; } = "Açılış";
+    [Parameter] public Func<decimal, string> AcilisBicimi { get; set; } = Bicim.Tutar;
+
+    private const long AzamiDosyaBoyutu = 5 * 1024 * 1024;
+
+    private byte[]? _icerik;
+    private string _dosyaAdi = "";
+    private DateTime? _acilisTarihi = new DateTime(DateTime.Today.Year, 1, 1);
+    private TopluAktarimSonucu? _sonuc;
+    private ApiHatasi? _hata;
+    private bool _islemde;
+    private bool _eklendi;
+
+    private string Sorgu => _acilisTarihi is { } t ? $"?acilisTarihi={Bicim.Iso(DateOnly.FromDateTime(t))}" : "";
+
+    private async Task SablonIndirAsync()
+    {
+        var sonuc = await Api.DosyaGetirAsync($"{ApiYolu}/sablon");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            await Js.InvokeVoidAsync("omDosya.indir", SablonAdi, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", sonuc.Deger);
+        }
+    }
+
+    private async Task DosyaSecildiAsync(InputFileChangeEventArgs e)
+    {
+        _sonuc = null;
+        _icerik = null;
+        if (e.File.Size > AzamiDosyaBoyutu)
+        {
+            Snackbar.Add("Dosya en fazla 5 MB olabilir.", Severity.Error);
+            return;
+        }
+
+        _islemde = true;
+        try
+        {
+            using var bellek = new MemoryStream();
+            await using var akis = e.File.OpenReadStream(AzamiDosyaBoyutu);
+            await akis.CopyToAsync(bellek);
+            _icerik = bellek.ToArray();
+            _dosyaAdi = e.File.Name;
+            await GonderAsync($"{ApiYolu}/onizleme{Sorgu}");
+        }
+        catch (IOException)
+        {
+            Snackbar.Add("Dosya okunamadı.", Severity.Error);
+        }
+        finally
+        {
+            _islemde = false;
+        }
+    }
+
+    // Tarih seçimi "açılış tarihi gerekli" hatasını etkiler; önizleme yenilenir.
+    private async Task AcilisTarihiDegistiAsync(DateTime? tarih)
+    {
+        _acilisTarihi = tarih;
+        if (_icerik is not null && _sonuc is { KaydedildiMi: false })
+        {
+            _islemde = true;
+            await GonderAsync($"{ApiYolu}/onizleme{Sorgu}");
+            _islemde = false;
+        }
+    }
+
+    private async Task AktarAsync()
+    {
+        _islemde = true;
+        await GonderAsync($"{ApiYolu}{Sorgu}");
+        _islemde = false;
+        if (_sonuc is { KaydedildiMi: true } s)
+        {
+            _eklendi = true;
+            Snackbar.Add($"{s.Eklenecek} kayıt aktarıldı.", Severity.Success);
+        }
+    }
+
+    private async Task GonderAsync(string adres)
+    {
+        using var akis = new MemoryStream(_icerik!);
+        var sonuc = await Api.DosyaYukleAsync<TopluAktarimSonucu>(adres, "dosya", akis, _dosyaAdi);
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private static string DurumAdi(AktarimSatirDurumu durum) => durum switch
+    {
+        AktarimSatirDurumu.Mukerrer => "Zaten var",
+        AktarimSatirDurumu.Hatali => "Hatalı",
+        _ => "Tamam"
+    };
+
+    private static Color Renk(AktarimSatirDurumu durum) => durum switch
+    {
+        AktarimSatirDurumu.Mukerrer => Color.Default,
+        AktarimSatirDurumu.Hatali => Color.Error,
+        _ => Color.Success
+    };
+}

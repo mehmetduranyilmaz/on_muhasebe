@@ -28,6 +28,10 @@ public static partial class KodUretici
         return $"{onek}{(enBuyuk ?? 0) + 1:D5}";
     }
 
+    // Toplu kayıtta sıradaki kod: SonrakiAsync'in verdiği koddan sayarak devam edilir.
+    public static string Artir(string kod, string onek) =>
+        $"{onek}{int.Parse(kod[onek.Length..], System.Globalization.CultureInfo.InvariantCulture) + 1:D5}";
+
     [GeneratedRegex("^[a-z_]+\\.[a-z_]+$")]
     private static partial Regex TabloDeseni();
 

@@ -29,6 +29,7 @@ public sealed class StokModulu : IModul
         services.AddModulDbContext<StokDbContext>(configuration);
         services.AddValidatorsFromAssemblyContaining<StokModulu>(includeInternalTypes: true);
         services.AddScoped<StokKodUretici>();
+        services.AddScoped<StokAktarimServisi>();
         services.AddScoped<DepoServisi>();
         services.AddScoped<StokAyarServisi>();
         services.AddScoped<StokHesaplayici>();
@@ -44,6 +45,7 @@ public sealed class StokModulu : IModul
 
         grup.MapDegisiklikGecmisi<StokDbContext>();
         StokKartiIslemleri.Map(grup);
+        StokAktarimIslemleri.Map(grup);
         StokHareketIslemleri.Map(grup);
         StokTanimIslemleri.Map(grup);
         StokRaporlari.Map(grup);

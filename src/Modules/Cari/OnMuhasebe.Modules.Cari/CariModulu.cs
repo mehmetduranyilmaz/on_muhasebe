@@ -30,6 +30,7 @@ public sealed class CariModulu : IModul
         services.AddModulDbContext<CariDbContext>(configuration);
         services.AddValidatorsFromAssemblyContaining<CariModulu>(includeInternalTypes: true);
         services.AddScoped<CariKodUretici>();
+        services.AddScoped<CariAktarimServisi>();
         services.AddScoped<CariKapamaServisi>();
         services.AddScoped<ICariSorgusu, CariSorgusu>();
         services.AddScoped<IBildirimKaynagi, RiskBildirimKaynagi>();
@@ -42,6 +43,7 @@ public sealed class CariModulu : IModul
 
         grup.MapDegisiklikGecmisi<CariDbContext>();
         CariHesapIslemleri.Map(grup);
+        CariAktarimIslemleri.Map(grup);
         CariHareketIslemleri.Map(grup);
         CariRaporlari.Map(grup);
         CariGrubuIslemleri.Map(grup);

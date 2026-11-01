@@ -5,18 +5,20 @@ namespace OnMuhasebe.Modules.KasaBanka.Domain.Ekstre;
 internal static class EkstreSinirlari
 {
     public const int AzamiSatir = 5_000;
-    public const int AzamiSutun = 100;
-    public const int AzamiZipGirdisi = 200;
-    public const long AzamiAcikBoyut = 50L * 1024 * 1024;
+    public const int AzamiSutun = OnMuhasebe.Shared.Infrastructure.Excel.ExcelDosyasi.AzamiSutun;
+    public const int AzamiZipGirdisi = OnMuhasebe.Shared.Infrastructure.Excel.ExcelDosyasi.AzamiZipGirdisi;
+    public const long AzamiAcikBoyut = OnMuhasebe.Shared.Infrastructure.Excel.ExcelDosyasi.AzamiAcikBoyut;
 
     // Tek satır tutarı; üstü hatalı veri sayılır (kasa/banka işlemindeki sınırla aynı).
     public const decimal AzamiTutar = 1_000_000_000_000m;
+
+    public static string SatirAsimMesaji => $"Ekstrede en fazla {AzamiSatir:N0} satır olabilir; dosyayı tarih aralığına göre bölün.";
 
     public static void SatirSayisiniDenetle(int satirSayisi)
     {
         if (satirSayisi > AzamiSatir)
         {
-            throw new EkstreSiniriAsildiException($"Ekstrede en fazla {AzamiSatir:N0} satır olabilir; dosyayı tarih aralığına göre bölün.");
+            throw new EkstreSiniriAsildiException(SatirAsimMesaji);
         }
     }
 }

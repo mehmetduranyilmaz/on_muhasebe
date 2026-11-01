@@ -11,6 +11,7 @@
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Label" OnClick="GruplariAcAsync">Gruplar</MudButton>
         @if (Oturum.YazabilirMi(CariYetkileri.Hesap, YetkiIslemleri.Ekle))
         {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile" OnClick="ExcelAktarAsync">Excel'den Aktar</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="cari/yeni">Yeni Cari</MudButton>
         }
     </Islemler>
@@ -165,5 +166,23 @@
         await dialog.Result;
         await GruplariYukleAsync();
         await YukleAsync();
+    }
+
+    private async Task ExcelAktarAsync()
+    {
+        var parametreler = new DialogParameters<TopluAktarimDialog>
+        {
+            { x => x.ApiYolu, "api/cari/aktarim" },
+            { x => x.SablonAdi, "cari_sablonu.xlsx" },
+            { x => x.Aciklama, "Eski programınızdan aldığınız cari listesini yükleyin. Borç ve alacak bakiyeleri seçtiğiniz açılış tarihiyle işlenir. Kod, vergi no ya da ünvanı aynı olan cari atlanır." },
+            { x => x.AcilisBasligi, "Açılış bakiyesi" },
+            { x => x.AcilisBicimi, a => a > 0 ? $"{Bicim.Tutar(a)} B" : $"{Bicim.Tutar(-a)} A" }
+        };
+        var dialog = await DialogService.ShowAsync<TopluAktarimDialog>("Excel'den Aktar", parametreler, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var sonuc = await dialog.Result;
+        if (sonuc is { Canceled: false, Data: true })
+        {
+            await YukleAsync();
+        }
     }
 }

@@ -18,7 +18,7 @@ public class MuhasebeFisTestleri
 
     private static KodCozucu Kodlar(Dictionary<(KartTuru, Guid), string>? ozel = null) => new(
         new HesapPlani(new Dictionary<HesapRolu, string>(), ".", "01"), ozel ?? [],
-        [new(Musteri, "C00001", "Alıcı AŞ", "Musteri"), new(Tedarikci, "C00002", "Satıcı Ltd", "Tedarikci"), new(IkisiBirden, "C00003", "Karma", "HerIkisi")],
+        [new(Musteri, "C00001", "Alıcı AŞ", "Musteri"), new(Tedarikci, "C00002", "Satıcı Ltd", "Tedarikci"), new(IkisiBirden, "C00003", "Karma", "MusteriVeTedarikci")],
         [new(Kasa, "K001", "Merkez Kasa", "Kasa"), new(Banka, "B001", "Ziraat TL", "Banka"), new(DolarBanka, "B002", "Ziraat USD", "Banka")],
         [new(Kira, "", "Kira", "Gider"), new(KrediGideri, "", "Kredi faiz ve masrafları", "Finansman")]);
 
