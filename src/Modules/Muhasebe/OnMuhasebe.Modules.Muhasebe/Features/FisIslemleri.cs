@@ -52,6 +52,17 @@ internal static class FisIslemleri
         if (kasaVarMi)
         {
             fisler.AddRange(FisUretici.KasaBanka(await kasaSorgusu.MuhasebeHareketleriAsync(baslangic, bitis, isyeriId, ct), kodlar, uyarilar));
+
+            // Çek/senet portföyü ve tahakkuklar işyerine bağlı değildir; işyeri seçiliyse fişe girmez.
+            if (isyeriId is null)
+            {
+                fisler.AddRange(FisUretici.CekSenet(await kasaSorgusu.MuhasebeEvrakHareketleriAsync(baslangic, bitis, ct), kodlar));
+                fisler.AddRange(FisUretici.Tahakkuk(await kasaSorgusu.MuhasebeTahakkuklariAsync(baslangic, bitis, ct), kodlar));
+            }
+            else
+            {
+                uyarilar.Add("İşyeri seçildiği için çek/senet portföy kayıtları ve tahakkuklar (firma geneli) fişlere dahil edilmedi.");
+            }
         }
 
         uyarilar.AddRange(fisler.Where(f => !f.DengeliMi)

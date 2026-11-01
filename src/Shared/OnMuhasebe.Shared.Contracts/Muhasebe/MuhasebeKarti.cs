@@ -18,3 +18,14 @@ public sealed record MuhasebeKasaHareketi(
     Guid Id, Guid IslemId, DateOnly Tarih, string Tur, Guid HesapId, decimal GirisTl, decimal CikisTl,
     Guid? CariHesapId, Guid? KategoriId, string? KarsiRol, string? BelgeNo, string? Aciklama, Guid? IsyeriId,
     decimal GiderTl = 0, Guid? GiderKategoriId = null);
+
+// Kasayı etkilemeyen çek/senet hareketi: portföye giriş/çıkış, ciro, iade, karşılıksız. Islem: EvrakIslemi adı; EvrakTuru Cek/Senet.
+// CariHesapId evrakın carisi (alınanda müşteri, verilende tedarikçi); CiroCariId ciro işlemlerinde ciro edilen cari.
+// TutarTl evrakın giriş kuruyla hesaplanır (portföy değeri). BordroId aynı bordrodaki evrakları tek fişte toplar.
+public sealed record MuhasebeEvrakHareketi(
+    Guid Id, Guid BordroId, string BordroNo, DateOnly Tarih, string Islem, string EvrakTuru, string EvrakNo, DateOnly Vade,
+    decimal TutarTl, Guid CariHesapId, Guid? CiroCariId, string? Aciklama);
+
+// Kasayı etkilemeyen (tahakkuk eden) gelir/gider. Tur: Gelir/Gider.
+public sealed record MuhasebeTahakkuk(
+    Guid IslemId, DateOnly Tarih, string Tur, Guid KategoriId, decimal TutarTl, Guid? CariHesapId, string? BelgeNo, string? Aciklama);

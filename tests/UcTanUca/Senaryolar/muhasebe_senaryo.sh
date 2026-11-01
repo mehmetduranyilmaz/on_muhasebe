@@ -70,14 +70,22 @@ istek GET /api/kasabanka/kategoriler "$T"
 KIRA=$(echo "$GOVDE" | tr -d '\n' | sed 's/},{/}\n{/g' | grep '"ad":"Kira"' | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 istek POST /api/kasabanka/islemler/gelir-gider "$T" '{"tur":"Gider","bicim":"Odendi","kategoriId":"'"$KIRA"'","hesapId":"'"$KASA"'","tarih":"2026-10-17","tutar":300}'
 kontrol 201 "Kasadan kira odendi"
+istek POST /api/kasabanka/cek-senet/giris "$T" '{"cariHesapId":"'"$C1"'","tarih":"2026-10-18","riskOnaylandi":false,"evraklar":[{"tur":"Cek","seriNo":"7001","vadeTarihi":"2026-12-15","tutar":2000,"paraBirimi":"TRY","borclu":{"ad":"Ahmet Yilmaz","kimlikNo":"10000000146"},"bankaAdi":"Ziraat","sube":"Merkez","hesapNo":"555"},{"tur":"Senet","seriNo":"S-9","vadeTarihi":"2026-12-20","tutar":500,"paraBirimi":"TRY","borclu":{"ad":"Ahmet Yilmaz","kimlikNo":"10000000146"}}]}'
+kontrol 201 "Musteriden cek ve senet alindi"
+istek POST /api/kasabanka/islemler/gelir-gider "$T" '{"tur":"Gider","bicim":"Tahakkuk","kategoriId":"'"$KIRA"'","cariHesapId":"'"$C2"'","tarih":"2026-10-20","vadeTarihi":"2026-10-30","tutar":5000,"belgeNo":"KIRA-10"}'
+kontrol 201 "Kira tahakkuk etti (odenmedi)"
 istek GET "$M/fisler?baslangic=2026-10-01&bitis=2026-10-31" "$T"
 kontrol 200 "Satis fisi: cari borc 1200" '"kaynak":"Fatura","belgeTuru":"Satis","tur":"Mahsup".*"hesapKodu":"120\.10\.01\.[0-9]+","hesapAdi":"Musteri Bir","borc":1200(\.0+)?,"alacak":0'
 kontrol 200 "Satis fisi: 600 ve 391 alacak" '"hesapKodu":"600","hesapAdi":"[^"]*","borc":0,"alacak":1000(\.0+)?.*"hesapKodu":"391","hesapAdi":"[^"]*","borc":0,"alacak":200(\.0+)?'
 kontrol 200 "Kasa tahsilati tahsil fisi" '"belgeTuru":"Tahsilat","tur":"Tahsil".*"hesapKodu":"100\.[0-9]+","hesapAdi":"Merkez Kasa","borc":1200'
 kontrol 200 "Odenmis kira tediye fisi, 770 borc" '"belgeTuru":"Gider","tur":"Tediye".*"hesapKodu":"770","hesapAdi":"Kira","borc":300'
+kontrol 200 "Cek/senet bordrosu tek fis: 101 ve 121 borc, musteri alacak" '"kaynak":"CekSenet","belgeTuru":"Giris","tur":"Mahsup","tarih":"2026-10-18","belgeNo":"BR[0-9]+".*"hesapKodu":"101","hesapAdi":"[^"]*","borc":2000(\.0+)?,.*"hesapKodu":"120\.10\.01\.[0-9]+","hesapAdi":"Musteri Bir","borc":0,"alacak":2000(\.0+)?.*"hesapKodu":"121","hesapAdi":"[^"]*","borc":500'
+kontrol 200 "Kira tahakkuku: 770 borc, tedarikci 320 alacak" '"kaynak":"Tahakkuk","belgeTuru":"Gider","tur":"Mahsup","tarih":"2026-10-20","belgeNo":"KIRA-10".*"hesapKodu":"770","hesapAdi":"Kira","borc":5000(\.0+)?,"alacak":0.*"hesapKodu":"320\.01\.[0-9]+","hesapAdi":"Tedarikci Bir","borc":0,"alacak":5000'
 kontrol 200 "Fisler dengeli, uyari yok" '"uyarilar":\[\]'
 if echo "$GOVDE" | grep -q '"dengeliMi":false'; then KOD=dengesiz; fi
 kontrol 200 "Dengesiz fis yok"
+istek GET "$M/fisler?baslangic=2026-10-01&bitis=2026-10-31&isyeriId=$KASA" "$T"
+kontrol 200 "Isyeri secilince firma geneli kayitlar dahil edilmez, uyari verilir" '"uyarilar":\["[^"]*dahil edilmedi'
 istek GET "$M/fisler?baslangic=2026-10-31&bitis=2026-10-01" "$T"
 kontrol 400 "Ters donem reddedilir" donem
 istek GET "$M/fisler?baslangic=2026-01-01&bitis=2027-03-01" "$T"

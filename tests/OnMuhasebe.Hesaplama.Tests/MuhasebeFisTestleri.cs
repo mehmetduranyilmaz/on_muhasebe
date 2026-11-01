@@ -197,4 +197,73 @@ public class MuhasebeFisTestleri
         Assert.False(fis.DengeliMi);
         Assert.Single(uyarilar);
     }
+
+    private static MuhasebeEvrakHareketi Evrak(Guid bordro, string islem, string tur, decimal tutar, Guid cari, Guid? ciroCari = null) =>
+        new(Guid.NewGuid(), bordro, "BR00001", Tarih, islem, tur, "AC00001/123", Tarih.AddMonths(2), tutar, cari, ciroCari, null);
+
+    [Fact]
+    public void Alinan_cek_portfoye_girer_bordro_tek_fistir()
+    {
+        var bordro = Guid.NewGuid();
+        var fis = Assert.Single(FisUretici.CekSenet(
+            [Evrak(bordro, "Giris", "Cek", 1000, Musteri), Evrak(bordro, "Giris", "Senet", 500, Musteri)], Kodlar()));
+
+        Assert.True(fis.DengeliMi);
+        Assert.Equal("BR00001", fis.BelgeNo);
+        Assert.Equal((1000m, 0m), Satir(fis, "101"));
+        Assert.Equal((500m, 0m), Satir(fis, "121"));
+        Assert.Equal((0m, 1500m), Satir(fis, "120.01.00001"));
+    }
+
+    [Fact]
+    public void Ciro_tedarikciyi_borclandirir_karsiliksizda_musteriye_doner()
+    {
+        var ciro = Assert.Single(FisUretici.CekSenet([Evrak(Guid.NewGuid(), "Ciro", "Cek", 1000, Musteri, Tedarikci)], Kodlar()));
+        Assert.Equal((1000m, 0m), Satir(ciro, "320.01.00002"));
+        Assert.Equal((0m, 1000m), Satir(ciro, "101"));
+
+        var karsiliksiz = Assert.Single(FisUretici.CekSenet([Evrak(Guid.NewGuid(), "CirodanKarsiliksiz", "Cek", 1000, Musteri, Tedarikci)], Kodlar()));
+        Assert.Equal((1000m, 0m), Satir(karsiliksiz, "120.01.00001"));
+        Assert.Equal((0m, 1000m), Satir(karsiliksiz, "320.01.00002"));
+    }
+
+    [Fact]
+    public void Verilen_cek_103e_iadesi_ters_kayit()
+    {
+        var cikis = Assert.Single(FisUretici.CekSenet([Evrak(Guid.NewGuid(), "Cikis", "Cek", 700, Tedarikci)], Kodlar()));
+        Assert.Equal((700m, 0m), Satir(cikis, "320.01.00002"));
+        Assert.Equal((0m, 700m), Satir(cikis, "103"));
+
+        var iade = Assert.Single(FisUretici.CekSenet([Evrak(Guid.NewGuid(), "VerilenIade", "Senet", 700, Tedarikci)], Kodlar()));
+        Assert.Equal((700m, 0m), Satir(iade, "321"));
+        Assert.Equal((0m, 700m), Satir(iade, "320.01.00002"));
+    }
+
+    [Fact]
+    public void Karsiliksiz_cek_portfoyden_musteriye()
+    {
+        var fis = Assert.Single(FisUretici.CekSenet([Evrak(Guid.NewGuid(), "Karsiliksiz", "Cek", 900, Musteri)], Kodlar()));
+
+        Assert.Equal((900m, 0m), Satir(fis, "120.01.00001"));
+        Assert.Equal((0m, 900m), Satir(fis, "101"));
+    }
+
+    [Fact]
+    public void Gider_tahakkuku_kategori_borc_cari_alacak()
+    {
+        var fis = Assert.Single(FisUretici.Tahakkuk([new(Guid.NewGuid(), Tarih, "Gider", Kira, 5000, IkisiBirden, "KIRA-10", null)], Kodlar()));
+
+        Assert.True(fis.DengeliMi);
+        Assert.Equal((5000m, 0m), Satir(fis, "770"));
+        Assert.Equal((0m, 5000m), Satir(fis, "320.01.00003"));
+    }
+
+    [Fact]
+    public void Gelir_tahakkuku_cari_borc_gelir_alacak()
+    {
+        var fis = Assert.Single(FisUretici.Tahakkuk([new(Guid.NewGuid(), Tarih, "Gelir", Guid.NewGuid(), 2000, IkisiBirden, null, null)], Kodlar()));
+
+        Assert.Equal((2000m, 0m), Satir(fis, "120.01.00003"));
+        Assert.Equal((0m, 2000m), Satir(fis, "649"));
+    }
 }

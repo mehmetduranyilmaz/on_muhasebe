@@ -169,6 +169,74 @@ internal static class FisUretici
         }
     }
 
+    // Kasayı etkilemeyen çek/senet kayıtları; bordro başına tek fiş. Alınan evrak 101/121'de, verilen 103/321'de izlenir.
+    // Karşılıksız evrakın tutarı müşteriye geri yazılır (programdaki cari bakiyesiyle aynı); sonraki tahsilat cariyi kapatır.
+    public static IReadOnlyList<MuhasebeFisi> CekSenet(IEnumerable<MuhasebeEvrakHareketi> hareketler, KodCozucu kodlar) =>
+        hareketler.GroupBy(h => h.BordroId).Select(bordro =>
+        {
+            var ilk = bordro.First();
+            var kalemler = new List<Kalem>();
+            foreach (var h in bordro)
+            {
+                var senetMi = h.EvrakTuru == "Senet";
+                var alinan = kodlar.Rol(senetMi ? HesapRolu.AlacakSenetleri : HesapRolu.AlinanCekler);
+                var verilen = kodlar.Rol(senetMi ? HesapRolu.BorcSenetleri : HesapRolu.VerilenCekler);
+                var musteri = kodlar.Cari(h.CariHesapId, tedarikciYonu: false);
+                var tedarikci = kodlar.Cari(h.CariHesapId, tedarikciYonu: true);
+                var ciroCari = kodlar.Cari(h.CiroCariId, tedarikciYonu: true);
+                var (borc, alacak) = h.Islem switch
+                {
+                    "Giris" => (alinan, musteri),
+                    "Cikis" => (tedarikci, verilen),
+                    "Ciro" => (ciroCari, alinan),
+                    "CirodanGeriAlma" => (alinan, ciroCari),
+                    "CirodanKarsiliksiz" => (musteri, ciroCari),
+                    "Karsiliksiz" or "Iade" => (musteri, alinan),
+                    _ => (verilen, tedarikci)
+                };
+                var aciklama = $"{h.EvrakNo} vade {h.Vade:dd.MM.yyyy} - {EvrakIslemAdi(h.Islem)}";
+                kalemler.Add(new(borc, h.TutarTl, aciklama));
+                kalemler.Add(new(alacak, -h.TutarTl, aciklama));
+            }
+
+            var fisAciklamasi = $"Çek/senet bordrosu {ilk.BordroNo}: {EvrakIslemAdi(ilk.Islem)}";
+            return new MuhasebeFisi(bordro.Key, "CekSenet", ilk.Islem, FisTuru.Mahsup, ilk.Tarih, ilk.BordroNo, fisAciklamasi, null,
+                Satirlar(kalemler, fisAciklamasi));
+        }).ToList();
+
+    // Ödenmemiş gider: B gider kategorisi / A cari; tahakkuk eden gelir: B cari / A gelir kategorisi. Ödeme sonra kasa fişiyle kapanır.
+    public static IReadOnlyList<MuhasebeFisi> Tahakkuk(IEnumerable<MuhasebeTahakkuk> kayitlar, KodCozucu kodlar) =>
+        kayitlar.GroupBy(t => t.IslemId).Select(islem =>
+        {
+            var ilk = islem.First();
+            var kalemler = new List<Kalem>();
+            foreach (var t in islem)
+            {
+                var gelirMi = t.Tur == "Gelir";
+                var kategori = kodlar.Kategori(t.KategoriId, gelirMi ? HesapRolu.DigerGelirler : HesapRolu.GenelYonetimGiderleri);
+                var cari = kodlar.Cari(t.CariHesapId, tedarikciYonu: !gelirMi);
+                var tutar = gelirMi ? -t.TutarTl : t.TutarTl;
+                kalemler.Add(new(kategori, tutar, t.Aciklama));
+                kalemler.Add(new(cari, -tutar, t.Aciklama));
+            }
+
+            var aciklama = ilk.Aciklama ?? (ilk.Tur == "Gelir" ? "Gelir tahakkuku" : "Gider tahakkuku");
+            return new MuhasebeFisi(islem.Key, "Tahakkuk", ilk.Tur, FisTuru.Mahsup, ilk.Tarih, ilk.BelgeNo, aciklama, null, Satirlar(kalemler, aciklama));
+        }).ToList();
+
+    private static string EvrakIslemAdi(string islem) => islem switch
+    {
+        "Giris" => "portföye giriş",
+        "Cikis" => "tedarikçiye verildi",
+        "Ciro" => "ciro edildi",
+        "CirodanGeriAlma" => "cirodan geri alındı",
+        "CirodanKarsiliksiz" => "ciro edilen evrak karşılıksız",
+        "Karsiliksiz" => "karşılıksız",
+        "Iade" => "müşteriye iade",
+        "VerilenIade" => "verilen evrak iade alındı",
+        _ => "verilen evrak karşılıksız"
+    };
+
     private static IReadOnlyList<FisSatiri> Satirlar(IEnumerable<Kalem> kalemler, string aciklama) => kalemler
         .Where(k => k.Tutar != 0)
         .Select(k => new FisSatiri(k.Hesap.Kod, k.Hesap.Ad, k.Tutar > 0 ? k.Tutar : 0, k.Tutar < 0 ? -k.Tutar : 0, k.Aciklama ?? aciklama))

@@ -18,6 +18,11 @@ public interface IKasaBankaSorgusu
     Task<IReadOnlyList<MuhasebeKasaHareketi>> MuhasebeHareketleriAsync(
         DateOnly baslangic, DateOnly bitis, Guid? isyeriId, CancellationToken cancellationToken = default);
 
+    // Çek/senet ve tahakkuk kayıtları işyerine bağlı değildir: firma geneli döner.
+    Task<IReadOnlyList<MuhasebeEvrakHareketi>> MuhasebeEvrakHareketleriAsync(DateOnly baslangic, DateOnly bitis, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MuhasebeTahakkuk>> MuhasebeTahakkuklariAsync(DateOnly baslangic, DateOnly bitis, CancellationToken cancellationToken = default);
+
     Task<KasaHesapBilgisi?> HesapGetirAsync(Guid hesapId, CancellationToken cancellationToken = default);
 
     // Belgeye atanacak masraf merkezi firmanın aktif merkezi olmalıdır.
