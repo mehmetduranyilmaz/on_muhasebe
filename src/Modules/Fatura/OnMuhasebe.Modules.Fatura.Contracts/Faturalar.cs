@@ -252,4 +252,7 @@ public interface IFaturaMuhasebeSorgusu
 {
     Task<IReadOnlyList<OnMuhasebe.Shared.Contracts.Muhasebe.MuhasebeFaturasi>> OnayliAsync(
         DateOnly baslangic, DateOnly bitis, Guid? isyeriId, CancellationToken cancellationToken = default);
+
+    // Araç masrafı gibi takip kayıtlarının bağlandığı faturanın varlığı.
+    Task<bool> VarMiAsync(Guid faturaId, CancellationToken cancellationToken = default);
 }

@@ -1,5 +1,6 @@
 using OnMuhasebe.Modules.EvrakTakip.Contracts;
 using OnMuhasebe.Modules.EvrakTakip.Domain;
+using OnMuhasebe.Shared.Contracts.Bildirimler;
 
 namespace OnMuhasebe.Hesaplama.Tests;
 
@@ -32,11 +33,11 @@ public class EvrakTakipTestleri
     [InlineData(-30, "doldu")]
     [InlineData(-31, null)]
     public void Hatirlatma_asamasi(int kalan, string? beklenen) =>
-        Assert.Equal(beklenen, TakipHatirlatma.Asama(Bugun.AddDays(kalan), 30, Bugun));
+        Assert.Equal(beklenen, SureliHatirlatma.Asama(Bugun.AddDays(kalan), 30, Bugun));
 
     [Fact]
     public void Kisa_hatirlatmada_son_uyari_gunu_gecerlidir() =>
-        Assert.Equal("son", TakipHatirlatma.Asama(Bugun.AddDays(3), 5, Bugun));
+        Assert.Equal("son", SureliHatirlatma.Asama(Bugun.AddDays(3), 5, Bugun));
 
     [Fact]
     public void Bitis_baslangictan_once_olamaz() =>

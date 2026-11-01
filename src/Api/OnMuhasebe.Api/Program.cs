@@ -2,6 +2,7 @@ using OnMuhasebe.Modules.Bildirim;
 using OnMuhasebe.Modules.Cari;
 using OnMuhasebe.Modules.Doviz;
 using OnMuhasebe.Modules.Fatura;
+using OnMuhasebe.Modules.Arac;
 using OnMuhasebe.Modules.Dosya;
 using OnMuhasebe.Modules.EvrakTakip;
 using OnMuhasebe.Modules.Muhasebe;
@@ -41,7 +42,8 @@ builder.Services.AddModuller(builder.Configuration,
     new BildirimModulu(),
     new MuhasebeModulu(),
     new DosyaModulu(),
-    new EvrakTakipModulu());
+    new EvrakTakipModulu(),
+    new AracModulu());
 
 var app = builder.Build();
 

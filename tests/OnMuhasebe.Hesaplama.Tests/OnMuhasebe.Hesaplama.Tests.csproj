@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Modules\Bildirim\OnMuhasebe.Modules.Bildirim\OnMuhasebe.Modules.Bildirim.csproj" />
     <ProjectReference Include="..\..\src\Modules\Muhasebe\OnMuhasebe.Modules.Muhasebe\OnMuhasebe.Modules.Muhasebe.csproj" />
     <ProjectReference Include="..\..\src\Modules\Dosya\OnMuhasebe.Modules.Dosya\OnMuhasebe.Modules.Dosya.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Arac\OnMuhasebe.Modules.Arac\OnMuhasebe.Modules.Arac.csproj" />
     <ProjectReference Include="..\..\src\Modules\EvrakTakip\OnMuhasebe.Modules.EvrakTakip\OnMuhasebe.Modules.EvrakTakip.csproj" />
   </ItemGroup>
 

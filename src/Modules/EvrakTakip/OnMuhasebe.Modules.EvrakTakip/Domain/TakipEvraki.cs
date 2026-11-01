@@ -117,25 +117,3 @@ internal sealed class TakipEvrakiYenilemesi : FirmaEntity
         Yapan = yapan
     };
 }
-
-// Hatırlatma aşamaları: her aşama bir bitiş tarihi için bir kez bildirilir; evrak yenilenince anahtar değişir ve döngü yeniden başlar.
-internal static class TakipHatirlatma
-{
-    public const int SonUyariGunu = 7;
-
-    // Uzun süredir dolmuş evrak ilk çalışmada bildirim yağmuru yapmasın.
-    public const int GecikmeGunu = 30;
-
-    public static string? Asama(DateOnly bitis, int hatirlatmaGun, DateOnly bugun)
-    {
-        var kalan = bitis.DayNumber - bugun.DayNumber;
-        return kalan switch
-        {
-            < -GecikmeGunu => null,
-            < 0 => "doldu",
-            _ when kalan <= SonUyariGunu => "son",
-            _ when kalan <= hatirlatmaGun => "yaklasiyor",
-            _ => null
-        };
-    }
-}

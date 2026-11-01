@@ -16,4 +16,7 @@ internal sealed class FaturaMuhasebeSorgusu(FaturaDbContext db) : IFaturaMuhaseb
                 f.Satirlar.Where(s => s.StokluMu).Sum(s => s.Matrah), f.Satirlar.Where(s => !s.StokluMu).Sum(s => s.Matrah),
                 f.KdvToplami, f.TevkifEdilenKdvToplami, f.StopajTutari, f.IsyeriId, f.Aciklama))
             .ToListAsync(cancellationToken);
+
+    public Task<bool> VarMiAsync(Guid faturaId, CancellationToken cancellationToken = default) =>
+        db.Faturalar.AnyAsync(f => f.Id == faturaId, cancellationToken);
 }

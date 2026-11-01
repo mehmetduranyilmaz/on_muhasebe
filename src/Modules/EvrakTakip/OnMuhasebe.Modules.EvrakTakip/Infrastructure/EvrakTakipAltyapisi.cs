@@ -56,7 +56,7 @@ internal sealed class EvrakTakipBildirimKaynagi(EvrakTakipDbContext db) : IBildi
 
     public async Task<IReadOnlyList<BildirimAdayi>> AdaylarAsync(BildirimBaglami baglam, CancellationToken cancellationToken)
     {
-        var bas = baglam.Bugun.AddDays(-TakipHatirlatma.GecikmeGunu);
+        var bas = baglam.Bugun.AddDays(-SureliHatirlatma.GecikmeGunu);
         var evraklar = await db.TakipEvraklari.AsNoTracking()
             .Where(e => e.AktifMi && e.BitisTarihi >= bas && e.BitisTarihi <= baglam.Bugun.AddDays(e.HatirlatmaGun))
             .Select(e => new { e.Id, e.Ad, e.Tur, e.BelgeNo, e.BitisTarihi, e.HatirlatmaGun, e.SorumluKullaniciId })
@@ -65,19 +65,19 @@ internal sealed class EvrakTakipBildirimKaynagi(EvrakTakipDbContext db) : IBildi
         var adaylar = new List<BildirimAdayi>();
         foreach (var e in evraklar)
         {
-            if (TakipHatirlatma.Asama(e.BitisTarihi, e.HatirlatmaGun, baglam.Bugun) is not { } asama)
+            if (SureliHatirlatma.Asama(e.BitisTarihi, e.HatirlatmaGun, baglam.Bugun) is not { } asama)
             {
                 continue;
             }
 
             var kalan = e.BitisTarihi.DayNumber - baglam.Bugun.DayNumber;
             var bitis = e.BitisTarihi.ToString("dd.MM.yyyy", _tr);
-            var doldu = asama == "doldu";
+            var doldu = asama == SureliHatirlatma.Doldu;
             var baslik = doldu ? $"Süresi doldu: {e.Ad}" : $"{kalan} gün kaldı: {e.Ad}";
             var metin = string.Join(" · ", new[] { TakipEvrakTurleri.Ad(e.Tur), e.BelgeNo, doldu ? $"{bitis} tarihinde bitti" : $"bitiş {bitis}" }.Where(x => !string.IsNullOrWhiteSpace(x)));
             var anahtar = $"evrak-takip:{e.Id}:{e.BitisTarihi.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}:{asama}";
             adaylar.Add(new BildirimAdayi(BildirimTuru.EvrakSuresi, anahtar, baslik, metin, "evrak-takibi",
-                asama == "yaklasiyor" ? BildirimOnemi.Bilgi : BildirimOnemi.Uyari, e.SorumluKullaniciId));
+                asama == SureliHatirlatma.Yaklasiyor ? BildirimOnemi.Bilgi : BildirimOnemi.Uyari, e.SorumluKullaniciId));
         }
 
         return adaylar;

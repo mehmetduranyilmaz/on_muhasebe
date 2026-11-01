@@ -13,5 +13,8 @@ public static class ModulKodlari
     // Süreli evrak takibi (ruhsat, poliçe, sözleşme). Dosya eki bundan bağımsız, temel lisanstadır.
     public const string EvrakTakip = "evraktakip";
 
-    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip];
+    // Araç kartı, sigorta/muayene/MTV süreleri, yakıt ve masraf takibi.
+    public const string Arac = "arac";
+
+    public static IReadOnlyList<string> Tumu { get; } = [Cari, Stok, Fatura, KasaBanka, Muhasebe, EvrakTakip, Arac];
 }

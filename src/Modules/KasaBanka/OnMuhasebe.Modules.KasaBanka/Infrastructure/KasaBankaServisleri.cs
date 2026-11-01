@@ -142,6 +142,9 @@ internal sealed class KasaBankaSorgusu(KasaBankaDbContext db) : IKasaBankaSorgus
             .Select(h => new KasaHesapBilgisi(h.Id, h.Kod, h.Ad, h.Tur, h.ParaBirimi, h.AktifMi))
             .SingleOrDefaultAsync(cancellationToken);
 
+    public Task<bool> DemirbasVarMiAsync(Guid demirbasId, CancellationToken cancellationToken = default) =>
+        db.Demirbaslar.AnyAsync(d => d.Id == demirbasId, cancellationToken);
+
     public Task<bool> MasrafMerkeziAktifMiAsync(Guid masrafMerkeziId, CancellationToken cancellationToken = default) =>
         db.MasrafMerkezleri.AnyAsync(m => m.Id == masrafMerkeziId && m.AktifMi, cancellationToken);
 }

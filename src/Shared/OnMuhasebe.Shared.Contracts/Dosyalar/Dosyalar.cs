@@ -22,6 +22,8 @@ public static class DosyaKayitTurleri
     public const string Demirbas = "demirbas";
     public const string Teminat = "teminat";
     public const string TakipEvraki = "evrak-takibi";
+    public const string Arac = "arac";
+    public const string AracYukumluluk = "arac-yukumluluk";
 }
 
 public static class DosyaSinirlari

@@ -144,6 +144,11 @@ id["borclu"] = JsonNode.Parse(await a.GetStringAsync("api/kasabanka/cek-senet/bo
 var fisListesi = JsonNode.Parse(await a.GetStringAsync("api/muhasebe/fisler?baslangic=2026-01-01&bitis=2026-12-31"))!;
 id["muhasebeAktarim"] = (await Post(a, "api/muhasebe/aktarimlar", new { baslangic = "2026-01-01", bitis = "2026-12-31", parmak = fisListesi["parmak"]!.GetValue<string>() }))["id"]!.GetValue<string>();
 id["takipEvraki"] = (await Post(a, "api/evrak-takibi", new { ad = "SIZINTI Ruhsat", tur = "Ruhsat", bitisTarihi = "2030-01-01", hatirlatmaGun = 30 }))["id"]!.GetValue<string>();
+id["arac"] = (await Post(a, "api/arac/araclar", new { plaka = "34 SZT 100", marka = "SIZINTI", model = "Model", tur = "Binek", yakit = "Dizel", mulkiyet = "OzMal", durum = "Aktif" }))["id"]!.GetValue<string>();
+id["aracYukumluluk"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/yukumlulukler", new { tur = "Kasko", bitisTarihi = "2030-01-01", hatirlatmaGun = 30, belgeNo = "SIZINTI" }))["id"]!.GetValue<string>();
+id["aracMtv"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/mtv", new { yil = 2026, taksit = 1, tutar = 100 }))["id"]!.GetValue<string>();
+id["aracMasraf"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/masraflar", new { tur = "Yakit", tarih = "2026-10-01", tutar = 100, aciklama = "SIZINTI" }))["id"]!.GetValue<string>();
+id["aracHasar"] = (await Post(a, $"api/arac/araclar/{id["arac"]}/hasarlar", new { tarih = "2026-10-01", kusur = "Belirsiz", aciklama = "SIZINTI", onarimTutari = 100, sigortaOdemesi = 0 }))["id"]!.GetValue<string>();
 id["dosyaTur"] = "cari";
 using (var form = new MultipartFormDataContent { { new ByteArrayContent("%PDF-1.4 SIZINTI"u8.ToArray()), "dosya", "sizinti.pdf" } })
 {
@@ -215,6 +220,12 @@ var eslemeler = new (string Desen, string Param, string Anahtar)[]
     ("/api/muhasebe/eslemeler/", "kartId", "cari"),
     ("/api/muhasebe/aktarimlar/", "id", "muhasebeAktarim"),
     ("/api/evrak-takibi/", "id", "takipEvraki"),
+    ("/api/arac/araclar/", "id", "arac"),
+    ("/api/arac/araclar/", "aracId", "arac"),
+    ("/api/arac/yukumlulukler/", "id", "aracYukumluluk"),
+    ("/api/arac/mtv/", "id", "aracMtv"),
+    ("/api/arac/masraflar/", "id", "aracMasraf"),
+    ("/api/arac/hasarlar/", "id", "aracHasar"),
     ("/api/dosya/kayit/", "tur", "dosyaTur"),
     ("/api/dosya/kayit/", "kayitId", "cari"),
     ("/api/dosya/", "id", "dosya"),

@@ -23,6 +23,8 @@ public interface IKasaBankaSorgusu
 
     Task<IReadOnlyList<MuhasebeTahakkuk>> MuhasebeTahakkuklariAsync(DateOnly baslangic, DateOnly bitis, CancellationToken cancellationToken = default);
 
+    Task<bool> DemirbasVarMiAsync(Guid demirbasId, CancellationToken cancellationToken = default);
+
     Task<KasaHesapBilgisi?> HesapGetirAsync(Guid hesapId, CancellationToken cancellationToken = default);
 
     // Belgeye atanacak masraf merkezi firmanın aktif merkezi olmalıdır.
