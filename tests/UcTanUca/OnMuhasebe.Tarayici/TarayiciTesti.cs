@@ -70,6 +70,8 @@ internal abstract class TarayiciTesti
             _ws = new ClientWebSocket();
             await _ws.ConnectAsync(new Uri(wsAdres), CancellationToken.None);
             await Komut("Log.enable");
+            // Kaynak listesi varsayılan 250 kayıtta durur; modül sayısı arttıkça lazy paketler listeye giremiyordu.
+            await Komut("Page.addScriptToEvaluateOnNewDocument", new { source = "performance.setResourceTimingBufferSize(5000)" });
             await CalistirAsync();
 
             // İçerik güvenlik politikasının (canlıdaki CSP) engellediği bir kaynak ya da script olmamalı.

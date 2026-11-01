@@ -22,7 +22,7 @@ internal sealed class YetkiTesti : TarayiciTesti
         var roller = (await http.GetFromJsonAsync<JsonArray>(Api + "api/yonetim/roller"))!;
         var satisRolu = roller.First(r => r!["ad"]!.GetValue<string>() == "Satış")!["id"]!.GetValue<string>();
         await Post("api/yonetim/kullanicilar", new { eposta = satisci, rolId = satisRolu });
-        (await new HttpClient().PostAsJsonAsync(Api + "api/yonetim/davet-kabul",
+        (await YeniIstemci().PostAsJsonAsync(Api + "api/yonetim/davet-kabul",
             new { kod = await MailpitKoduAsync(satisci, "davet"), ad = "Selin", soyad = "Satis", sifre = "Satis1234" })).EnsureSuccessStatusCode();
         var kart = await Post("api/stok/kartlar", new { ad = "Maliyetli Kalem", tur = "Urun", temelBirim = "ADET", kdvOrani = 20, alisFiyati = 40, satisFiyati = 55, paraBirimi = "TRY" });
 

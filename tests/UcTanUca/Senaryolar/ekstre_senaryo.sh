@@ -6,13 +6,13 @@ DIR="$GECICI/om_tmp_ekstre"; rm -rf "$DIR"; mkdir -p "$DIR"
 GECEN=0; KALAN=0
 
 istek() { # METOT YOL [TOKEN] [GOVDE]
-  local args=(-s -o "$DIR/govde" -w "%{http_code}" -X "$1" "$KOK$2" -H "Content-Type: application/json")
+  local args=("${CURL_EK[@]}" -s -o "$DIR/govde" -w "%{http_code}" -X "$1" "$KOK$2" -H "Content-Type: application/json")
   [ -n "$3" ] && args+=(-H "Authorization: Bearer $3")
   [ -n "$4" ] && args+=(--data-binary "$4")
   KOD=$(curl "${args[@]}"); GOVDE=$(cat "$DIR/govde")
 }
 yukle() { # HESAP DOSYA [TOKEN]
-  KOD=$(curl -s -o "$DIR/govde" -w "%{http_code}" -X POST "$KOK/api/kasabanka/hesaplar/$1/ekstre-aktarimlari" \
+  KOD=$(curl "${CURL_EK[@]}" -s -o "$DIR/govde" -w "%{http_code}" -X POST "$KOK/api/kasabanka/hesaplar/$1/ekstre-aktarimlari" \
     -H "Authorization: Bearer ${3:-$T}" ${2:+-F "dosya=@$DOS/$2"}); GOVDE=$(cat "$DIR/govde")
 }
 alan() { echo "$GOVDE" | grep -o "\"$1\":\"\?[^,\"}]*" | head -1 | sed -E "s/\"$1\":\"?//"; }
