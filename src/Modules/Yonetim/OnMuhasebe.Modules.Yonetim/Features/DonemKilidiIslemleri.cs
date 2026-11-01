@@ -7,6 +7,7 @@ using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Ayarlar;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Validation;
 
@@ -26,7 +27,7 @@ internal static class DonemKilidiIslemleri
         public Dogrulayici(TimeProvider zaman)
         {
             RuleFor(x => x.KilitTarihi)
-                .Must(t => t <= DateOnly.FromDateTime(zaman.GetLocalNow().DateTime))
+                .Must(t => t <= TurkiyeSaati.Bugun(zaman))
                 .When(x => x.KilitTarihi is not null)
                 .WithMessage("Kilit tarihi bugünden ileri olamaz.");
             RuleFor(x => x.Aciklama).MaximumLength(DonemKilidi.AciklamaUzunlugu);

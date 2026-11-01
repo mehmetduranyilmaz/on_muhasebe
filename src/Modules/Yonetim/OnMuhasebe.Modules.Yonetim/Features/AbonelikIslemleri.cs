@@ -7,6 +7,7 @@ using OnMuhasebe.Modules.Yonetim.Contracts;
 using OnMuhasebe.Modules.Yonetim.Domain;
 using OnMuhasebe.Modules.Yonetim.Infrastructure;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -33,7 +34,7 @@ internal static class AbonelikIslemleri
             RuleFor(x => x.AySayisi).Must(a => a is 1 or 12).WithMessage("Süre aylık (1) ya da yıllık (12) olmalıdır.");
             RuleFor(x => x.Tutar).GreaterThan(0);
             RuleFor(x => x.OdemeTarihi)
-                .Must(t => t <= DateOnly.FromDateTime(zaman.GetLocalNow().DateTime).AddDays(1))
+                .Must(t => t <= TurkiyeSaati.Bugun(zaman).AddDays(1))
                 .WithMessage("Ödeme tarihi ileri bir tarih olamaz.");
             RuleFor(x => x.Gonderen).NotEmpty().MaximumLength(OdemeBildirimi.GonderenUzunlugu);
             RuleFor(x => x.Aciklama).MaximumLength(OdemeBildirimi.AciklamaUzunlugu);

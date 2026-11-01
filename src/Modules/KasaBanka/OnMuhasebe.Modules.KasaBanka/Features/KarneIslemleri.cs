@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.KasaBanka.Domain.CekSenet;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure;
 using OnMuhasebe.Modules.KasaBanka.Infrastructure.CekSenet;
 using OnMuhasebe.Shared.Contracts.Kimlik;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Results;
 using OnMuhasebe.Shared.Infrastructure.Validation;
@@ -136,7 +137,7 @@ internal static class KarneIslemleri
             return KasaBankaHatalari.KarneBulunamadi.Problem();
         }
 
-        var sonuc = karne.YapragiIptalEt(istek.SeriNo, istek.Neden, DateOnly.FromDateTime(zaman.GetLocalNow().DateTime),
+        var sonuc = karne.YapragiIptalEt(istek.SeriNo, istek.Neden, TurkiyeSaati.Bugun(zaman),
             await servis.KullanilanSerilerAsync(karne.Id, ct));
         if (!sonuc.BasariliMi)
         {

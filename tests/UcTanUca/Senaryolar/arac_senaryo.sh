@@ -21,7 +21,7 @@ kontrol() {
     echo "KALDI  [$KOD] $2 (beklenen $1 ${3:+ve '$3'}) -> ${GOVDE:0:500}"; KALAN=$((KALAN+1))
   fi
 }
-gun() { date -u -d "$1 days" +%Y-%m-%d; }
+gun() { date -d "$1 days" +%Y-%m-%d; }
 arac() { echo '{"plaka":"'"$1"'","marka":"Ford","model":"Transit","modelYili":2022,"tur":"'"${2:-HafifTicari}"'","yakit":"Dizel","mulkiyet":"OzMal","durum":"Aktif","guncelKm":10000'"${3:+,$3}"'}'; }
 
 U=$(date +%s)

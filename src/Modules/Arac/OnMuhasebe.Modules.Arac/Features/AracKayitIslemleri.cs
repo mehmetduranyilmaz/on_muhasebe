@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.Fatura.Contracts;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -103,7 +104,7 @@ internal static class AracKayitIslemleri
         }
     }
 
-    private static DateOnly Bugun(TimeProvider zaman) => DateOnly.FromDateTime(zaman.GetLocalNow().DateTime);
+    private static DateOnly Bugun(TimeProvider zaman) => TurkiyeSaati.Bugun(zaman);
 
     private static Task<bool> AracVarAsync(AracDbContext db, Guid aracId, CancellationToken ct) => db.Araclar.AnyAsync(a => a.Id == aracId, ct);
 

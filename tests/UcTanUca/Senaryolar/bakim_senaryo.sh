@@ -21,7 +21,7 @@ kontrol() {
     echo "KALDI  [$KOD] $2 (beklenen $1 ${3:+ve '$3'}) -> ${GOVDE:0:500}"; KALAN=$((KALAN+1))
   fi
 }
-gun() { date -u -d "$1 days" +%Y-%m-%d; }
+gun() { date -d "$1 days" +%Y-%m-%d; }
 zaman() { date -u -d "$1" +%Y-%m-%dT%H:%M:%SZ; }
 
 U=$(date +%s)

@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.Yonetim.Contracts;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -58,7 +59,7 @@ internal static class TakipEvrakiIslemleri
         }
     }
 
-    private static DateOnly Bugun(TimeProvider zaman) => DateOnly.FromDateTime(zaman.GetLocalNow().DateTime);
+    private static DateOnly Bugun(TimeProvider zaman) => TurkiyeSaati.Bugun(zaman);
 
     private static async Task<IResult> ListeleAsync(
         EvrakTakipDbContext db, IFirmaRehberi rehber, IMevcutKullanici kullanici, TimeProvider zaman, string? arama, TakipEvrakDurumu? durum, TakipEvrakTuru? tur,

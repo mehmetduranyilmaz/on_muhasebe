@@ -12,6 +12,7 @@ using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
@@ -202,7 +203,7 @@ internal static class IsEmriIslemleri
             }
 
             ekipman!.SayacIlerlet(istek.SayacDegeri);
-            var tarih = DateOnly.FromDateTime(zaman.GetLocalNow().DateTime);
+            var tarih = TurkiyeSaati.Bugun(zaman);
             var bitisTarihi = DateOnly.FromDateTime(emir.BitisZamani!.Value.ToLocalTime());
             if (emir.PlanId is { } planId && await db.Planlar.SingleOrDefaultAsync(p => p.Id == planId, c) is { } plan)
             {

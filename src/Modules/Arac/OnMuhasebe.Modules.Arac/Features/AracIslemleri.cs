@@ -10,6 +10,7 @@ using OnMuhasebe.Modules.KasaBanka.Contracts;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Persistence;
 using OnMuhasebe.Shared.Infrastructure.Results;
@@ -54,7 +55,7 @@ internal static class AracIslemleri
     private static async Task<IResult> ListeleAsync(
         AracDbContext db, TimeProvider zaman, string? arama, AracDurumu? durum, Guid? isyeriId, int? sayfa, int? boyut, CancellationToken ct)
     {
-        var bugun = DateOnly.FromDateTime(zaman.GetLocalNow().DateTime);
+        var bugun = TurkiyeSaati.Bugun(zaman);
         var sorgu = db.Araclar.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(arama))
         {

@@ -15,6 +15,7 @@ using OnMuhasebe.Shared.Contracts.Moduller;
 using OnMuhasebe.Shared.Contracts.Sayfalama;
 using OnMuhasebe.Shared.Contracts.Vergi;
 using OnMuhasebe.Shared.Domain.Results;
+using OnMuhasebe.Shared.Domain;
 using OnMuhasebe.Shared.Infrastructure.Bildirimler;
 using OnMuhasebe.Shared.Infrastructure.Kimlik;
 using OnMuhasebe.Shared.Infrastructure.Lisans;
@@ -304,7 +305,7 @@ internal static class TalepIslemleri
             }
 
             var satirlar = talep.Kalemler.Select(k => new FaturaSatiriIstegi(k.StokKartiId, k.Ad, null, k.Birim, k.Miktar, k.TahminiBirimFiyat, false, k.KdvOrani, 0, 0, 0)).ToList();
-            var acilan = await siparis.TaslakAcAsync(new SatinalmaSiparisiTaslagi(istek.TedarikciId, DateOnly.FromDateTime(zaman.GetLocalNow().DateTime), istek.TerminTarihi ?? talep.GerekliTarih,
+            var acilan = await siparis.TaslakAcAsync(new SatinalmaSiparisiTaslagi(istek.TedarikciId, TurkiyeSaati.Bugun(zaman), istek.TerminTarihi ?? talep.GerekliTarih,
                 talep.IsyeriId, $"Satın alma talebi {talep.Kod}: {talep.Gerekce}", satirlar), c);
             if (!acilan.BasariliMi)
             {

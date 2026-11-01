@@ -21,7 +21,7 @@ kontrol() {
     echo "KALDI  [$KOD] $2 (beklenen $1 ${3:+ve '$3'}) -> ${GOVDE:0:500}"; KALAN=$((KALAN+1))
   fi
 }
-gun() { date -u -d "$1 days" +%Y-%m-%d; }
+gun() { date -d "$1 days" +%Y-%m-%d; }
 
 U=$(date +%s)
 kayit_ol '{"firmaUnvani":"Evrak Test AS","ad":"Ece","soyad":"Yon","eposta":"evraktakip'"$U"'@ornek.com","sifre":"Sifre1234"}'
