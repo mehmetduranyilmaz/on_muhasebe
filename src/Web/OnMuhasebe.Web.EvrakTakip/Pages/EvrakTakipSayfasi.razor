@@ -1,0 +1,149 @@
+@page "/evrak-takibi"
+@inject ApiIstemcisi Api
+@inject IDialogService DialogService
+@inject OturumYoneticisi Oturum
+@inject IsyeriYoneticisi Isyerleri
+
+<SayfaBasligi Baslik="Evrak Takibi" AltBaslik="Ruhsat, poliçe, sözleşme gibi süreli evrakların bitiş tarihleri ve hatırlatmaları" Ikon="@Icons.Material.Filled.EventNote">
+    <Islemler>
+        @if (Oturum.YazabilirMi(EvrakTakipYetkileri.Kayit, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => AcAsync(null))">Yeni Evrak</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+@if (_sayilar is { } s)
+{
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Süresi dolan" Deger="s.SuresiDoldu" Bicimle="@Sayi" Ikon="@Icons.Material.Filled.ErrorOutline" Renk="#DC2626" Sira="0" AltMetin="Hemen yenilenmeli" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Yaklaşan" Deger="s.Yaklasiyor" Bicimle="@Sayi" Ikon="@Icons.Material.Filled.HourglassBottom" Renk="#F59E0B" Sira="1" AltMetin="Hatırlatma süresi içinde" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Geçerli" Deger="s.Gecerli" Bicimle="@Sayi" Ikon="@Icons.Material.Filled.VerifiedUser" Renk="#16A34A" Sira="2" AltMetin="Bitişine zaman var" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Pasif" Deger="s.Pasif" Bicimle="@Sayi" Ikon="@Icons.Material.Filled.Archive" Renk="#64748B" Sira="3" AltMetin="Takibi bırakılan" />
+        </MudItem>
+    </MudGrid>
+}
+
+<div class="d-flex flex-wrap align-center gap-2 mb-3">
+    <div class="tur-sekmeleri mb-0">
+        <button type="button" class="tur-sekmesi @(_durum is null ? "secili" : "")" style="--vurgu:#1E3A5F" @onclick="() => DurumSecAsync(null)">Tüm aktifler</button>
+        <button type="button" class="tur-sekmesi @(_durum == TakipEvrakDurumu.SuresiDoldu ? "secili" : "")" style="--vurgu:#DC2626" @onclick="() => DurumSecAsync(TakipEvrakDurumu.SuresiDoldu)">Süresi dolan</button>
+        <button type="button" class="tur-sekmesi @(_durum == TakipEvrakDurumu.Yaklasiyor ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="() => DurumSecAsync(TakipEvrakDurumu.Yaklasiyor)">Yaklaşan</button>
+        <button type="button" class="tur-sekmesi @(_durum == TakipEvrakDurumu.Pasif ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => DurumSecAsync(TakipEvrakDurumu.Pasif)">Pasif</button>
+    </div>
+    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Placeholder="Ad, belge no ya da kurum" DebounceInterval="400"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:320px" />
+</div>
+
+<VeriTablosu T="TakipEvrakiOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
+             Dense="true" SatirTiklandi="e => AcAsync(e.Id)" BosIkon="@Icons.Material.Outlined.EventNote" BosBaslik="Evrak yok"
+             BosAciklama="Ruhsat, sigorta poliçesi, sözleşme gibi bitiş tarihi olan evraklarınızı ekleyin; süresi dolmadan hatırlatalım.">
+    <Basliklar>
+        <MudTh>Evrak</MudTh>
+        <MudTh>Tür</MudTh>
+        <MudTh>Kurum</MudTh>
+        <MudTh>Bitiş</MudTh>
+        <MudTh>Kalan</MudTh>
+        <MudTh>Sorumlu</MudTh>
+        <MudTh>Durum</MudTh>
+        <MudTh></MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="Evrak">
+            <b>@context.Ad</b>
+            @if (context.BelgeNo is { } no)
+            {
+                <div class="mobil-alt-bilgi">@no</div>
+            }
+        </MudTd>
+        <MudTd DataLabel="Tür">@TakipEvrakTurleri.Ad(context.Tur)</MudTd>
+        <MudTd DataLabel="Kurum">@context.Kurum</MudTd>
+        <MudTd DataLabel="Bitiş">@Bicim.Tarih(context.BitisTarihi)</MudTd>
+        <MudTd DataLabel="Kalan">@(context.KalanGun < 0 ? $"{-context.KalanGun} gün geçti" : context.KalanGun == 0 ? "Bugün" : $"{context.KalanGun} gün")</MudTd>
+        <MudTd DataLabel="Sorumlu">@context.SorumluAdi</MudTd>
+        <MudTd DataLabel="Durum">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@Renk(context.Durum)">@TakipEvrakTurleri.DurumAdi(context.Durum)</MudChip>
+        </MudTd>
+        <MudTd Style="text-align:right" @onclick:stopPropagation="true"><DosyalarDugmesi Tur="@DosyaKayitTurleri.TakipEvraki" KayitId="context.Id" /></MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<TakipEvrakiOzeti>? _sonuc;
+    private TakipEvrakSayilari? _sayilar;
+    private TakipEvrakDurumu? _durum;
+    private string? _arama;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    private static string Sayi(decimal deger) => deger.ToString("N0", Bicim.Kultur);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Isyerleri.YukleAsync();
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var durum = _durum is { } d ? $"&durum={d}" : "";
+        var arama = string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}";
+        var sonuc = await Api.GetAsync<SayfaliSonuc<TakipEvrakiOzeti>>($"api/evrak-takibi?sayfa={_sayfa}{durum}{arama}{Isyerleri.Sorgu()}");
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        var sayilar = await Api.GetAsync<TakipEvrakSayilari>($"api/evrak-takibi/sayilar{Isyerleri.Sorgu('?')}");
+        _sayilar = sayilar.BasariliMi ? sayilar.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task DurumSecAsync(TakipEvrakDurumu? durum)
+    {
+        _durum = durum;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task AraAsync(string? arama)
+    {
+        _arama = arama;
+        _sayfa = 1;
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+
+    private async Task AcAsync(Guid? id)
+    {
+        var parametreler = new DialogParameters<TakipEvrakiDialog> { { d => d.Id, id } };
+        var dialog = await DialogService.ShowAsync<TakipEvrakiDialog>(id is null ? "Yeni Evrak" : "Evrak", parametreler,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        var sonuc = await dialog.Result;
+        if (sonuc is { Canceled: false })
+        {
+            await YukleAsync();
+        }
+    }
+
+    private static Color Renk(TakipEvrakDurumu durum) => durum switch
+    {
+        TakipEvrakDurumu.SuresiDoldu => Color.Error,
+        TakipEvrakDurumu.Yaklasiyor => Color.Warning,
+        TakipEvrakDurumu.Gecerli => Color.Success,
+        _ => Color.Default
+    };
+}

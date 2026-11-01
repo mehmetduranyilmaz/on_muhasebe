@@ -16,7 +16,7 @@ namespace OnMuhasebe.Hesaplama.Tests;
 public class YetkiTestleri
 {
     // Kurucu, bağımlı yetkilerin katalogda olduğunu da denetler.
-    private static readonly YetkiKatalogu _katalog = new([new YonetimModulu(), new OnMuhasebe.Modules.Dosya.DosyaModulu(), new CariModulu(), new StokModulu(), new FaturaModulu(), new KasaBankaModulu(), new MuhasebeModulu()]);
+    private static readonly YetkiKatalogu _katalog = new([new YonetimModulu(), new OnMuhasebe.Modules.Dosya.DosyaModulu(), new OnMuhasebe.Modules.EvrakTakip.EvrakTakipModulu(), new CariModulu(), new StokModulu(), new FaturaModulu(), new KasaBankaModulu(), new MuhasebeModulu()]);
 
     private static IReadOnlyList<string> Hesapla(string[] rol, string[]? ek = null, string[]? yasak = null) =>
         YetkiHesaplayici.Hesapla(rol, ek ?? [], yasak ?? [], _katalog.Tumu);

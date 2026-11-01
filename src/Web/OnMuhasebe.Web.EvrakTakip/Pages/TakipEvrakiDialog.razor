@@ -1,0 +1,261 @@
+@* Süreli evrak formu. Kayıtlı evrakta yenileme, yenileme geçmişi, dosyalar, pasifleştirme ve silme de burada. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <HataGosterimi Hata="_hata" />
+        @if (_yukleniyor)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" Class="rounded-lg" />
+        }
+        else
+        {
+            @if (_detay is { } d)
+            {
+                <div class="d-flex align-center gap-2 mb-3 flex-wrap">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@TakipEvrakTurleri.DurumAdi(d.Durum)</MudChip>
+                    <DosyalarDugmesi Tur="@DosyaKayitTurleri.TakipEvraki" KayitId="d.Id" />
+                    <DegisiklikGecmisiDugmesi Modul="evrak-takibi" KayitId="d.Id" />
+                </div>
+            }
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="8">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Evrak adı" MaxLength="200" Required="true" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="TakipEvrakTuru" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür" Disabled="@(!Duzenleyebilir)">
+                        @foreach (var tur in Enum.GetValues<TakipEvrakTuru>())
+                        {
+                            <MudSelectItem T="TakipEvrakTuru" Value="tur">@TakipEvrakTurleri.Ad(tur)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_belgeNo" Label="Belge / poliçe no" MaxLength="100" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kurum" Label="Veren kurum" MaxLength="200" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_baslangic" Label="Başlangıç" DateFormat="dd.MM.yyyy" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_bitis" Label="Bitiş tarihi" DateFormat="dd.MM.yyyy" Required="true" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField T="int" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_hatirlatmaGun" Label="Kaç gün önce hatırlatılsın" Min="1" Max="365" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="Guid?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_sorumlu" Label="Sorumlu kişi" Clearable="true" Disabled="@(!Duzenleyebilir)"
+                               HelperText="Hatırlatma bu kişiye de gider">
+                        @foreach (var s in _sorumlular)
+                        {
+                            <MudSelectItem T="Guid?" Value="@s.Id">@s.AdSoyad</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <IsyeriAlani @bind-Deger="_isyeri" BosMetni="Boş: firma geneli" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Label="Açıklama" MaxLength="1000" Lines="2" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+            </MudGrid>
+
+            @if (_detay is { AktifMi: true } && Duzenleyebilir)
+            {
+                <div class="panel-kart kart mt-3">
+                    <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.Autorenew" Size="Size.Small" Color="Color.Secondary" /> Yenile</div>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6" sm="3">
+                            <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Date="_yeniBitis" Label="Yeni bitiş" DateFormat="dd.MM.yyyy" />
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yeniBelgeNo" Label="Yeni belge no" MaxLength="100" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_yenilemeNotu" Label="Not" MaxLength="500" />
+                        </MudItem>
+                        <MudItem xs="12" sm="2" Class="d-flex align-center">
+                            <IslemDugmesi Variant="Variant.Outlined" Disabled="@(_yeniBitis is null)" Islem="YenileAsync">Yenile</IslemDugmesi>
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            }
+
+            @if (_detay is { Yenilemeler.Count: > 0 } g)
+            {
+                <div class="mt-3" style="overflow-x:auto">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Yenileme geçmişi</MudText>
+                    <MudSimpleTable Dense="true" Elevation="0" Class="yenileme-gecmisi">
+                        <thead>
+                            <tr><th>Eski bitiş</th><th>Yeni bitiş</th><th>Eski belge no</th><th>Not</th><th>Yapan</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var y in g.Yenilemeler)
+                            {
+                                <tr>
+                                    <td>@Bicim.Tarih(y.EskiBitisTarihi)</td>
+                                    <td>@Bicim.Tarih(y.YeniBitisTarihi)</td>
+                                    <td>@y.EskiBelgeNo</td>
+                                    <td>@y.Not</td>
+                                    <td>@y.Yapan</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </div>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_detay is { } mevcut)
+        {
+            @if (Oturum.YazabilirMi(EvrakTakipYetkileri.Kayit, YetkiIslemleri.Sil))
+            {
+                <MudButton Color="Color.Error" OnClick="SilAsync">Sil</MudButton>
+            }
+
+            @if (Duzenleyebilir)
+            {
+                <MudButton OnClick="DurumDegistirAsync">@(mevcut.AktifMi ? "Pasifleştir" : "Aktifleştir")</MudButton>
+            }
+        }
+
+        <MudSpacer />
+        <MudButton OnClick="() => MudDialog.Cancel()">Kapat</MudButton>
+        @if (Duzenleyebilir)
+        {
+            <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="KaydetAsync">Kaydet</IslemDugmesi>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid? Id { get; set; }
+
+    private TakipEvrakiDetayi? _detay;
+    private List<TakipSorumlusu> _sorumlular = [];
+    private bool _yukleniyor = true;
+    private ApiHatasi? _hata;
+    private bool _degisti;
+
+    private string _ad = "";
+    private TakipEvrakTuru _tur = TakipEvrakTuru.Ruhsat;
+    private string? _belgeNo;
+    private string? _kurum;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private int _hatirlatmaGun = 30;
+    private Guid? _sorumlu;
+    private Guid? _isyeri;
+    private string? _aciklama;
+
+    private DateTime? _yeniBitis;
+    private string? _yeniBelgeNo;
+    private string? _yenilemeNotu;
+
+    private bool Duzenleyebilir => Oturum.YazabilirMi(EvrakTakipYetkileri.Kayit, Id is null ? YetkiIslemleri.Ekle : YetkiIslemleri.Duzenle);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sorumlular = await Api.GetAsync<List<TakipSorumlusu>>("api/evrak-takibi/sorumlular");
+        _hata = sorumlular.Hata;
+        _sorumlular = sorumlular.BasariliMi ? sorumlular.Deger : [];
+        if (Id is { } id)
+        {
+            var detay = await Api.GetAsync<TakipEvrakiDetayi>($"api/evrak-takibi/{id}");
+            _hata = detay.Hata;
+            if (detay.BasariliMi)
+            {
+                Al(detay.Deger);
+            }
+        }
+
+        _yukleniyor = false;
+    }
+
+    private void Al(TakipEvrakiDetayi d)
+    {
+        _detay = d;
+        _ad = d.Ad;
+        _tur = d.Tur;
+        _belgeNo = d.BelgeNo;
+        _kurum = d.Kurum;
+        _baslangic = d.BaslangicTarihi?.ToDateTime(TimeOnly.MinValue);
+        _bitis = d.BitisTarihi.ToDateTime(TimeOnly.MinValue);
+        _hatirlatmaGun = d.HatirlatmaGun;
+        _sorumlu = d.SorumluKullaniciId;
+        _isyeri = d.IsyeriId;
+        _aciklama = d.Aciklama;
+    }
+
+    private async Task KaydetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_ad) || _bitis is null)
+        {
+            _hata = new ApiHatasi("Evrak adı ve bitiş tarihi gerekli.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var istek = new TakipEvrakiKaydetIstegi(_ad, _tur, _belgeNo, _kurum, Bicim.Gun(_baslangic), Bicim.Gun(_bitis)!.Value, _hatirlatmaGun, _sorumlu, _isyeri, _aciklama, _detay?.Surum ?? 0);
+        var sonuc = _detay is { } d
+            ? await Api.PutAsync<TakipEvrakiDetayi>($"api/evrak-takibi/{d.Id}", istek)
+            : await Api.PostAsync<TakipEvrakiDetayi>("api/evrak-takibi", istek);
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Evrak kaydedildi.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private async Task YenileAsync()
+    {
+        var sonuc = await Api.PostAsync<TakipEvrakiDetayi>($"api/evrak-takibi/{_detay!.Id}/yenile",
+            new TakipYenilemeIstegi(Bicim.Gun(_yeniBitis)!.Value, null, _yeniBelgeNo, _yenilemeNotu));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Al(sonuc.Deger);
+            _degisti = true;
+            _yeniBitis = null;
+            _yeniBelgeNo = null;
+            _yenilemeNotu = null;
+            Snackbar.Add("Evrak yenilendi.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(_degisti));
+        }
+    }
+
+    private async Task DurumDegistirAsync()
+    {
+        var islem = _detay!.AktifMi ? "pasiflestir" : "aktiflestir";
+        var sonuc = await Api.PostAsync<TakipEvrakiDetayi>($"api/evrak-takibi/{_detay.Id}/{islem}", new { });
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private async Task SilAsync()
+    {
+        if (!await Onay.SorAsync("Evrak silinsin mi?", $"{_detay!.Ad} takipten silinecek. Takibi yalnız durdurmak için Pasifleştir'i kullanın.", "Sil", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.DeleteAsync($"api/evrak-takibi/{_detay.Id}");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}

@@ -43,7 +43,10 @@
   </Folder>
   <Folder Name="/src/Web/">
     <Project Path="src/Modules/Dosya/OnMuhasebe.Modules.Dosya/OnMuhasebe.Modules.Dosya.csproj" />
+    <Project Path="src/Modules/EvrakTakip/OnMuhasebe.Modules.EvrakTakip.Contracts/OnMuhasebe.Modules.EvrakTakip.Contracts.csproj" />
+    <Project Path="src/Modules/EvrakTakip/OnMuhasebe.Modules.EvrakTakip/OnMuhasebe.Modules.EvrakTakip.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Cari/OnMuhasebe.Web.Cari.csproj" />
+    <Project Path="src/Web/OnMuhasebe.Web.EvrakTakip/OnMuhasebe.Web.EvrakTakip.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Fatura/OnMuhasebe.Web.Fatura.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.KasaBanka/OnMuhasebe.Web.KasaBanka.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Muhasebe/OnMuhasebe.Web.Muhasebe.csproj" />

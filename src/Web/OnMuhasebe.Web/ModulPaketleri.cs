@@ -40,6 +40,11 @@ public static class ModulPaketleri
         [
             "OnMuhasebe.Web.Muhasebe.wasm",
             "OnMuhasebe.Modules.Muhasebe.Contracts.wasm"
+        ],
+        [ModulKodlari.EvrakTakip] =
+        [
+            "OnMuhasebe.Web.EvrakTakip.wasm",
+            "OnMuhasebe.Modules.EvrakTakip.Contracts.wasm"
         ]
     };
 

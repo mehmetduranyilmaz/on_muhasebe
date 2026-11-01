@@ -3,6 +3,7 @@ using OnMuhasebe.Modules.Cari;
 using OnMuhasebe.Modules.Doviz;
 using OnMuhasebe.Modules.Fatura;
 using OnMuhasebe.Modules.Dosya;
+using OnMuhasebe.Modules.EvrakTakip;
 using OnMuhasebe.Modules.Muhasebe;
 using OnMuhasebe.Modules.KasaBanka;
 using OnMuhasebe.Modules.Stok;
@@ -39,7 +40,8 @@ builder.Services.AddModuller(builder.Configuration,
     new KasaBankaModulu(),
     new BildirimModulu(),
     new MuhasebeModulu(),
-    new DosyaModulu());
+    new DosyaModulu(),
+    new EvrakTakipModulu());
 
 var app = builder.Build();
 
