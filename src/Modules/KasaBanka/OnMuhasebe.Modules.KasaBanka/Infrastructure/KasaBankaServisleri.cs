@@ -40,8 +40,56 @@ internal sealed class KasaBankaSorgusu(KasaBankaDbContext db) : IKasaBankaSorgus
     public async Task<IReadOnlyList<MuhasebeKarti>> KategoriKartlariAsync(CancellationToken cancellationToken = default) =>
         await db.Kategoriler.AsNoTracking()
             .OrderBy(k => k.Tur).ThenBy(k => k.Ad)
-            .Select(k => new MuhasebeKarti(k.Id, "", k.Ad, k.Tur.ToString()))
+            .Select(k => new MuhasebeKarti(k.Id, "", k.Ad,
+                k.Tur == GelirGiderTuru.Gider && k.Ad == KrediServisi.GiderKategorisi ? "Finansman" : k.Tur.ToString()))
             .ToListAsync(cancellationToken);
+
+    // Hesap işyeri kısıtı geçerlidir (kısıtlı kullanıcı yalnız kendi işyerinin hareketlerini görür); silinmiş hesabın hareketi de gelir.
+    public async Task<IReadOnlyList<MuhasebeKasaHareketi>> MuhasebeHareketleriAsync(
+        DateOnly baslangic, DateOnly bitis, Guid? isyeriId, CancellationToken cancellationToken = default)
+    {
+        var satirlar = await (
+                from h in db.KasaHareketleri.AsNoTracking()
+                join hesap in db.Hesaplar.IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi]) on h.HesapId equals hesap.Id
+                where h.Tarih >= baslangic && h.Tarih <= bitis && h.Tur != KasaHareketTuru.Acilis
+                      && h.IptalHareketId == null && h.IptalEdilenHareketId == null
+                      && (isyeriId == null || hesap.IsyeriId == isyeriId)
+                orderby h.Tarih, h.IslemId, h.Id
+                select new { h, hesap.IsyeriId })
+            .ToListAsync(cancellationToken);
+
+        var evrakIdleri = satirlar.Where(s => s.h.Tur is KasaHareketTuru.CekSenetTahsil or KasaHareketTuru.CekSenetOdeme && s.h.KaynakBelgeId != null)
+            .Select(s => s.h.KaynakBelgeId!.Value).Distinct().ToList();
+        var evrakTurleri = await db.Evraklar.IgnoreQueryFilters([ModulDbContext.SilinmeFiltresi, ModulDbContext.IsyeriFiltresi]).AsNoTracking()
+            .Where(e => evrakIdleri.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, e => e.Tur, cancellationToken);
+
+        // Taksit tek kasa çıkışıdır; faiz ve vergiler aynı işlemin ödenmiş gider kaydındadır.
+        var taksitIslemleri = satirlar.Where(s => s.h.Tur == KasaHareketTuru.KrediOdeme).Select(s => s.h.IslemId).ToList();
+        var taksitGiderleri = (await db.GelirGiderKayitlari.AsNoTracking()
+                .Where(g => taksitIslemleri.Contains(g.IslemId) && g.Bicim == GelirGiderBicimi.Odendi && g.IptalTarihi == null)
+                .Select(g => new { g.IslemId, g.TutarTl, g.KategoriId })
+                .ToListAsync(cancellationToken))
+            .GroupBy(g => g.IslemId)
+            .ToDictionary(g => g.Key, g => (Tutar: g.Sum(x => x.TutarTl), KategoriId: (Guid?)g.First().KategoriId));
+
+        return satirlar.Select(s =>
+        {
+            var h = s.h;
+            var karsiRol = h.Tur switch
+            {
+                KasaHareketTuru.CekSenetTahsil => Evrak(h.KaynakBelgeId) == EvrakTuru.Senet ? "AlacakSenetleri" : "AlinanCekler",
+                KasaHareketTuru.CekSenetOdeme => Evrak(h.KaynakBelgeId) == EvrakTuru.Senet ? "BorcSenetleri" : "VerilenCekler",
+                KasaHareketTuru.KrediKullanim or KasaHareketTuru.KrediOdeme => "BankaKredileri",
+                _ => null
+            };
+            var gider = h.Tur == KasaHareketTuru.KrediOdeme && taksitGiderleri.TryGetValue(h.IslemId, out var g) ? g : default;
+            return new MuhasebeKasaHareketi(h.Id, h.IslemId, h.Tarih, h.Tur.ToString(), h.HesapId, h.GirisTl, h.CikisTl, h.CariHesapId,
+                h.KategoriId, karsiRol, h.BelgeNo, h.Aciklama, s.IsyeriId, gider.Tutar, gider.KategoriId);
+        }).ToList();
+
+        EvrakTuru? Evrak(Guid? id) => id is { } e && evrakTurleri.TryGetValue(e, out var tur) ? tur : null;
+    }
 
     public Task<KasaHesapBilgisi?> HesapGetirAsync(Guid hesapId, CancellationToken cancellationToken = default) =>
         db.Hesaplar.AsNoTracking()

@@ -71,7 +71,14 @@ internal sealed class HesapPlani(IReadOnlyDictionary<HesapRolu, string> kodlar, 
         _ => HesapRolu.PosAlacaklari
     }, Numara(kartKodu));
 
-    public string KategoriKodu(string tur) => Kod(tur == "Gelir" ? HesapRolu.DigerGelirler : HesapRolu.GenelYonetimGiderleri);
+    public string KategoriKodu(string tur) => Kod(KategoriRolu(tur));
+
+    public static HesapRolu KategoriRolu(string tur) => tur switch
+    {
+        "Gelir" => HesapRolu.DigerGelirler,
+        "Finansman" => HesapRolu.FinansmanGiderleri,
+        _ => HesapRolu.GenelYonetimGiderleri
+    };
 
     // C00012 -> 00012; rakamı olmayan kod olduğu gibi kalır.
     internal static string Numara(string kartKodu)

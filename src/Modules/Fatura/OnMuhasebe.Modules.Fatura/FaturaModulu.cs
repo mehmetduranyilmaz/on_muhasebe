@@ -37,6 +37,7 @@ public sealed class FaturaModulu : IModul
         services.AddScoped<IrsaliyeKayitServisi>();
         services.AddScoped<TeklifSiparisServisi>();
         services.AddScoped<SiparisKarsilamaServisi>();
+        services.AddScoped<IFaturaMuhasebeSorgusu, FaturaMuhasebeSorgusu>();
     }
 
     public void EndpointleriEkle(IEndpointRouteBuilder endpoints)

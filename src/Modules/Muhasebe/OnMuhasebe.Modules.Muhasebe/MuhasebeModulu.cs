@@ -34,5 +34,6 @@ public sealed class MuhasebeModulu : IModul
     {
         var grup = endpoints.MapGroup("/api/muhasebe").WithTags("Muhasebe").RequireModul(ModulKodlari.Muhasebe);
         HesapPlaniIslemleri.Map(grup);
+        FisIslemleri.Map(grup);
     }
 }

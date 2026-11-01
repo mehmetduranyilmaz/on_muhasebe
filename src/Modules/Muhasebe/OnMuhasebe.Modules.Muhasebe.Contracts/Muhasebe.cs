@@ -30,6 +30,7 @@ public enum HesapRolu
     HizmetAlimGiderleri,
     HesaplananKdv,
     IndirilecekKdv,
+    PesinOdenenVergiler,
     OdenecekVergiler,
     Kasa,
     Bankalar,
@@ -41,6 +42,8 @@ public enum HesapRolu
     BorcSenetleri,
     BankaKredileri,
     FinansmanGiderleri,
+    KambiyoKarlari,
+    KambiyoZararlari,
     AlinanAvanslar,
     VerilenAvanslar,
     DigerGelirler,
@@ -61,6 +64,7 @@ public static class HesapRolleri
         HesapRolu.HizmetAlimGiderleri => "770",
         HesapRolu.HesaplananKdv => "391",
         HesapRolu.IndirilecekKdv => "191",
+        HesapRolu.PesinOdenenVergiler => "193",
         HesapRolu.OdenecekVergiler => "360",
         HesapRolu.Kasa => "100",
         HesapRolu.Bankalar => "102",
@@ -72,6 +76,8 @@ public static class HesapRolleri
         HesapRolu.BorcSenetleri => "321",
         HesapRolu.BankaKredileri => "300",
         HesapRolu.FinansmanGiderleri => "780",
+        HesapRolu.KambiyoKarlari => "646",
+        HesapRolu.KambiyoZararlari => "656",
         HesapRolu.AlinanAvanslar => "340",
         HesapRolu.VerilenAvanslar => "159",
         HesapRolu.DigerGelirler => "649",
@@ -89,6 +95,7 @@ public static class HesapRolleri
         HesapRolu.HizmetAlimGiderleri => "Hizmet alımı / stoksuz alış gideri",
         HesapRolu.HesaplananKdv => "Hesaplanan KDV",
         HesapRolu.IndirilecekKdv => "İndirilecek KDV",
+        HesapRolu.PesinOdenenVergiler => "Peşin ödenen vergiler (satışta kesilen stopaj)",
         HesapRolu.OdenecekVergiler => "Ödenecek vergi ve fonlar (tevkifat, stopaj)",
         HesapRolu.Kasa => "Kasa",
         HesapRolu.Bankalar => "Bankalar",
@@ -100,6 +107,8 @@ public static class HesapRolleri
         HesapRolu.BorcSenetleri => "Borç senetleri",
         HesapRolu.BankaKredileri => "Banka kredileri",
         HesapRolu.FinansmanGiderleri => "Finansman giderleri (kredi faizi)",
+        HesapRolu.KambiyoKarlari => "Kambiyo kârları (dövizli virman kur farkı)",
+        HesapRolu.KambiyoZararlari => "Kambiyo zararları (dövizli virman kur farkı)",
         HesapRolu.AlinanAvanslar => "Alınan sipariş avansları",
         HesapRolu.VerilenAvanslar => "Verilen sipariş avansları",
         HesapRolu.DigerGelirler => "Diğer gelirler (gelir kategorisi varsayılanı)",
@@ -128,3 +137,28 @@ public sealed record HesapPlaniIstegi(string Ayirac, string? CariAltGrup, IReadO
 public sealed record KartEslemesi(Guid KartId, string KartKodu, string Ad, string Tur, string OtomatikKod, string? OzelKod, string Kod);
 
 public sealed record KartEslemeIstegi(string? Kod);
+
+// Tahsil/tediye fişi yalnız kasa (nakit) hareketidir; banka, kredi kartı ve diğer tüm kayıtlar mahsup fişidir.
+[JsonConverter(typeof(JsonStringEnumConverter<FisTuru>))]
+public enum FisTuru
+{
+    Mahsup,
+    Tahsil,
+    Tediye
+}
+
+public sealed record FisSatiri(string HesapKodu, string HesapAdi, decimal Borc, decimal Alacak, string? Aciklama);
+
+// Kaynak: "Fatura" ya da "KasaBanka"; BelgeTuru kaynak belgenin türüdür (Satis, Tahsilat...). Dengesiz fiş aktarılmaz, uyarıyla döner.
+public sealed record MuhasebeFisi(
+    Guid KaynakId, string Kaynak, string BelgeTuru, FisTuru Tur, DateOnly Tarih, string? BelgeNo, string Aciklama, Guid? IsyeriId,
+    IReadOnlyList<FisSatiri> Satirlar)
+{
+    public decimal ToplamBorc => Satirlar.Sum(s => s.Borc);
+
+    public decimal ToplamAlacak => Satirlar.Sum(s => s.Alacak);
+
+    public bool DengeliMi => ToplamBorc == ToplamAlacak;
+}
+
+public sealed record FisListesi(DateOnly Baslangic, DateOnly Bitis, IReadOnlyList<MuhasebeFisi> Fisler, IReadOnlyList<string> Uyarilar);

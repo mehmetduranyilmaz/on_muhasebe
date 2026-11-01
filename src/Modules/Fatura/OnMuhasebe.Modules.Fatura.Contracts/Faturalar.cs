@@ -246,3 +246,10 @@ public sealed record FaturaOzetRaporu(
 // İşyerine özel seriler; boş olan firma ayarındaki seriyi kullanır.
 public sealed record IsyeriSerileri(
     Guid IsyeriId, string? ToptanSeri, string? PerakendeSeri, string? IadeSeri, string? GiderPusulasiSeri, string? IrsaliyeSeri);
+
+// Muhasebe aktarımı için onaylı faturalar (iptal ve taslaklar hariç). isyeriId verilirse yalnız o işyerininkiler.
+public interface IFaturaMuhasebeSorgusu
+{
+    Task<IReadOnlyList<OnMuhasebe.Shared.Contracts.Muhasebe.MuhasebeFaturasi>> OnayliAsync(
+        DateOnly baslangic, DateOnly bitis, Guid? isyeriId, CancellationToken cancellationToken = default);
+}
