@@ -16,7 +16,8 @@ public static class ModulMenusu
         new(ModulKodlari.Cari, "Cari Hesaplar", "cari", Icons.Material.Filled.People, "Müşteri ve tedarikçi hesapları, ekstreler", "cari.hesap"),
         new(ModulKodlari.Stok, "Stok", "stok", Icons.Material.Filled.Inventory2, "Ürünler ve stok hareketleri", "stok.kart"),
         new(ModulKodlari.Fatura, "Fatura", "fatura", Icons.Material.Filled.ReceiptLong, "Alış ve satış faturaları", "fatura.belge"),
-        new(ModulKodlari.KasaBanka, "Kasa / Banka", "kasabanka", Icons.Material.Filled.AccountBalance, "Tahsilat, ödeme, kasa ve banka hareketleri", "kasabanka.hesap")
+        new(ModulKodlari.KasaBanka, "Kasa / Banka", "kasabanka", Icons.Material.Filled.AccountBalance, "Tahsilat, ödeme, kasa ve banka hareketleri", "kasabanka.hesap"),
+        new(ModulKodlari.Muhasebe, "Muhasebe Aktarımı", "muhasebe", Icons.Material.Filled.SyncAlt, "Yevmiye fişleri, mali müşavire Excel/CSV aktarımı", "muhasebe.aktarim")
     ];
 
     // Menüde modül altındaki ek bölümler; aynı lisans ve aynı lazy paketle açılır (adres -> modül eşlemesi de bunu kullanır).
@@ -31,7 +32,8 @@ public static class ModulMenusu
         new(ModulKodlari.KasaBanka, "Krediler", "krediler", Icons.Material.Filled.AccountBalance, "Nakdi banka kredileri, ödeme planları ve taksit ödemeleri", "kasabanka.kredi"),
         new(ModulKodlari.KasaBanka, "Çek / Senet", "cek-senet", Icons.Material.Filled.RequestQuote, "Alınan ve verilen çek/senetler, portföy ve vade takvimi", "kasabanka.cek"),
         new(ModulKodlari.KasaBanka, "Demirbaşlar", "demirbaslar", Icons.Material.Filled.Chair, "Sabit kıymetler, amortisman planı ve yıllık amortisman listesi", "kasabanka.demirbas"),
-        new(ModulKodlari.KasaBanka, "Teminatlar", "teminatlar", Icons.Material.Filled.Shield, "Alınan ve verilen teminatlar: teminat mektubu, ipotek, rehin, kefalet", "kasabanka.teminat")
+        new(ModulKodlari.KasaBanka, "Teminatlar", "teminatlar", Icons.Material.Filled.Shield, "Alınan ve verilen teminatlar: teminat mektubu, ipotek, rehin, kefalet", "kasabanka.teminat"),
+        new(ModulKodlari.Muhasebe, "Hesap Planı", "hesap-plani", Icons.Material.Filled.AccountTree, "Muhasebe hesap kodları ve kart eşleştirmesi", "muhasebe.plan")
     ];
 
     public static string Ad(string kod) => Tumu.FirstOrDefault(m => m.Kod == kod)?.Ad ?? kod;

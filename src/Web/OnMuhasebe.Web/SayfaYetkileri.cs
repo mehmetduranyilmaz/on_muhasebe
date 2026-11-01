@@ -20,7 +20,8 @@ public static class SayfaYetkileri
         [ModulKodlari.Cari] = "cari.rapor.goruntule",
         [ModulKodlari.Stok] = "stok.rapor.goruntule",
         [ModulKodlari.Fatura] = "fatura.rapor.goruntule",
-        [ModulKodlari.KasaBanka] = "kasabanka.rapor.goruntule"
+        [ModulKodlari.KasaBanka] = "kasabanka.rapor.goruntule",
+        [ModulKodlari.Muhasebe] = "muhasebe.aktarim.goruntule"
     };
 
     public static string? Gereken(string adres) =>

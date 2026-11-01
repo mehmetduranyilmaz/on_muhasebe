@@ -39,6 +39,22 @@ public sealed class ApiIstemcisi(IHttpClientFactory httpClientFactory)
     public Task<ApiSonucu<T>> DeleteAsync<T>(string adres, CancellationToken cancellationToken = default, string? islemAnahtari = null) =>
         GonderAsync<T>(() => YazAsync(HttpMethod.Delete, adres, null, islemAnahtari, cancellationToken), cancellationToken);
 
+    // Dosya adı çağıran tarafta verilir: başka kökenden gelen yanıtta Content-Disposition başlığı okunamaz.
+    public async Task<ApiSonucu<byte[]>> DosyaGetirAsync(string adres, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var cevap = await Istemci.GetAsync(adres, cancellationToken);
+            return cevap.IsSuccessStatusCode
+                ? ApiSonucu<byte[]>.Basarili(await cevap.Content.ReadAsByteArrayAsync(cancellationToken))
+                : ApiSonucu<byte[]>.Basarisiz(await ApiHatasi.OkuAsync(cevap, cancellationToken));
+        }
+        catch (HttpRequestException)
+        {
+            return ApiSonucu<byte[]>.Basarisiz(ApiHatasi.Baglanti);
+        }
+    }
+
     private Task<HttpResponseMessage> YazAsync(HttpMethod metot, string adres, HttpContent? icerik, string? islemAnahtari, CancellationToken cancellationToken)
     {
         var istek = new HttpRequestMessage(metot, adres) { Content = icerik };

@@ -159,7 +159,7 @@ internal static class RolIslemleri
 
     // Mali müşavir rolü yalnız görüntüleme ve muhasebe aktarımı taşır; limit dışı tutulmasının karşılığıdır.
     private static Hata? MaliMusavirHatasi(RolKaydetIstegi istek, IEnumerable<string> yetkiler) =>
-        istek.MaliMusavirMi && yetkiler.FirstOrDefault(y => !FirmaRolu.MaliMusavirYetkisiMi(y)) is { } yasak
+        istek.MaliMusavirMi && yetkiler.FirstOrDefault(y => !MaliMusavirYetkileri.UygunMu(y)) is { } yasak
             ? YonetimHatalari.MaliMusavirYetkisi(yasak)
             : null;
 

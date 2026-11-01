@@ -34,6 +34,10 @@
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">Tam yetki</MudChip>
                 }
+                @if (context.MaliMusavirMi)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">Mali müşavir</MudChip>
+                }
             </div>
             @if (context.Aciklama is not null)
             {

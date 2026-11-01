@@ -35,6 +35,11 @@ public static class ModulPaketleri
             "OnMuhasebe.Modules.KasaBanka.Contracts.wasm",
             "OnMuhasebe.Modules.Cari.Contracts.wasm",
             "OnMuhasebe.Modules.Doviz.Contracts.wasm"
+        ],
+        [ModulKodlari.Muhasebe] =
+        [
+            "OnMuhasebe.Web.Muhasebe.wasm",
+            "OnMuhasebe.Modules.Muhasebe.Contracts.wasm"
         ]
     };
 

@@ -275,7 +275,7 @@ internal static class KullaniciIslemleri
         }
 
         // Mali müşavir rolündeki kişiye de yalnız görüntüleme/aktarım yetkisi eklenebilir; normal role geçişte limite sayılır.
-        if (rol.MaliMusavirMi && ek.FirstOrDefault(y => !FirmaRolu.MaliMusavirYetkisiMi(y)) is { } mmYasak)
+        if (rol.MaliMusavirMi && ek.FirstOrDefault(y => !MaliMusavirYetkileri.UygunMu(y)) is { } mmYasak)
         {
             return YonetimHatalari.MaliMusavirYetkisi(mmYasak).Problem();
         }

@@ -45,6 +45,7 @@
     <Project Path="src/Web/OnMuhasebe.Web.Cari/OnMuhasebe.Web.Cari.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Fatura/OnMuhasebe.Web.Fatura.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.KasaBanka/OnMuhasebe.Web.KasaBanka.csproj" />
+    <Project Path="src/Web/OnMuhasebe.Web.Muhasebe/OnMuhasebe.Web.Muhasebe.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Ortak/OnMuhasebe.Web.Ortak.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web.Stok/OnMuhasebe.Web.Stok.csproj" />
     <Project Path="src/Web/OnMuhasebe.Web/OnMuhasebe.Web.csproj" />

@@ -55,3 +55,10 @@ public static class YonetimYetkileri
 
     public static IReadOnlyList<YetkiKaynagi> Tumu { get; } = [Kullanici, Firma, Abonelik, Degisiklik];
 }
+
+// Mali müşavir rolünde verilebilecek yetki: her türlü görüntüleme ve muhasebe aktarımı. Limit dışı tutulmasının karşılığıdır.
+public static class MaliMusavirYetkileri
+{
+    public static bool UygunMu(string yetki) =>
+        yetki.EndsWith("." + YetkiIslemleri.Goruntule, StringComparison.Ordinal) || yetki.StartsWith("muhasebe.aktarim.", StringComparison.Ordinal);
+}

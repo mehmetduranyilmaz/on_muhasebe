@@ -1,0 +1,407 @@
+@page "/muhasebe"
+@inject ApiIstemcisi Api
+@inject IJSRuntime Js
+@inject OturumYoneticisi Oturum
+@inject OnayServisi Onay
+@inject ISnackbar Snackbar
+@inject IsyeriYoneticisi Isyerleri
+
+<SayfaBasligi Baslik="Muhasebe Aktarımı" AltBaslik="Dönemin yevmiye fişleri: önizleyin, dosyayı indirin, muhasebe programına aktardıktan sonra işaretleyin"
+              Ikon="@Icons.Material.Filled.SyncAlt">
+    <Islemler>
+        <IslemDugmesi Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.TableView" Disabled="@(!IndirilecekVarMi)" Islem="@(() => IndirAsync("xlsx"))">Excel</IslemDugmesi>
+        <IslemDugmesi Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" Disabled="@(!IndirilecekVarMi)" Islem="@(() => IndirAsync("csv"))">CSV</IslemDugmesi>
+        @if (Oturum.YazabilirMi(MuhasebeYetkileri.Aktarim, YetkiIslemleri.Ekle))
+        {
+            <IslemDugmesi StartIcon="@Icons.Material.Filled.TaskAlt" Disabled="@(!AktarilabilirMi)" Islem="AktarAsync">Aktarıldı işaretle</IslemDugmesi>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<FiltreCubugu>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_baslangic" Label="Başlangıç" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    @if (Isyerleri.CokluMu)
+    {
+        <MudItem xs="12" md="3">
+            <IsyeriAlani @bind-Deger="_isyeriId" BosMetni="Boş: tüm işyerleri" />
+        </MudItem>
+    }
+    <MudItem xs="12" md="5" Class="d-flex align-center gap-2 flex-wrap">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => AySecAsync(-1))">Geçen ay</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => AySecAsync(0))">Bu ay</MudButton>
+    </MudItem>
+</FiltreCubugu>
+
+@if (_liste is { } l)
+{
+    <MudGrid Spacing="3" Class="mb-2 mt-1">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Toplam fiş" Deger="l.Fisler.Count" Bicimle="@(d => d.ToString("N0", Bicim.Kultur))" Ikon="@Icons.Material.Filled.ReceiptLong" Renk="#3B82F6" Sira="0"
+                       AltMetin="@($"{Bicim.Tarih(l.Baslangic)} - {Bicim.Tarih(l.Bitis)}")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Toplam borç / alacak" Deger="l.Fisler.Sum(f => f.ToplamBorc)" Bicimle="@(d => Bicim.Tutar(d, ParaBirimleri.Tl))" Ikon="@Icons.Material.Filled.Balance" Renk="#14B8A6" Sira="1"
+                       AltMetin="@(_hataliVar ? "Dengesiz ya da kodsuz fiş var" : "Tüm fişler dengeli")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Aktarılacak" Deger="YeniSayisi + DegisenSayisi" Bicimle="@(d => d.ToString("N0", Bicim.Kultur))" Ikon="@Icons.Material.Filled.PendingActions" Renk="#F59E0B" Sira="2"
+                       AltMetin="@($"{YeniSayisi} yeni, {DegisenSayisi} değişen")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Aktarıldı" Deger="AktarilanSayisi" Bicimle="@(d => d.ToString("N0", Bicim.Kultur))" Ikon="@Icons.Material.Filled.TaskAlt" Renk="#16A34A" Sira="3"
+                       AltMetin="Aktarıldıktan sonra değişmedi" />
+        </MudItem>
+    </MudGrid>
+
+    @foreach (var uyari in l.Uyarilar)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">@uyari</MudAlert>
+    }
+
+    @if (l.Kalkanlar.Count > 0)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">
+            <b>Aktarıldıktan sonra iptal edilen ya da dönemden çıkan @l.Kalkanlar.Count fiş var.</b> Bunları muhasebe programında elle düzeltin:
+            <ul class="mb-0 mt-1">
+                @foreach (var k in l.Kalkanlar)
+                {
+                    <li>@Bicim.Tarih(k.Tarih) · @KaynakAdi(k.Kaynak) · @BelgeTuruAdi(k.BelgeTuru) @k.BelgeNo</li>
+                }
+            </ul>
+        </MudAlert>
+    }
+
+    <div class="tur-sekmeleri belirme yazdirma-gizle">
+        <button type="button" class="tur-sekmesi @(_gorunum == Gorunum.Aktarilacak ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="() => GorunumSec(Gorunum.Aktarilacak)">Aktarılacaklar (@(YeniSayisi + DegisenSayisi))</button>
+        <button type="button" class="tur-sekmesi @(_gorunum == Gorunum.Aktarilan ? "secili" : "")" style="--vurgu:#16A34A" @onclick="() => GorunumSec(Gorunum.Aktarilan)">Aktarılanlar (@AktarilanSayisi)</button>
+        <button type="button" class="tur-sekmesi @(_gorunum == Gorunum.Tumu ? "secili" : "")" style="--vurgu:#3B82F6" @onclick="() => GorunumSec(Gorunum.Tumu)">Tümü (@l.Fisler.Count)</button>
+        <MudSwitch T="bool" @bind-Value="_yalnizYeniler" Color="Color.Secondary" Class="ml-2" Label="Dosyaya yalnız yeni ve değişen fişler girsin" />
+    </div>
+
+    @if (Gorunen.Count == 0)
+    {
+        <BosDurum Ikon="@Icons.Material.Outlined.ReceiptLong" Baslik="Bu görünümde fiş yok"
+                  Aciklama="Dönemi değiştirin ya da başka bir sekme seçin." />
+    }
+    else
+    {
+        <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+            <MudSimpleTable Dense="true" Hover="true" Class="nakit-tablosu">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Fiş</th>
+                        <th>Belge</th>
+                        <th>Belge no</th>
+                        <th>Açıklama</th>
+                        <th class="sayi">Tutar</th>
+                        <th>Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Sayfadakiler)
+                    {
+                        var anahtar = (f.Kaynak, f.KaynakId);
+                        <tr class="@(_acik.Contains(anahtar) ? "secili" : "")" @onclick="() => AcKapat(anahtar)">
+                            <td>@Bicim.Tarih(f.Tarih)</td>
+                            <td>@FisTuruAdi(f.Tur)</td>
+                            <td>@BelgeTuruAdi(f.BelgeTuru)</td>
+                            <td>@f.BelgeNo</td>
+                            <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis;" title="@f.Aciklama">@f.Aciklama</td>
+                            <td class="sayi">@Bicim.Tutar(f.ToplamBorc)</td>
+                            <td>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@DurumRengi(f.AktarimDurumu)">@DurumAdi(f.AktarimDurumu)</MudChip>
+                                @if (!f.DengeliMi)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Error">Dengesiz</MudChip>
+                                }
+                            </td>
+                        </tr>
+                        @if (_acik.Contains(anahtar))
+                        {
+                            <tr style="cursor:default">
+                                <td colspan="7" style="padding:0 0 8px 24px">
+                                    <MudSimpleTable Dense="true" Elevation="0" Class="fis-satirlari">
+                                        <thead>
+                                            <tr><th>Hesap kodu</th><th>Hesap adı</th><th>Açıklama</th><th class="sayi">Borç</th><th class="sayi">Alacak</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var s in f.Satirlar)
+                                            {
+                                                <tr>
+                                                    <td><b>@s.HesapKodu</b></td>
+                                                    <td>@s.HesapAdi</td>
+                                                    <td>@s.Aciklama</td>
+                                                    <td class="sayi">@(s.Borc != 0 ? Bicim.Tutar(s.Borc) : "")</td>
+                                                    <td class="sayi">@(s.Alacak != 0 ? Bicim.Tutar(s.Alacak) : "")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </MudSimpleTable>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </MudSimpleTable>
+            @if (ToplamSayfa > 1)
+            {
+                <div class="d-flex justify-center pa-2">
+                    <MudPagination Count="ToplamSayfa" Selected="_sayfa" SelectedChanged="@(s => _sayfa = s)" Size="Size.Small" />
+                </div>
+            }
+        </div>
+    }
+}
+else if (_hata is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-2" />
+}
+
+@if (_gecmis.Count > 0)
+{
+    <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Secondary" /> Aktarım geçmişi</div>
+        <MudSimpleTable Dense="true" Elevation="0" Class="aktarim-gecmisi">
+            <thead>
+                <tr><th>Tarih</th><th>Dönem</th><th>İşyeri</th><th class="sayi">Fiş</th><th class="sayi">Tutar</th><th>Aktaran</th><th>Not</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var a in _gecmis)
+                {
+                    <tr style="@(a.IptalTarihi is null ? "" : "opacity:.55")">
+                        <td>@a.AktarimTarihi.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Bicim.Kultur)</td>
+                        <td>@Bicim.Tarih(a.Baslangic) - @Bicim.Tarih(a.Bitis)</td>
+                        <td>@(Isyerleri.Ad(a.IsyeriId) ?? "Tümü")</td>
+                        <td class="sayi">@a.FisSayisi</td>
+                        <td class="sayi">@Bicim.Tutar(a.ToplamBorc)</td>
+                        <td>@a.AktaranAdi</td>
+                        <td>@a.Aciklama</td>
+                        <td style="text-align:right">
+                            @if (a.IptalTarihi is not null)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">İptal</MudChip>
+                            }
+                            else if (Oturum.YazabilirMi(MuhasebeYetkileri.Aktarim, YetkiIslemleri.Ekle))
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text" OnClick="@(() => IptalAsync(a))">Geri al</MudButton>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </div>
+}
+
+@code {
+    private enum Gorunum { Aktarilacak, Aktarilan, Tumu }
+
+    private const int SayfaBoyutu = 50;
+
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private Guid? _isyeriId;
+    private FisListesi? _liste;
+    private List<AktarimCevabi> _gecmis = [];
+    private ApiHatasi? _hata;
+    private Gorunum _gorunum = Gorunum.Aktarilacak;
+    private bool _yalnizYeniler = true;
+    private bool _hataliVar;
+    private int _sayfa = 1;
+    private readonly HashSet<(string, Guid)> _acik = [];
+
+    private int YeniSayisi => _liste?.Fisler.Count(f => f.AktarimDurumu == FisAktarimDurumu.Aktarilmadi) ?? 0;
+    private int DegisenSayisi => _liste?.Fisler.Count(f => f.AktarimDurumu == FisAktarimDurumu.Degisti) ?? 0;
+    private int AktarilanSayisi => _liste?.Fisler.Count(f => f.AktarimDurumu == FisAktarimDurumu.Aktarildi) ?? 0;
+
+    private bool IndirilecekVarMi => _liste is not null && (_yalnizYeniler ? YeniSayisi + DegisenSayisi : _liste.Fisler.Count) > 0;
+
+    // Sunucu da aynı kuralları denetler; düğme sonucu baştan gösterir.
+    private bool AktarilabilirMi => _liste is not null && !_hataliVar && YeniSayisi + DegisenSayisi + _liste.Kalkanlar.Count > 0;
+
+    private List<MuhasebeFisi> Gorunen => _liste is null ? [] : _gorunum switch
+    {
+        Gorunum.Aktarilacak => _liste.Fisler.Where(f => f.AktarimDurumu != FisAktarimDurumu.Aktarildi).ToList(),
+        Gorunum.Aktarilan => _liste.Fisler.Where(f => f.AktarimDurumu == FisAktarimDurumu.Aktarildi).ToList(),
+        _ => _liste.Fisler.ToList()
+    };
+
+    private int ToplamSayfa => (int)Math.Ceiling(Gorunen.Count / (double)SayfaBoyutu);
+
+    private IEnumerable<MuhasebeFisi> Sayfadakiler => Gorunen.Skip((_sayfa - 1) * SayfaBoyutu).Take(SayfaBoyutu);
+
+    private string Sorgu => $"baslangic={Bicim.Iso(Bicim.Gun(_baslangic)!.Value)}&bitis={Bicim.Iso(Bicim.Gun(_bitis)!.Value)}{(_isyeriId is { } i ? $"&isyeriId={i}" : "")}";
+
+    // Mali müşavir çoğunlukla kapanan ayı aktarır: varsayılan dönem geçen aydır.
+    protected override async Task OnInitializedAsync()
+    {
+        await Isyerleri.YukleAsync();
+        _isyeriId = Isyerleri.Secili;
+        await GecmisiYukleAsync();
+        await AySecAsync(-1);
+    }
+
+    private async Task AySecAsync(int fark)
+    {
+        var ay = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(fark);
+        _baslangic = ay;
+        _bitis = ay.AddMonths(1).AddDays(-1);
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        if (_baslangic is null || _bitis is null)
+        {
+            _hata = new ApiHatasi("Başlangıç ve bitiş tarihi seçin.", null, new Dictionary<string, string[]>());
+            return;
+        }
+
+        var sonuc = await Api.GetAsync<FisListesi>($"api/muhasebe/fisler?{Sorgu}");
+        _hata = sonuc.Hata;
+        _liste = sonuc.BasariliMi ? sonuc.Deger : null;
+        _hataliVar = _liste?.Fisler.Any(f => !f.DengeliMi || f.Satirlar.Any(s => s.HesapKodu.Length == 0)) ?? false;
+        _sayfa = 1;
+        _acik.Clear();
+    }
+
+    private async Task GecmisiYukleAsync()
+    {
+        var sonuc = await Api.GetAsync<SayfaliSonuc<AktarimCevabi>>("api/muhasebe/aktarimlar?boyut=20");
+        if (sonuc.BasariliMi)
+        {
+            _gecmis = sonuc.Deger.Kayitlar.ToList();
+        }
+    }
+
+    private async Task IndirAsync(string format)
+    {
+        var sonuc = await Api.DosyaGetirAsync($"api/muhasebe/fisler/indir?{Sorgu}&format={format}&yalnizYeniler={(_yalnizYeniler ? "true" : "false")}");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            var tur = format == "csv" ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            await Js.InvokeVoidAsync("omDosya.indir", $"yevmiye_{Bicim.Iso(Bicim.Gun(_baslangic)!.Value)}_{Bicim.Iso(Bicim.Gun(_bitis)!.Value)}.{format}", tur, sonuc.Deger);
+        }
+    }
+
+    private async Task AktarAsync()
+    {
+        var l = _liste!;
+        if (!await Onay.SorAsync("Dönem aktarıldı işaretlensin mi?",
+                $"{Bicim.Tarih(l.Baslangic)} - {Bicim.Tarih(l.Bitis)} dönemindeki {l.Fisler.Count} fiş aktarılmış sayılacak. Dosyayı indirip muhasebe programına aktardıysanız onaylayın.",
+                "Aktarıldı işaretle"))
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync<AktarimCevabi>("api/muhasebe/aktarimlar", new AktarimIstegi(l.Baslangic, l.Bitis, _isyeriId, l.Parmak, null));
+        if (!sonuc.BasariliMi)
+        {
+            // Liste değiştiyse güncel hali gösterilir; hata mesajı yeniden yüklemeyle silinmesin.
+            await YukleAsync();
+            _hata = sonuc.Hata;
+            return;
+        }
+
+        Snackbar.Add("Dönem aktarıldı olarak işaretlendi.", Severity.Success);
+        await YukleAsync();
+        await GecmisiYukleAsync();
+    }
+
+    private async Task IptalAsync(AktarimCevabi aktarim)
+    {
+        if (!await Onay.SorAsync("Aktarım geri alınsın mı?",
+                "Bu aktarımdaki fişler yeniden aktarılmadı görünecek. Muhasebe programına işlendilerse oradan da silmeniz gerekir.", "Geri al", tehlikeli: true))
+        {
+            return;
+        }
+
+        var sonuc = await Api.PostAsync($"api/muhasebe/aktarimlar/{aktarim.Id}/iptal");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            Snackbar.Add("Aktarım geri alındı.", Severity.Success);
+            await YukleAsync();
+            await GecmisiYukleAsync();
+        }
+    }
+
+    private void GorunumSec(Gorunum gorunum)
+    {
+        _gorunum = gorunum;
+        _sayfa = 1;
+    }
+
+    private void AcKapat((string, Guid) anahtar)
+    {
+        if (!_acik.Add(anahtar))
+        {
+            _acik.Remove(anahtar);
+        }
+    }
+
+    private static string DurumAdi(FisAktarimDurumu durum) => durum switch
+    {
+        FisAktarimDurumu.Aktarildi => "Aktarıldı",
+        FisAktarimDurumu.Degisti => "Değişti",
+        _ => "Yeni"
+    };
+
+    private static Color DurumRengi(FisAktarimDurumu durum) => durum switch
+    {
+        FisAktarimDurumu.Aktarildi => Color.Success,
+        FisAktarimDurumu.Degisti => Color.Warning,
+        _ => Color.Info
+    };
+
+    private static string FisTuruAdi(FisTuru tur) => tur switch
+    {
+        FisTuru.Tahsil => "Tahsil",
+        FisTuru.Tediye => "Tediye",
+        _ => "Mahsup"
+    };
+
+    private static string KaynakAdi(string kaynak) => kaynak switch
+    {
+        FisKaynaklari.Fatura => "Fatura",
+        FisKaynaklari.KasaBanka => "Kasa/Banka",
+        FisKaynaklari.CekSenet => "Çek/Senet",
+        _ => "Tahakkuk"
+    };
+
+    private static string BelgeTuruAdi(string tur) => tur switch
+    {
+        "Satis" => "Satış faturası",
+        "Alis" => "Alış faturası",
+        "SatistanIade" => "Satıştan iade",
+        "AlistanIade" => "Alıştan iade",
+        "GiderPusulasi" => "Gider pusulası",
+        "SerbestMeslekMakbuzu" => "Serbest meslek makbuzu",
+        "Tahsilat" => "Tahsilat",
+        "Odeme" => "Ödeme",
+        "VirmanGiris" or "VirmanCikis" => "Virman",
+        "Gelir" => "Gelir",
+        "Gider" => "Gider",
+        "CekSenetTahsil" => "Çek/senet tahsili",
+        "CekSenetOdeme" => "Çek/senet ödemesi",
+        "KrediKullanim" => "Kredi kullanımı",
+        "KrediOdeme" => "Kredi taksiti",
+        "Giris" => "Çek/senet girişi",
+        "Cikis" => "Çek/senet çıkışı",
+        "Ciro" => "Ciro",
+        "CirodanGeriAlma" => "Cirodan geri alma",
+        "CirodanKarsiliksiz" or "Karsiliksiz" or "VerilenKarsiliksiz" => "Karşılıksız",
+        "Iade" or "VerilenIade" => "Çek/senet iadesi",
+        _ => tur
+    };
+}

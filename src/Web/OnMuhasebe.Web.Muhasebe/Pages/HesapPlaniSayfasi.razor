@@ -1,0 +1,209 @@
+@page "/hesap-plani"
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+@inject ISnackbar Snackbar
+
+<SayfaBasligi Baslik="Hesap Planı" AltBaslik="Fişlerde kullanılacak hesap kodları. Varsayılanlar Tek Düzen Hesap Planı'dır; mali müşavirinizin planına göre değiştirin."
+              Ikon="@Icons.Material.Filled.AccountTree" />
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme">
+    <button type="button" class="tur-sekmesi @(_sekme == null ? "secili" : "")" style="--vurgu:#3B82F6" @onclick="() => SekmeSecAsync(null)">Ana hesaplar</button>
+    <button type="button" class="tur-sekmesi @(_sekme == KartTuru.Cari ? "secili" : "")" style="--vurgu:#14B8A6" @onclick="() => SekmeSecAsync(KartTuru.Cari)">Cariler</button>
+    <button type="button" class="tur-sekmesi @(_sekme == KartTuru.KasaHesabi ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="() => SekmeSecAsync(KartTuru.KasaHesabi)">Kasa ve bankalar</button>
+    <button type="button" class="tur-sekmesi @(_sekme == KartTuru.Kategori ? "secili" : "")" style="--vurgu:#A855F7" @onclick="() => SekmeSecAsync(KartTuru.Kategori)">Gelir-gider kategorileri</button>
+</div>
+
+@if (_sekme is null)
+{
+    @if (_plan is not null)
+    {
+        <div class="panel-kart kart belirme mb-4">
+            <MudGrid Spacing="2" Class="mb-3">
+                <MudItem xs="6" md="3">
+                    <MudSelect T="string" @bind-Value="_ayirac" Label="Alt hesap ayıracı" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(!Duzenleyebilir)">
+                        <MudSelectItem T="string" Value="@(".")">Nokta (120.01.00012)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("-")">Tire (120-01-00012)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@(" ")">Boşluk (120 01 00012)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6" md="3">
+                    <MudTextField T="string" @bind-Value="_cariAltGrup" Label="Cari alt grubu" Variant="Variant.Outlined" Margin="Margin.Dense" MaxLength="10"
+                                  HelperText="Boşsa ara düzey olmaz" Disabled="@(!Duzenleyebilir)" />
+                </MudItem>
+                <MudItem xs="12" md="6" Class="d-flex align-center">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Örnek cari hesabı: <b>@OrnekCariKodu</b></MudText>
+                </MudItem>
+            </MudGrid>
+            <div style="overflow-x:auto">
+                <MudSimpleTable Dense="true" Elevation="0" Class="hesap-rolleri">
+                    <thead>
+                        <tr><th>Hesap</th><th>Varsayılan</th><th style="width:220px">Kod</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var satir in _plan.Hesaplar)
+                        {
+                            <tr>
+                                <td>@satir.Ad</td>
+                                <td>@satir.VarsayilanKod</td>
+                                <td>
+                                    <MudTextField T="string" Value="@_kodlar[satir.Rol]" ValueChanged="@(k => _kodlar[satir.Rol] = k)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                  MaxLength="30" Disabled="@(!Duzenleyebilir)" Label="@null" aria-label="@satir.Ad" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </div>
+            @if (Duzenleyebilir)
+            {
+                <div class="d-flex justify-end mt-3">
+                    <IslemDugmesi StartIcon="@Icons.Material.Filled.Save" Islem="PlaniKaydetAsync">Kaydet</IslemDugmesi>
+                </div>
+            }
+        </div>
+    }
+}
+else
+{
+    <FiltreCubugu>
+        <MudItem xs="12" md="5">
+            <MudTextField T="string" @bind-Value="_arama" Immediate="true" Label="Ara (kod ya da ad)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+        <MudItem xs="12" md="7" Class="d-flex align-center">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Özel kod boşsa otomatik kod kullanılır. Değişiklik alandan çıkınca kaydedilir.</MudText>
+        </MudItem>
+    </FiltreCubugu>
+
+    @if (Bulunanlar.Count == 0)
+    {
+        <BosDurum Ikon="@Icons.Material.Outlined.AccountTree" Baslik="Kart yok" Aciklama="Bu türde kayıtlı kart yok ya da aramaya uyan bulunamadı." />
+    }
+    else
+    {
+        <div class="panel-kart kart belirme mb-4" style="overflow-x:auto">
+            <MudSimpleTable Dense="true" Elevation="0" Class="kart-eslesme">
+                <thead>
+                    <tr><th>Kod</th><th>Ad</th><th>Tür</th><th>Otomatik hesap kodu</th><th style="width:220px">Özel hesap kodu</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var k in Bulunanlar.Skip((_sayfa - 1) * SayfaBoyutu).Take(SayfaBoyutu))
+                    {
+                        <tr @key="k.KartId">
+                            <td>@k.KartKodu</td>
+                            <td>@k.Ad</td>
+                            <td>@KartTuruAdi(k.Tur)</td>
+                            <td>@k.OtomatikKod</td>
+                            <td>
+                                <MudTextField T="string" Value="@k.OzelKod" ValueChanged="@(deger => EslemeKaydetAsync(k, deger))" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                              MaxLength="30" Disabled="@(!Duzenleyebilir)" aria-label="@($"{k.Ad} özel hesap kodu")" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            @if (Bulunanlar.Count > SayfaBoyutu)
+            {
+                <div class="d-flex justify-center pa-2">
+                    <MudPagination Count="@((int)Math.Ceiling(Bulunanlar.Count / (double)SayfaBoyutu))" Selected="_sayfa" SelectedChanged="@(s => _sayfa = s)" Size="Size.Small" />
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private const int SayfaBoyutu = 50;
+
+    private KartTuru? _sekme;
+    private HesapPlaniCevabi? _plan;
+    private string _ayirac = ".";
+    private string? _cariAltGrup;
+    private Dictionary<HesapRolu, string> _kodlar = [];
+    private List<KartEslemesi> _kartlar = [];
+    private string? _arama;
+    private int _sayfa = 1;
+    private ApiHatasi? _hata;
+
+    private bool Duzenleyebilir => Oturum.YazabilirMi(MuhasebeYetkileri.Plan, YetkiIslemleri.Duzenle);
+
+    private string OrnekCariKodu => string.Join(_ayirac,
+        new[] { _kodlar.GetValueOrDefault(HesapRolu.Alicilar, "120"), _cariAltGrup, "00012" }.Where(p => !string.IsNullOrEmpty(p)));
+
+    private List<KartEslemesi> Bulunanlar => string.IsNullOrWhiteSpace(_arama)
+        ? _kartlar
+        : _kartlar.Where(k => k.Ad.Contains(_arama.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            || k.KartKodu.Contains(_arama.Trim(), StringComparison.OrdinalIgnoreCase) || k.Kod.Contains(_arama.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<HesapPlaniCevabi>("api/muhasebe/hesap-plani");
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            PlaniAl(sonuc.Deger);
+        }
+    }
+
+    private void PlaniAl(HesapPlaniCevabi plan)
+    {
+        _plan = plan;
+        _ayirac = plan.Ayirac;
+        _cariAltGrup = plan.CariAltGrup;
+        _kodlar = plan.Hesaplar.ToDictionary(h => h.Rol, h => h.Kod);
+    }
+
+    private async Task SekmeSecAsync(KartTuru? sekme)
+    {
+        _sekme = sekme;
+        _arama = null;
+        _sayfa = 1;
+        _kartlar = [];
+        if (sekme is { } tur)
+        {
+            var sonuc = await Api.GetAsync<List<KartEslemesi>>($"api/muhasebe/eslemeler/{tur}");
+            _hata = sonuc.Hata;
+            _kartlar = sonuc.BasariliMi ? sonuc.Deger : [];
+        }
+    }
+
+    private async Task PlaniKaydetAsync()
+    {
+        var sonuc = await Api.PutAsync<HesapPlaniCevabi>("api/muhasebe/hesap-plani", new HesapPlaniIstegi(_ayirac, _cariAltGrup, _kodlar));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            PlaniAl(sonuc.Deger);
+            Snackbar.Add("Hesap planı kaydedildi. Değişen kodlar aktarılmış fişlerde \"Değişti\" olarak görünür.", Severity.Success);
+        }
+    }
+
+    private async Task EslemeKaydetAsync(KartEslemesi kart, string? deger)
+    {
+        var kod = string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
+        var sonuc = await Api.PutAsync($"api/muhasebe/eslemeler/{_sekme}/{kart.KartId}", new KartEslemeIstegi(kod));
+        _hata = sonuc.Hata;
+        if (sonuc.BasariliMi)
+        {
+            _kartlar[_kartlar.IndexOf(kart)] = kart with { OzelKod = kod, Kod = kod ?? kart.OtomatikKod };
+            Snackbar.Add($"{kart.Ad}: hesap kodu {kod ?? kart.OtomatikKod}.", Severity.Success);
+        }
+    }
+
+    private static string KartTuruAdi(string tur) => tur switch
+    {
+        "Musteri" => "Müşteri",
+        "Tedarikci" => "Tedarikçi",
+        "HerIkisi" => "Müşteri ve tedarikçi",
+        "Banka" => "Banka",
+        "Kasa" => "Kasa",
+        "KrediKarti" => "Kredi kartı",
+        "Pos" => "POS",
+        "Gelir" => "Gelir",
+        "Gider" => "Gider",
+        "Finansman" => "Finansman gideri",
+        _ => tur
+    };
+}

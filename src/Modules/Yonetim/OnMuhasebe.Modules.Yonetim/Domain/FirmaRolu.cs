@@ -54,10 +54,6 @@ internal sealed class FirmaRolu : FirmaEntity
         return Sonuc.Basarili();
     }
 
-    // Mali müşavir rolünde verilebilecek yetki: her türlü görüntüleme ve muhasebe aktarımı.
-    public static bool MaliMusavirYetkisiMi(string yetki) =>
-        yetki.EndsWith("." + YetkiIslemleri.Goruntule, StringComparison.Ordinal) || yetki.StartsWith("muhasebe.aktarim.", StringComparison.Ordinal);
-
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }
 

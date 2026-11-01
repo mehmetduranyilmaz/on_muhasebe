@@ -90,7 +90,7 @@ public class YetkiTestleri
         var saltOkur = RolSablonlari.Olustur(_katalog.Tumu, Guid.CreateVersion7()).Single(r => r.Ad.StartsWith("Salt Okur", StringComparison.Ordinal));
 
         Assert.True(saltOkur.MaliMusavirMi);
-        Assert.All(saltOkur.Yetkiler, y => Assert.True(FirmaRolu.MaliMusavirYetkisiMi(y), y));
+        Assert.All(saltOkur.Yetkiler, y => Assert.True(MaliMusavirYetkileri.UygunMu(y), y));
         Assert.Contains("muhasebe.aktarim.ekle", saltOkur.Yetkiler);
         Assert.Contains(StokYetkileri.Maliyet.Yetki(YetkiIslemleri.Goruntule), saltOkur.Yetkiler);
         Assert.DoesNotContain(YonetimYetkileri.Kullanici.Yetki(YetkiIslemleri.Goruntule), saltOkur.Yetkiler);

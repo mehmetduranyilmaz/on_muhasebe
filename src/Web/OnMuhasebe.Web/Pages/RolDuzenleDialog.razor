@@ -13,6 +13,8 @@
                 <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_aciklama" Label="Açıklama" MaxLength="500" Disabled="SaltOkunur" />
             </MudItem>
         </MudGrid>
+        <MudSwitch T="bool" Value="_maliMusavirMi" ValueChanged="MaliMusavirDegisti" Color="Color.Secondary" Disabled="SaltOkunur" Class="mb-1"
+                   Label="Mali müşavir rolü: kullanıcı limitine sayılmaz, yalnız görüntüleme ve muhasebe aktarımı yetkisi taşır" />
         <div class="d-flex align-center gap-2 mb-2">
             <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">@_secili.Count yetki seçili</MudChip>
             <MudText Typo="Typo.caption" Color="Color.Secondary">Bir işlem seçilince o ekranın görüntülemesi de seçilir.</MudText>
@@ -43,6 +45,7 @@
     private string _ad = "";
     private string? _aciklama;
     private HashSet<string> _secili = [];
+    private bool _maliMusavirMi;
     private ApiHatasi? _hata;
 
     protected override void OnInitialized()
@@ -52,6 +55,17 @@
             _ad = KopyaMi ? $"{Rol.Ad} (kopya)" : Rol.Ad;
             _aciklama = Rol.Aciklama;
             _secili = [.. Rol.Yetkiler];
+            _maliMusavirMi = Rol.MaliMusavirMi;
+        }
+    }
+
+    // İşaret açılınca role verilemeyecek yetkiler düşer; sonradan işaretlenirse sunucu reddeder.
+    private void MaliMusavirDegisti(bool deger)
+    {
+        _maliMusavirMi = deger;
+        if (deger)
+        {
+            _secili.RemoveWhere(y => !MaliMusavirYetkileri.UygunMu(y));
         }
     }
 
@@ -63,7 +77,7 @@
             return;
         }
 
-        var istek = new RolKaydetIstegi(_ad.Trim(), _aciklama, _secili.Order().ToList());
+        var istek = new RolKaydetIstegi(_ad.Trim(), _aciklama, _secili.Order().ToList(), _maliMusavirMi);
         var sonuc = Rol is null || KopyaMi
             ? await Api.PostAsync<RolCevabi>("api/yonetim/roller", istek)
             : await Api.PutAsync<RolCevabi>($"api/yonetim/roller/{Rol.Id}", istek);
