@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Yonetim\OnMuhasebe.Modules.Yonetim.Contracts\OnMuhasebe.Modules.Yonetim.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Shared\OnMuhasebe.Shared.Infrastructure\OnMuhasebe.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Cari\OnMuhasebe.Modules.Cari.Contracts\OnMuhasebe.Modules.Cari.Contracts.csproj" />
     <ProjectReference Include="..\..\Doviz\OnMuhasebe.Modules.Doviz.Contracts\OnMuhasebe.Modules.Doviz.Contracts.csproj" />

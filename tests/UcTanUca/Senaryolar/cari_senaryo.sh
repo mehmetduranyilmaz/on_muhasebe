@@ -161,5 +161,12 @@ istek GET "/api/cari/hesaplar/$TL_CARI/ekstre" "$T"
 kontrol 200 "Suresi dolan lisansta ekstre okunabiliyor"
 istek PUT "/api/yonetim/sistem/firmalar/$FIRMA/lisans" "$SYS" '{"paketKodu":"basic","bitisTarihi":"2027-12-31","ekModuller":[]}'
 
+echo "--- Hareketsiz cari"
+kayit_ol '{"firmaUnvani":"Hareketsiz Cari AS","ad":"H","soyad":"C","eposta":"hareketsiz'"$(date +%s)"'@ornek.com","sifre":"Sifre1234"}'
+TH=$(alan accessToken)
+istek POST /api/cari/hesaplar "$TH" '{"unvan":"Yeni Musteri","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY"}'
+istek GET /api/cari/raporlar/ozet "$TH"
+kontrol 200 "Hareketi olmayan cariyle ozet calisir"
+
 echo; echo "SONUC: $GECEN gecti, $KALAN kaldi"
 [ "$KALAN" -eq 0 ]

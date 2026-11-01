@@ -83,7 +83,7 @@ internal static class RolSablonlari
                 [.. Islemler("cari.hesap", G, E, D), .. Islemler("cari.hareket", G), .. Islemler("cari.rapor", G),
                  .. Islemler("stok.kart", G), .. Islemler("stok.fiyat", G), .. Islemler("stok.rapor", G),
                  .. Islemler("fatura.teklif", G, E, D, S, O, I), .. Islemler("fatura.belge", G, E, D),
-                 .. Islemler("fatura.irsaliye", G, E, D), .. Islemler("kasabanka.islem", G, E)]),
+                 .. Islemler("fatura.irsaliye", G, E, D), .. Islemler("kasabanka.islem", G, E), .. Islemler("fatura.tekrar", G, E, D, S)]),
             ("Satın Alma", "Tedarikçi, stok kartı, sipariş ve alış belgeleri; maliyet görür.",
                 [.. Islemler("cari.hesap", G, E, D), .. Islemler("cari.hareket", G),
                  .. Islemler("stok.kart", G, E, D), .. Islemler("stok.fiyat", G, E, D), .. Islemler("stok.rapor", G), .. Sec("stok.maliyet.goruntule"),

@@ -35,23 +35,18 @@ internal static class CariRaporlari
     {
         // Aktif cari sayısı KOBİ ölçeğinde (binler) küçük olduğu için değerleme bellekte yapılır.
         // Hareketler bir kez gruplanır; cari başına alt sorgu on binlerce caride yavaşlar.
-        var toplamlar = db.CariHareketler
+        var toplamlar = await db.CariHareketler
             .GroupBy(h => h.CariHesapId)
-            .Select(g => new { CariHesapId = g.Key, Bakiye = g.Sum(h => h.Borc - h.Alacak), BakiyeTl = g.Sum(h => h.BorcTl - h.AlacakTl) });
-        var cariler = await (
-                from c in db.CariHesaplar.AsNoTracking().Where(c => c.AktifMi)
-                join t in toplamlar on c.Id equals t.CariHesapId into tj
-                from t in tj.DefaultIfEmpty()
-                select new
-                {
-                    c.Id,
-                    c.Unvan,
-                    c.ParaBirimi,
-                    c.RiskLimiti,
-                    Bakiye = t == null ? 0m : t.Bakiye,
-                    BakiyeTl = t == null ? 0m : t.BakiyeTl
-                })
+            .Select(g => new { CariHesapId = g.Key, Bakiye = g.Sum(h => h.Borc - h.Alacak), BakiyeTl = g.Sum(h => h.BorcTl - h.AlacakTl) })
+            .ToDictionaryAsync(t => t.CariHesapId, cancellationToken);
+        var kartlar = await db.CariHesaplar.AsNoTracking().Where(c => c.AktifMi)
+            .Select(c => new { c.Id, c.Unvan, c.ParaBirimi, c.RiskLimiti })
             .ToListAsync(cancellationToken);
+        var cariler = kartlar.Select(c =>
+        {
+            var t = toplamlar.GetValueOrDefault(c.Id);
+            return new { c.Id, c.Unvan, c.ParaBirimi, c.RiskLimiti, Bakiye = t?.Bakiye ?? 0m, BakiyeTl = t?.BakiyeTl ?? 0m };
+        }).ToList();
 
         var bugun = TurkiyeSaati.Bugun(zaman);
         var kurlar = new Dictionary<string, decimal>();

@@ -29,6 +29,7 @@ public static class ModulMenusu
     [
         .. Tumu,
         new(ModulKodlari.Stok, "Fiyat Listeleri", "fiyat-listesi", Icons.Material.Filled.PriceChange, "Cariye ve cari grubuna özel, tarihli ve kademeli satış/alış fiyatları", "stok.fiyat"),
+        new(ModulKodlari.Fatura, "Tekrarlayan Faturalar", "tekrar-fatura", Icons.Material.Filled.EventRepeat, "Kira, abonelik ve bakım sözleşmesi gibi düzenli kesilen faturalar", "fatura.tekrar"),
         new(ModulKodlari.Fatura, "Teklifler", "teklif", Icons.Material.Filled.RequestPage, "Satış teklifleri: geçerlilik, kabul/red, siparişe dönüşüm", "fatura.teklif"),
         new(ModulKodlari.Fatura, "Siparişler", "siparis", Icons.Material.Filled.ShoppingBag, "Müşteri ve satınalma siparişleri, termin ve karşılama takibi", "fatura.teklif"),
         new(ModulKodlari.Fatura, "İrsaliyeler", "irsaliye", Icons.Material.Filled.LocalShipping, "Sevk irsaliyeleri, depolar arası sevk ve faturalanmamış irsaliye takibi", "fatura.irsaliye"),

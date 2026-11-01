@@ -62,6 +62,34 @@ internal sealed class FaturaKayitServisi(
         return await islemKapsami.CalistirAsync(ct => KesinlestirAsync(fatura, ayar, ct), cancellationToken);
     }
 
+    // Tekrar planından: işyeri plan kaydedilirken denetlendi (arka planda oturum yok). Taslak mı kesin mi kararı planındır, firma akışı değil.
+    public async Task<Sonuc<FaturaIslemSonucu>> PlandanOlusturAsync(FaturaKaydetIstegi istek, Guid isyeriId, bool kesinlestir, CancellationToken cancellationToken)
+    {
+        var bilgiler = await hazirlayici.HazirlaAsync(istek, cancellationToken);
+        if (!bilgiler.BasariliMi)
+        {
+            return bilgiler.Hata;
+        }
+
+        var olusturma = FaturaBelgesi.Olustur(bilgiler.Deger);
+        if (!olusturma.BasariliMi)
+        {
+            return olusturma.Hata;
+        }
+
+        var fatura = olusturma.Deger;
+        fatura.IsyeriAta(isyeriId);
+        db.Faturalar.Add(fatura);
+        if (!kesinlestir)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return new FaturaIslemSonucu(fatura, null);
+        }
+
+        var ayar = await ayarServisi.GetirAsync(cancellationToken);
+        return await islemKapsami.CalistirAsync(ct => KesinlestirAsync(fatura, ayar, ct), cancellationToken);
+    }
+
     public async Task<Sonuc<FaturaIslemSonucu>> GuncelleAsync(Guid id, FaturaKaydetIstegi istek, CancellationToken cancellationToken)
     {
         var fatura = await db.Faturalar.Include(f => f.Satirlar).SingleOrDefaultAsync(f => f.Id == id, cancellationToken);

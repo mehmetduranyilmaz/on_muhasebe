@@ -148,6 +148,28 @@ public sealed class FaturaSatirModeli
             TevkifatKodu, TevkifatPay, TevkifatPayda, IrsaliyeSatiriId, SiparisSatiriId,
             IrsaliyeliMi ? null : Izleme.LotIstegi, IrsaliyeliMi ? null : Izleme.SktIstegi, IrsaliyeliMi ? null : Izleme.SeriIstegi);
 
+    // Tekrar planında saklanan satır; stok kartlı satırın birimleri form açılırken karttan yüklenir.
+    public static FaturaSatirModeli Istekten(FaturaSatiriIstegi s) => new()
+    {
+        StokKartiId = s.StokKartiId,
+        TemelBirim = s.Birim,
+        Ad = s.Ad ?? "",
+        DepoId = s.DepoId,
+        Birim = s.Birim,
+        Miktar = s.Miktar,
+        BirimFiyat = s.BirimFiyat,
+        KdvDahilMi = s.KdvDahilMi,
+        KdvOrani = s.KdvOrani,
+        Iskonto1 = s.Iskonto1,
+        Iskonto2 = s.Iskonto2,
+        Iskonto3 = s.Iskonto3,
+        TevkifatKodu = s.TevkifatKodu,
+        TevkifatPay = s.TevkifatPay,
+        TevkifatPayda = s.TevkifatPayda,
+        EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0,
+        TevkifatAcik = s.TevkifatPayda > 0
+    };
+
     public static FaturaSatirModeli Detaydan(FaturaSatiriDetayi s)
     {
         var satir = DetayModeli(s);

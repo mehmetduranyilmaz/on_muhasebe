@@ -27,5 +27,8 @@ public static class FaturaYetkileri
     public static readonly YetkiKaynagi Rapor = new("fatura.rapor", ModulKodlari.Fatura, Baslik, "Fatura raporları (KDV, Ba/Bs, masraf merkezi)",
         YetkiIslemleri.SadeceGoruntule, ["cari.hesap.goruntule"]);
 
-    public static IReadOnlyList<YetkiKaynagi> Tumu { get; } = [Belge, Irsaliye, Teklif, Rapor];
+    public static readonly YetkiKaynagi Tekrar = new("fatura.tekrar", ModulKodlari.Fatura, Baslik, "Tekrarlayan faturalar",
+        YetkiIslemleri.Temel, [.. _belgeGerekenleri]);
+
+    public static IReadOnlyList<YetkiKaynagi> Tumu { get; } = [Belge, Irsaliye, Teklif, Tekrar, Rapor];
 }

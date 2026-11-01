@@ -15,7 +15,8 @@ public enum BildirimTuru
     EvrakSuresi,
     AracSuresi,
     BakimSuresi,
-    SatinalmaOnayi
+    SatinalmaOnayi,
+    TekrarFatura
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<BildirimOnemi>))]
@@ -47,6 +48,7 @@ public static class BildirimTurleri
         BildirimTuru.AracSuresi => "Araç sigorta, muayene ve MTV süresi",
         BildirimTuru.BakimSuresi => "Ekipman bakımı ve yasal kontrol",
         BildirimTuru.SatinalmaOnayi => "Satın alma talebi onayı",
+        BildirimTuru.TekrarFatura => "Tekrarlayan fatura",
         BildirimTuru.OdemeBildirimiSonucu => "Ödeme bildirimi sonucu",
         _ => tur.ToString()
     };

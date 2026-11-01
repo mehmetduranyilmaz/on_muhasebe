@@ -12,6 +12,8 @@ internal sealed class FaturaDbContext(DbContextOptions<FaturaDbContext> options,
 
     protected override string Sema => SemaAdi;
 
+    public DbSet<TekrarPlani> TekrarPlanlari => Set<TekrarPlani>();
+    public DbSet<TekrarUretimi> TekrarUretimleri => Set<TekrarUretimi>();
     public DbSet<FaturaBelgesi> Faturalar => Set<FaturaBelgesi>();
     public DbSet<FaturaSatiri> FaturaSatirlari => Set<FaturaSatiri>();
     public DbSet<FaturaAyari> FaturaAyarlari => Set<FaturaAyari>();

@@ -1,5 +1,6 @@
 @* Teklif/sipariş satır düzenleyicisi: stok arama, barkod, serbest satır ve satır alanları (iskonto, KDV, depo).
    Fiyat önerisi belgeye özgü olduğu için kartlı satırı üst bileşen ekler (KartEkle). *@
+@implements IHandleEvent
 @inject ApiIstemcisi Api
 @inject ISnackbar Snackbar
 
@@ -136,9 +137,19 @@
     // Kartlı satırı üst bileşen ekler (fiyat önerisi belgeye göre değişir): kart id, okutulan birim.
     [Parameter, EditorRequired] public Func<Guid, string?, Task> KartEkle { get; set; } = null!;
 
+    // Satırlar üst bileşenin listesidir: toplamlar ve Kaydet düğmesi her değişiklikte üstte yenilenir.
+    [Parameter] public EventCallback Degisti { get; set; }
+
     private int _aramaAnahtari;
     private string? _barkod;
     private MudTextField<string> _barkodAlani = null!;
+
+    async Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem islem, object? arguman)
+    {
+        await islem.InvokeAsync(arguman);
+        StateHasChanged();
+        await Degisti.InvokeAsync();
+    }
 
     private async Task<IEnumerable<StokKartiOzeti>> AraAsync(string? arama, CancellationToken cancellationToken)
     {

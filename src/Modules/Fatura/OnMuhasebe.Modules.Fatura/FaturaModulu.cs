@@ -1,3 +1,4 @@
+using OnMuhasebe.Shared.Infrastructure.Bildirimler;
 using OnMuhasebe.Shared.Infrastructure.Dosyalar;
 using OnMuhasebe.Shared.Contracts.Dosyalar;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,10 @@ public sealed class FaturaModulu : IModul
         services.AddScoped<SiparisKarsilamaServisi>();
         services.AddScoped<IFaturaMuhasebeSorgusu, FaturaMuhasebeSorgusu>();
         services.AddScoped<ISatinalmaSiparisiServisi, SatinalmaSiparisiServisi>();
+        services.AddScoped<TekrarUretici>();
+        services.AddSingleton<TekrarCalistirici>();
+        services.AddHostedService<TekrarZamanlayici>();
+        services.AddScoped<IBildirimKaynagi, TekrarBildirimKaynagi>();
         services.AddDosyaKaynagi<FaturaDbContext>(DosyaKayitTurleri.Fatura, ModulKodlari.Fatura, FaturaYetkileri.Belge,
             (db, id, ct) => db.Faturalar.AnyAsync(f => f.Id == id, ct));
     }
@@ -54,6 +59,7 @@ public sealed class FaturaModulu : IModul
         FaturaIslemleri.Map(grup);
         IrsaliyeIslemleri.Map(grup);
         TeklifSiparisIslemleri.Map(grup);
+        TekrarFaturaIslemleri.Map(grup);
         FaturaAyarIslemleri.Map(grup);
         FaturaRaporlari.Map(grup);
     }

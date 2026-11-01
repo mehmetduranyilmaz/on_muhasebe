@@ -7,7 +7,7 @@ KOK="$(cd "$(dirname "$0")" && pwd)"
 BEKLE="${OM_HIZ_BEKLE:-65}"
 NE="${1:-hepsi}"; shift || true
 KALAN=0
-SENARYOLAR="guvenlik senaryo cari stok fatura kasabanka ekstre cek_senet zorunlu tekrar denetim vade abonelik karne karekod bildirim sifre davet rls yetki isyeri muhasebe aktarim dosya evraktakip arac bakim satinalma"
+SENARYOLAR="guvenlik senaryo cari stok fatura kasabanka ekstre cek_senet zorunlu tekrar denetim vade abonelik karne karekod bildirim sifre davet rls yetki isyeri muhasebe aktarim dosya evraktakip arac bakim satinalma tekrar_fatura"
 
 ara() { [ "$BEKLE" -gt 0 ] && sleep "$BEKLE"; return 0; }
 # GitHub Actions'ta kalan kontroller hata notu (annotation) olarak da yazılır: özet sayfasında görünür.

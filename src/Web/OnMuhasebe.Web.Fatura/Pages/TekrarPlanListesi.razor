@@ -1,0 +1,82 @@
+@page "/tekrar-fatura"
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Tekrarlayan Faturalar" AltBaslik="Kira, abonelik ve bakım sözleşmesi gibi düzenli kesilen satış faturaları" GeriAdres="fatura" Ikon="@Icons.Material.Filled.EventRepeat">
+    <Islemler>
+        @if (Oturum.YazabilirMi(FaturaYetkileri.Tekrar, YetkiIslemleri.Ekle))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="tekrar-fatura/yeni">Yeni Plan</MudButton>
+        }
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme">
+    <button type="button" class="tur-sekmesi @(_durum is null ? "secili" : "")" style="--vurgu:#2563EB" @onclick="() => SecAsync(null)">Tümü</button>
+    @foreach (var d in Enum.GetValues<TekrarDurumu>())
+    {
+        <button type="button" class="tur-sekmesi @(_durum == d ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => SecAsync(d)">@TekrarMetinleri.Durum(d)</button>
+    }
+</div>
+
+<VeriTablosu T="TekrarPlaniOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+             SatirTiklandi="@(p => Navigasyon.NavigateTo($"tekrar-fatura/{p.Id}"))" BosIkon="@Icons.Material.Outlined.EventRepeat" BosBaslik="Tekrar planı yok">
+    <Basliklar>
+        <MudTh>No</MudTh>
+        <MudTh>Plan</MudTh>
+        <MudTh>Cari</MudTh>
+        <MudTh>Sıklık</MudTh>
+        <MudTh>Sıradaki fatura</MudTh>
+        <MudTh>Kesim</MudTh>
+        <MudTh>Durum</MudTh>
+    </Basliklar>
+    <Satir>
+        <MudTd DataLabel="No">@context.Kod</MudTd>
+        <MudTd DataLabel="Plan"><b>@context.Ad</b></MudTd>
+        <MudTd DataLabel="Cari">@context.CariUnvan</MudTd>
+        <MudTd DataLabel="Sıklık">@TekrarMetinleri.Siklik(context.Siklik)</MudTd>
+        <MudTd DataLabel="Sıradaki fatura">@Bicim.Tarih(context.SonrakiTarih)</MudTd>
+        <MudTd DataLabel="Kesim">@(context.OtomatikKesinlestir ? "Otomatik" : "Taslak")</MudTd>
+        <MudTd DataLabel="Durum">
+            @TekrarMetinleri.Durum(context.Durum)
+            @if (context.SonHata is not null)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Error" Class="ml-1">Hata</MudChip>
+            }
+        </MudTd>
+    </Satir>
+</VeriTablosu>
+
+@code {
+    private SayfaliSonuc<TekrarPlaniOzeti>? _sonuc;
+    private TekrarDurumu? _durum;
+    private int _sayfa = 1;
+    private bool _yukleniyor;
+    private ApiHatasi? _hata;
+
+    protected override Task OnInitializedAsync() => YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<TekrarPlaniOzeti>>($"api/fatura/tekrar-planlari?sayfa={_sayfa}{(_durum is { } d ? $"&durum={d}" : "")}");
+        _hata = sonuc.Hata;
+        _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
+        _yukleniyor = false;
+    }
+
+    private async Task SecAsync(TekrarDurumu? durum)
+    {
+        (_durum, _sayfa) = (durum, 1);
+        await YukleAsync();
+    }
+
+    private async Task SayfaDegistiAsync(int sayfa)
+    {
+        _sayfa = sayfa;
+        await YukleAsync();
+    }
+}

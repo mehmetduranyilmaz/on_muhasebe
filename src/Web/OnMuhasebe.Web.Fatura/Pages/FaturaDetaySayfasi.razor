@@ -33,6 +33,10 @@
                 <DosyalarDugmesi Tur="@DosyaKayitTurleri.Fatura" KayitId="Id" />
                 <DegisiklikGecmisiDugmesi Modul="fatura" KayitId="Id" />
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="YazdirAsync">Yazdır</MudButton>
+                @if (f.Tur == FaturaTuru.Satis && f.CariHesapId is not null && Oturum.YazabilirMi(FaturaYetkileri.Tekrar, YetkiIslemleri.Ekle))
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.EventRepeat" Href="@($"tekrar-fatura/yeni?fatura={f.Id}")">Tekrarla</MudButton>
+                }
                 @if (f.Durum == FaturaDurumu.Onayli)
                 {
                     <WhatsAppDugmesi Telefon="@_telefon" Metin="@WhatsAppMetni(f)" />
