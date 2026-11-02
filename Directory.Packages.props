@@ -20,7 +20,7 @@
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.13" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.13" />
-    <PackageVersion Include="MudBlazor" Version="9.11.0" />
+    <PackageVersion Include="MudBlazor" Version="9.12.0" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <!-- MailKit (MimeKit) üzerinden gelen geçişli bağımlılık; açıklı 10.0.0 yerine yamalı sürüm. -->
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
