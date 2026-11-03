@@ -8,6 +8,12 @@ window.omIsyeri = {
     oku: firma => { try { return localStorage.getItem("om-isyeri:" + firma); } catch { return null; } },
     yaz: (firma, deger) => { try { deger ? localStorage.setItem("om-isyeri:" + firma, deger) : localStorage.removeItem("om-isyeri:" + firma); } catch { } }
 };
+// Kullanıcının açık bıraktığı menü grupları.
+window.omMenu = {
+    oku: () => { try { return localStorage.getItem("om-menu-acik"); } catch { return null; } },
+    yaz: deger => { try { localStorage.setItem("om-menu-acik", deger); } catch { } }
+};
+
 // API'den gelen dosyayı tarayıcıya indirir.
 window.omDosya = {
     indir: (ad, tur, baytlar) => {

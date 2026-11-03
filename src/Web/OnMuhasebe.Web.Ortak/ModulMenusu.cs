@@ -9,8 +9,28 @@ public sealed record ModulMenuOgesi(string Kod, string Ad, string Yol, string Ik
     public string GorunumYetkisi => $"{Kaynak}.goruntule";
 }
 
+// Menü grubu. Ad boşsa maddeler başlıksız en üstte durur. Yollar menüdeki sırayı belirler.
+public sealed record MenuGrubu(string? Ad, string Ikon, IReadOnlyList<string> Yollar);
+
+// Henüz hazır olmayan modülün menüdeki yeri: tıklanmaz. SonraGelecegiYol görünmüyorsa o da görünmez.
+public sealed record MenuYakinda(string Ad, string Ikon, string SonraGelecegiYol);
+
 public static class ModulMenusu
 {
+    public static IReadOnlyList<MenuGrubu> Gruplar { get; } =
+    [
+        new(null, Icons.Material.Filled.People, ["cari"]),
+        new("Stok ve Fiyat", Icons.Material.Filled.Inventory2, ["stok", "fiyat-listesi"]),
+        new("Satış ve Satın Alma", Icons.Material.Filled.ReceiptLong, ["teklif", "siparis", "irsaliye", "fatura", "tekrar-fatura", "satinalma"]),
+        new("Finans", Icons.Material.Filled.AccountBalance, ["kasabanka", "nakit-akis", "cek-senet", "krediler", "teminatlar", "demirbaslar"]),
+        new("Muhasebe", Icons.Material.Filled.SyncAlt, ["muhasebe", "hesap-plani"]),
+        new("Personel", Icons.Material.Filled.Badge, ["personel", "masraflarim"]),
+        new("Takip", Icons.Material.Filled.EventNote, ["evrak-takibi", "arac", "bakim"])
+    ];
+
+    // e-Belge entegratör seçimini bekliyor; yeri Fatura'nın hemen altında.
+    public static MenuYakinda EBelge { get; } = new("e-Belge", Icons.Material.Filled.Send, "fatura");
+
     public static IReadOnlyList<ModulMenuOgesi> Tumu { get; } =
     [
         new(ModulKodlari.Cari, "Cari Hesaplar", "cari", Icons.Material.Filled.People, "Müşteri ve tedarikçi hesapları, ekstreler", "cari.hesap"),

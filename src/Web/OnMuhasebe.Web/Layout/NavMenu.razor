@@ -1,33 +1,58 @@
 @implements IDisposable
 @inject OturumYoneticisi Oturum
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
 
 <MudNavMenu Class="pt-2">
-    @if (_acikModuller.Count > 0)
+    @foreach (var grup in _gruplar)
     {
-        <div class="menu-bolum-basligi">Modüller</div>
-        @foreach (var modul in _acikModuller)
+        @* Tek maddelik grupta başlık gereksiz: yalnız "Masraflarım"ı gören çalışan, Cari Hesaplar. e-Belge'nin yanında duran madde tek sayılmaz. *@
+        @if (grup.Ad is null || (grup.Ogeler.Count == 1 && _yakinda?.SonraGelecegiYol != grup.Ogeler[0].Yol))
         {
-            <MudNavLink Href="@modul.Yol" Icon="@modul.Ikon">@modul.Ad</MudNavLink>
+            @foreach (var oge in grup.Ogeler)
+            {
+                <MudNavLink Href="@oge.Yol" Icon="@oge.Ikon">@oge.Ad</MudNavLink>
+            }
+        }
+        else
+        {
+            <MudNavGroup Title="@grup.Ad" Icon="@grup.Ikon" Class="menu-grubu" Expanded="@_acik.Contains(grup.Ad)" ExpandedChanged="@(acik => AcikDegistiAsync(grup.Ad, acik))">
+                @foreach (var oge in grup.Ogeler)
+                {
+                    <MudNavLink Href="@oge.Yol" Icon="@oge.Ikon">@oge.Ad</MudNavLink>
+                    @if (_yakinda is { } y && y.SonraGelecegiYol == oge.Yol)
+                    {
+                        <div class="menu-yakinda" title="Bu modül hazırlanıyor">
+                            <MudIcon Icon="@y.Ikon" Size="Size.Small" />
+                            <span>@y.Ad</span>
+                            <span class="menu-yakinda-etiket">Yakında</span>
+                        </div>
+                    }
+                }
+            </MudNavGroup>
         }
     }
 
     @if (_yonetim.Count > 0 || Oturum.Bilgi?.SistemYoneticisiMi == true)
     {
-        <div class="menu-bolum-basligi">Yönetim</div>
+        <MudNavGroup Title="@YonetimAdi" Icon="@Icons.Material.Filled.Settings" Class="menu-grubu" Expanded="@_acik.Contains(YonetimAdi)" ExpandedChanged="@(acik => AcikDegistiAsync(YonetimAdi, acik))">
+            @foreach (var (yol, ikon, ad) in _yonetim)
+            {
+                <MudNavLink Href="@yol" Icon="@ikon">@ad</MudNavLink>
+            }
+            <AuthorizeView Roles="@Roller.SistemYoneticisi">
+                <MudNavLink Href="sistem/firmalar" Icon="@Icons.Material.Filled.AdminPanelSettings">Firmalar ve Lisanslar</MudNavLink>
+                <MudNavLink Href="sistem/odeme-bildirimleri" Icon="@Icons.Material.Filled.AccountBalanceWallet">Ödeme Bildirimleri</MudNavLink>
+                <MudNavLink Href="sistem/paketler" Icon="@Icons.Material.Filled.Sell">Paketler ve Ödeme</MudNavLink>
+                <MudNavLink Href="sistem/eposta" Icon="@Icons.Material.Filled.MarkEmailRead">E-posta ve Bildirimler</MudNavLink>
+            </AuthorizeView>
+        </MudNavGroup>
     }
-    @foreach (var (yol, ikon, ad) in _yonetim)
-    {
-        <MudNavLink Href="@yol" Icon="@ikon">@ad</MudNavLink>
-    }
-    <AuthorizeView Roles="@Roller.SistemYoneticisi">
-        <MudNavLink Href="sistem/firmalar" Icon="@Icons.Material.Filled.AdminPanelSettings">Firmalar ve Lisanslar</MudNavLink>
-        <MudNavLink Href="sistem/odeme-bildirimleri" Icon="@Icons.Material.Filled.AccountBalanceWallet">Ödeme Bildirimleri</MudNavLink>
-        <MudNavLink Href="sistem/paketler" Icon="@Icons.Material.Filled.Sell">Paketler ve Ödeme</MudNavLink>
-        <MudNavLink Href="sistem/eposta" Icon="@Icons.Material.Filled.MarkEmailRead">E-posta ve Bildirimler</MudNavLink>
-    </AuthorizeView>
 </MudNavMenu>
 
 @code {
+    private const string YonetimAdi = "Yönetim";
+
     private static readonly (string Yol, string Ikon, string Ad)[] _yonetimOgeleri =
     [
         ("kullanicilar", Icons.Material.Filled.ManageAccounts, "Kullanıcılar"),
@@ -36,27 +61,101 @@
         ("ayarlar", Icons.Material.Filled.Tune, "Ayarlar")
     ];
 
-    private List<ModulMenuOgesi> _acikModuller = [];
+    private sealed record GorunenGrup(string? Ad, string Ikon, IReadOnlyList<ModulMenuOgesi> Ogeler);
+
+    private List<GorunenGrup> _gruplar = [];
+    private MenuYakinda? _yakinda;
     private List<(string Yol, string Ikon, string Ad)> _yonetim = [];
+    private readonly HashSet<string> _acik = [];
 
     protected override void OnInitialized()
     {
         Oturum.Degisti += OturumDegisti;
+        Navigasyon.LocationChanged += AdresDegisti;
         MenuyuGuncelle();
+        BulunulanGrubuAc();
     }
 
-    public void Dispose() => Oturum.Degisti -= OturumDegisti;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
 
-    // Lisansı olan ve ekranı görme yetkisi bulunan bölümler listelenir.
+        if (await Js.InvokeAsync<string?>("omMenu.oku") is { Length: > 0 } kayit)
+        {
+            _acik.UnionWith(kayit.Split('|', StringSplitOptions.RemoveEmptyEntries));
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        Oturum.Degisti -= OturumDegisti;
+        Navigasyon.LocationChanged -= AdresDegisti;
+    }
+
+    // Lisansı olan ve ekranı görme yetkisi bulunan bölümler gruplanır; içinde madde kalmayan grup hiç görünmez.
     private void MenuyuGuncelle()
     {
-        _acikModuller = ModulMenusu.MenuOgeleri.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(m.GorunumYetkisi)).ToList();
+        var acikOgeler = ModulMenusu.MenuOgeleri.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(m.GorunumYetkisi)).ToDictionary(m => m.Yol);
+        _gruplar = ModulMenusu.Gruplar
+            .Select(g => (Grup: g, Ogeler: g.Yollar.Where(acikOgeler.ContainsKey).Select(y => acikOgeler[y]).ToList()))
+            .Where(x => x.Ogeler.Count > 0)
+            .Select(x => new GorunenGrup(x.Grup.Ad, x.Grup.Ikon, x.Ogeler))
+            .ToList();
+
+        // Gruba eklenmeyi unutulan modül menüden kaybolmasın.
+        var gruptakiler = ModulMenusu.Gruplar.SelectMany(g => g.Yollar).ToHashSet();
+        var grupsuz = acikOgeler.Values.Where(m => !gruptakiler.Contains(m.Yol)).ToList();
+        if (grupsuz.Count > 0)
+        {
+            _gruplar.Add(new GorunenGrup(null, Icons.Material.Filled.Apps, grupsuz));
+        }
+
+        _yakinda = acikOgeler.ContainsKey(ModulMenusu.EBelge.SonraGelecegiYol) ? ModulMenusu.EBelge : null;
         _yonetim = _yonetimOgeleri.Where(o => SayfaYetkileri.Gereken(o.Yol) is { } y && Oturum.YetkiVarMi(y)).ToList();
+    }
+
+    // İçinde bulunulan sayfanın grubu her zaman açık gelir.
+    private void BulunulanGrubuAc()
+    {
+        var yol = Navigasyon.ToBaseRelativePath(Navigasyon.Uri).Split('/', '?', '#')[0];
+        if (_gruplar.FirstOrDefault(g => g.Ad is not null && g.Ogeler.Any(o => o.Yol == yol)) is { Ad: { } ad })
+        {
+            _acik.Add(ad);
+        }
+        else if (yol == "sistem" || _yonetimOgeleri.Any(o => o.Yol == yol))
+        {
+            _acik.Add(YonetimAdi);
+        }
+    }
+
+    private async Task AcikDegistiAsync(string ad, bool acik)
+    {
+        if (acik)
+        {
+            _acik.Add(ad);
+        }
+        else
+        {
+            _acik.Remove(ad);
+        }
+
+        await Js.InvokeVoidAsync("omMenu.yaz", string.Join('|', _acik));
+    }
+
+    private void AdresDegisti(object? gonderen, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        BulunulanGrubuAc();
+        InvokeAsync(StateHasChanged);
     }
 
     private void OturumDegisti()
     {
         MenuyuGuncelle();
+        BulunulanGrubuAc();
         InvokeAsync(StateHasChanged);
     }
 }

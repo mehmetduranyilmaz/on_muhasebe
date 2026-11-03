@@ -16,7 +16,7 @@ internal sealed class TekrarFaturaTesti : TarayiciTesti
         await Post("api/cari/hesaplar", new { unvan = "Kiraci Market", tur = "Musteri", kisiTipi = "Tuzel", paraBirimi = "TRY" });
 
         await GirisYap(eposta, "Sifre1234");
-        Kontrol(await Bekle(Govde("Tekrarlayan Faturalar"), 15), "Menude Tekrarlayan Faturalar var");
+        Kontrol(await Bekle("document.querySelector('.mud-navmenu')?.textContent.includes('Tekrarlayan Faturalar')", 15), "Menude Tekrarlayan Faturalar var");
         await Git("/tekrar-fatura");
         Kontrol(await Bekle($"{Govde("Yeni Plan")} && {Govde("Tekrar planı yok")}", 20), "Bos plan listesi");
         await Tikla("Yeni Plan");

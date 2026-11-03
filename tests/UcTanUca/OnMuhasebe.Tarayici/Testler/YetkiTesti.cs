@@ -28,7 +28,7 @@ internal sealed class YetkiTesti : TarayiciTesti
 
         // --- Yönetici: rol sayfası
         await GirisYap(yonetici, "Sifre1234");
-        Kontrol(await Bekle(Govde("Roller ve Yetkiler"), 15), "Yonetici menusunde Roller ve Yetkiler var");
+        Kontrol(await Bekle("document.querySelector('.mud-navmenu')?.textContent.includes('Roller ve Yetkiler')", 15), "Yonetici menusunde Roller ve Yetkiler var");
         await Git("/roller");
         Kontrol(await Bekle($"{Govde("Tam yetki")} && {Govde("Satış")} && {Govde("Salt Okur (Mali Müşavir)")}", 15), "Hazir roller listelendi");
         await SatirTikla("Satış");
@@ -52,7 +52,7 @@ internal sealed class YetkiTesti : TarayiciTesti
         // --- Satış kullanıcısı: menü, düğme ve maliyet
         await GirisYap(satisci, "Satis1234");
         await Bekle(Govde("Hoş geldiniz, Selin"), 15);
-        var menu = await Js("document.querySelector('.mud-navmenu')?.innerText ?? ''");
+        var menu = await Js("document.querySelector('.mud-navmenu')?.textContent ?? ''");
         Kontrol(menu.Contains("Cari Hesaplar") && menu.Contains("Fatura") && menu.Contains("Teklifler"), "Satisci menude cari, fatura ve teklifleri goruyor");
         Kontrol(!menu.Contains("Kullanıcılar") && !menu.Contains("Ayarlar") && !menu.Contains("Krediler") && !menu.Contains("Demirbaşlar"),
             "Yetkisi olmayan bolumler menude yok");
