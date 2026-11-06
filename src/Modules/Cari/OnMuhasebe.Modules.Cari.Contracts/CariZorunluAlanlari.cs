@@ -15,12 +15,13 @@ public static class CariZorunluAlanlari
     public const string Adres = "cari.kart.adres";
     public const string Telefon = "cari.kart.telefon";
     public const string Eposta = "cari.kart.eposta";
-    public const string Iban = "cari.kart.iban";
+    // Kodlar eski adlarıyla korunur: firmaların kayıtlı zorunlu alan seçimleri bozulmasın.
+    public const string BankaHesabi = "cari.kart.iban";
     public const string Grup = "cari.kart.grup";
     public const string VadeGun = "cari.kart.vadeGun";
     public const string RiskLimiti = "cari.kart.riskLimiti";
-    public const string YetkiliAd = "cari.kart.yetkiliAd";
-    public const string YetkiliTelefon = "cari.kart.yetkiliTelefon";
+    public const string IlgiliKisi = "cari.kart.yetkiliAd";
+    public const string IlgiliKisiTelefonu = "cari.kart.yetkiliTelefon";
 
     public static IReadOnlyList<ZorunluAlanTanimi> Tumu { get; } =
     [
@@ -31,11 +32,11 @@ public static class CariZorunluAlanlari
         new(Adres, ModulKodlari.Cari, Form, "Adres"),
         new(Telefon, ModulKodlari.Cari, Form, "Telefon"),
         new(Eposta, ModulKodlari.Cari, Form, "E-posta"),
-        new(Iban, ModulKodlari.Cari, Form, "IBAN"),
+        new(BankaHesabi, ModulKodlari.Cari, Form, "En az bir banka hesabı (IBAN)"),
         new(Grup, ModulKodlari.Cari, Form, "Grup"),
         new(VadeGun, ModulKodlari.Cari, Form, "Vade günü"),
         new(RiskLimiti, ModulKodlari.Cari, Form, "Risk limiti"),
-        new(YetkiliAd, ModulKodlari.Cari, Form, "Yetkili adı"),
-        new(YetkiliTelefon, ModulKodlari.Cari, Form, "Yetkili telefonu")
+        new(IlgiliKisi, ModulKodlari.Cari, Form, "En az bir ilgili kişi"),
+        new(IlgiliKisiTelefonu, ModulKodlari.Cari, Form, "İlgili kişi telefonu")
     ];
 }

@@ -18,7 +18,7 @@ public sealed record CariBilgisi(
     bool AktifMi,
     bool FarkliDovizdeIslem);
 
-public sealed record CariEslestirmeAdayi(Guid Id, string Unvan, string? VergiNo, string? Iban, string ParaBirimi);
+public sealed record CariEslestirmeAdayi(Guid Id, string Unvan, string? VergiNo, IReadOnlyList<string> Ibanlar, string ParaBirimi);
 
 public interface ICariSorgusu
 {

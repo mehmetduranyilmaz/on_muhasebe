@@ -304,7 +304,7 @@ else if (_hata is null)
         if (_fatura?.CariHesapId is { } cariId && Oturum.ModulAcikMi(ModulKodlari.Cari)
             && await Api.GetAsync<CariIletisimi>($"api/cari/hesaplar/{cariId}") is { BasariliMi: true } cari)
         {
-            _telefon = cari.Deger.Telefon ?? cari.Deger.YetkiliTelefon;
+            _telefon = cari.Deger.CepTelefonu ?? cari.Deger.Telefon ?? cari.Deger.IlgiliKisiler?.Select(k => k.Telefon).FirstOrDefault(t => t is not null);
         }
     }
 
@@ -373,7 +373,9 @@ else if (_hata is null)
         + (f.Kalan is { } k && k > 0 && k != f.GenelToplam ? $"\nKalan: {Bicim.Tutar(k, f.ParaBirimi)}" : "")
         + $"\n\n{_firma?.Unvan ?? Oturum.Bilgi?.AktifFirma?.Unvan}";
 
-    private sealed record CariIletisimi(string? Telefon, string? YetkiliTelefon);
+    private sealed record CariIletisimi(string? CepTelefonu, string? Telefon, List<IlgiliKisiTelefonu>? IlgiliKisiler);
+
+    private sealed record IlgiliKisiTelefonu(string? Telefon);
 
     private async Task OnaylaAsync()
     {

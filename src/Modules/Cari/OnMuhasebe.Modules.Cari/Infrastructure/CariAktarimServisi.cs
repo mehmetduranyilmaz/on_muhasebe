@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using OnMuhasebe.Modules.Cari.Contracts;
 using OnMuhasebe.Modules.Cari.Domain;
+using OnMuhasebe.Shared.Contracts.Bankalar;
 using OnMuhasebe.Shared.Contracts.Doviz;
 using OnMuhasebe.Shared.Contracts.Kimlik;
 using OnMuhasebe.Shared.Contracts.TopluAktarim;
@@ -29,7 +30,9 @@ internal sealed class CariAktarimServisi(
         new("il", "İl", Esanlamlilar: ["Şehir"]),
         new("ilce", "İlçe"),
         new("adres", "Adres", Genislik: 40),
-        new("telefon", "Telefon", Esanlamlilar: ["Tel", "Telefon No", "GSM", "Cep Telefonu"]),
+        new("postaKodu", "Posta Kodu", Esanlamlilar: ["PK"]),
+        new("telefon", "Telefon", Esanlamlilar: ["Tel", "Telefon No", "Sabit Telefon"]),
+        new("cepTelefonu", "Cep Telefonu", Esanlamlilar: ["GSM", "Cep", "Mobil"]),
         new("eposta", "E-posta", Esanlamlilar: ["Mail", "E-mail", "Email", "E-Posta Adresi"], Genislik: 28),
         new("paraBirimi", "Para Birimi", Esanlamlilar: ["Döviz", "Döviz Cinsi", "PB"]),
         new("vadeGun", "Vade Gün", Esanlamlilar: ["Vade", "Vade Günü", "Ödeme Vadesi"]),
@@ -105,9 +108,15 @@ internal sealed class CariAktarimServisi(
                 }
             }
 
+            // Eski programlardaki tek yetkili ve tek IBAN, kartın ilk ilgili kişisi ve ilk banka hesabı olur.
+            var yetkili = satir.Metin("yetkiliAd");
+            var iban = satir.Metin("iban");
             var istek = new CariKaydetIstegi(kod, unvan, tur, kisiTipi, vergiNo, satir.Metin("vergiDairesi"), satir.Metin("il"), satir.Metin("ilce"),
                 satir.Metin("adres"), satir.Metin("telefon"), satir.Metin("eposta"), paraBirimi, satir.TamSayi("vadeGun", hatalar),
-                satir.Sayi("riskLimiti", hatalar), grupId, satir.Metin("yetkiliAd"), satir.Metin("yetkiliTelefon"), satir.Metin("not"), Iban: satir.Metin("iban"));
+                satir.Sayi("riskLimiti", hatalar), grupId, satir.Metin("not"),
+                PostaKodu: satir.Metin("postaKodu"), CepTelefonu: satir.Metin("cepTelefonu"),
+                IlgiliKisiler: yetkili is null ? [] : [new CariIlgiliKisiBilgisi(yetkili, null, satir.Metin("yetkiliTelefon"), null)],
+                BankaHesaplari: iban is null ? [] : [new CariBankaHesabiBilgisi(BankaAdiCoz(iban), null, null, iban, paraBirimi)]);
             var dogrulama = await dogrulayici.ValidateAsync(istek, ct);
             hatalar.AddRange(dogrulama.Errors.Select(e => e.ErrorMessage));
             if (hatalar.Count > 0)
@@ -247,6 +256,9 @@ internal sealed class CariAktarimServisi(
                 return KisiTipi.Tuzel;
         }
     }
+
+    // Excel'de banka adı sütunu yok; IBAN'ın banka kodundan bulunur, bulunamazsa genel ad verilir (karttan düzeltilebilir).
+    private static string BankaAdiCoz(string iban) => Bankalar.IbandanBul(iban)?.Ad ?? "Banka";
 
     internal static string ParaBirimiCoz(string? metin) => metin?.Trim().ToUpperInvariant() switch
     {

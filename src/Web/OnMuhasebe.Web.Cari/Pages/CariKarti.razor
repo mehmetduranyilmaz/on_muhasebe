@@ -354,12 +354,25 @@ else if (_hata is null)
 
     private static IEnumerable<(string Ikon, string Metin)> Iletisim(CariDetayi c)
     {
+        if (c.CepTelefonu is not null) yield return (Icons.Material.Filled.Smartphone, c.CepTelefonu);
         if (c.Telefon is not null) yield return (Icons.Material.Filled.Phone, c.Telefon);
+        if (c.Faks is not null) yield return (Icons.Material.Filled.Fax, c.Faks);
         if (c.Eposta is not null) yield return (Icons.Material.Filled.Email, c.Eposta);
-        if (c.YetkiliAd is not null) yield return (Icons.Material.Filled.Person, $"{c.YetkiliAd} {c.YetkiliTelefon}".Trim());
-        var adres = string.Join(", ", new[] { c.Adres, c.Ilce, c.Il }.Where(x => !string.IsNullOrEmpty(x)));
+        if (c.WebSitesi is not null) yield return (Icons.Material.Filled.Language, c.WebSitesi);
+        foreach (var k in c.IlgiliKisiler)
+        {
+            yield return (Icons.Material.Filled.Person, string.Join(" · ", new[] { k.AdSoyad, k.Gorev, k.Telefon, k.Eposta }.Where(x => !string.IsNullOrEmpty(x))));
+        }
+
+        var adres = string.Join(", ", new[] { c.Adres, c.Ilce, c.Il, c.PostaKodu, c.Ulke == CariVarsayilanlari.Ulke ? null : c.Ulke }.Where(x => !string.IsNullOrEmpty(x)));
         if (adres.Length > 0) yield return (Icons.Material.Filled.Place, adres);
+        if (c.Adresler.Count > 0) yield return (Icons.Material.Filled.LocalShipping, $"{c.Adresler.Count} teslimat adresi: {string.Join(", ", c.Adresler.Select(a => a.Baslik))}");
         if (c.VergiNo is not null) yield return (Icons.Material.Filled.Badge, $"{(c.VergiNo.Length == 11 ? "TCKN" : "VKN")} {c.VergiNo} {c.VergiDairesi}".Trim());
+        if (c.EFaturaMukellefiMi) yield return (Icons.Material.Filled.MarkEmailRead, $"e-Fatura mükellefi {c.EFaturaEtiketi}".Trim());
+        foreach (var h in c.BankaHesaplari)
+        {
+            yield return (Icons.Material.Filled.AccountBalance, $"{h.BankaAdi} {h.Iban ?? h.HesapNo} ({h.ParaBirimi})");
+        }
     }
 
     private async Task CariYukleAsync()

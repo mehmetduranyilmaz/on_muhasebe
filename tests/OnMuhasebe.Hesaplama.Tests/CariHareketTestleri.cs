@@ -8,9 +8,10 @@ public class CariHareketTestleri
 {
     private static readonly DateOnly _tarih = new(2026, 10, 20);
 
-    internal static CariHesap Cari(string paraBirimi = "TRY") => CariHesap.Olustur("C00001", new CariBilgileri(
-        "Test Ltd", CariTuru.Musteri, KisiTipi.Tuzel, null, null, null, null, null, null, null,
-        paraBirimi, null, null, null, null, null, null, false, null));
+    internal static CariHesap Cari(string paraBirimi = "TRY") => CariHesap.Olustur("C00001", Bilgiler(paraBirimi));
+
+    private static CariBilgileri Bilgiler(string paraBirimi) => CariBilgileri.Istekten(new CariKaydetIstegi(
+        null, "Test Ltd", CariTuru.Musteri, KisiTipi.Tuzel, null, null, null, null, null, null, null, paraBirimi, null, null, null, null));
 
     private static CariHareket Hareket(CariHesap cari, HareketYonu yon, decimal tutar, decimal kur) =>
         CariHareket.Olustur(cari, CariHareketTuru.Dekont, yon, _tarih, null, tutar, kur, null, "test").Deger;
@@ -103,8 +104,7 @@ public class CariHareketTestleri
     public void Hareketi_olan_carinin_para_birimi_degistirilemez()
     {
         var cari = Cari("USD");
-        var bilgiler = new CariBilgileri("Test Ltd", CariTuru.Musteri, KisiTipi.Tuzel, null, null, null, null, null, null,
-            null, "EUR", null, null, null, null, null, null, false, null);
+        var bilgiler = Bilgiler("EUR");
 
         Assert.Equal("para_birimi_degistirilemez", cari.Guncelle("C00001", bilgiler, hareketVarMi: true).Hata!.Kod);
         Assert.True(cari.Guncelle("C00001", bilgiler, hareketVarMi: false).BasariliMi);

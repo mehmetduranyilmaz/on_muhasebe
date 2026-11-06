@@ -61,6 +61,19 @@ public static class Bankalar
 
     public static string? Swift(string? ad) => Bul(ad)?.Swift;
 
+    // TR IBAN'ında 5-9. karakterler 5 haneli banka kodudur (EFT kodunun başına sıfır eklenmiş hâli: Ziraat 0010 → 00010).
+    public static Banka? IbandanBul(string? iban)
+    {
+        var sade = iban?.Replace(" ", "").ToUpperInvariant();
+        if (sade is not { Length: 26 } || !sade.StartsWith("TR", StringComparison.Ordinal)
+            || !int.TryParse(sade.AsSpan(4, 5), NumberStyles.None, CultureInfo.InvariantCulture, out var kod))
+        {
+            return null;
+        }
+
+        return Tumu.FirstOrDefault(b => int.Parse(b.Kod, CultureInfo.InvariantCulture) == kod);
+    }
+
     // Ada veya SWIFT'e göre arama (Türkçe büyük/küçük harf duyarsız). Boş aramada tüm liste döner.
     public static IReadOnlyList<Banka> Ara(string? arama)
     {

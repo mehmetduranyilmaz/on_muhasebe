@@ -1,8 +1,12 @@
 @page "/cari/yeni"
 @page "/cari/{Id:guid}/duzenle"
+@using OnMuhasebe.Shared.Contracts.Bankalar
+@using OnMuhasebe.Shared.Contracts.Vergi
 @inject ApiIstemcisi Api
 @inject ZorunluAlanServisi ZorunluAlanlar
+@inject OturumYoneticisi Oturum
 @inject NavigationManager Navigasyon
+@inject TimeProvider Zaman
 @inject ISnackbar Snackbar
 
 <SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? "cari" : $"cari/{Id}")" Ikon="@(Id is null ? Icons.Material.Filled.PersonAdd : Icons.Material.Filled.Edit)"
@@ -18,103 +22,289 @@ else
 {
     <MudForm @ref="_form">
         <FormBolumu Baslik="Genel bilgiler" Aciklama="Kimlik, vergi ve para birimi" Ikon="@Icons.Material.Filled.Badge" Sira="0">
-                <MudItem xs="12" sm="4" md="2">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_kod" Label="Kod" MaxLength="20" HelperText="Boş bırakılırsa otomatik verilir" />
+            <MudItem xs="12">
+                <MudToggleGroup T="KisiTipi" Value="_kisiTipi" ValueChanged="KisiTipiDegisti" Color="Color.Primary" Size="Size.Small" Outlined="true" Style="max-width:420px">
+                    <MudToggleItem Value="KisiTipi.Tuzel">
+                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" /> Kurumsal (tüzel kişi)
+                    </MudToggleItem>
+                    <MudToggleItem Value="KisiTipi.Sahis">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" /> Bireysel (şahıs)
+                    </MudToggleItem>
+                </MudToggleGroup>
+            </MudItem>
+            <MudItem xs="12" sm="4" md="2">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_kod" Label="Kod" MaxLength="20" HelperText="Boş bırakılırsa otomatik verilir" />
+            </MudItem>
+            @if (SahisMi)
+            {
+                <MudItem xs="12" sm="4" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Value="_ad" ValueChanged="@((string? v) => AdSoyadDegisti(v, _soyad))"
+                                  Label="Ad" Required="true" RequiredError="Ad gerekli." MaxLength="100" />
                 </MudItem>
-                <MudItem xs="12" sm="8" md="6">
+                <MudItem xs="12" sm="4" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Value="_soyad" ValueChanged="@((string? v) => AdSoyadDegisti(_ad, v))"
+                                  Label="Soyad" Required="true" RequiredError="Soyad gerekli." MaxLength="100" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_unvan" Label="Ünvan" Required="true" RequiredError="Ünvan gerekli." MaxLength="250"
+                                  HelperText="Ad soyaddan doldurulur; şahıs firmasının ticari adı varsa yazın" />
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="12" sm="8" md="10">
                     <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_unvan" Label="Ünvan" Required="true" RequiredError="Ünvan gerekli." MaxLength="250" />
                 </MudItem>
+            }
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_tur" Label="Tür">
+                    @foreach (var tur in Enum.GetValues<CariTuru>())
+                    {
+                        <MudSelectItem Value="tur">@CariMetinleri.Tur(tur)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiNo" Required="@(Z(CariZorunluAlanlari.VergiNo) || _eFaturaMukellefiMi)"
+                              RequiredError="Bu alan zorunlu." MaxLength="11" Label="@(SahisMi ? "T.C. kimlik no" : "Vergi kimlik no")"
+                              HelperText="@(SahisMi ? "11 hane" : "10 hane")" InputMode="InputMode.numeric" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiDairesi" Required="Z(CariZorunluAlanlari.VergiDairesi)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Vergi dairesi" MaxLength="100" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="Guid?" @bind-Value="_grupId" Required="Z(CariZorunluAlanlari.Grup)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Grup" Clearable="true">
+                    @foreach (var grup in _gruplar)
+                    {
+                        <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_paraBirimi" Label="Para birimi" Disabled="_hareketVarMi"
+                           HelperText="@(_hareketVarMi ? "Hareketi olan carinin para birimi değiştirilemez" : null)">
+                    @foreach (var pb in ParaBirimleri.Tumu)
+                    {
+                        <MudSelectItem Value="pb.Kod">@pb.Kod - @pb.Ad</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="5" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_farkliDovizdeIslem" Color="Color.Secondary" Label="Farklı dövizde tahsilat/ödeme kabul et" />
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="İletişim ve fatura adresi" Aciklama="Faturada görünen adres ve iletişim bilgileri" Ikon="@Icons.Material.Filled.ContactPhone" Sira="1">
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_cepTelefonu" Label="Cep telefonu" MaxLength="30" InputType="InputType.Telephone"
+                              HelperText="WhatsApp paylaşımında kullanılır" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_telefon" Required="Z(CariZorunluAlanlari.Telefon)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Telefon" MaxLength="30" InputType="InputType.Telephone" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="2">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_faks" Label="Faks" MaxLength="30" InputType="InputType.Telephone" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Required="Z(CariZorunluAlanlari.Eposta)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="E-posta" MaxLength="256" InputType="InputType.Email" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_webSitesi" Label="Web sitesi" MaxLength="200" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ulke" Label="Ülke" MaxLength="60" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_il" Required="Z(CariZorunluAlanlari.Il)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="İl" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ilce" Required="Z(CariZorunluAlanlari.Ilce)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="İlçe" MaxLength="50" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_postaKodu" Label="Posta kodu" MaxLength="10" InputMode="InputMode.numeric" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_adres" Required="Z(CariZorunluAlanlari.Adres)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Adres" MaxLength="500" Lines="2" />
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="İlgili kişiler" Aciklama="@($"Muhasebe, satın alma, sevkiyat gibi irtibat kişileri{ZorunluNotu(CariZorunluAlanlari.IlgiliKisi)}")" Ikon="@Icons.Material.Filled.Groups" Sira="2">
+            @foreach (var kisi in _ilgiliKisiler)
+            {
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="kisi.AdSoyad" Label="Ad soyad" Required="true" RequiredError="Ad soyad gerekli." MaxLength="100" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="kisi.Gorev" Label="Görevi" MaxLength="60" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="kisi.Telefon" Label="Telefon" MaxLength="30" InputType="InputType.Telephone"
+                                  Required="Z(CariZorunluAlanlari.IlgiliKisiTelefonu)" RequiredError="Bu alan zorunlu (firma ayarı)." />
+                </MudItem>
+                <MudItem xs="10" sm="5" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="kisi.Eposta" Label="E-posta" MaxLength="256" InputType="InputType.Email" />
+                </MudItem>
+                <MudItem xs="2" sm="1" Class="d-flex align-center">
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" aria-label="Kişiyi sil" OnClick="@(() => _ilgiliKisiler.Remove(kisi))" />
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAddAlt" Disabled="@(_ilgiliKisiler.Count >= 20)"
+                           OnClick="@(() => _ilgiliKisiler.Add(new()))">Kişi ekle</MudButton>
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="Teslimat adresleri" Aciklama="Şube, depo ya da şantiye adresleri; faturada teslimat adresi olarak seçilir" Ikon="@Icons.Material.Filled.LocalShipping" Sira="3">
+            @foreach (var adres in _adresler)
+            {
+                <MudItem xs="12">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle2" Class="flex-grow-1">@(string.IsNullOrWhiteSpace(adres.Baslik) ? "Yeni adres" : adres.Baslik)</MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small" aria-label="Adresi sil" OnClick="@(() => _adresler.Remove(adres))" />
+                    </div>
+                </MudItem>
+                <MudItem xs="12" sm="4" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.Baslik" Label="Adres başlığı" Required="true" RequiredError="Başlık gerekli." MaxLength="60"
+                                  Placeholder="Ör. Merkez depo" />
+                </MudItem>
+                <MudItem xs="12" sm="4" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.AdSoyad" Label="Teslim alacak kişi" MaxLength="100" />
+                </MudItem>
+                <MudItem xs="12" sm="4" md="2">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.Telefon" Label="Telefon" MaxLength="30" InputType="InputType.Telephone" />
+                </MudItem>
+                <MudItem xs="6" md="1">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.Ulke" Label="Ülke" MaxLength="60" />
+                </MudItem>
+                <MudItem xs="6" md="1">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.Il" Label="İl" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="6" md="1">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.Ilce" Label="İlçe" MaxLength="50" />
+                </MudItem>
+                <MudItem xs="6" md="1">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.PostaKodu" Label="Posta kodu" MaxLength="10" />
+                </MudItem>
+                <MudItem xs="12" Class="mb-2">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="adres.Adres" Label="Adres" Required="true" RequiredError="Adres gerekli." MaxLength="500" />
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddLocationAlt" Disabled="@(_adresler.Count >= 20)"
+                           OnClick="@(() => _adresler.Add(new() { Ulke = _ulke ?? CariVarsayilanlari.Ulke }))">Adres ekle</MudButton>
+            </MudItem>
+        </FormBolumu>
+
+        <FormBolumu Baslik="Banka hesapları" Aciklama="@($"Ödeme talimatında ve banka ekstresinde carinin otomatik bulunmasında kullanılır{ZorunluNotu(CariZorunluAlanlari.BankaHesabi)}")"
+                    Ikon="@Icons.Material.Filled.AccountBalance" Sira="4">
+            @foreach (var hesap in _bankaHesaplari)
+            {
+                <MudItem xs="12" sm="6" md="3">
+                    <BankaSecici @bind-Value="hesap.BankaAdi" Label="Banka" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="2">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="hesap.Sube" Label="Şube" MaxLength="100" />
+                </MudItem>
                 <MudItem xs="6" md="2">
-                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_tur" Label="Tür">
-                        @foreach (var tur in Enum.GetValues<CariTuru>())
-                        {
-                            <MudSelectItem Value="tur">@CariMetinleri.Tur(tur)</MudSelectItem>
-                        }
-                    </MudSelect>
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="hesap.HesapNo" Label="Hesap no" MaxLength="30" />
                 </MudItem>
-                <MudItem xs="6" md="2">
-                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_kisiTipi" Label="Kişi tipi">
-                        @foreach (var tip in Enum.GetValues<KisiTipi>())
-                        {
-                            <MudSelectItem Value="tip">@CariMetinleri.KisiTipi(tip)</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiNo" Required="Z(CariZorunluAlanlari.VergiNo)" RequiredError="Bu alan zorunlu (firma ayarı)." MaxLength="11"
-                                  Label="@(_kisiTipi == KisiTipi.Sahis ? "T.C. kimlik no" : "Vergi no / T.C. kimlik no")" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_vergiDairesi" Required="Z(CariZorunluAlanlari.VergiDairesi)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Vergi dairesi" MaxLength="100" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="3">
-                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="Guid?" @bind-Value="_grupId" Required="Z(CariZorunluAlanlari.Grup)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Grup" Clearable="true">
-                        @foreach (var grup in _gruplar)
-                        {
-                            <MudSelectItem T="Guid?" Value="grup.Id">@grup.Ad</MudSelectItem>
-                        }
-                    </MudSelect>
-                </MudItem>
-                <MudItem xs="12" sm="6" md="3">
-                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_paraBirimi" Label="Para birimi" Disabled="_hareketVarMi"
-                               HelperText="@(_hareketVarMi ? "Hareketi olan carinin para birimi değiştirilemez" : null)">
+                <MudItem xs="6" md="1">
+                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="hesap.ParaBirimi" Label="Döviz">
                         @foreach (var pb in ParaBirimleri.Tumu)
                         {
-                            <MudSelectItem Value="pb.Kod">@pb.Kod - @pb.Ad</MudSelectItem>
+                            <MudSelectItem Value="pb.Kod">@pb.Kod</MudSelectItem>
                         }
                     </MudSelect>
                 </MudItem>
-                <MudItem xs="12" sm="6" md="5" Class="d-flex align-center">
-                    <MudSwitch T="bool" @bind-Value="_farkliDovizdeIslem" Color="Color.Secondary"
-                               Label="Farklı dövizde tahsilat/ödeme kabul et" />
+                <MudItem xs="10" md="3">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" Value="hesap.Iban" ValueChanged="@((string? v) => IbanDegisti(hesap, v))" Label="IBAN" MaxLength="40"
+                                  Required="Z(CariZorunluAlanlari.BankaHesabi)" RequiredError="Bu alan zorunlu (firma ayarı)." />
                 </MudItem>
+                <MudItem xs="2" md="1" Class="d-flex align-center">
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" aria-label="Hesabı sil" OnClick="@(() => _bankaHesaplari.Remove(hesap))" />
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Disabled="@(_bankaHesaplari.Count >= 10)"
+                           OnClick="@(() => _bankaHesaplari.Add(new() { ParaBirimi = _paraBirimi }))">Hesap ekle</MudButton>
+            </MudItem>
         </FormBolumu>
 
-        <FormBolumu Baslik="İletişim" Aciklama="Telefon, e-posta, yetkili ve adres" Ikon="@Icons.Material.Filled.ContactPhone" Sira="1">
-                <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_telefon" Required="Z(CariZorunluAlanlari.Telefon)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Telefon" MaxLength="30" InputType="InputType.Telephone" />
+        <FormBolumu Baslik="Vergi ve e-Fatura" Aciklama="Bu cariye kesilen faturalarda satırlara önerilecek vergi kodları" Ikon="@Icons.Material.Filled.ReceiptLong" Sira="5">
+            <MudItem xs="12" md="4" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_eFaturaMukellefiMi" Color="Color.Secondary" Label="e-Fatura mükellefi" />
+            </MudItem>
+            @if (_eFaturaMukellefiMi)
+            {
+                <MudItem xs="12" md="8">
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eFaturaEtiketi" Label="Posta kutusu etiketi" MaxLength="100"
+                                  Placeholder="urn:mail:defaultpk@firma.com.tr" HelperText="GİB kayıtlı kullanıcı listesindeki alıcı etiketi; bilmiyorsanız boş bırakın" />
                 </MudItem>
-                <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_eposta" Required="Z(CariZorunluAlanlari.Eposta)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="E-posta" MaxLength="256" InputType="InputType.Email" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_iban" Required="Z(CariZorunluAlanlari.Iban)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="IBAN" MaxLength="40"
-                                  HelperText="Banka ekstresi aktarımında carinin otomatik bulunmasını sağlar" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yetkiliAd" Required="Z(CariZorunluAlanlari.YetkiliAd)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Yetkili kişi" MaxLength="100" />
-                </MudItem>
-                <MudItem xs="12" sm="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_yetkiliTelefon" Required="Z(CariZorunluAlanlari.YetkiliTelefon)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Yetkili telefonu" MaxLength="30" InputType="InputType.Telephone" />
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_il" Required="Z(CariZorunluAlanlari.Il)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="İl" MaxLength="50" />
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_ilce" Required="Z(CariZorunluAlanlari.Ilce)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="İlçe" MaxLength="50" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_adres" Required="Z(CariZorunluAlanlari.Adres)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Adres" MaxLength="500" />
-                </MudItem>
+            }
+            <MudItem xs="12" md="6">
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="string" @bind-Value="_varsayilanKdvIstisnaKodu" Label="Varsayılan KDV istisna kodu" Clearable="true"
+                           Disabled="@(_varsayilanTevkifatKodu is not null)" HelperText="Ör. ihracat, serbest bölge; seçilirse satırlar %0 KDV ile açılır">
+                    @foreach (var k in KdvIstisnaKodlari.Secilebilir)
+                    {
+                        <MudSelectItem T="string" Value="k.Kod">@k.Kod · @k.Aciklama</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="string" @bind-Value="_varsayilanTevkifatKodu" Label="Varsayılan tevkifat kodu" Clearable="true"
+                           Disabled="@(_varsayilanKdvIstisnaKodu is not null)" HelperText="Ör. kamu kurumu, belirlenmiş alıcı; satırlara önerilir">
+                    @foreach (var t in TevkifatKodlari.Tumu)
+                    {
+                        <MudSelectItem T="string" Value="t.Kod">@t.Kod · @t.Aciklama (@t.Pay/@t.Payda)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
         </FormBolumu>
 
-        <FormBolumu Baslik="Ticari koşullar" Aciklama="Vade, risk limiti ve notlar" Ikon="@Icons.Material.Filled.Handshake" Sira="2">
-                <MudItem xs="6" md="3">
-                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="int?" @bind-Value="_vadeGun" Required="Z(CariZorunluAlanlari.VadeGun)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Vade (gün)" Min="0" Max="365" HideSpinButtons="true" />
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_riskLimiti" Required="Z(CariZorunluAlanlari.RiskLimiti)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="@($"Risk limiti ({_paraBirimi})")" Min="0" Format="N2"
-                                     HideSpinButtons="true" HelperText="Bakiye bu tutarı aşınca uyarı verilir" />
-                </MudItem>
-                <MudItem xs="6" md="3">
-                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_vadeFarkiOrani" Label="Vade farkı (yıllık %)"
-                                     Min="0" Max="500" Format="0.##" HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="%"
-                                     HelperText="Geç ödemede uygulanacak sözleşme oranı" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_not" Label="Not" MaxLength="1000" Lines="2" />
-                </MudItem>
+        <FormBolumu Baslik="Ticari koşullar" Aciklama="Vade, risk limiti ve notlar" Ikon="@Icons.Material.Filled.Handshake" Sira="6">
+            <MudItem xs="6" md="3">
+                <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="int?" @bind-Value="_vadeGun" Required="Z(CariZorunluAlanlari.VadeGun)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Vade (gün)" Min="0" Max="365" HideSpinButtons="true" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_riskLimiti" Required="Z(CariZorunluAlanlari.RiskLimiti)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="@($"Risk limiti ({_paraBirimi})")" Min="0" Format="N2"
+                                 HideSpinButtons="true" HelperText="Bakiye bu tutarı aşınca uyarı verilir" />
+            </MudItem>
+            <MudItem xs="6" md="3">
+                <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_vadeFarkiOrani" Label="Vade farkı (yıllık %)"
+                                 Min="0" Max="500" Format="0.##" HideSpinButtons="true" Adornment="Adornment.End" AdornmentText="%"
+                                 HelperText="Geç ödemede uygulanacak sözleşme oranı" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_not" Label="Not" MaxLength="1000" Lines="2" />
+            </MudItem>
         </FormBolumu>
+
+        @if (Id is null && Oturum.YazabilirMi(CariYetkileri.Hareket, YetkiIslemleri.Ekle))
+        {
+            <FormBolumu Baslik="Açılış bakiyesi" Aciklama="Önceki programdan devreden bakiye; açılış hareketi olarak kartla birlikte kaydedilir" Ikon="@Icons.Material.Filled.AccountBalanceWallet" Sira="7">
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_acilisYonu" Label="Bakiye yönü">
+                        <MudSelectItem Value="HareketYonu.Borc">Borçlu (bize borcu var)</MudSelectItem>
+                        <MudSelectItem Value="HareketYonu.Alacak">Alacaklı (bizim borcumuz var)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_acilisTutari" Label="@($"Tutar ({_paraBirimi})")" Min="0" Format="N2" HideSpinButtons="true"
+                                     HelperText="Boş bırakılırsa açılış girilmez" />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudDatePicker Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Date="_acilisTarihi" Label="Açılış tarihi" DateFormat="dd.MM.yyyy" />
+                </MudItem>
+                @if (_paraBirimi != ParaBirimleri.Tl)
+                {
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" T="decimal?" @bind-Value="_acilisKuru" Label="Kur (TL)" Format="0.######" Min="0" HideSpinButtons="true"
+                                         Required="@(_acilisTutari is > 0)" RequiredError="Dövizli açılış için kur gerekli." />
+                    </MudItem>
+                }
+            </FormBolumu>
+        }
     </MudForm>
 
     <div class="d-flex gap-2 justify-end">
@@ -137,23 +327,38 @@ else
     private string _unvan = "";
     private CariTuru _tur = CariTuru.Musteri;
     private KisiTipi _kisiTipi = KisiTipi.Tuzel;
+    private string? _ad;
+    private string? _soyad;
     private string? _vergiNo;
     private string? _vergiDairesi;
+    private string? _ulke = CariVarsayilanlari.Ulke;
     private string? _il;
     private string? _ilce;
     private string? _adres;
+    private string? _postaKodu;
     private string? _telefon;
+    private string? _cepTelefonu;
+    private string? _faks;
     private string? _eposta;
-    private string? _iban;
+    private string? _webSitesi;
     private string _paraBirimi = ParaBirimleri.Tl;
     private int? _vadeGun;
     private decimal? _vadeFarkiOrani;
     private decimal? _riskLimiti;
     private Guid? _grupId;
-    private string? _yetkiliAd;
-    private string? _yetkiliTelefon;
     private string? _not;
     private bool _farkliDovizdeIslem;
+    private bool _eFaturaMukellefiMi;
+    private string? _eFaturaEtiketi;
+    private string? _varsayilanKdvIstisnaKodu;
+    private string? _varsayilanTevkifatKodu;
+    private List<IlgiliKisiSatiri> _ilgiliKisiler = [];
+    private List<AdresSatiri> _adresler = [];
+    private List<BankaHesabiSatiri> _bankaHesaplari = [];
+    private HareketYonu _acilisYonu = HareketYonu.Borc;
+    private decimal? _acilisTutari;
+    private DateTime? _acilisTarihi;
+    private decimal? _acilisKuru;
     private uint _surum;
     private bool _hareketVarMi;
     private bool _yukleniyor = true;
@@ -161,10 +366,15 @@ else
 
     private IReadOnlySet<string> _zorunlu = new HashSet<string>();
 
+    private bool SahisMi => _kisiTipi == KisiTipi.Sahis;
+
     private bool Z(string kod) => _zorunlu.Contains(kod);
+
+    private string ZorunluNotu(string kod) => Z(kod) ? " · firma ayarına göre zorunlu" : "";
 
     protected override async Task OnInitializedAsync()
     {
+        _acilisTarihi = new DateTime(Zaman.GetLocalNow().Year, 1, 1);
         _zorunlu = await ZorunluAlanlar.SeciliAsync();
         var gruplar = await Api.GetAsync<List<GrupOzeti>>("api/cari/gruplar");
         _gruplar = gruplar.BasariliMi ? gruplar.Deger : [];
@@ -180,16 +390,57 @@ else
             }
 
             var c = sonuc.Deger;
-            (_kod, _unvan, _tur, _kisiTipi, _vergiNo, _vergiDairesi) = (c.Kod, c.Unvan, c.Tur, c.KisiTipi, c.VergiNo, c.VergiDairesi);
-            (_il, _ilce, _adres, _telefon, _eposta) = (c.Il, c.Ilce, c.Adres, c.Telefon, c.Eposta);
-            (_paraBirimi, _vadeGun, _riskLimiti, _grupId) = (c.ParaBirimi, c.VadeGun, c.RiskLimiti, c.GrupId);
-            (_yetkiliAd, _yetkiliTelefon, _not, _surum, _hareketVarMi) = (c.YetkiliAd, c.YetkiliTelefon, c.Not, c.Surum, c.HareketVarMi);
-            _farkliDovizdeIslem = c.FarkliDovizdeIslem;
-            _iban = c.Iban;
-            _vadeFarkiOrani = c.VadeFarkiOrani;
+            (_kod, _unvan, _tur, _kisiTipi, _ad, _soyad, _vergiNo, _vergiDairesi) = (c.Kod, c.Unvan, c.Tur, c.KisiTipi, c.Ad, c.Soyad, c.VergiNo, c.VergiDairesi);
+            (_ulke, _il, _ilce, _adres, _postaKodu) = (c.Ulke, c.Il, c.Ilce, c.Adres, c.PostaKodu);
+            (_telefon, _cepTelefonu, _faks, _eposta, _webSitesi) = (c.Telefon, c.CepTelefonu, c.Faks, c.Eposta, c.WebSitesi);
+            (_paraBirimi, _vadeGun, _riskLimiti, _grupId, _vadeFarkiOrani) = (c.ParaBirimi, c.VadeGun, c.RiskLimiti, c.GrupId, c.VadeFarkiOrani);
+            (_not, _surum, _hareketVarMi, _farkliDovizdeIslem) = (c.Not, c.Surum, c.HareketVarMi, c.FarkliDovizdeIslem);
+            (_eFaturaMukellefiMi, _eFaturaEtiketi) = (c.EFaturaMukellefiMi, c.EFaturaEtiketi);
+            (_varsayilanKdvIstisnaKodu, _varsayilanTevkifatKodu) = (c.VarsayilanKdvIstisnaKodu, c.VarsayilanTevkifatKodu);
+            _ilgiliKisiler = c.IlgiliKisiler.Select(k => new IlgiliKisiSatiri { AdSoyad = k.AdSoyad, Gorev = k.Gorev, Telefon = k.Telefon, Eposta = k.Eposta }).ToList();
+            _adresler = c.Adresler.Select(a => new AdresSatiri
+            {
+                Baslik = a.Baslik, AdSoyad = a.AdSoyad, Telefon = a.Telefon, Ulke = a.Ulke, Il = a.Il, Ilce = a.Ilce, Adres = a.Adres, PostaKodu = a.PostaKodu
+            }).ToList();
+            _bankaHesaplari = c.BankaHesaplari.Select(h => new BankaHesabiSatiri
+            {
+                BankaAdi = h.BankaAdi, Sube = h.Sube, HesapNo = h.HesapNo, Iban = h.Iban, ParaBirimi = h.ParaBirimi
+            }).ToList();
         }
 
         _yukleniyor = false;
+    }
+
+    private void KisiTipiDegisti(KisiTipi tip)
+    {
+        _kisiTipi = tip;
+        if (tip == KisiTipi.Sahis && _ad is null && _soyad is null && !string.IsNullOrWhiteSpace(_unvan))
+        {
+            var parcalar = _unvan.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            (_ad, _soyad) = parcalar.Length > 1 ? (string.Join(' ', parcalar[..^1]), parcalar[^1]) : (_unvan.Trim(), null);
+        }
+    }
+
+    // Ünvan, kullanıcı elle farklı bir ticari ad yazmadıysa ad soyadı izler.
+    private void AdSoyadDegisti(string? ad, string? soyad)
+    {
+        var onceki = $"{_ad} {_soyad}".Trim();
+        var izliyor = string.IsNullOrWhiteSpace(_unvan) || _unvan.Trim() == onceki;
+        (_ad, _soyad) = (ad, soyad);
+        if (izliyor)
+        {
+            _unvan = $"{ad} {soyad}".Trim();
+        }
+    }
+
+    // IBAN girilince banka boşsa IBAN'daki banka kodundan doldurulur.
+    private static void IbanDegisti(BankaHesabiSatiri hesap, string? iban)
+    {
+        hesap.Iban = iban;
+        if (string.IsNullOrWhiteSpace(hesap.BankaAdi) && Bankalar.IbandanBul(iban) is { } banka)
+        {
+            hesap.BankaAdi = banka.Ad;
+        }
     }
 
     private async Task KaydetAsync()
@@ -200,13 +451,22 @@ else
             return;
         }
 
+        var acilis = Id is null && _acilisTutari is > 0 && _acilisTarihi is { } tarih
+            ? new CariAcilisBakiyesi(_acilisYonu, _acilisTutari.Value, DateOnly.FromDateTime(tarih), _paraBirimi == ParaBirimleri.Tl ? null : _acilisKuru)
+            : null;
         var istek = new CariKaydetIstegi(
             _kod, _unvan, _tur, _kisiTipi, _vergiNo, _vergiDairesi, _il, _ilce, _adres, _telefon, _eposta,
-            _paraBirimi, _vadeGun, _riskLimiti, _grupId, _yetkiliAd, _yetkiliTelefon, _not, _farkliDovizdeIslem, _surum, _iban, _vadeFarkiOrani);
+            _paraBirimi, _vadeGun, _riskLimiti, _grupId, _not, _farkliDovizdeIslem, _surum, _vadeFarkiOrani,
+            SahisMi ? _ad : null, SahisMi ? _soyad : null, _ulke, _postaKodu, _cepTelefonu, _faks, _webSitesi,
+            _eFaturaMukellefiMi, _eFaturaMukellefiMi ? _eFaturaEtiketi : null, _varsayilanKdvIstisnaKodu, _varsayilanTevkifatKodu,
+            _adresler.Select(a => new CariAdresBilgisi(a.Baslik ?? "", a.AdSoyad, a.Telefon, a.Ulke, a.Il, a.Ilce, a.Adres ?? "", a.PostaKodu)).ToList(),
+            _ilgiliKisiler.Select(k => new CariIlgiliKisiBilgisi(k.AdSoyad ?? "", k.Gorev, k.Telefon, k.Eposta)).ToList(),
+            _bankaHesaplari.Select(h => new CariBankaHesabiBilgisi(h.BankaAdi ?? "", h.Sube, h.HesapNo, h.Iban, h.ParaBirimi)).ToList(),
+            acilis);
         var sonuc = Id is { } id
             ? await Api.PutAsync<CariDetayi>($"api/cari/hesaplar/{id}", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PostAsync<CariDetayi>("api/cari/hesaplar", istek, islemAnahtari: _anahtar.Deger);
-            _anahtar.Sonuc(sonuc.Hata);
+        _anahtar.Sonuc(sonuc.Hata);
 
         if (sonuc.BasariliMi)
         {
@@ -217,5 +477,34 @@ else
         {
             _hata = sonuc.Hata;
         }
+    }
+
+    private sealed class IlgiliKisiSatiri
+    {
+        public string? AdSoyad { get; set; }
+        public string? Gorev { get; set; }
+        public string? Telefon { get; set; }
+        public string? Eposta { get; set; }
+    }
+
+    private sealed class AdresSatiri
+    {
+        public string? Baslik { get; set; }
+        public string? AdSoyad { get; set; }
+        public string? Telefon { get; set; }
+        public string? Ulke { get; set; }
+        public string? Il { get; set; }
+        public string? Ilce { get; set; }
+        public string? Adres { get; set; }
+        public string? PostaKodu { get; set; }
+    }
+
+    private sealed class BankaHesabiSatiri
+    {
+        public string? BankaAdi { get; set; }
+        public string? Sube { get; set; }
+        public string? HesapNo { get; set; }
+        public string? Iban { get; set; }
+        public string ParaBirimi { get; set; } = ParaBirimleri.Tl;
     }
 }

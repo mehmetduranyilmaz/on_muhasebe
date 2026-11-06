@@ -20,10 +20,17 @@ internal sealed class CariHesapConfiguration : IEntityTypeConfiguration<CariHesa
         builder.Property(x => x.Adres).HasMaxLength(500);
         builder.Property(x => x.Telefon).HasMaxLength(30);
         builder.Property(x => x.Eposta).HasMaxLength(256);
-        builder.Property(x => x.Iban).HasMaxLength(34);
         builder.Property(x => x.ParaBirimi).HasMaxLength(3);
-        builder.Property(x => x.YetkiliAd).HasMaxLength(100);
-        builder.Property(x => x.YetkiliTelefon).HasMaxLength(30);
+        builder.Property(x => x.Ad).HasMaxLength(100);
+        builder.Property(x => x.Soyad).HasMaxLength(100);
+        builder.Property(x => x.Ulke).HasMaxLength(60);
+        builder.Property(x => x.PostaKodu).HasMaxLength(10);
+        builder.Property(x => x.CepTelefonu).HasMaxLength(30);
+        builder.Property(x => x.Faks).HasMaxLength(30);
+        builder.Property(x => x.WebSitesi).HasMaxLength(200);
+        builder.Property(x => x.EFaturaEtiketi).HasMaxLength(100);
+        builder.Property(x => x.VarsayilanKdvIstisnaKodu).HasMaxLength(5);
+        builder.Property(x => x.VarsayilanTevkifatKodu).HasMaxLength(5);
         builder.Property(x => x.Not).HasMaxLength(1000);
         builder.Property(x => x.VadeFarkiOrani).HasPrecision(6, 2);
 
@@ -31,6 +38,60 @@ internal sealed class CariHesapConfiguration : IEntityTypeConfiguration<CariHesa
         builder.HasIndex(x => new { x.FirmaId, x.Kod }).IsUnique();
         builder.HasIndex(x => new { x.FirmaId, x.Unvan });
         builder.HasOne(x => x.Grup).WithMany().HasForeignKey(x => x.GrupId).OnDelete(DeleteBehavior.Restrict);
+
+        // Alt kayıtlar kartla birlikte yazılır; firma_id'leri yok, satır güvenliği üst kayıttan (dış anahtar) türetilir.
+        builder.HasMany(x => x.Adresler).WithOne().HasForeignKey(x => x.CariHesapId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Adresler).HasField("_adresler");
+        builder.HasMany(x => x.IlgiliKisiler).WithOne().HasForeignKey(x => x.CariHesapId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.IlgiliKisiler).HasField("_ilgiliKisiler");
+        builder.HasMany(x => x.BankaHesaplari).WithOne().HasForeignKey(x => x.CariHesapId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.BankaHesaplari).HasField("_bankaHesaplari");
+    }
+}
+
+internal sealed class CariAdresConfiguration : IEntityTypeConfiguration<CariAdres>
+{
+    public void Configure(EntityTypeBuilder<CariAdres> builder)
+    {
+        builder.ToTable("cari_adres");
+        builder.Property(x => x.Baslik).HasMaxLength(60);
+        builder.Property(x => x.AdSoyad).HasMaxLength(100);
+        builder.Property(x => x.Telefon).HasMaxLength(30);
+        builder.Property(x => x.Ulke).HasMaxLength(60);
+        builder.Property(x => x.Il).HasMaxLength(50);
+        builder.Property(x => x.Ilce).HasMaxLength(50);
+        builder.Property(x => x.Adres).HasMaxLength(500);
+        builder.Property(x => x.PostaKodu).HasMaxLength(10);
+        builder.HasIndex(x => new { x.CariHesapId, x.Sira });
+    }
+}
+
+internal sealed class CariIlgiliKisiConfiguration : IEntityTypeConfiguration<CariIlgiliKisi>
+{
+    public void Configure(EntityTypeBuilder<CariIlgiliKisi> builder)
+    {
+        builder.ToTable("cari_ilgili_kisi");
+        builder.Property(x => x.AdSoyad).HasMaxLength(100);
+        builder.Property(x => x.Gorev).HasMaxLength(60);
+        builder.Property(x => x.Telefon).HasMaxLength(30);
+        builder.Property(x => x.Eposta).HasMaxLength(256);
+        builder.HasIndex(x => new { x.CariHesapId, x.Sira });
+    }
+}
+
+internal sealed class CariBankaHesabiConfiguration : IEntityTypeConfiguration<CariBankaHesabi>
+{
+    public void Configure(EntityTypeBuilder<CariBankaHesabi> builder)
+    {
+        builder.ToTable("cari_banka_hesabi");
+        builder.Property(x => x.BankaAdi).HasMaxLength(100);
+        builder.Property(x => x.Sube).HasMaxLength(100);
+        builder.Property(x => x.HesapNo).HasMaxLength(30);
+        builder.Property(x => x.Iban).HasMaxLength(34);
+        builder.Property(x => x.ParaBirimi).HasMaxLength(3);
+        builder.HasIndex(x => new { x.CariHesapId, x.Sira });
+        // Banka ekstresinde açıklamadaki IBAN'dan cari bulunur.
+        builder.HasIndex(x => x.Iban);
     }
 }
 

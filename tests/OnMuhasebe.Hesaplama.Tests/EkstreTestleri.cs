@@ -169,8 +169,8 @@ public class EkstreTestleri
     [Fact]
     public void Oneri_onceligi_kural_kendi_hesabi_vkn_unvan_varsayilan()
     {
-        var cari = new CariEslestirmeAdayi(Guid.NewGuid(), "Anadolu Gıda Ltd. Şti.", "9876543217", null, "TRY");
-        var vknCari = new CariEslestirmeAdayi(Guid.NewGuid(), "Başka Firma", "1234567890", null, "TRY");
+        var cari = new CariEslestirmeAdayi(Guid.NewGuid(), "Anadolu Gıda Ltd. Şti.", "9876543217", [], "TRY");
+        var vknCari = new CariEslestirmeAdayi(Guid.NewGuid(), "Başka Firma", "1234567890", [], "TRY");
         var kart = new KendiHesabi(Guid.NewGuid(), null, "5400 **** 4821");
         var kategori = Guid.NewGuid();
         List<KuralVerisi> kurallar = [new(Guid.NewGuid(), "ELEKTRIK", KuralYonu.Cikis, EkstreIslemTuru.Gider, null, kategori, null)];

@@ -161,6 +161,37 @@ istek GET "/api/cari/hesaplar/$TL_CARI/ekstre" "$T"
 kontrol 200 "Suresi dolan lisansta ekstre okunabiliyor"
 istek PUT "/api/yonetim/sistem/firmalar/$FIRMA/lisans" "$SYS" '{"paketKodu":"basic","bitisTarihi":"2027-12-31","ekModuller":[]}'
 
+echo "--- Genisletilmis cari karti"
+kayit_ol '{"firmaUnvani":"Kart Test AS","ad":"K","soyad":"T","eposta":"kart'"$(date +%s)"'@ornek.com","sifre":"Sifre1234"}'
+TK=$(alan accessToken)
+KART='{"unvan":"Ahmet Can Yilmaz","tur":"Musteri","kisiTipi":"Sahis","paraBirimi":"TRY","cepTelefonu":"0555 111 22 33","postaKodu":"34000",'
+KART+='"ilgiliKisiler":[{"adSoyad":"Ayse K","gorev":"Muhasebe","telefon":"0212 1"}],'
+KART+='"bankaHesaplari":[{"bankaAdi":"Ziraat","iban":"tr33 0006 1005 1978 6457 8413 26","paraBirimi":"TRY"}],'
+KART+='"adresler":[{"baslik":"Depo","adres":"Organize Sanayi 5. Cad."}],'
+KART+='"varsayilanTevkifatKodu":"603","acilisBakiyesi":{"yon":"Borc","tutar":250,"tarih":"2026-01-01"}}'
+istek POST /api/cari/hesaplar "$TK" "$KART"
+kontrol 201 "Sahis cari: ad/soyad unvandan ayrildi" '"ad":"Ahmet Can","soyad":"Yilmaz"'
+KART_ID=$(alan id); KART_SURUM=$(alan surum)
+kontrol 201 "Acilis bakiyesi kartla birlikte yazildi" '"bakiye":250'
+kontrol 201 "Ilgili kisi, IBAN (bosluksuz) ve teslimat adresi kaydedildi" '"adSoyad":"Ayse K".*"iban":"TR330006100519786457841326"'
+istek PUT "/api/cari/hesaplar/$KART_ID" "$TK" '{"unvan":"Ahmet Can Yilmaz","tur":"Musteri","kisiTipi":"Sahis","paraBirimi":"TRY","surum":'"$KART_SURUM"'}'
+kontrol 200 "Listeleri gondermeyen istemci alt kayitlari silmez" '"baslik":"Depo"'
+KART_SURUM=$(alan surum)
+istek PUT "/api/cari/hesaplar/$KART_ID" "$TK" '{"unvan":"Ahmet Can Yilmaz","tur":"Musteri","kisiTipi":"Sahis","paraBirimi":"TRY","ilgiliKisiler":[],"surum":'"$KART_SURUM"'}'
+kontrol 200 "Bos liste ilgili kisileri siler" '"ilgiliKisiler":\[\]'
+istek PUT "/api/cari/hesaplar/$KART_ID" "$TK" '{"unvan":"Ahmet Can Yilmaz","tur":"Musteri","kisiTipi":"Sahis","paraBirimi":"TRY","adresler":[],"surum":'"$KART_SURUM"'}'
+kontrol 409 "Alt kayit degisikligi de eszamanli duzenleme denetiminde"
+istek POST /api/cari/hesaplar "$TK" '{"unvan":"Ihracat","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"USD","varsayilanKdvIstisnaKodu":"301","varsayilanTevkifatKodu":"603"}'
+kontrol 400 "KDV istisnasi ile tevkifat birlikte secilemez" "birlikte"
+istek POST /api/cari/hesaplar "$TK" '{"unvan":"Ihracat","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"USD","varsayilanKdvIstisnaKodu":"999"}'
+kontrol 400 "Bilinmeyen istisna kodu reddedildi" "istisna kodu"
+istek POST /api/cari/hesaplar "$TK" '{"unvan":"EF","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY","eFaturaMukellefiMi":true,"eFaturaEtiketi":"defaultpk"}'
+kontrol 400 "e-Fatura mukellefinde etiket bicimi denetlendi" "urn:mail"
+istek POST /api/cari/hesaplar "$TK" '{"unvan":"Dovizli Acilis","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"USD","acilisBakiyesi":{"yon":"Alacak","tutar":10,"tarih":"2026-01-01"}}'
+kontrol 400 "Dovizli acilista kur istenir" kur_gerekli
+istek POST /api/cari/hesaplar "$TK" '{"unvan":"Banka Eksik","tur":"Musteri","kisiTipi":"Tuzel","paraBirimi":"TRY","bankaHesaplari":[{"bankaAdi":"X","paraBirimi":"TRY"}]}'
+kontrol 400 "IBAN ve hesap no bos banka hesabi reddedildi" "IBAN ya da hesap"
+
 echo "--- Hareketsiz cari"
 kayit_ol '{"firmaUnvani":"Hareketsiz Cari AS","ad":"H","soyad":"C","eposta":"hareketsiz'"$(date +%s)"'@ornek.com","sifre":"Sifre1234"}'
 TH=$(alan accessToken)

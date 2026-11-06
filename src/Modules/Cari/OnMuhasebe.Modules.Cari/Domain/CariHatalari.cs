@@ -18,6 +18,7 @@ internal static class CariHatalari
     public static readonly Hata KurGerekli = Hata.Dogrulama("kur_gerekli", "Dövizli cari için kur girilmelidir.");
     public static readonly Hata TlKuruBirOlmali = Hata.Dogrulama("tl_kuru", "TL cari hareketinde kur 1 olmalıdır.");
     public static readonly Hata VadeTarihtenOnceOlamaz = Hata.Dogrulama("vade_gecersiz", "Vade tarihi işlem tarihinden önce olamaz.");
+    public static readonly Hata AcilisYetkisiYok = Hata.Yetki("acilis_yetkisi_yok", "Açılış bakiyesi girmek için borç/alacak dekontu ekleme yetkiniz yok.");
     public static readonly Hata AcilisZatenVar = Hata.IsKurali("acilis_zaten_var", "Bu carinin açılış bakiyesi zaten girilmiş; önce mevcut açılışı iptal edin.");
     public static readonly Hata ElleIptalEdilemez = Hata.IsKurali("kaynak_belgeden_iptal", "Bu hareket kaynak belgesinden (fatura, tahsilat vb.) iptal edilmelidir.");
     public static readonly Hata ZatenIptalEdilmis = Hata.IsKurali("zaten_iptal", "Bu hareket zaten iptal edilmiş.");

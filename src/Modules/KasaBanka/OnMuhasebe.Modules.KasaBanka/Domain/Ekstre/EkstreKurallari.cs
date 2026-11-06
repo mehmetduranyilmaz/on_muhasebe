@@ -195,7 +195,7 @@ internal static partial class OneriMotoru
             return (vknIle, "VKN/TCKN");
         }
 
-        if (cariler.FirstOrDefault(c => c.Iban is { Length: > 0 } iban && bitisik.Contains(iban, StringComparison.Ordinal)) is { } ibanIle)
+        if (cariler.FirstOrDefault(c => c.Ibanlar.Any(iban => iban.Length > 0 && bitisik.Contains(iban, StringComparison.Ordinal))) is { } ibanIle)
         {
             return (ibanIle, "IBAN");
         }

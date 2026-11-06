@@ -123,7 +123,7 @@ else if (_ekstre is { } e)
         _bitis = bugun;
         await YukleAsync();
         var cari = await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{Id}");
-        _telefon = cari.BasariliMi ? cari.Deger.Telefon ?? cari.Deger.YetkiliTelefon : null;
+        _telefon = cari.BasariliMi ? cari.Deger.UlasimTelefonu : null;
     }
 
     private async Task YukleAsync()

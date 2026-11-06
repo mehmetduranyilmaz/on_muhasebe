@@ -35,7 +35,8 @@ internal sealed class CariSorgusu(CariDbContext db, CariKapamaServisi kapama) : 
     public async Task<IReadOnlyList<CariEslestirmeAdayi>> EslestirmeAdaylariAsync(CancellationToken cancellationToken = default) =>
         await db.CariHesaplar.AsNoTracking()
             .Where(c => c.AktifMi)
-            .Select(c => new CariEslestirmeAdayi(c.Id, c.Unvan, c.VergiNo, c.Iban, c.ParaBirimi))
+            .Select(c => new CariEslestirmeAdayi(c.Id, c.Unvan, c.VergiNo,
+                c.BankaHesaplari.Where(h => h.Iban != null).Select(h => h.Iban!).ToList(), c.ParaBirimi))
             .ToListAsync(cancellationToken);
 
     // Pasif carinin açık kalemi de gerçek alacak/borçtur; listeye alınır.
