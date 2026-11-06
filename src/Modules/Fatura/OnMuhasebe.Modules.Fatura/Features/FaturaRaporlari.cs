@@ -203,7 +203,7 @@ internal static class FaturaRaporlari
 
         var kalemler = faturalar.SelectMany(f => f.Satirlar.Select(s => new KdvKalemi(f.Tur, s.KdvOrani,
                 Para.Yuvarla(s.Matrah * f.Kur), Para.Yuvarla(s.KdvTutari * f.Kur), s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda,
-                Para.Yuvarla(s.TevkifEdilenKdv * f.Kur))))
+                Para.Yuvarla(s.TevkifEdilenKdv * f.Kur), s.KdvIstisnaKodu)))
             .ToList();
         var stopajlar = faturalar.Where(f => f.StopajTutari > 0)
             .Select(f => new StopajKalemi(f.Tur, f.StopajOrani, Para.Yuvarla(f.Matrah * f.Kur), Para.Yuvarla(f.StopajTutari * f.Kur)))

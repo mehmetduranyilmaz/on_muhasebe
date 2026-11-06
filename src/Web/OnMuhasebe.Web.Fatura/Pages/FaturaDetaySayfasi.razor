@@ -216,6 +216,10 @@
                     {
                         <span class="mobil-alt-bilgi">tevkifat @context.TevkifatPay/@context.TevkifatPayda · −@Bicim.Tutar(context.TevkifEdilenKdv)</span>
                     }
+                    @if (context.KdvIstisnaKodu is { } istisna)
+                    {
+                        <span class="mobil-alt-bilgi" title="@(KdvIstisnaKodlari.Bul(istisna)?.Aciklama)">istisna @istisna</span>
+                    }
                 </MudTd>
                 <MudTd DataLabel="Tutar" Class="sayi"><b>@Bicim.Tutar(context.Toplam)</b></MudTd>
             </Satir>

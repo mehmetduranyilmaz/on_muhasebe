@@ -230,6 +230,9 @@ internal sealed class FaturaSatiri : BaseEntity
     public int TevkifatPayda { get; private set; }
     public decimal TevkifEdilenKdv { get; private set; }
 
+    // %0 KDV'li satırın GİB istisna/muafiyet sebep kodu; KDV'li satırda boştur.
+    public string? KdvIstisnaKodu { get; private set; }
+
     // İrsaliyeden aktarılan satır: stok hareketi irsaliyede oluştuğu için fatura stok yazmaz.
     public Guid? IrsaliyeSatiriId { get; private set; }
 
@@ -268,6 +271,7 @@ internal sealed class FaturaSatiri : BaseEntity
         TevkifatPay = b.TevkifatPay,
         TevkifatPayda = b.TevkifatPayda,
         TevkifEdilenKdv = h.TevkifEdilenKdv,
+        KdvIstisnaKodu = b.KdvOrani == 0 ? b.KdvIstisnaKodu : null,
         IrsaliyeSatiriId = b.IrsaliyeSatiriId,
         SiparisSatiriId = b.IrsaliyeSatiriId is null ? b.SiparisSatiriId : null,
         LotNo = b.StokluMu && b.IrsaliyeSatiriId is null ? IzlemeAlanlari.Lot(b.LotNo) : null,
@@ -308,7 +312,8 @@ internal sealed record FaturaSatiriBilgisi(
     Guid? SiparisSatiriId = null,
     string? LotNo = null,
     DateOnly? SonKullanmaTarihi = null,
-    IReadOnlyList<string>? SeriNolari = null);
+    IReadOnlyList<string>? SeriNolari = null,
+    string? KdvIstisnaKodu = null);
 
 // İstek, cari/stok/kur bilgileriyle çözümlendikten sonra entity'ye verilen hali.
 internal sealed record FaturaBilgileri(

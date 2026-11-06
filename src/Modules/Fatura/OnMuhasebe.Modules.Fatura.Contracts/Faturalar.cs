@@ -66,6 +66,7 @@ public sealed record NihaiTuketiciBilgisi(string? AdSoyad, string? Tckn);
 // Stok kartı seçilmezse serbest satırdır (Ad zorunlu, stok hareketi oluşmaz). Stoklu satırda Ad boşsa kart adı kullanılır.
 // Depo boşsa varsayılan depo. Fiyat seçilen birim içindir; KdvDahilMi ise girilen fiyat KDV dahildir. İskontolar yüzdedir.
 // TevkifatKodu/Pay/Payda opsiyoneldir; verilmezse satırda KDV tevkifatı yoktur.
+// KdvIstisnaKodu yalnızca %0 KDV'li satırda verilir (GİB istisna/muafiyet sebebi; e-Fatura'da satır bazında gönderilir).
 // IrsaliyeSatiriId verilirse satır irsaliyeden aktarılmıştır: stok hareketi irsaliyede olduğu için fatura stok yazmaz;
 // kart, birim ve depo irsaliye satırıyla aynı olmalı, miktar faturalanmamış kalanı aşamaz.
 // SiparisSatiriId, irsaliyesiz satırın karşıladığı sipariş satırıdır; irsaliyeli satırda sipariş bağı irsaliyededir.
@@ -88,7 +89,8 @@ public sealed record FaturaSatiriIstegi(
     Guid? SiparisSatiriId = null,
     string? LotNo = null,
     DateOnly? SonKullanmaTarihi = null,
-    IReadOnlyList<string>? SeriNolari = null);
+    IReadOnlyList<string>? SeriNolari = null,
+    string? KdvIstisnaKodu = null);
 
 // PesinHesapId verilirse fatura kesinleşirken o kasa/banka/POS hesabından peşin tahsil edilir (ödenir).
 // Numara yalnızca gelen faturalarda (alış, satıştan iade) girilir; giden faturaların numarası otomatik verilir.
@@ -159,7 +161,8 @@ public sealed record FaturaSatiriDetayi(
     Guid? SiparisSatiriId,
     string? LotNo = null,
     DateOnly? SonKullanmaTarihi = null,
-    IReadOnlyList<string>? SeriNolari = null);
+    IReadOnlyList<string>? SeriNolari = null,
+    string? KdvIstisnaKodu = null);
 
 // Cari bilgileri fatura anındaki kopyadır; cari kartı sonradan değişse de fatura değişmez.
 public sealed record FaturaDetayi(

@@ -263,6 +263,24 @@ else
                                     </button>
                                 }
                             </div>
+                            @if (!KdvsizMi && s.KdvOrani == 0)
+                            {
+                                <div class="fs-tevkifat">
+                                    <MudIcon Icon="@Icons.Material.Filled.Gavel" Size="Size.Small" Color="Color.Secondary" />
+                                    <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="s.KdvIstisnaKodu"
+                                               Label="KDV istisna / muafiyet sebebi" Clearable="true" Dense="true" Class="fs-tevkifat-kod">
+                                        @foreach (var k in KdvIstisnaKodlari.Secilebilir)
+                                        {
+                                            <MudSelectItem T="string" Value="k.Kod">@k.Kod · @k.Aciklama</MudSelectItem>
+                                        }
+                                        @if (KdvIstisnaKodlari.Bul(s.KdvIstisnaKodu) is { KullanimdanKalkti: true } eski)
+                                        {
+                                            <MudSelectItem T="string" Value="eski.Kod" Disabled="true">@eski.Kod · @eski.Aciklama (kullanımdan kalktı)</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <span class="fs-tevkifat-bilgi" style="opacity:.7">%0 KDV'nin dayanağı; e-Fatura'da zorunludur</span>
+                                </div>
+                            }
                             @if (s.TevkifatAcik)
                             {
                                 <div class="fs-tevkifat">
@@ -488,6 +506,8 @@ else
     private decimal _genelIskonto;
     private decimal _stopajOrani;
     private readonly List<FaturaSatirModeli> _satirlar = [];
+    private string? _cariIstisnaKodu;
+    private string? _cariTevkifatKodu;
     private List<Depo> _depolar = [];
     private List<HesapOzeti> _pesinHesaplar = [];
     private List<MasrafMerkeziOzeti> _merkezler = [];
@@ -596,7 +616,7 @@ else
             VarsayilanVadeyiUygula(null);
             if (CariParametresi is { } cariId && await CariGetirAsync(cariId) is { } detay)
             {
-                await CariAtaAsync(Ozet(detay), detay.VadeGun);
+                await CariAtaAsync(Ozet(detay), detay);
                 if (decimal.TryParse(VadeFarkiParametresi, NumberStyles.Number, CultureInfo.InvariantCulture, out var vadeFarki) && vadeFarki > 0)
                 {
                     _satirlar.Add(new FaturaSatirModeli
@@ -688,7 +708,7 @@ else
         }
 
         var detay = await CariGetirAsync(cari.Id);
-        await CariAtaAsync(cari, detay?.VadeGun);
+        await CariAtaAsync(cari, detay);
     }
 
     private async Task<CariDetayi?> CariGetirAsync(Guid id)
@@ -701,10 +721,11 @@ else
         new(d.Id, d.Kod, d.Unvan, d.Tur, d.GrupAdi, d.ParaBirimi, d.Telefon, d.AktifMi, d.Bakiye, d.BakiyeTl, d.RiskLimiti);
 
     // Fatura dövizi carinin dövizidir. Döviz değişirse satır fiyatları aynı kalır; kullanıcı gerekirse düzeltir.
-    private async Task CariAtaAsync(CariOzeti cari, int? vadeGun)
+    private async Task CariAtaAsync(CariOzeti cari, CariDetayi? detay)
     {
         _cari = cari;
         _nihaiTuketici = false;
+        CariVergisiniAyarla(detay);
         if (_paraBirimi != cari.ParaBirimi)
         {
             _paraBirimi = cari.ParaBirimi;
@@ -715,8 +736,27 @@ else
             }
         }
 
-        VarsayilanVadeyiUygula(vadeGun);
+        VarsayilanVadeyiUygula(detay?.VadeGun);
         await KurYukleAsync();
+    }
+
+    // Carinin varsayılan istisna/tevkifat kodu (ör. ihracat müşterisi, kamu kurumu) satırlara önerilir; gider pusulasında KDV yoktur.
+    private void CariVergisiniAyarla(CariDetayi? detay)
+    {
+        (_cariIstisnaKodu, _cariTevkifatKodu) = KdvsizMi ? (null, null) : (detay?.VarsayilanKdvIstisnaKodu, detay?.VarsayilanTevkifatKodu);
+        var uygulanan = _satirlar.Count(s => s.CariVergisiniUygula(_cariIstisnaKodu, _cariTevkifatKodu));
+        if (uygulanan > 0)
+        {
+            Snackbar.Add(_cariIstisnaKodu is not null
+                ? $"Carinin KDV istisnası ({_cariIstisnaKodu}) {uygulanan} satıra uygulandı."
+                : $"Carinin tevkifat kodu ({_cariTevkifatKodu}) {uygulanan} satıra uygulandı.", Severity.Info);
+        }
+    }
+
+    private void SatirEkle(FaturaSatirModeli satir)
+    {
+        satir.CariVergisiniUygula(_cariIstisnaKodu, _cariTevkifatKodu);
+        _satirlar.Add(satir);
     }
 
     private void VarsayilanVadeyiUygula(int? cariVadeGunu)
@@ -881,7 +921,7 @@ else
             satir.BirimDegistir(birim);
         }
 
-        _satirlar.Add(satir);
+        SatirEkle(satir);
     }
 
     private async Task IrsaliyedenAktarAsync()
@@ -925,7 +965,7 @@ else
                 satir.OneriUygula();
             }
 
-            _satirlar.Add(satir);
+            SatirEkle(satir);
         }
 
         if (secilenler.Any(s => s.Satir.SuresiGectiMi))
@@ -976,12 +1016,12 @@ else
                 satir.BirimFiyat = await fiyatCevirici.CevirAsync(a.BirimFiyat, a.ParaBirimi, _paraBirimi, Dovizli ? _kur : 1m, gun) ?? 0m;
             }
 
-            _satirlar.Add(satir);
+            SatirEkle(satir);
         }
     }
 
     private void SerbestSatirEkle() =>
-        _satirlar.Add(new FaturaSatirModeli { KdvDahilMi = VarsayilanKdvDahil, Birim = Birimler.Adet, KdvOrani = KdvsizMi ? 0 : KdvOranlari.Genel });
+        SatirEkle(new FaturaSatirModeli { KdvDahilMi = VarsayilanKdvDahil, Birim = Birimler.Adet, KdvOrani = KdvsizMi ? 0 : KdvOranlari.Genel });
 
     private bool VarsayilanKdvDahil => KdvsizMi ? false
         : SatisTarafiMi && _satisSekli == SatisSekli.Perakende

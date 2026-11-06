@@ -72,6 +72,25 @@ public class FaturaRaporTestleri
     }
 
     [Fact]
+    public void Istisna_kodlu_satislar_matrah_tablosuna_degil_istisnalar_tablosuna_koda_gore_toplanir()
+    {
+        var o = FaturaRaporHesaplayici.KdvOzeti(2026, 11,
+        [
+            Kdv(FaturaTuru.Satis, 1000m),
+            Kdv(FaturaTuru.Satis, 3000m, 0) with { KdvIstisnaKodu = "301" },
+            Kdv(FaturaTuru.Satis, 2000m, 0) with { KdvIstisnaKodu = "301" },
+            Kdv(FaturaTuru.Satis, 400m, 0) with { KdvIstisnaKodu = "311" },
+            Kdv(FaturaTuru.Alis, 700m, 0) with { KdvIstisnaKodu = "301" }   // alış tarafı istisna tablosuna girmez
+        ], [], 5);
+
+        Assert.Equal([new KdvOranSatiri(20, 1000m, 200m)], o.TeslimVeHizmetler);
+        Assert.Equal(2, o.Istisnalar.Count);
+        Assert.Equal(new KdvIstisnaSatiri("301", "11/1-a Mal ihracatı", 5000m), o.Istisnalar[0]);
+        Assert.Equal(400m, o.Istisnalar[1].TeslimBedeliTl);
+        Assert.Equal(200m, o.HesaplananKdvTl);
+    }
+
+    [Fact]
     public void Muhtasar_tur_ve_orana_gore_toplanir_stopajsizlar_atilir()
     {
         var o = FaturaRaporHesaplayici.KdvOzeti(2026, 11, [],

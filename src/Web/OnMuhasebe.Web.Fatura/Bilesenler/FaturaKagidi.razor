@@ -104,6 +104,11 @@
     {
         <div class="fk-not">* KDV dahil birim fiyat</div>
     }
+    @* %0 KDV'nin yasal dayanağı faturada yazılı olmalıdır. *@
+    @foreach (var kod in Fatura.Satirlar.Select(s => s.KdvIstisnaKodu).OfType<string>().Distinct())
+    {
+        <div class="fk-not">KDV istisnası: @kod · @(KdvIstisnaKodlari.Bul(kod)?.Aciklama)</div>
+    }
 
     <div class="fk-alt">
         <div class="fk-sol">

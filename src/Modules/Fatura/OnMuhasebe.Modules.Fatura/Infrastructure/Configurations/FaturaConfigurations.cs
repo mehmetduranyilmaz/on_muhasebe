@@ -55,6 +55,7 @@ internal sealed class FaturaSatiriConfiguration : IEntityTypeConfiguration<Fatur
         builder.Property(x => x.Iskonto2).HasPrecision(5, 2);
         builder.Property(x => x.Iskonto3).HasPrecision(5, 2);
         builder.Property(x => x.TevkifatKodu).HasMaxLength(5);
+        builder.Property(x => x.KdvIstisnaKodu).HasMaxLength(5);
         builder.HasIndex(x => x.StokKartiId);
 
         // Dış anahtar yok: taslak fatura, henüz faturalanmamış irsaliye satırına bağlanabilir; geçerlilik onayda denetlenir.

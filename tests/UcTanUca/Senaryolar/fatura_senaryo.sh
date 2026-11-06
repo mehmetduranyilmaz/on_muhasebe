@@ -206,6 +206,12 @@ echo "--- Rapor, firma bilgileri ve izolasyon"
 istek GET /api/fatura/raporlar/ozet "$T"
 # Test faturaları Ekim 2026 tarihli; "bu ay" sunucunun bugününe göre hesaplandığından Ekim dışında tutar son aylar grafiğinde aranır.
 kontrol 200 "Ozet raporu: Ekim satisi (KDV haric, iade dusulmus) 18900+409,09+500+1000+2500+1500-5000" '"buAySatis":19809.09\|"yil":2026,"ay":10,"satis":19809.09'
+# Ozet toplamini bozmamak icin istisnali satis ozetten sonra kesilir.
+ISTISNA_SATIRI='{"ad":"Ihrac urunu","birim":"ADET","miktar":1,"birimFiyat":1000,"kdvOrani":KDV,"kdvDahilMi":false,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdvIstisnaKodu":"301"}'
+istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/20}")"
+kontrol 400 "KDV'li satirda istisna kodu reddedildi" "%0 KDV"
+istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}")"
+kontrol 201 "%0 KDV'li satirda istisna kodu saklandi" '"kdvIstisnaKodu":"301"'
 istek GET /api/yonetim/firma "$T"
 kontrol 200 "Firma bilgileri okunuyor" '"unvan":"Fatura Test AS"'
 istek PUT /api/yonetim/firma "$T" '{"unvan":"Fatura Test AS","vergiNo":"9876543217","vergiDairesi":"Kadikoy","il":"Istanbul","ilce":"Kadikoy","adres":"Moda Cad. 5","telefon":"0216 000 00 00","eposta":"info@fatura.test"}'

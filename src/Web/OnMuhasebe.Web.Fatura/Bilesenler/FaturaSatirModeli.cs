@@ -30,6 +30,9 @@ public sealed class FaturaSatirModeli
     public int TevkifatPay { get; set; }
     public int TevkifatPayda { get; set; }
 
+    // Yalnızca %0 KDV'de anlamlıdır; oran değişince istekte gönderilmez.
+    public string? KdvIstisnaKodu { get; set; }
+
     // 2. ve 3. iskonto alanları yalnızca istenince (ya da doluysa) görünür.
     public bool EkIskontoAcik { get; set; }
 
@@ -58,6 +61,31 @@ public sealed class FaturaSatirModeli
         TevkifatKodu = t?.Kod;
         TevkifatPay = t?.Pay ?? 0;
         TevkifatPayda = t?.Payda ?? 0;
+    }
+
+    // Carinin varsayılanları yalnızca vergi ayarı elle yapılmamış satıra uygulanır: istisna KDV'yi sıfırlar, tevkifat
+    // yalnızca KDV'li satıra önerilir.
+    public bool CariVergisiniUygula(string? istisnaKodu, string? tevkifatKodu)
+    {
+        if (TevkifatliMi || KdvIstisnaKodu is not null)
+        {
+            return false;
+        }
+
+        if (istisnaKodu is not null)
+        {
+            (KdvOrani, KdvIstisnaKodu) = (0, istisnaKodu);
+            return true;
+        }
+
+        if (tevkifatKodu is not null && KdvOrani > 0)
+        {
+            TevkifatSec(tevkifatKodu);
+            TevkifatAcik = TevkifatliMi;
+            return TevkifatliMi;
+        }
+
+        return false;
     }
 
     public bool KartliMi => StokKartiId is not null;
@@ -146,7 +174,8 @@ public sealed class FaturaSatirModeli
     public FaturaSatiriIstegi Istek() =>
         new(StokKartiId, Ad, StokluMu ? DepoId : null, Birim, Miktar, BirimFiyat, KdvDahilMi, KdvOrani, Iskonto1, Iskonto2, Iskonto3,
             TevkifatKodu, TevkifatPay, TevkifatPayda, IrsaliyeSatiriId, SiparisSatiriId,
-            IrsaliyeliMi ? null : Izleme.LotIstegi, IrsaliyeliMi ? null : Izleme.SktIstegi, IrsaliyeliMi ? null : Izleme.SeriIstegi);
+            IrsaliyeliMi ? null : Izleme.LotIstegi, IrsaliyeliMi ? null : Izleme.SktIstegi, IrsaliyeliMi ? null : Izleme.SeriIstegi,
+            KdvOrani == 0 ? KdvIstisnaKodu : null);
 
     // Tekrar planında saklanan satır; stok kartlı satırın birimleri form açılırken karttan yüklenir.
     public static FaturaSatirModeli Istekten(FaturaSatiriIstegi s) => new()
@@ -166,6 +195,7 @@ public sealed class FaturaSatirModeli
         TevkifatKodu = s.TevkifatKodu,
         TevkifatPay = s.TevkifatPay,
         TevkifatPayda = s.TevkifatPayda,
+        KdvIstisnaKodu = s.KdvIstisnaKodu,
         EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0,
         TevkifatAcik = s.TevkifatPayda > 0
     };
@@ -196,6 +226,7 @@ public sealed class FaturaSatirModeli
         TevkifatKodu = s.TevkifatKodu,
         TevkifatPay = s.TevkifatPay,
         TevkifatPayda = s.TevkifatPayda,
+        KdvIstisnaKodu = s.KdvIstisnaKodu,
         EkIskontoAcik = s.Iskonto2 > 0 || s.Iskonto3 > 0,
         TevkifatAcik = s.TevkifatPayda > 0,
         IrsaliyeSatiriId = s.IrsaliyeSatiriId,

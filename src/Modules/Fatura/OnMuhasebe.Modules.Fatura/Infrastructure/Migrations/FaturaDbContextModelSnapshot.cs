@@ -430,6 +430,11 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("kdv_dahil_mi");
 
+                    b.Property<string>("KdvIstisnaKodu")
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("kdv_istisna_kodu");
+
                     b.Property<int>("KdvOrani")
                         .HasColumnType("integer")
                         .HasColumnName("kdv_orani");

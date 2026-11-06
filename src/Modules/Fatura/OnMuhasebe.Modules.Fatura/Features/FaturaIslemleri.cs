@@ -82,6 +82,10 @@ internal static class FaturaIslemleri
                 s.RuleFor(x => x.Iskonto2).InclusiveBetween(0, 100);
                 s.RuleFor(x => x.Iskonto3).InclusiveBetween(0, 100);
                 s.RuleFor(x => x.TevkifatKodu).MaximumLength(5);
+                s.RuleFor(x => x.KdvIstisnaKodu).Must(k => KdvIstisnaKodlari.GecerliMi(k!.Trim()))
+                    .When(x => !string.IsNullOrWhiteSpace(x.KdvIstisnaKodu)).WithMessage("Geçersiz ya da kullanımdan kalkmış KDV istisna kodu.");
+                s.RuleFor(x => x.KdvOrani).Equal(0).When(x => !string.IsNullOrWhiteSpace(x.KdvIstisnaKodu))
+                    .WithMessage("KDV istisna kodu yalnızca %0 KDV'li satırda kullanılabilir.");
                 // Oran açıkça verildiyse geçerli olmalı ve tevkifat yalnızca KDV'li satırda uygulanabilir;
                 // yalnızca kod verildiyse (oran boşsa) oran hazırlayıcıda referanstan çözülür.
                 s.RuleFor(x => x).Must(x => x.TevkifatPayda == 0
@@ -249,7 +253,7 @@ internal static class FaturaIslemleri
                 s.Id, s.Sira, s.StokKartiId, s.StokKodu, s.Ad, s.StokluMu, s.DepoId, s.Birim, s.Miktar, s.BirimFiyat, s.KdvDahilMi,
                 s.Iskonto1, s.Iskonto2, s.Iskonto3, s.KdvOrani, s.BrutTutar, s.IskontoTutari, s.GenelIskontoPayi, s.Matrah,
                 s.KdvTutari, s.Toplam, s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda, s.TevkifEdilenKdv, s.IrsaliyeSatiriId, s.SiparisSatiriId,
-                s.LotNo, s.SonKullanmaTarihi, s.SeriNolari)).ToList(),
+                s.LotNo, s.SonKullanmaTarihi, s.SeriNolari, s.KdvIstisnaKodu)).ToList(),
             f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler, f.MasrafMerkeziId, f.IsyeriId);
     }
 }

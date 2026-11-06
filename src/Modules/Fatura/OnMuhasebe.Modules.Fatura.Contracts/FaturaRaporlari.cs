@@ -1,3 +1,4 @@
+using OnMuhasebe.Shared.Contracts.Vergi;
 using System.Text.Json.Serialization;
 
 namespace OnMuhasebe.Modules.Fatura.Contracts;
@@ -56,7 +57,8 @@ public sealed record KdvKalemi(
     string? TevkifatKodu,
     int TevkifatPay,
     int TevkifatPayda,
-    decimal TevkifTl);
+    decimal TevkifTl,
+    string? KdvIstisnaKodu = null);
 
 // Muhtasar için bir belgenin stopajı (TL).
 public sealed record StopajKalemi(FaturaTuru Tur, decimal Oran, decimal MatrahTl, decimal StopajTl);
@@ -65,6 +67,9 @@ public sealed record KdvOranSatiri(int Oran, decimal MatrahTl, decimal VergiTl);
 
 // Tevkifatlı işlem satırı: BeyanEdilecekTl KDV1'de satıcının beyan ettiği kısım (KDV − tevkif); KDV2'de tevkif edilen kısımdır.
 public sealed record KdvTevkifatSatiri(string? Kod, int KdvOrani, int Pay, int Payda, decimal MatrahTl, decimal KdvTl, decimal TevkifTl, decimal BeyanEdilecekTl);
+
+// KDV1 istisnalar tablosu: istisna koduna göre teslim ve hizmet bedeli (satış faturalarının %0 KDV'li satırları).
+public sealed record KdvIstisnaSatiri(string Kod, string? Aciklama, decimal TeslimBedeliTl);
 
 public sealed record StopajSatiri(FaturaTuru Tur, decimal Oran, decimal MatrahTl, decimal StopajTl, int BelgeSayisi);
 
@@ -85,7 +90,8 @@ public sealed record KdvBeyanOzeti(
     decimal Kdv2ToplamTl,
     IReadOnlyList<StopajSatiri> Muhtasar,
     decimal MuhtasarToplamTl,
-    int FaturaSayisi);
+    int FaturaSayisi,
+    IReadOnlyList<KdvIstisnaSatiri> Istisnalar);
 
 public static class FaturaRaporHesaplayici
 {
@@ -120,7 +126,8 @@ public static class FaturaRaporHesaplayici
         static bool AlisTarafi(FaturaTuru t) => t is FaturaTuru.Alis or FaturaTuru.SerbestMeslekMakbuzu or FaturaTuru.GiderPusulasi;
 
         var satislar = kalemler.Where(k => k.Tur == FaturaTuru.Satis).ToList();
-        var teslim = OranlaraGore(satislar.Where(k => k.TevkifatPayda == 0));
+        // İstisna kodlu (%0) satırların bedeli matrah tablosunda değil, KDV1'in istisnalar tablosunda beyan edilir.
+        var teslim = OranlaraGore(satislar.Where(k => k.TevkifatPayda == 0 && k.KdvIstisnaKodu is null));
         var kismi = Tevkifatlar(satislar.Where(k => k.TevkifatPayda > 0), satici: true);
         var alistanIade = OranlaraGore(kalemler.Where(k => k.Tur == FaturaTuru.AlistanIade).Select(k => k with { KdvTl = k.KdvTl - k.TevkifTl }));
         var hesaplanan = teslim.Sum(s => s.VergiTl) + kismi.Sum(s => s.BeyanEdilecekTl) + alistanIade.Sum(s => s.VergiTl);
@@ -138,8 +145,14 @@ public static class FaturaRaporHesaplayici
             .Select(g => new StopajSatiri(g.Key.Tur, g.Key.Oran, g.Sum(s => s.MatrahTl), g.Sum(s => s.StopajTl), g.Count()))
             .ToList();
 
+        var istisnalar = satislar.Where(k => k.KdvIstisnaKodu is not null)
+            .GroupBy(k => k.KdvIstisnaKodu!)
+            .OrderBy(g => g.Key)
+            .Select(g => new KdvIstisnaSatiri(g.Key, KdvIstisnaKodlari.Bul(g.Key)?.Aciklama, g.Sum(k => k.MatrahTl)))
+            .ToList();
+
         return new KdvBeyanOzeti(yil, ay, teslim, kismi, alistanIade, hesaplanan, indirilecek, sorumlu, satistanIade, indirimler,
-            hesaplanan - indirimler, kdv2, kdv2.Sum(s => s.BeyanEdilecekTl), muhtasar, muhtasar.Sum(s => s.StopajTl), faturaSayisi);
+            hesaplanan - indirimler, kdv2, kdv2.Sum(s => s.BeyanEdilecekTl), muhtasar, muhtasar.Sum(s => s.StopajTl), faturaSayisi, istisnalar);
     }
 
     private static List<KdvOranSatiri> OranlaraGore(IEnumerable<KdvKalemi> kalemler) =>
