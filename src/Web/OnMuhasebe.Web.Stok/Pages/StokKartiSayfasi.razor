@@ -151,6 +151,8 @@
         }
         <div class="panel-baslik belirme" style="--i:4"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Hareketler</div>
         <VeriTablosu T="StokHareketSatiri" Kayitlar="_hareketler?.Kayitlar" Yukleniyor="_hareketlerYukleniyor" Dense="true"
+                     ExcelAdi="@($"Stok hareketleri {kart.Kod}")" ExcelKolonlari="@(MaliyetGorur ? _maliyetliHareketKolonlari : _hareketKolonlari)"
+                     ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<StokHareketSatiri>>(HareketAdresi(sayfa, boyut)))"
                      Sayfa="_sayfa" ToplamSayfa="_hareketler?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
                      BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz hareket yok"
                      BosAciklama="Eldeki stokla başlamak için açılış hareketi girin.">
@@ -253,6 +255,30 @@ else if (_hata is null)
 
     [Parameter] public Guid Id { get; set; }
 
+    private static readonly IReadOnlyList<ExcelKolonu<StokHareketSatiri>> _hareketKolonlari =
+    [
+        new("Tarih", h => h.Tarih, 12),
+        new("Tür", h => StokMetinleri.HareketTuru(h.Tur), 18),
+        new("Depo", h => h.DepoAdi, 20),
+        new("Belge no", h => h.BelgeNo, 18),
+        new("Açıklama", h => h.Aciklama, 40),
+        new("Giriş", h => h.Giris, 14),
+        new("Çıkış", h => h.Cikis, 14),
+        new("Girilen miktar", h => h.GirilenMiktar, 14),
+        new("Girilen birim", h => h.GirilenBirim, 10),
+        new("Lot no", h => h.LotNo, 16),
+        new("Son kullanma", h => h.SonKullanmaTarihi, 12),
+        new("Seri no", h => h.SeriNolari is { Count: > 0 } sr ? string.Join(", ", sr) : null, 30),
+        new("Durum", h => h.IptalKaydiMi ? "İptal kaydı" : h.IptalEdildiMi ? "İptal edildi" : null, 14)
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<StokHareketSatiri>> _maliyetliHareketKolonlari =
+    [
+        .. _hareketKolonlari.SkipLast(1),
+        new("Birim maliyet (TL)", h => h.BirimFiyat, 16),
+        _hareketKolonlari[^1]
+    ];
+
     private StokKartiDetayi? _kart;
     private SiparisBekleyenMiktari? _bekleyen;
     private List<LotBakiyesi>? _lotlar;
@@ -299,10 +325,13 @@ else if (_hata is null)
         }
 
         _hareketlerYukleniyor = true;
-        var sonuc = await Api.GetAsync<SayfaliSonuc<StokHareketSatiri>>($"api/stok/kartlar/{Id}/hareketler?sayfa={_sayfa}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<StokHareketSatiri>>(HareketAdresi(_sayfa));
         _hareketler = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<StokHareketSatiri>([], 1, 20, 0);
         _hareketlerYukleniyor = false;
     }
+
+    private string HareketAdresi(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/stok/kartlar/{Id}/hareketler?sayfa={sayfa}&boyut={boyut}";
 
     private async Task SayfaDegistiAsync(int sayfa)
     {

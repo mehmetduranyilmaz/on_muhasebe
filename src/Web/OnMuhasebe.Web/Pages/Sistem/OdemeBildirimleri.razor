@@ -22,7 +22,7 @@
 
 <HataGosterimi Hata="_hata" />
 
-<VeriTablosu T="OdemeBildirimiOzeti" Kayitlar="_bildirimler" Yukleniyor="_yukleniyor" BosIkon="@Icons.Material.Outlined.TaskAlt"
+<VeriTablosu T="OdemeBildirimiOzeti" Kayitlar="_bildirimler" ExcelAdi="Ödeme bildirimleri" ExcelKolonlari="_excelKolonlari" Yukleniyor="_yukleniyor" BosIkon="@Icons.Material.Outlined.TaskAlt"
              BosBaslik="@(_durum == OdemeBildirimiDurumu.Bekliyor ? "Onay bekleyen bildirim yok" : "Bildirim yok")">
     <Basliklar>
         <MudTh>Firma</MudTh>
@@ -82,6 +82,29 @@
         (OdemeBildirimiDurumu.Onaylandi, "Onaylanan", "#16A34A"),
         (OdemeBildirimiDurumu.Reddedildi, "Reddedilen", "#EF4444"),
         (null, "Tümü", "#3B82F6")
+    ];
+
+    // Bitiş tarihleri ertesi gece yarısı tutulur; son geçerli gün bir gün öncesidir.
+    private static readonly IReadOnlyList<ExcelKolonu<OdemeBildirimiOzeti>> _excelKolonlari =
+    [
+        new("Bildirim tarihi", b => b.BildirimTarihi.ToLocalTime(), 14),
+        new("Firma", b => b.FirmaUnvani, 40),
+        new("Paket", b => b.PaketAdi, 24),
+        new("Süre", b => b.AySayisi == 12 ? "yıllık" : "aylık", 10),
+        new("Tutar (TL)", b => b.Tutar, 16),
+        new("Paket ücreti (TL)", b => b.PaketUcreti, 16),
+        new("Ödeme tarihi", b => b.OdemeTarihi, 12),
+        new("Gönderen", b => b.Gonderen, 30),
+        new("Açıklama", b => b.Aciklama, 35),
+        new("Durum", b => b.Durum switch
+        {
+            OdemeBildirimiDurumu.Onaylandi => "Onaylandı",
+            OdemeBildirimiDurumu.Reddedildi => "Reddedildi",
+            _ => "Onay bekliyor"
+        }, 14),
+        new("Sonuç tarihi", b => b.SonucTarihi?.ToLocalTime(), 12),
+        new("Yeni son gün", b => b.YeniBitisTarihi?.AddDays(-1), 12),
+        new("Sonuç notu", b => b.SonucNotu, 35)
     ];
 
     private OdemeBildirimiDurumu? _durum = OdemeBildirimiDurumu.Bekliyor;

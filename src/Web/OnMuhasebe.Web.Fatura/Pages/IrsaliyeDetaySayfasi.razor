@@ -160,7 +160,7 @@
         </MudGrid>
 
         <div class="panel-baslik belirme" style="--i:3"><MudIcon Icon="@Icons.Material.Filled.FormatListNumbered" Color="Color.Secondary" /> Sevk edilen mallar</div>
-        <VeriTablosu T="IrsaliyeSatiriDetayi" Kayitlar="i.Satirlar" Dense="true">
+        <VeriTablosu T="IrsaliyeSatiriDetayi" Kayitlar="i.Satirlar" Dense="true" ExcelAdi="@($"İrsaliye satırları {i.Numara ?? "taslak"}")" ExcelKolonlari="ExcelKolonlari">
             <Basliklar>
                 <MudTh>#</MudTh>
                 <MudTh>Ürün</MudTh>
@@ -230,6 +230,26 @@ else if (_hata is null)
     private bool Y(string islem) => Oturum.YazabilirMi(FaturaYetkileri.Irsaliye, islem);
 
     [Parameter] public Guid Id { get; set; }
+
+    // Depo adı aktarım anında yüklü depo listesinden okunur; bu yüzden liste örneğe bağlıdır.
+    private IReadOnlyList<ExcelKolonu<IrsaliyeSatiriDetayi>>? _excelKolonlari;
+    private IReadOnlyList<ExcelKolonu<IrsaliyeSatiriDetayi>> ExcelKolonlari => _excelKolonlari ??=
+    [
+        new("Sıra", s => s.Sira, 6),
+        new("Stok kodu", s => s.StokKodu, 14),
+        new("Ürün", s => s.Ad, 40),
+        new("Depo", s => _depolar.FirstOrDefault(d => d.Id == s.DepoId)?.Ad, 20),
+        new("Miktar", s => s.Miktar, 12),
+        new("Birim", s => s.Birim, 8),
+        new("Birim fiyat", s => s.BirimFiyat, 14),
+        new("Para birimi", _ => _irsaliye?.ParaBirimi, 10),
+        new("KDV %", s => s.KdvOrani, 8),
+        new("Faturalanan", s => s.FaturalananMiktar, 12),
+        new("Kalan", s => s.KalanMiktar, 12),
+        new("Lot no", s => s.LotNo, 14),
+        new("Son kullanma", s => s.SonKullanmaTarihi, 12),
+        new("Seri no", s => s.SeriNolari is { Count: > 0 } n ? string.Join(", ", n) : null, 30)
+    ];
 
     private IrsaliyeDetayi? _irsaliye;
     private FaturaAyarlari? _ayar;

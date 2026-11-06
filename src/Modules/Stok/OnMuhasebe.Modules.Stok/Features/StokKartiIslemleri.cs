@@ -103,7 +103,7 @@ internal static class StokKartiIslemleri
         }
 
         var sonuc = await sorgu
-            .OrderBy(k => k.Ad)
+            .OrderBy(k => k.Ad).ThenBy(k => k.Kod)
             .Select(k => new StokKartiOzeti(
                 k.Id, k.Kod, k.Ad, k.Tur, k.TemelBirim, k.Barkod, k.Grup != null ? k.Grup.Ad : null,
                 db.StokHareketleri.Where(h => h.StokKartiId == k.Id).Sum(h => h.GirisMiktari - h.CikisMiktari),

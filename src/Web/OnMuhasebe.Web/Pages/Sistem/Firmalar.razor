@@ -21,7 +21,8 @@
     </MudItem>
 </FiltreCubugu>
 
-<VeriTablosu T="SistemFirmaOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+<VeriTablosu T="SistemFirmaOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="Firmalar ve lisanslar" ExcelKolonlari="ExcelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<SistemFirmaOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
              SayfaDegisti="SayfaDegistirAsync" BosBaslik="Firma bulunamadı" BosIkon="@Icons.Material.Outlined.Business">
     <Basliklar>
         <MudTh>Ünvan</MudTh>
@@ -70,11 +71,27 @@
         await YukleAsync();
     }
 
+    // Paket adı yüklenen paket listesinden çözüldüğü için kolonlar örneğe bağlı. Lisans bitişi ertesi gece yarısıdır; son geçerli gün bir gün öncesi.
+    private IReadOnlyList<ExcelKolonu<SistemFirmaOzeti>>? _excelKolonlari;
+    private IReadOnlyList<ExcelKolonu<SistemFirmaOzeti>> ExcelKolonlari => _excelKolonlari ??=
+    [
+        new("Ünvan", f => f.Unvan, 40),
+        new("Vergi no", f => f.VergiNo, 14),
+        new("Paket", f => PaketAdi(f.PaketKodu), 20),
+        new("Ek modüller", f => string.Join(", ", f.EkModuller.Select(ModulMenusu.Ad)), 30),
+        new("Lisans son günü", f => f.LisansBitisTarihi?.AddDays(-1), 14),
+        new("Kullanıcı", f => f.KullaniciSayisi, 10),
+        new("Durum", f => f.AktifMi ? "Aktif" : "Pasif", 10)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/yonetim/sistem/firmalar?sayfa={sayfa}&boyut={boyut}&arama={Uri.EscapeDataString(_arama ?? "")}";
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var sonuc = await Api.GetAsync<SayfaliSonuc<SistemFirmaOzeti>>(
-            $"api/yonetim/sistem/firmalar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<SistemFirmaOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<SistemFirmaOzeti>([], 1, 20, 0);
         _yukleniyor = false;

@@ -574,7 +574,7 @@ internal static class MaasIslemleri
         var kisiler = await db.TumPersoneller.AsNoTracking().Where(p => idler.Contains(p.Id)).ToDictionaryAsync(p => p.Id, ct);
         var satirlar = d.Satirlar.Where(s => s.Kalan > 0).Select(s => (Kisi: kisiler[s.PersonelId], s.Kalan)).OrderBy(x => x.Kisi.Ad)
             .Select(x => new object?[] { x.Kisi.AdSoyad, x.Kisi.Iban ?? "IBAN YOK", x.Kalan, $"{d.Ay:00}/{d.Yil} maaş" }).ToList();
-        var icerik = OnMuhasebe.Shared.Infrastructure.Excel.ExcelYazici.Yaz("Maas odemesi",
+        var icerik = OnMuhasebe.Shared.Contracts.Excel.ExcelYazici.Yaz("Maas odemesi",
             [new("Ad soyad", 30), new("IBAN", 34), new("Tutar", 15), new("Açıklama", 25)], satirlar);
         return TypedResults.File(icerik, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"maas-{d.Yil}-{d.Ay:00}.xlsx");
     }

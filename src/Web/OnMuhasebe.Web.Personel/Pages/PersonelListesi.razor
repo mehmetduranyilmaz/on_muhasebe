@@ -36,7 +36,8 @@
     <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Label="Ara" Placeholder="Ad, kod, görev ya da departman" Immediate="true" DebounceInterval="350" Style="max-width:320px" />
 </div>
 
-<VeriTablosu T="PersonelOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+<VeriTablosu T="PersonelOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="Personel listesi" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<PersonelOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
              SatirTiklandi="@(p => Navigasyon.NavigateTo($"personel/{p.Id}"))" BosIkon="@Icons.Material.Outlined.Badge" BosBaslik="Personel yok">
     <Basliklar>
         <MudTh>Kod</MudTh>
@@ -66,13 +67,30 @@
     private bool _yukleniyor;
     private ApiHatasi? _hata;
 
+    private static readonly IReadOnlyList<ExcelKolonu<PersonelOzeti>> _excelKolonlari =
+    [
+        new("Kod", p => p.Kod, 12),
+        new("Ad soyad", p => p.AdSoyad, 35),
+        new("Görev", p => p.Gorev, 24),
+        new("Departman", p => p.Departman, 24),
+        new("İşe giriş", p => p.IseGiris, 12),
+        new("İşten çıkış", p => p.IstenCikis, 12),
+        new("Zimmet", p => p.ZimmetSayisi, 10),
+        new("Durum", p => p.AktifMi ? "Çalışıyor" : "Ayrıldı", 12)
+    ];
+
     protected override Task OnInitializedAsync() => YukleAsync();
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/personel/kartlar?sayfa={sayfa}&boyut={boyut}"
+        + (_aktif is { } a ? $"&aktif={(a ? "true" : "false")}" : "")
+        + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
 
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var filtre = (_aktif is { } a ? $"&aktif={(a ? "true" : "false")}" : "") + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
-        var sonuc = await Api.GetAsync<SayfaliSonuc<PersonelOzeti>>($"api/personel/kartlar?sayfa={_sayfa}{filtre}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<PersonelOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

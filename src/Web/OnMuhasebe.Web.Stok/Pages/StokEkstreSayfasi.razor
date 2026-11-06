@@ -7,6 +7,11 @@
 <SayfaBasligi Baslik="Ürün Hareket Dökümü" AltBaslik="@(_ekstre is { } e0 ? $"{e0.Kod} - {e0.Ad}" : null)" GeriAdres="@($"stok/{Id}")"
              Ikon="@Icons.Material.Filled.Description">
     <Islemler>
+        @if (_ekstre is { } e1)
+        {
+            <ExcelAktarDugmesi T="StokEkstreSatiri" Ad="@($"Stok ekstresi {e1.Kod}")" Kayitlar="_excelSatirlari"
+                               Kolonlar="@(MaliyetGorur ? _maliyetliExcelKolonlari : _excelKolonlari)" />
+        }
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ekstre is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
     </Islemler>
 </SayfaBasligi>
@@ -120,6 +125,29 @@ else if (_hata is null)
     private Guid? _depoId;
     private List<Depo> _depolar = [];
     private StokEkstresi? _ekstre;
+    private List<StokEkstreSatiri> _excelSatirlari = [];
+
+    // Excel'de ilk satır devreden miktardır; HareketId boş olan satır devir satırı sayılır.
+    private static bool DevirMi(StokEkstreSatiri s) => s.HareketId == Guid.Empty;
+
+    private static readonly IReadOnlyList<ExcelKolonu<StokEkstreSatiri>> _excelKolonlari =
+    [
+        new("Tarih", s => s.Tarih, 12),
+        new("Tür", s => DevirMi(s) ? "Devreden miktar" : StokMetinleri.HareketTuru(s.Tur), 18),
+        new("Depo", s => s.DepoAdi, 20),
+        new("Belge no", s => s.BelgeNo, 18),
+        new("Açıklama", s => s.Aciklama, 40),
+        new("Giriş", s => s.Giris, 14),
+        new("Çıkış", s => s.Cikis, 14),
+        new("Bakiye", s => s.Bakiye, 14)
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<StokEkstreSatiri>> _maliyetliExcelKolonlari =
+    [
+        .. _excelKolonlari,
+        new("Birim maliyet (TL)", s => DevirMi(s) ? null : s.BirimMaliyet, 16),
+        new("Tutar (TL)", s => DevirMi(s) ? null : s.Tutar, 16)
+    ];
     private ApiHatasi? _hata;
 
     protected override async Task OnInitializedAsync()
@@ -140,5 +168,8 @@ else if (_hata is null)
         var sonuc = await Api.GetAsync<StokEkstresi>(adres);
         _hata = sonuc.Hata;
         _ekstre = sonuc.BasariliMi ? sonuc.Deger : null;
+        _excelSatirlari = _ekstre is { } e
+            ? [new StokEkstreSatiri(Guid.Empty, e.Baslangic, StokHareketTuru.Acilis, "", null, null, 0, 0, e.DevirMiktar, 0, 0, null), .. e.Satirlar]
+            : [];
     }
 }

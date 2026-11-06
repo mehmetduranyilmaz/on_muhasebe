@@ -230,7 +230,7 @@ internal static class CariRaporlari
                 .GroupBy(x => x.ParaBirimi)
                 .Select(g => new ParaBirimiAraToplami(g.Key, g.Sum(x => x.Borc), g.Sum(x => x.Alacak), g.Sum(x => x.BakiyeTl)))
                 .ToListAsync(cancellationToken);
-            sayfaSonucu = await tekTek.OrderBy(x => x.Unvan).SayfalaAsync(istek, cancellationToken);
+            sayfaSonucu = await tekTek.OrderBy(x => x.Unvan).ThenBy(x => x.Kod).SayfalaAsync(istek, cancellationToken);
         }
         else
         {

@@ -158,7 +158,7 @@ else
         </MudItem>
         <MudItem xs="12" md="7">
             <MudText Typo="Typo.subtitle1" Class="mb-2"><b>Ödeme bildirimleriniz</b></MudText>
-            <VeriTablosu T="OdemeBildirimiOzeti" Kayitlar="d.Bildirimler" Dense="true" BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz bildirim yok"
+            <VeriTablosu T="OdemeBildirimiOzeti" Kayitlar="d.Bildirimler" ExcelAdi="Ödeme bildirimleri" ExcelKolonlari="_excelKolonlari" Dense="true" BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz bildirim yok"
                          IskeletSatirSayisi="3">
                 <Basliklar>
                     <MudTh>Tarih</MudTh>
@@ -189,6 +189,24 @@ else
     private AbonelikDurumu? _durum;
     private bool _yillik;
     private ApiHatasi? _hata;
+
+    private static readonly IReadOnlyList<ExcelKolonu<OdemeBildirimiOzeti>> _excelKolonlari =
+    [
+        new("Ödeme tarihi", b => b.OdemeTarihi, 12),
+        new("Paket", b => b.PaketAdi, 24),
+        new("Süre", b => SureMetni(b.AySayisi), 10),
+        new("Tutar (TL)", b => b.Tutar, 16),
+        new("Gönderen", b => b.Gonderen, 30),
+        new("Açıklama", b => b.Aciklama, 35),
+        new("Bildirim tarihi", b => b.BildirimTarihi.ToLocalTime(), 14),
+        new("Durum", b => b.Durum switch
+        {
+            OdemeBildirimiDurumu.Onaylandi => "Onaylandı",
+            OdemeBildirimiDurumu.Reddedildi => "Reddedildi",
+            _ => "Onay bekliyor"
+        }, 14),
+        new("Sonuç notu", b => b.SonucNotu, 35)
+    ];
 
     protected override Task OnInitializedAsync() => YukleAsync();
 

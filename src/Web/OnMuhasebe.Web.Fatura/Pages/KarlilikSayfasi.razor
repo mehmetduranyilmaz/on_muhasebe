@@ -70,6 +70,7 @@
     }
 
     <VeriTablosu T="KarlilikSatiri" Kayitlar="r.Satirlar" Dense="true" SatirTiklandi="Ac"
+                 ExcelAdi="@($"Kârlılık {KirilimBasligi} {Bicim.Tarih(r.Baslangic)}-{Bicim.Tarih(r.Bitis)}")" ExcelKolonlari="ExcelKolonlari"
                  BosIkon="@Icons.Material.Outlined.TrendingUp" BosBaslik="Bu dönemde onaylı satış faturası yok">
         <Basliklar>
             <MudTh>@KirilimBasligi</MudTh>
@@ -130,6 +131,30 @@ else if (_hata is null)
         ("Müşteri", KarlilikKirilimi.Musteri, Icons.Material.Filled.People),
         ("Fatura", KarlilikKirilimi.Fatura, Icons.Material.Filled.ReceiptLong)
     ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<KarlilikSatiri>> _tutarKolonlari =
+    [
+        new("Net satış (TL)", s => s.NetSatisTl, 16),
+        new("Maliyet (TL)", s => s.MaliyetTl, 16),
+        new("Brüt kâr (TL)", s => s.BrutKarTl, 16),
+        new("Marj %", s => s.MarjYuzde, 10),
+        new("Maliyeti izlenmeyen satış (TL)", s => s.MaliyetsizSatisTl, 18)
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<KarlilikSatiri>> _urunKolonlari =
+        [new("Stok kodu", s => s.Ek, 14), new("Ürün", s => s.Ad, 40), new("Miktar", s => s.Miktar, 12), .. _tutarKolonlari];
+
+    private static readonly IReadOnlyList<ExcelKolonu<KarlilikSatiri>> _musteriKolonlari = [new("Müşteri", s => s.Ad, 40), .. _tutarKolonlari];
+
+    private static readonly IReadOnlyList<ExcelKolonu<KarlilikSatiri>> _faturaKolonlari =
+        [new("Fatura No", s => s.Ek, 18), new("Cari", s => s.Ad, 40), .. _tutarKolonlari];
+
+    private IReadOnlyList<ExcelKolonu<KarlilikSatiri>> ExcelKolonlari => _kirilim switch
+    {
+        KarlilikKirilimi.Urun => _urunKolonlari,
+        KarlilikKirilimi.Musteri => _musteriKolonlari,
+        _ => _faturaKolonlari
+    };
 
     private KarlilikKirilimi _kirilim = KarlilikKirilimi.Urun;
     private DateTime? _baslangic;

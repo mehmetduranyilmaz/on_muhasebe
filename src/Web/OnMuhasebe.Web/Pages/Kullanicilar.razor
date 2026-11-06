@@ -18,7 +18,7 @@
 
 <HataGosterimi Hata="_hata" />
 
-<VeriTablosu T="FirmaKullanicisiCevabi" Kayitlar="_kullanicilar" BosBaslik="Kayıtlı kullanıcı yok" BosIkon="@Icons.Material.Outlined.Group">
+<VeriTablosu T="FirmaKullanicisiCevabi" Kayitlar="_kullanicilar" ExcelAdi="Kullanıcılar" ExcelKolonlari="_excelKolonlari" BosBaslik="Kayıtlı kullanıcı yok" BosIkon="@Icons.Material.Outlined.Group">
     <Basliklar>
         <MudTh>Ad Soyad</MudTh>
         <MudTh>E-posta</MudTh>
@@ -105,6 +105,18 @@
     private List<FirmaKullanicisiCevabi>? _kullanicilar;
     private List<DavetOzeti>? _davetler;
     private ApiHatasi? _hata;
+
+    private static readonly IReadOnlyList<ExcelKolonu<FirmaKullanicisiCevabi>> _excelKolonlari =
+    [
+        new("Ad", k => k.Ad, 20),
+        new("Soyad", k => k.Soyad, 20),
+        new("E-posta", k => k.Eposta, 35),
+        new("Rol", k => k.RolAdi, 24),
+        new("Tam yetkili", k => k.TamYetkiliMi, 12),
+        new("Ek yetki", k => k.EkYetkiler.Count, 10),
+        new("Kaldırılan yetki", k => k.YasakYetkiler.Count, 14),
+        new("Durum", k => k.AktifMi ? "Aktif" : "Pasif", 10)
+    ];
 
     protected override Task OnInitializedAsync() => YukleAsync();
 

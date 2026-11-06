@@ -31,7 +31,8 @@
     </MudItem>
 </FiltreCubugu>
 
-<VeriTablosu T="LotBakiyesi" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaAsync"
+<VeriTablosu T="LotBakiyesi" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="Lot ve SKT listesi" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<LotBakiyesi>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaAsync"
              SatirTiklandi="@(l => Navigasyon.NavigateTo($"stok/{l.StokKartiId}"))" Dense="true"
              BosIkon="@Icons.Material.Outlined.QrCode2" BosBaslik="Lot bulunamadı" BosAciklama="Lot/seri izlenen ürünlerin girişleri burada listelenir.">
     <Basliklar>
@@ -121,17 +122,35 @@
     protected override async Task OnInitializedAsync()
     {
         _bugun = DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+        _excelKolonlari = ExcelKolonlariOlustur();
         var depolar = await Api.GetAsync<List<Depo>>("api/stok/depolar");
         _depolar = depolar.BasariliMi ? depolar.Deger : [];
         await YukleAsync();
     }
 
+    private IReadOnlyList<ExcelKolonu<LotBakiyesi>> _excelKolonlari = [];
+
+    private IReadOnlyList<ExcelKolonu<LotBakiyesi>> ExcelKolonlariOlustur() =>
+    [
+        new("Stok kodu", l => l.StokKodu, 12),
+        new("Ürün", l => l.StokAdi, 40),
+        new("Lot no", l => l.LotNo, 16),
+        new("Depo", l => l.DepoAdi, 20),
+        new("İlk giriş", l => l.IlkGiris, 12),
+        new("Son kullanma", l => l.SonKullanmaTarihi, 12),
+        new("Kalan gün", l => l.SonKullanmaTarihi is { } skt ? skt.DayNumber - _bugun.DayNumber : null, 10),
+        new("Miktar", l => l.Miktar, 14),
+        new("Birim", l => l.TemelBirim, 8)
+    ];
+
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/stok/lotlar?sayfa={sayfa}&boyut={boyut}&arama={Uri.EscapeDataString(_arama ?? "")}"
+        + (_gun is { } g ? $"&gun={g}" : "") + (_depoId is { } d ? $"&depoId={d}" : "");
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var adres = $"api/stok/lotlar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
-                    + (_gun is { } g ? $"&gun={g}" : "") + (_depoId is { } d ? $"&depoId={d}" : "");
-        var sonuc = await Api.GetAsync<SayfaliSonuc<LotBakiyesi>>(adres);
+        var sonuc = await Api.GetAsync<SayfaliSonuc<LotBakiyesi>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

@@ -22,7 +22,7 @@
     </div>
 }
 
-<VeriTablosu T="MaasDonemiOzeti" Kayitlar="_liste" Yukleniyor="_yukleniyor" Sayfa="1" ToplamSayfa="1" Dense="true"
+<VeriTablosu T="MaasDonemiOzeti" Kayitlar="_liste" ExcelAdi="Maaş dönemleri" ExcelKolonlari="_excelKolonlari" Yukleniyor="_yukleniyor" Sayfa="1" ToplamSayfa="1" Dense="true"
              SatirTiklandi="@(d => Navigasyon.NavigateTo($"personel/maas/{d.Id}"))" BosIkon="@Icons.Material.Outlined.Payments" BosBaslik="Maaş dönemi yok">
     <Basliklar>
         <MudTh>Dönem</MudTh>
@@ -46,6 +46,17 @@
     private int _yil = DateTime.Today.Year;
     private bool _yukleniyor = true;
     private ApiHatasi? _hata;
+
+    private static readonly IReadOnlyList<ExcelKolonu<MaasDonemiOzeti>> _excelKolonlari =
+    [
+        new("Yıl", d => d.Yil, 8),
+        new("Ay", d => Bicim.Kultur.DateTimeFormat.GetMonthName(d.Ay), 12),
+        new("Kişi", d => d.KisiSayisi, 8),
+        new("Ödenecek", d => d.ToplamOdenecek, 16),
+        new("Ödenen", d => d.ToplamOdenen, 16),
+        new("Kalan", d => d.ToplamOdenecek - d.ToplamOdenen, 16),
+        new("Durum", d => d.Durum == MaasDonemiDurumu.Onayli ? "Onaylı" : "Taslak", 10)
+    ];
 
     protected override async Task OnInitializedAsync()
     {

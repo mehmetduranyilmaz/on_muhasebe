@@ -24,7 +24,7 @@
 
 <MudGrid Spacing="3">
     <MudItem xs="12" lg="8">
-        <VeriTablosu T="Satir" Kayitlar="_satirlar" Yukleniyor="_yukleniyor" Dense="true"
+        <VeriTablosu T="Satir" Kayitlar="_satirlar" Yukleniyor="_yukleniyor" Dense="true" ExcelAdi="Masraf merkezleri" ExcelKolonlari="_excelKolonlari"
                      BosIkon="@Icons.Material.Outlined.AccountTree" BosBaslik="Bu dönemde kayıt yok"
                      BosAciklama="Faturalara ve kasa/banka gelir-gider kayıtlarına masraf merkezi seçildikçe burada toplanır.">
             <Basliklar>
@@ -93,6 +93,16 @@
 </MudGrid>
 
 @code {
+    private static readonly IReadOnlyList<ExcelKolonu<Satir>> _excelKolonlari =
+    [
+        new("Kod", s => s.Merkez?.Kod, 12),
+        new("Merkez", s => s.Merkez?.Ad ?? "Merkez atanmamış", 35),
+        new("Gelir (TL)", s => s.Gelir, 16),
+        new("Gider (TL)", s => s.Gider, 16),
+        new("Net (TL)", s => s.Net, 16),
+        new("Kayıt", s => s.Adet, 10)
+    ];
+
     private DateTime? _baslangic;
     private DateTime? _bitis;
     private List<MasrafMerkeziOzeti> _merkezler = [];

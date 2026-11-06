@@ -19,6 +19,8 @@
 </div>
 
 <VeriTablosu T="BorcluOzeti" Kayitlar="_sayfa?.Kayitlar" Yukleniyor="_yukleniyor" Dense="true" SatirTiklandi="AcAsync"
+             ExcelAdi="@(_yalnizRiskli ? "Riskli keşideciler" : "Keşideci ve borçlular")" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<BorcluOzeti>>(Adres(sayfa, boyut)))"
              Sayfa="_sayfaNo" ToplamSayfa="_sayfa?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
              BosIkon="@Icons.Material.Outlined.Badge" BosBaslik="Keşideci/borçlu yok"
              BosAciklama="Evrak girerken keşideci yazdığınızda kartı kendiliğinden açılır.">
@@ -63,11 +65,24 @@
 
     protected override Task OnInitializedAsync() => YukleAsync();
 
+    private static readonly IReadOnlyList<ExcelKolonu<BorcluOzeti>> _excelKolonlari =
+    [
+        new("Ad / unvan", b => b.Ad, 40),
+        new("VKN / TCKN", b => b.KimlikNo, 14),
+        new("Telefon", b => b.Telefon, 16),
+        new("Evrak", b => b.EvrakSayisi, 10),
+        new("Karşılıksız", b => b.KarsiliksizSayisi, 12),
+        new("Risk", b => b.KaraListede ? "Kara listede" : b.Riskli ? "Riskli" : b.KarsiliksizSayisi > 0 ? "Uyarı kapalı" : null, 14)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = 25) =>
+        $"api/kasabanka/cek-senet/borclular?sayfa={sayfa}&boyut={boyut}{(_yalnizRiskli ? "&riskli=true" : "")}&arama={Uri.EscapeDataString(_arama ?? "")}";
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var sonuc = await Api.GetAsync<SayfaliSonuc<BorcluOzeti>>(
-            $"api/kasabanka/cek-senet/borclular?sayfa={_sayfaNo}&boyut=25{(_yalnizRiskli ? "&riskli=true" : "")}&arama={Uri.EscapeDataString(_arama ?? "")}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<BorcluOzeti>>(Adres(_sayfaNo));
         _sayfa = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<BorcluOzeti>([], 1, 25, 0);
         _yukleniyor = false;
     }

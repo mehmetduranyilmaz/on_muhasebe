@@ -90,6 +90,8 @@
 
     <div class="panel-baslik belirme" style="--i:2"><MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Secondary" /> Hareketler</div>
     <VeriTablosu T="KasaHareketSatiri" Kayitlar="_hareketler?.Kayitlar" Yukleniyor="_hareketlerYukleniyor" Dense="true"
+                 ExcelAdi="@($"Hesap hareketleri {h.Ad}")" ExcelKolonlari="@(h.ParaBirimi == ParaBirimleri.Tl ? _excelKolonlari : _dovizliExcelKolonlari)"
+                 ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<KasaHareketSatiri>>(HareketAdresi(sayfa, boyut)))"
                  Sayfa="_sayfa" ToplamSayfa="_hareketler?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
                  BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz hareket yok"
                  BosAciklama="Hesapta para varsa açılış bakiyesi girerek başlayın.">
@@ -184,6 +186,33 @@ else if (_hata is null)
         if (h.ParaBirimi != ParaBirimleri.Tl) yield return ("Kayıtlı TL karşılığı", Bicim.Tutar(h.BakiyeTl, ParaBirimleri.Tl));
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<KasaHareketSatiri>> _excelKolonlari =
+    [
+        new("Tarih", x => x.Tarih, 12),
+        new("Tür", x => KasaMetinleri.HareketTuru(x.Tur), 20),
+        new("Açıklama", x => x.Aciklama, 40),
+        new("Cari", x => x.CariUnvan, 35),
+        new("Kategori", x => x.KategoriAdi, 20),
+        new("Belge no", x => x.BelgeNo, 16),
+        new("Giriş", x => x.Giris, 16),
+        new("Çıkış", x => x.Cikis, 16),
+        new("İptal", x => x.IptalKaydiMi ? "İptal kaydı" : x.IptalEdildiMi ? "İptal edildi" : null, 14)
+    ];
+
+    // Dövizli hesapta kayıt kuru ve TL karşılıkları da aktarılır; TL hesapta bunlar tekrar olur.
+    private static readonly IReadOnlyList<ExcelKolonu<KasaHareketSatiri>> _dovizliExcelKolonlari =
+    [
+        .. _excelKolonlari.Take(8),
+        new("Kur", x => x.Kur, 10),
+        new("Giriş (TL)", x => x.GirisTl, 16),
+        new("Çıkış (TL)", x => x.CikisTl, 16),
+        _excelKolonlari[^1]
+    ];
+
+    // Ekran ve Excel aktarımı aynı sorguyu kullanır; yalnızca sayfa ve boyut değişir.
+    private string HareketAdresi(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/kasabanka/hesaplar/{Id}/hareketler?sayfa={sayfa}&boyut={boyut}";
+
     private async Task HesapYukleAsync()
     {
         var sonuc = await Api.GetAsync<HesapDetayi>($"api/kasabanka/hesaplar/{Id}");
@@ -194,7 +223,7 @@ else if (_hata is null)
     private async Task HareketleriYukleAsync()
     {
         _hareketlerYukleniyor = true;
-        var sonuc = await Api.GetAsync<SayfaliSonuc<KasaHareketSatiri>>($"api/kasabanka/hesaplar/{Id}/hareketler?sayfa={_sayfa}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<KasaHareketSatiri>>(HareketAdresi(_sayfa));
         _hareketler = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<KasaHareketSatiri>([], 1, 20, 0);
         _hareketlerYukleniyor = false;
     }

@@ -46,7 +46,8 @@
     </MudItem>
 </FiltreCubugu>
 
-<VeriTablosu T="StokKartiOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+<VeriTablosu T="StokKartiOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="Stok listesi" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<StokKartiOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
              SayfaDegisti="SayfaDegistiAsync" SatirTiklandi="@(k => Navigasyon.NavigateTo($"stok/{k.Id}"))"
              BosIkon="@Icons.Material.Outlined.Inventory2" BosBaslik="Stok kartı bulunamadı"
              BosAciklama="@(FiltreVarMi ? "Filtreleri değiştirmeyi deneyin." : "Sattığınız ürünleri ve hizmetleri ekleyerek başlayın.")">
@@ -126,14 +127,33 @@
         await YukleAsync();
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<StokKartiOzeti>> _excelKolonlari =
+    [
+        new("Kod", k => k.Kod, 12),
+        new("Ad", k => k.Ad, 40),
+        new("Tür", k => StokMetinleri.Tur(k.Tur), 10),
+        new("Barkod", k => k.Barkod, 16),
+        new("Grup", k => k.GrupAdi),
+        new("Birim", k => k.TemelBirim, 8),
+        new("Miktar", k => k.Tur == StokTuru.Urun ? k.Miktar : null, 14),
+        new("Kritik seviye", k => k.KritikSeviye, 14),
+        new("Para birimi", k => k.ParaBirimi, 10),
+        new("Satış fiyatı", k => k.SatisFiyati, 16),
+        new("Perakende fiyatı", k => k.PerakendeFiyati, 16),
+        new("Durum", k => k.AktifMi ? "Aktif" : "Pasif", 10)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/stok/kartlar?sayfa={sayfa}&boyut={boyut}&arama={Uri.EscapeDataString(_arama ?? "")}"
+        + (_tur is { } t ? $"&tur={t}" : "")
+        + (_grupId is { } g ? $"&grupId={g}" : "")
+        + (_pasifleriGoster ? "" : "&aktif=true");
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var adres = $"api/stok/kartlar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
-                    + (_tur is { } t ? $"&tur={t}" : "")
-                    + (_grupId is { } g ? $"&grupId={g}" : "")
-                    + (_pasifleriGoster ? "" : "&aktif=true");
-        var sonuc = await Api.GetAsync<SayfaliSonuc<StokKartiOzeti>>(adres);
+        var sonuc = await Api.GetAsync<SayfaliSonuc<StokKartiOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<StokKartiOzeti>([], 1, 20, 0);
         _yukleniyor = false;

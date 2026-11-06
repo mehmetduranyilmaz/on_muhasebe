@@ -125,7 +125,7 @@ internal static class CekSenetSorgulari
         }
 
         var evraklar = db.Evraklar.Where(e => e.Durum != EvrakDurumu.Iptal);
-        var sonuc = await sorgu.OrderBy(b => b.Ad)
+        var sonuc = await sorgu.OrderBy(b => b.Ad).ThenBy(b => b.Id)
             .Select(b => new
             {
                 b.Id, b.Ad, b.KimlikNo, b.Telefon, b.KaraListede, b.UyariKapali,

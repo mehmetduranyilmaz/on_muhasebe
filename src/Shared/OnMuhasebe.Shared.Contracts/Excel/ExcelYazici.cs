@@ -3,12 +3,13 @@ using System.IO.Compression;
 using System.Text;
 using System.Xml;
 
-namespace OnMuhasebe.Shared.Infrastructure.Excel;
+namespace OnMuhasebe.Shared.Contracts.Excel;
 
 public sealed record ExcelSutunu(string Baslik, int Genislik = 18);
 
-// Bağımlılıksız .xlsx yazıcı: tek sayfa, kalın ve sabit başlık, filtre, isteğe bağlı kalın alt satır.
-// Hücre değeri string, int, decimal, DateOnly ya da null olabilir.
+// Bağımlılıksız .xlsx yazıcı: tek sayfa, kalın ve sabit başlık, filtre, isteğe bağlı kalın alt satır. Sunucuda (muhasebe
+// aktarımı, şablonlar) ve tarayıcıda (listelerin dışa aktarımı) aynı kod kullanılır.
+// Hücre değeri string, int, long, decimal, bool (Evet/Hayır), DateOnly, DateTime ya da null olabilir.
 public static class ExcelYazici
 {
     private const string SayfaAdAlani = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
@@ -16,17 +17,19 @@ public static class ExcelYazici
     private const int TarihStili = 2;
     private const int TutarStili = 3;
     private const int ToplamStili = 4;
+    private const int TarihSaatStili = 5;
 
     public static byte[] Yaz(string sayfaAdi, IReadOnlyList<ExcelSutunu> sutunlar, IEnumerable<object?[]> satirlar, object?[]? altSatir = null)
     {
+        sayfaAdi = SayfaAdi(sayfaAdi);
         using var bellek = new MemoryStream();
         using (var zip = new ZipArchive(bellek, ZipArchiveMode.Create, leaveOpen: true))
         {
             ParcaYaz(zip, "[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>""");
             ParcaYaz(zip, "_rels/.rels", """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>""");
-            ParcaYaz(zip, "xl/workbook.xml", $"""<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="{sayfaAdi}" sheetId="1" r:id="rId1"/></sheets></workbook>""");
+            ParcaYaz(zip, "xl/workbook.xml", $"""<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="{System.Security.SecurityElement.Escape(sayfaAdi)}" sheetId="1" r:id="rId1"/></sheets></workbook>""");
             ParcaYaz(zip, "xl/_rels/workbook.xml.rels", """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>""");
-            ParcaYaz(zip, "xl/styles.xml", """<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd\.mm\.yyyy"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs></styleSheet>""");
+            ParcaYaz(zip, "xl/styles.xml", """<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="dd\.mm\.yyyy"/><numFmt numFmtId="165" formatCode="dd\.mm\.yyyy\ hh:mm"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>""");
             CalismaSayfasi(zip, sutunlar, satirlar, altSatir);
         }
 
@@ -121,6 +124,16 @@ public static class ExcelYazici
                 case int tam:
                     Sayi(x, i, satirNo, tam, 0);
                     break;
+                case long buyuk:
+                    Sayi(x, i, satirNo, buyuk, 0);
+                    break;
+                case bool mantiksal:
+                    Metin(x, i, satirNo, mantiksal ? "Evet" : "Hayır", 0);
+                    break;
+                // Saati olan zaman damgası saatiyle, yalnız tarih olan gün olarak yazılır.
+                case DateTime zaman:
+                    Sayi(x, i, satirNo, (decimal)zaman.ToOADate(), zaman.TimeOfDay == TimeSpan.Zero ? TarihStili : TarihSaatStili);
+                    break;
                 case decimal tutar:
                     Sayi(x, i, satirNo, tutar, kalin ? ToplamStili : TutarStili);
                     break;
@@ -130,6 +143,13 @@ public static class ExcelYazici
         }
 
         x.WriteEndElement();
+    }
+
+    // Excel sayfa adı en çok 31 karakterdir ve : \ / ? * [ ] içeremez; aksi halde dosya açılmaz.
+    private static string SayfaAdi(string ad)
+    {
+        var temiz = new string(ad.Where(c => c is not (':' or '\\' or '/' or '?' or '*' or '[' or ']')).ToArray()).Trim();
+        return temiz.Length == 0 ? "Sayfa1" : temiz.Length > 31 ? temiz[..31] : temiz;
     }
 
     // 26'dan fazla sütunda AA, AB...

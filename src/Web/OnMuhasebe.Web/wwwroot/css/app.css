@@ -304,6 +304,8 @@ html, body {
 
 /* ---------- Tablolar ---------- */
 
+.veri-tablosu-arac { display: flex; justify-content: flex-end; padding: 4px 8px 0; }
+
 .veri-tablosu {
     overflow: hidden;
 }

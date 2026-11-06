@@ -38,6 +38,7 @@
 }
 
 <VeriTablosu T="KrediOzeti" Kayitlar="_krediler" Yukleniyor="_krediler is null && _hata is null" SatirTiklandi="@(k => Navigasyon.NavigateTo($"krediler/{k.Id}"))"
+             ExcelAdi="Krediler" ExcelKolonlari="_excelKolonlari"
              BosIkon="@Icons.Material.Outlined.AccountBalance" BosBaslik="Kredi yok" BosAciklama="Bankadan kullandığınız kredileri ödeme planıyla birlikte girin.">
     <Basliklar>
         <MudTh>Kredi</MudTh>
@@ -70,6 +71,23 @@
 @code {
     private List<KrediOzeti>? _krediler;
     private ApiHatasi? _hata;
+
+    private static readonly IReadOnlyList<ExcelKolonu<KrediOzeti>> _excelKolonlari =
+    [
+        new("Kod", k => k.Kod, 12),
+        new("Kredi", k => k.Ad, 35),
+        new("Tür", k => Tur(k.Tur), 16),
+        new("Banka hesabı", k => k.HesapAdi, 30),
+        new("Durum", k => Durum(k.Durum), 10),
+        new("Kullandırım tarihi", k => k.KullandirimTarihi, 14),
+        new("Para birimi", k => k.ParaBirimi, 10),
+        new("Tutar", k => k.Tutar, 16),
+        new("Kalan anapara", k => k.KalanAnapara, 16),
+        new("Ödenen taksit", k => k.OdenenTaksit, 10),
+        new("Taksit sayısı", k => k.TaksitSayisi, 10),
+        new("Sıradaki vade", k => k.SonrakiVade, 12),
+        new("Sıradaki taksit", k => k.SonrakiTaksit, 16)
+    ];
 
     private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
 

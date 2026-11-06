@@ -98,6 +98,8 @@
 }
 
 <VeriTablosu T="EvrakOzeti" Kayitlar="_sayfa?.Kayitlar" Yukleniyor="_yukleniyor" Dense="true" SatirTiklandi="@(e => Navigasyon.NavigateTo($"cek-senet/{e.Id}"))"
+             ExcelAdi="@(_yon == EvrakYonu.Alinan ? "Alınan çek ve senetler" : "Verilen çek ve senetler")" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<EvrakOzeti>>(Adres(sayfa, boyut)))"
              Sayfa="_sayfaNo" ToplamSayfa="_sayfa?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
              BosIkon="@Icons.Material.Outlined.RequestQuote" BosBaslik="@(_yon == EvrakYonu.Alinan ? "Portföyde evrak yok" : "Verilmiş evrak yok")"
              BosAciklama="@(_yon == EvrakYonu.Alinan ? "Müşteriden aldığınız çek ve senetleri giriş bordrosuyla portföye ekleyin." : "Tedarikçiye verdiğiniz çek ve senetleri çıkış bordrosuyla kaydedin.")">
@@ -231,16 +233,40 @@
         _ozet = sonuc.BasariliMi ? sonuc.Deger : null;
     }
 
-    private async Task YukleAsync()
+    private static readonly IReadOnlyList<ExcelKolonu<EvrakOzeti>> _excelKolonlari =
+    [
+        new("Portföy no", e => e.PortfoyNo, 14),
+        new("Tür", e => CekSenetMetinleri.Tur(e.Tur), 8),
+        new("Yön", e => CekSenetMetinleri.Yon(e.Yon), 10),
+        new("Seri no", e => e.SeriNo, 14),
+        new("Keşideci / borçlu", e => e.BorcluAdi, 35),
+        new("Banka", e => e.BankaAdi, 25),
+        new("Cari", e => e.CariUnvan, 35),
+        new("Vade", e => e.VadeTarihi, 12),
+        new("Para birimi", e => e.ParaBirimi, 10),
+        new("Tutar", e => e.Tutar, 16),
+        new("Kalan", e => e.KalanTutar, 16),
+        new("Durum", e => CekSenetMetinleri.Durum(e.Durum), 16),
+        new("Konum", e => e.KonumAdi, 25),
+        new("Karşılıksız", e => e.KarsiliksizMi ? "Evet" : null, 12)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = 25)
     {
-        _yukleniyor = true;
         string?[] p =
         [
             $"yon={_yon}", _durum is { } d ? $"durum={d}" : null, _acik ? "acik=true" : null, _tur is { } t ? $"tur={t}" : null,
             string.IsNullOrWhiteSpace(_arama) ? null : $"arama={Uri.EscapeDataString(_arama)}", CariId is { } c ? $"cariId={c}" : null,
-            $"sayfa={_sayfaNo}", "boyut=25"
+            $"sayfa={sayfa}", $"boyut={boyut}"
         ];
-        var sonuc = await Api.GetAsync<SayfaliSonuc<EvrakOzeti>>($"api/kasabanka/cek-senet/evraklar?{string.Join("&", p.Where(x => x is not null))}");
+        return $"api/kasabanka/cek-senet/evraklar?{string.Join("&", p.Where(x => x is not null))}";
+    }
+
+    private async Task YukleAsync()
+    {
+        _yukleniyor = true;
+        var sonuc = await Api.GetAsync<SayfaliSonuc<EvrakOzeti>>(Adres(_sayfaNo));
         _sayfa = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<EvrakOzeti>([], 1, 25, 0);
         _yukleniyor = false;
     }

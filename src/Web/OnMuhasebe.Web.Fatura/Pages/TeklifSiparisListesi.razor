@@ -48,7 +48,9 @@
     </MudItem>
 </FiltreCubugu>
 
-<VeriTablosu T="TeklifSiparisOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+<VeriTablosu T="TeklifSiparisOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="@(_teklifMi ? "Teklif listesi" : "Sipariş listesi")"
+             ExcelKolonlari="@(_teklifMi ? _teklifKolonlari : _siparisKolonlari)"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<TeklifSiparisOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
              SayfaDegisti="SayfaAsync" SatirTiklandi="@(b => Navigasyon.NavigateTo($"{TeklifSiparisMetinleri.Kok(b.Tur)}/{b.Id}"))"
              BosIkon="@(_teklifMi ? Icons.Material.Outlined.RequestPage : Icons.Material.Outlined.ShoppingBag)" BosBaslik="@(_teklifMi ? "Teklif yok" : "Sipariş yok")">
     <Basliklar>
@@ -102,13 +104,40 @@
         await YukleAsync();
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<TeklifSiparisOzeti>> _teklifKolonlari =
+    [
+        new("Tarih", b => b.Tarih, 12),
+        new("No", b => b.Numara, 18),
+        new("Cari", b => b.CariHesapId is null ? $"{b.CariUnvan} (aday)" : b.CariUnvan, 40),
+        new("Durum", b => TeklifSiparisMetinleri.Durum(b.Durum, true, b.SuresiDolduMu), 14),
+        new("Geçerlilik", b => b.GecerlilikTarihi, 12),
+        new("Para birimi", b => b.ParaBirimi, 10),
+        new("Genel toplam", b => b.GenelToplam, 16)
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<TeklifSiparisOzeti>> _siparisKolonlari =
+    [
+        new("Tarih", b => b.Tarih, 12),
+        new("No", b => b.Numara, 18),
+        new("Tür", b => TeklifSiparisMetinleri.Tur(b.Tur), 20),
+        new("Cari", b => b.CariUnvan, 40),
+        new("Durum", b => TeklifSiparisMetinleri.Durum(b.Durum, false, b.SuresiDolduMu), 14),
+        new("Karşılama", b => b.Karsilama is { } k && b.Durum == TeklifSiparisDurumu.Acik ? TeklifSiparisMetinleri.Karsilama(k) : null, 16),
+        new("Termin", b => b.TerminTarihi, 12),
+        new("Para birimi", b => b.ParaBirimi, 10),
+        new("Genel toplam", b => b.GenelToplam, 16)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/fatura/teklif-siparis?sayfa={sayfa}&boyut={boyut}{Isyerleri.Sorgu()}&teklif={(_teklifMi ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}"
+        + (_tur is { } t ? $"&tur={t}" : "")
+        + (_teklifMi && _acik ? "&durum=Acik" : !_teklifMi && _acik ? "&acik=true" : "");
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var turFiltresi = _tur is { } t ? $"&tur={t}" : "";
-        var adres = $"api/fatura/teklif-siparis?sayfa={_sayfa}{Isyerleri.Sorgu()}&teklif={(_teklifMi ? "true" : "false")}&arama={Uri.EscapeDataString(_arama ?? "")}{turFiltresi}"
-                    + (_teklifMi && _acik ? "&durum=Acik" : !_teklifMi && _acik ? "&acik=true" : "");
-        var sonuc = await Api.GetAsync<SayfaliSonuc<TeklifSiparisOzeti>>(adres);
+        var sonuc = await Api.GetAsync<SayfaliSonuc<TeklifSiparisOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

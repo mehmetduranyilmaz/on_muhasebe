@@ -54,7 +54,8 @@
     </MudItem>
 </FiltreCubugu>
 
-<VeriTablosu T="IrsaliyeOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+<VeriTablosu T="IrsaliyeOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="İrsaliye listesi" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<IrsaliyeOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
              SayfaDegisti="SayfaDegistiAsync" SatirTiklandi="@(i => Navigasyon.NavigateTo($"irsaliye/{i.Id}"))"
              BosIkon="@Icons.Material.Outlined.LocalShipping" BosBaslik="İrsaliye bulunamadı"
              BosAciklama="@(FiltreVarMi ? "Filtreleri değiştirmeyi deneyin." : "Mal sevk ederken ya da teslim alırken irsaliye düzenleyin.")">
@@ -124,16 +125,32 @@
         return YukleAsync();
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<IrsaliyeOzeti>> _excelKolonlari =
+    [
+        new("Tarih", i => i.Tarih, 12),
+        new("Sevk tarihi", i => i.SevkTarihi, 12),
+        new("İrsaliye No", i => i.Numara, 18),
+        new("Tür", i => IrsaliyeMetinleri.Tur(i.Tur), 20),
+        new("Cari", i => i.CariUnvan, 40),
+        new("Kalem sayısı", i => i.SatirSayisi, 10),
+        new("Durum", i => IrsaliyeMetinleri.Durum(i.Durum), 10),
+        new("Faturalama", i => i.FaturalamaDurumu is { } fd && i.Durum == IrsaliyeDurumu.Onayli ? IrsaliyeMetinleri.Faturalama(fd) : null, 16),
+        new("Fatura son günü", i => i.FaturaSonGunu, 14)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/fatura/irsaliyeler?sayfa={sayfa}&boyut={boyut}{Isyerleri.Sorgu()}&arama={Uri.EscapeDataString(_arama ?? "")}"
+        + (_tur is { } t ? $"&tur={t}" : "")
+        + (_durum is { } d ? $"&durum={d}" : "")
+        + (_acik ? "&acik=true" : "")
+        + (Bicim.Gun(_baslangic) is { } b ? $"&baslangic={Bicim.Iso(b)}" : "")
+        + (Bicim.Gun(_bitis) is { } s ? $"&bitis={Bicim.Iso(s)}" : "");
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var adres = $"api/fatura/irsaliyeler?sayfa={_sayfa}{Isyerleri.Sorgu()}&arama={Uri.EscapeDataString(_arama ?? "")}"
-                    + (_tur is { } t ? $"&tur={t}" : "")
-                    + (_durum is { } d ? $"&durum={d}" : "")
-                    + (_acik ? "&acik=true" : "")
-                    + (Bicim.Gun(_baslangic) is { } b ? $"&baslangic={Bicim.Iso(b)}" : "")
-                    + (Bicim.Gun(_bitis) is { } s ? $"&bitis={Bicim.Iso(s)}" : "");
-        var sonuc = await Api.GetAsync<SayfaliSonuc<IrsaliyeOzeti>>(adres);
+        var sonuc = await Api.GetAsync<SayfaliSonuc<IrsaliyeOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<IrsaliyeOzeti>([], 1, 20, 0);
         _yukleniyor = false;

@@ -12,7 +12,8 @@
     <button type="button" class="tur-sekmesi @(_durum == IsEmriDurumu.Iptal ? "secili" : "")" style="--vurgu:#64748B" @onclick="() => SecAsync(false, IsEmriDurumu.Iptal)">İptal</button>
 </div>
 
-<VeriTablosu T="IsEmriOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+<VeriTablosu T="IsEmriOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="İş emirleri" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<IsEmriOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
              SatirTiklandi="@(i => Navigasyon.NavigateTo($"bakim/{i.EkipmanId}"))" BosIkon="@Icons.Material.Outlined.Assignment" BosBaslik="İş emri yok">
     <Basliklar>
         <MudTh>No</MudTh>
@@ -42,13 +43,28 @@
     private bool _yukleniyor;
     private ApiHatasi? _hata;
 
+    private static readonly IReadOnlyList<ExcelKolonu<IsEmriOzeti>> _excelKolonlari =
+    [
+        new("No", i => i.Kod, 14),
+        new("Ekipman", i => i.EkipmanAdi, 32),
+        new("Tür", i => BakimMetinleri.IsEmri(i.Tur), 16),
+        new("Başlık", i => i.Baslik, 40),
+        new("Bildirim", i => i.BildirimZamani.ToLocalTime(), 12),
+        new("Bitiş", i => i.BitisZamani?.ToLocalTime(), 12),
+        new("Duruş (saat)", i => i.DurusSaati, 12),
+        new("Durum", i => BakimMetinleri.IsEmriDurumu(i.Durum), 14)
+    ];
+
     protected override Task OnInitializedAsync() => YukleAsync();
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/bakim/is-emirleri?sayfa={sayfa}&boyut={boyut}" + (_aciklar ? "&aciklar=true" : $"&durum={_durum}");
 
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var filtre = _aciklar ? "&aciklar=true" : $"&durum={_durum}";
-        var sonuc = await Api.GetAsync<SayfaliSonuc<IsEmriOzeti>>($"api/bakim/is-emirleri?sayfa={_sayfa}{filtre}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<IsEmriOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

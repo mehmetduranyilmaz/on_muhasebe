@@ -66,7 +66,8 @@
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:320px" />
 </div>
 
-<VeriTablosu T="EkipmanOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+<VeriTablosu T="EkipmanOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="Ekipman listesi" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<EkipmanOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync" Dense="true"
              SatirTiklandi="@(e => Navigasyon.NavigateTo($"bakim/{e.Id}"))" BosIkon="@Icons.Material.Outlined.Build" BosBaslik="Ekipman yok"
              BosAciklama="Makine ve ekipmanlarınızı ekleyin; bakım zamanı ve yasal kontroller gelmeden hatırlatalım.">
     <Basliklar>
@@ -115,12 +116,32 @@
         await YukleAsync();
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<EkipmanOzeti>> _excelKolonlari =
+    [
+        new("Kod", e => e.Kod, 12),
+        new("Ad", e => e.Ad, 35),
+        new("Tür", e => BakimMetinleri.Tur(e.Tur), 18),
+        new("Konum", e => e.Konum, 24),
+        new("Sorumlu", e => e.SorumluAdi, 28),
+        new("Durum", e => BakimMetinleri.Durum(e.Durum), 14),
+        new("Sayaç", e => e.SayacBirimi == SayacBirimi.Yok ? null : e.Sayac, 12),
+        new("Sayaç birimi", e => e.SayacBirimi == SayacBirimi.Yok ? null : e.SayacBirimi.ToString(), 12),
+        new("En yakın bakım", e => e.EnYakinPlan, 28),
+        new("Bakım tarihi", e => e.EnYakinTarih, 12),
+        new("Bakım durumu", e => e.EnYakinDurum is { } d ? BakimMetinleri.Plan(d) : null, 14)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/bakim/ekipmanlar?sayfa={sayfa}&boyut={boyut}"
+        + (_durum is { } d ? $"&durum={d}" : "")
+        + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}")
+        + Isyerleri.Sorgu();
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var durum = _durum is { } d ? $"&durum={d}" : "";
-        var arama = string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}";
-        var sonuc = await Api.GetAsync<SayfaliSonuc<EkipmanOzeti>>($"api/bakim/ekipmanlar?sayfa={_sayfa}{durum}{arama}{Isyerleri.Sorgu()}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<EkipmanOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

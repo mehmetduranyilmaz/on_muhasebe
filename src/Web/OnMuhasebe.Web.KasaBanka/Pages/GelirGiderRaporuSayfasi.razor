@@ -11,6 +11,10 @@
         <MudDatePicker Variant="Variant.Outlined" @bind-Date="_bitis" Label="Bitiş" Style="max-width: 160px;" Margin="Margin.Dense" DateFormat="dd.MM.yyyy" />
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="YukleAsync">Göster</MudButton>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+        @if (_rapor is { } rapor)
+        {
+            <ExcelAktarDugmesi T="KategoriSatiri" Ad="Gelir gider raporu" Kolonlar="_excelKolonlari" Kayitlar="ExcelSatirlari(rapor)" />
+        }
     </Islemler>
 </SayfaBasligi>
 
@@ -67,6 +71,14 @@ else if (_hata is null)
 }
 
 @code {
+    private static readonly IReadOnlyList<ExcelKolonu<KategoriSatiri>> _excelKolonlari =
+    [
+        new("Tür", s => s.Tur, 10),
+        new("Kategori", s => s.Kategori.Ad, 35),
+        new("Kayıt", s => s.Kategori.Adet, 10),
+        new("Tutar (TL)", s => s.Kategori.TutarTl, 16)
+    ];
+
     private DateTime? _baslangic;
     private DateTime? _bitis;
     private GelirGiderRaporu? _rapor;
@@ -89,4 +101,9 @@ else if (_hata is null)
         _hata = sonuc.Hata;
         _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
     }
+
+    private static List<KategoriSatiri> ExcelSatirlari(GelirGiderRaporu r) =>
+        [.. r.Gelirler.Select(k => new KategoriSatiri("Gelir", k)), .. r.Giderler.Select(k => new KategoriSatiri("Gider", k))];
+
+    private sealed record KategoriSatiri(string Tur, KategoriTutari Kategori);
 }

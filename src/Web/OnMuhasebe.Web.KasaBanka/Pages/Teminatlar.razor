@@ -25,6 +25,7 @@
 </div>
 
 <VeriTablosu T="TeminatOzeti" Kayitlar="_kayitlar" Yukleniyor="_yukleniyor" Dense="true" SatirTiklandi="t => AcAsync(t.Id)"
+             ExcelAdi="Teminatlar" ExcelKolonlari="_excelKolonlari"
              BosIkon="@Icons.Material.Outlined.Shield" BosBaslik="Teminat kaydı yok"
              BosAciklama="Alınan veya verilen teminatları (mektup, ipotek, rehin, kefalet…) buradan ekleyin.">
     <Basliklar>
@@ -60,6 +61,20 @@
 </VeriTablosu>
 
 @code {
+    private static readonly IReadOnlyList<ExcelKolonu<TeminatOzeti>> _excelKolonlari =
+    [
+        new("Tür", t => TeminatMetinleri.Tur(t.Tur), 20),
+        new("Yön", t => TeminatMetinleri.Yon(t.Yon), 10),
+        new("Cari", t => t.CariUnvan, 35),
+        new("Banka", t => t.BankaAdi, 25),
+        new("Referans no", t => t.ReferansNo, 18),
+        new("Veriliş tarihi", t => t.VerilisTarihi, 12),
+        new("Vade", t => t.VadeTarihi, 12),
+        new("Para birimi", t => t.ParaBirimi, 10),
+        new("Tutar", t => t.Tutar, 16),
+        new("Durum", t => TeminatMetinleri.Durum(t.Durum), 14)
+    ];
+
     private List<TeminatOzeti>? _kayitlar;
     private TeminatYonu? _yon;
     private TeminatDurumu? _durum;

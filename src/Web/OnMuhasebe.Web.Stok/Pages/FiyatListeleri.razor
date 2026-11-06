@@ -23,7 +23,7 @@
     }
 </div>
 
-<VeriTablosu T="FiyatListesiOzeti" Kayitlar="_listeler" Yukleniyor="_yukleniyor" SatirTiklandi="@(l => Navigasyon.NavigateTo($"fiyat-listesi/{l.Id}"))"
+<VeriTablosu T="FiyatListesiOzeti" Kayitlar="_listeler" ExcelAdi="Fiyat listeleri" ExcelKolonlari="_excelKolonlari" Yukleniyor="_yukleniyor" SatirTiklandi="@(l => Navigasyon.NavigateTo($"fiyat-listesi/{l.Id}"))"
              BosIkon="@Icons.Material.Outlined.PriceChange" BosBaslik="Fiyat listesi yok"
              BosAciklama="Bayi, toptan ya da kampanya fiyatlarınızı liste olarak tanımlayıp carilere atayın.">
     <Basliklar>
@@ -53,6 +53,19 @@
 </VeriTablosu>
 
 @code {
+    private static readonly IReadOnlyList<ExcelKolonu<FiyatListesiOzeti>> _excelKolonlari =
+    [
+        new("Ad", l => l.Ad, 35),
+        new("Tür", l => l.Tur == FiyatListesiTuru.Satis ? "Satış" : "Alış", 10),
+        new("Para birimi", l => l.ParaBirimi, 10),
+        new("KDV", l => l.KdvDahilMi ? "KDV dahil" : "KDV hariç", 12),
+        new("Uygulandığı", l => l.HedefSayisi == 0 ? "Tüm cariler (genel)" : $"{l.HedefSayisi} cari/grup", 20),
+        new("Başlangıç", l => l.BaslangicTarihi, 12),
+        new("Bitiş", l => l.BitisTarihi, 12),
+        new("Ürün sayısı", l => l.SatirSayisi, 12),
+        new("Durum", l => l.GecerliMi ? "Geçerli" : l.AktifMi ? "Süre dışı" : "Pasif", 12)
+    ];
+
     private FiyatListesiTuru? _tur;
     private List<FiyatListesiOzeti>? _listeler;
     private bool _yukleniyor;

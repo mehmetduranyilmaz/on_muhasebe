@@ -45,7 +45,8 @@
     </MudItem>
 </FiltreCubugu>
 
-<VeriTablosu T="CariOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
+<VeriTablosu T="CariOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="Cari listesi" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<CariOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0"
              SayfaDegisti="SayfaDegistiAsync" SatirTiklandi="@(c => Navigasyon.NavigateTo($"cari/{c.Id}"))"
              BosIkon="@Icons.Material.Outlined.PersonSearch" BosBaslik="Kayıtlı cari bulunamadı"
              BosAciklama="@(FiltreVarMi ? "Filtreleri değiştirmeyi deneyin." : "Müşteri ve tedarikçilerinizi ekleyerek başlayın.")">
@@ -115,14 +116,31 @@
         await YukleAsync();
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<CariOzeti>> _excelKolonlari =
+    [
+        new("Kod", c => c.Kod, 12),
+        new("Ünvan", c => c.Unvan, 40),
+        new("Tür", c => CariMetinleri.Tur(c.Tur), 20),
+        new("Grup", c => c.GrupAdi),
+        new("Telefon", c => c.Telefon),
+        new("Para birimi", c => c.ParaBirimi, 10),
+        new("Bakiye", c => c.Bakiye, 16),
+        new("Bakiye (TL)", c => c.BakiyeTl, 16),
+        new("Risk limiti", c => c.RiskLimiti, 14),
+        new("Durum", c => c.AktifMi ? "Aktif" : "Pasif", 10)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/cari/hesaplar?sayfa={sayfa}&boyut={boyut}&arama={Uri.EscapeDataString(_arama ?? "")}"
+        + (_tur is { } t ? $"&tur={t}" : "")
+        + (_grupId is { } g ? $"&grupId={g}" : "")
+        + (_pasifleriGoster ? "" : "&aktif=true");
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var adres = $"api/cari/hesaplar?sayfa={_sayfa}&arama={Uri.EscapeDataString(_arama ?? "")}"
-                    + (_tur is { } t ? $"&tur={t}" : "")
-                    + (_grupId is { } g ? $"&grupId={g}" : "")
-                    + (_pasifleriGoster ? "" : "&aktif=true");
-        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>(adres);
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<CariOzeti>([], 1, 20, 0);
         _yukleniyor = false;

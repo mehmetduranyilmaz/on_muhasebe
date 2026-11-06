@@ -1,0 +1,129 @@
+@* Listeyi Excel'e aktarır: ekranda görünen sayfa değil, filtreye uyan tüm kayıtlar. Sayfalı listede kayıtlar sunucudan sayfa sayfa
+   (sınırlı eşzamanlılıkla) çekilir, dosya tarayıcıda üretilir; böylece her liste için ayrı dışa aktarma ucu gerekmez. *@
+@typeparam T
+@using OnMuhasebe.Shared.Contracts.Excel
+@using OnMuhasebe.Shared.Contracts.Sayfalama
+@inject IJSRuntime Js
+@inject ISnackbar Snackbar
+@inject TimeProvider Zaman
+
+<MudTooltip Text="@(_ilerleme is null ? "Filtreye uyan tüm kayıtları Excel'e aktar" : "Aktarılıyor…")">
+    <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Success" Disabled="@(_ilerleme is not null)" OnClick="AktarAsync"
+               StartIcon="@(_ilerleme is null ? Icons.Custom.FileFormats.FileExcel : null)" Class="yazdirma-gizle">
+        @if (_ilerleme is { } yuzde)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="@(yuzde == 0)" Value="yuzde" Class="mr-2" Style="width:16px;height:16px" />
+            <span>%@yuzde</span>
+        }
+        else
+        {
+            <span>Excel</span>
+        }
+    </MudButton>
+</MudTooltip>
+
+@code {
+    // Kullanıcı başına dakikalık istek sınırı (600) ve tarayıcı belleği gözetilerek: 100'lük sayfalarla en çok 100 istek.
+    public const int AzamiKayit = 10_000;
+    private const int SayfaBoyutu = SayfalamaIstegi.AzamiBoyut;
+    private const int Eszamanlilik = 4;
+
+    [Parameter, EditorRequired] public string Ad { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<ExcelKolonu<T>> Kolonlar { get; set; } = [];
+
+    // Sayfalı liste: (sayfa, boyut) için ekrandaki filtrelerle aynı sorgu. Verilmezse Kayitlar olduğu gibi aktarılır.
+    [Parameter] public Func<int, int, Task<ApiSonucu<SayfaliSonuc<T>>>>? SayfaGetir { get; set; }
+    [Parameter] public IReadOnlyList<T>? Kayitlar { get; set; }
+
+    private int? _ilerleme;
+
+    private async Task AktarAsync()
+    {
+        _ilerleme = 0;
+        try
+        {
+            var kayitlar = SayfaGetir is null ? Kayitlar ?? [] : await TumunuGetirAsync(SayfaGetir);
+            if (kayitlar is null)
+            {
+                return;
+            }
+
+            if (kayitlar.Count == 0)
+            {
+                Snackbar.Add("Aktarılacak kayıt yok.", Severity.Info);
+                return;
+            }
+
+            var sutunlar = Kolonlar.Select(k => new ExcelSutunu(k.Baslik, k.Genislik)).ToList();
+            var satirlar = kayitlar.Select(r => Kolonlar.Select(k => Hucre(k.Deger(r))).ToArray());
+            var icerik = ExcelYazici.Yaz(Ad, sutunlar, satirlar);
+            var tarih = Zaman.GetLocalNow().ToString("yyyy-MM-dd");
+            await Js.InvokeVoidAsync("omDosya.indir", $"{Ad} {tarih}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", icerik);
+        }
+        finally
+        {
+            _ilerleme = null;
+        }
+    }
+
+    // İlk sayfa toplamı verir; kalan sayfalar sırası korunarak paralel çekilir. Hata ya da sınır aşımında null döner (kullanıcıya bildirilir).
+    private async Task<IReadOnlyList<T>?> TumunuGetirAsync(Func<int, int, Task<ApiSonucu<SayfaliSonuc<T>>>> getir)
+    {
+        var ilk = await getir(1, SayfaBoyutu);
+        if (!ilk.BasariliMi)
+        {
+            Snackbar.Add(ilk.Hata.Baslik, Severity.Error);
+            return null;
+        }
+
+        if (ilk.Deger.ToplamKayit > AzamiKayit)
+        {
+            Snackbar.Add($"{ilk.Deger.ToplamKayit:N0} kayıt var; en çok {AzamiKayit:N0} kayıt aktarılabilir. Filtreyi daraltın (ör. tarih aralığı).", Severity.Warning);
+            return null;
+        }
+
+        var sayfaSayisi = Math.Max(1, (int)Math.Ceiling(ilk.Deger.ToplamKayit / (double)SayfaBoyutu));
+        var sayfalar = new IReadOnlyList<T>?[sayfaSayisi];
+        sayfalar[0] = ilk.Deger.Kayitlar;
+        var biten = 1;
+        using var sinir = new SemaphoreSlim(Eszamanlilik);
+        var hatalar = await Task.WhenAll(Enumerable.Range(2, sayfaSayisi - 1).Select(async sayfa =>
+        {
+            await sinir.WaitAsync();
+            try
+            {
+                var sonuc = await getir(sayfa, SayfaBoyutu);
+                if (!sonuc.BasariliMi)
+                {
+                    return sonuc.Hata.Baslik;
+                }
+
+                sayfalar[sayfa - 1] = sonuc.Deger.Kayitlar;
+                _ilerleme = ++biten * 100 / sayfaSayisi;
+                StateHasChanged();
+                return null;
+            }
+            finally
+            {
+                sinir.Release();
+            }
+        }));
+
+        if (hatalar.FirstOrDefault(h => h is not null) is { } hata)
+        {
+            Snackbar.Add($"Aktarım tamamlanamadı: {hata}", Severity.Error);
+            return null;
+        }
+
+        return sayfalar.SelectMany(s => s ?? []).ToList();
+    }
+
+    // Excel yazıcısının tanımadığı türler (enum, Guid...) metne çevrilir; para ve tarih türleri olduğu gibi kalır.
+    private static object? Hucre(object? deger) => deger switch
+    {
+        null or string or int or long or decimal or bool or DateOnly or DateTime => deger,
+        double d => (decimal)d,
+        DateTimeOffset z => z.LocalDateTime,
+        _ => deger.ToString()
+    };
+}

@@ -37,7 +37,15 @@
         {
             <MudItem xs="12" lg="6">
                 <div class="panel-kart kart belirme" style="--i:@sira">
-                    <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Small" Style="@($"color:{renk}")" /> @baslik</div>
+                    <div class="panel-baslik">
+                        <MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Small" Style="@($"color:{renk}")" /> @baslik
+                        @if (liste.Count > 0)
+                        {
+                            <div class="ml-auto">
+                                <ExcelAktarDugmesi T="BaBsSatiri" Ad="@($"{(sira == 0 ? "Form Ba" : "Form Bs")} {r.Ay:00}.{r.Yil}")" Kolonlar="_excelKolonlari" Kayitlar="liste" />
+                            </div>
+                        }
+                    </div>
                     @if (liste.Count == 0)
                     {
                         <BosDurum Ikon="@Icons.Material.Outlined.FactCheck" Baslik="Bildirilecek kayıt yok" Aciklama="Bu ay sınırı aşan karşı taraf bulunmuyor." />
@@ -85,6 +93,15 @@ else if (_hata is null)
 
 @code {
     private static readonly CultureInfo _tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    private static readonly IReadOnlyList<ExcelKolonu<BaBsSatiri>> _excelKolonlari =
+    [
+        new("Unvan", s => s.Unvan, 40),
+        new("VKN / TCKN", s => s.VergiNo, 14),
+        new("Belge sayısı", s => s.BelgeSayisi, 12),
+        new("Tutar (TL)", s => s.Tutar, 16),
+        new("Vergi no eksik", s => s.VergiNoEksik ? "Evet" : null, 12)
+    ];
 
     private DateTime _donem;
     private decimal _sinir = BaBsHesaplayici.VarsayilanSinir;

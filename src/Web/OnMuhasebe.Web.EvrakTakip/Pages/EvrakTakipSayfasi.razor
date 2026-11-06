@@ -44,7 +44,8 @@
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="max-width:320px" />
 </div>
 
-<VeriTablosu T="TakipEvrakiOzeti" Kayitlar="_sonuc?.Kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
+<VeriTablosu T="TakipEvrakiOzeti" Kayitlar="_sonuc?.Kayitlar" ExcelAdi="Evrak takibi" ExcelKolonlari="_excelKolonlari"
+             ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<TakipEvrakiOzeti>>(Adres(sayfa, boyut)))" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_sonuc?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
              Dense="true" SatirTiklandi="e => AcAsync(e.Id)" BosIkon="@Icons.Material.Outlined.EventNote" BosBaslik="Evrak yok"
              BosAciklama="Ruhsat, sigorta poliçesi, sözleşme gibi bitiş tarihi olan evraklarınızı ekleyin; süresi dolmadan hatırlatalım.">
     <Basliklar>
@@ -94,12 +95,29 @@
         await YukleAsync();
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<TakipEvrakiOzeti>> _excelKolonlari =
+    [
+        new("Evrak", e => e.Ad, 35),
+        new("Belge no", e => e.BelgeNo, 18),
+        new("Tür", e => TakipEvrakTurleri.Ad(e.Tur), 20),
+        new("Kurum", e => e.Kurum, 28),
+        new("Bitiş", e => e.BitisTarihi, 12),
+        new("Kalan gün", e => e.KalanGun, 10),
+        new("Sorumlu", e => e.SorumluAdi, 28),
+        new("Durum", e => TakipEvrakTurleri.DurumAdi(e.Durum), 14)
+    ];
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/evrak-takibi?sayfa={sayfa}&boyut={boyut}"
+        + (_durum is { } d ? $"&durum={d}" : "")
+        + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}")
+        + Isyerleri.Sorgu();
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var durum = _durum is { } d ? $"&durum={d}" : "";
-        var arama = string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}";
-        var sonuc = await Api.GetAsync<SayfaliSonuc<TakipEvrakiOzeti>>($"api/evrak-takibi?sayfa={_sayfa}{durum}{arama}{Isyerleri.Sorgu()}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<TakipEvrakiOzeti>>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
         var sayilar = await Api.GetAsync<TakipEvrakSayilari>($"api/evrak-takibi/sayilar{Isyerleri.Sorgu('?')}");

@@ -42,7 +42,7 @@ internal static class SistemIslemleri
         }
 
         var firmalar = await sorgu
-            .OrderBy(f => f.Unvan)
+            .OrderBy(f => f.Unvan).ThenBy(f => f.Id)
             .Select(f => new { f.Id, f.Unvan, f.VergiNo, f.AktifMi })
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), cancellationToken);
 

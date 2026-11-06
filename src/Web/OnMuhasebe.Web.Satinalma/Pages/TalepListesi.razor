@@ -34,7 +34,7 @@
     <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" Value="_arama" ValueChanged="AraAsync" Label="Ara" Placeholder="No, gerekçe ya da talep eden" Immediate="true" DebounceInterval="350" Style="max-width:320px" Disabled="_bekleyenler" />
 </div>
 
-<VeriTablosu T="TalepOzeti" Kayitlar="_kayitlar" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_toplamSayfa" SayfaDegisti="SayfaDegistiAsync" Dense="true"
+<VeriTablosu T="TalepOzeti" Kayitlar="_kayitlar" ExcelAdi="Satın alma talepleri" ExcelKolonlari="_excelKolonlari" ExcelSayfaGetir="ExcelGetir" Yukleniyor="_yukleniyor" Sayfa="_sayfa" ToplamSayfa="_toplamSayfa" SayfaDegisti="SayfaDegistiAsync" Dense="true"
              SatirTiklandi="@(t => Navigasyon.NavigateTo($"satinalma/{t.Id}"))" BosIkon="@Icons.Material.Outlined.ShoppingCart" BosBaslik="@(_bekleyenler ? "Onayınızı bekleyen talep yok" : "Talep yok")">
     <Basliklar>
         <MudTh>No</MudTh>
@@ -66,7 +66,29 @@
     private bool _yukleniyor;
     private ApiHatasi? _hata;
 
+    private static readonly IReadOnlyList<ExcelKolonu<TalepOzeti>> _excelKolonlari =
+    [
+        new("No", t => t.Kod, 14),
+        new("Tarih", t => t.Tarih, 12),
+        new("Talep eden", t => t.TalepEden, 28),
+        new("Gerekçe", t => t.Gerekce, 40),
+        new("Gerekli tarih", t => t.GerekliTarih, 14),
+        new("Tahmini tutar", t => t.Toplam, 16),
+        new("Durum", t => SatinalmaMetinleri.Durum(t.Durum), 16),
+        new("Bekleyen onay", t => t.BekleyenOnay, 24)
+    ];
+
+    // "Onayımı bekleyenler" sayfasız bir liste; orada ekrandaki kayıtlar aktarılır.
+    private Func<int, int, Task<ApiSonucu<SayfaliSonuc<TalepOzeti>>>>? ExcelGetir =>
+        _bekleyenler ? null : (sayfa, boyut) => Api.GetAsync<SayfaliSonuc<TalepOzeti>>(Adres(sayfa, boyut));
+
     protected override Task OnInitializedAsync() => YukleAsync();
+
+    // Ekran ve Excel aktarımı aynı filtreyi kullanır; yalnızca sayfa ve boyut değişir.
+    private string Adres(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/satinalma/talepler?sayfa={sayfa}&boyut={boyut}"
+        + (_durum is { } d ? $"&durum={d}" : "")
+        + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
 
     private async Task YukleAsync()
     {
@@ -80,8 +102,7 @@
         }
         else
         {
-            var filtre = (_durum is { } d ? $"&durum={d}" : "") + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
-            var sonuc = await Api.GetAsync<SayfaliSonuc<TalepOzeti>>($"api/satinalma/talepler?sayfa={_sayfa}{filtre}");
+            var sonuc = await Api.GetAsync<SayfaliSonuc<TalepOzeti>>(Adres(_sayfa));
             _hata = sonuc.Hata;
             _kayitlar = sonuc.BasariliMi ? sonuc.Deger.Kayitlar : null;
             _toplamSayfa = sonuc.BasariliMi ? sonuc.Deger.ToplamSayfa : 0;

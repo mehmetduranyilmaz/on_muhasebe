@@ -178,7 +178,7 @@
                 <div><div class="ozet-baslik">Verilen sipariş avansı</div><b class="bakiye-borclu">@Bicim.Tutar(verilenAvans, cari.ParaBirimi)</b></div>
             }
         </div>
-        <VeriTablosu T="AcikKalem" Kayitlar="_acikKalemler" Dense="true" BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="Açık kalem yok"
+        <VeriTablosu T="AcikKalem" Kayitlar="_acikKalemler" Dense="true" ExcelAdi="@($"Açık kalemler {cari.Kod}")" ExcelKolonlari="_acikKalemKolonlari" BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="Açık kalem yok"
                      BosAciklama="Tüm faturalar ve tahsilatlar birbirini kapatmış.">
             <Basliklar>
                 <MudTh>Tarih</MudTh>
@@ -224,6 +224,8 @@
     else
     {
     <VeriTablosu T="CariHareketSatiri" Kayitlar="_hareketler?.Kayitlar" Yukleniyor="_hareketlerYukleniyor" Dense="true"
+                 ExcelAdi="@($"Cari hareketleri {cari.Kod}")" ExcelKolonlari="@(dovizliMi ? _dovizliHareketKolonlari : _hareketKolonlari)"
+                 ExcelSayfaGetir="@((sayfa, boyut) => Api.GetAsync<SayfaliSonuc<CariHareketSatiri>>(HareketAdresi(sayfa, boyut)))"
                  Sayfa="_sayfa" ToplamSayfa="_hareketler?.ToplamSayfa ?? 0" SayfaDegisti="SayfaDegistiAsync"
                  BosIkon="@Icons.Material.Outlined.ReceiptLong" BosBaslik="Henüz hareket yok"
                  BosAciklama="Başka bir programdan geçiyorsanız açılış bakiyesi girerek başlayabilirsiniz.">
@@ -309,6 +311,43 @@ else if (_hata is null)
     private List<AcikKalem>? _acikKalemler;
     private ApiHatasi? _hata;
 
+    private static readonly IReadOnlyList<ExcelKolonu<CariHareketSatiri>> _hareketKolonlari =
+    [
+        new("Tarih", h => h.Tarih, 12),
+        new("Tür", h => CariMetinleri.HareketTuru(h.Tur), 22),
+        new("Belge no", h => h.BelgeNo, 18),
+        new("Açıklama", h => h.Aciklama, 40),
+        new("Vade", h => h.VadeTarihi, 12),
+        new("Borç", h => h.Borc, 16),
+        new("Alacak", h => h.Alacak, 16),
+        new("Durum", h => h.IptalKaydiMi ? "İptal kaydı" : h.IptalEdildiMi ? "İptal edildi" : null, 14)
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<CariHareketSatiri>> _dovizliHareketKolonlari =
+    [
+        .. _hareketKolonlari.SkipLast(1),
+        new("Kur", h => h.Kur, 12),
+        new("Borç (TL)", h => h.BorcTl, 16),
+        new("Alacak (TL)", h => h.AlacakTl, 16),
+        _hareketKolonlari[^1]
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<AcikKalem>> _acikKalemKolonlari =
+    [
+        new("Tarih", k => k.Tarih, 12),
+        new("Kalem", k => CariMetinleri.HareketTuru(k.Tur), 22),
+        new("Belge no", k => k.BelgeNo, 18),
+        new("Açıklama", k => k.Aciklama, 40),
+        new("Yön", k => k.Yon == HareketYonu.Borc ? "Borç" : "Alacak", 10),
+        new("Vade", k => k.VadeTarihi, 12),
+        new("Gecikme (gün)", k => k.Yon == HareketYonu.Borc && k.GecikmeGun > 0 ? k.GecikmeGun : null, 14),
+        new("Tutar", k => k.Tutar, 16),
+        new("Kapanan", k => k.Kapanan, 16),
+        new("Kalan", k => k.Kalan, 16),
+        new("Sipariş avansı", k => k.AvansMi ? "Evet" : null, 14),
+        new("Kapama", k => k.ElleKapamaMi ? "Elle" : "Otomatik", 12)
+    ];
+
     private static string KasaIslemAdresi(string tur, CariDetayi cari) =>
         $"kasabanka/islem/{tur}?cari={cari.Id}&donus={Uri.EscapeDataString($"cari/{cari.Id}")}";
 
@@ -387,10 +426,13 @@ else if (_hata is null)
         }
     }
 
+    private string HareketAdresi(int sayfa, int boyut = SayfalamaIstegi.VarsayilanBoyut) =>
+        $"api/cari/hesaplar/{Id}/hareketler?sayfa={sayfa}&boyut={boyut}";
+
     private async Task HareketleriYukleAsync()
     {
         _hareketlerYukleniyor = true;
-        var sonuc = await Api.GetAsync<SayfaliSonuc<CariHareketSatiri>>($"api/cari/hesaplar/{Id}/hareketler?sayfa={_sayfa}");
+        var sonuc = await Api.GetAsync<SayfaliSonuc<CariHareketSatiri>>(HareketAdresi(_sayfa));
         _hareketler = sonuc.BasariliMi ? sonuc.Deger : new SayfaliSonuc<CariHareketSatiri>([], 1, 20, 0);
         _hareketlerYukleniyor = false;
     }

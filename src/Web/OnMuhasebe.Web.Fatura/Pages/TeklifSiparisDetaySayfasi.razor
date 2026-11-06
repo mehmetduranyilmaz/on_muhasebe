@@ -181,7 +181,8 @@
             </MudItem>
         </MudGrid>
 
-        <VeriTablosu T="TeklifSiparisSatiriDetayi" Kayitlar="b.Satirlar" Dense="true">
+        <VeriTablosu T="TeklifSiparisSatiriDetayi" Kayitlar="b.Satirlar" Dense="true"
+                     ExcelAdi="@($"{(teklifMi ? "Teklif" : "Sipariş")} satırları {b.Numara ?? "taslak"}")" ExcelKolonlari="@(teklifMi ? _teklifKolonlari : _siparisKolonlari)">
             <Basliklar>
                 <MudTh>#</MudTh>
                 <MudTh>Ürün / hizmet</MudTh>
@@ -226,6 +227,32 @@ else if (_hata is null)
     private bool Y(string islem) => Oturum.YazabilirMi(FaturaYetkileri.Teklif, islem);
 
     [Parameter] public Guid Id { get; set; }
+
+    // Tutarlar belge para birimindedir; karşılama yalnızca siparişte anlamlıdır.
+    private static readonly IReadOnlyList<ExcelKolonu<TeklifSiparisSatiriDetayi>> _teklifKolonlari =
+    [
+        new("Sıra", s => s.Sira, 6),
+        new("Stok kodu", s => s.StokKodu, 14),
+        new("Ürün / hizmet", s => s.Ad, 40),
+        new("Miktar", s => s.Miktar, 12),
+        new("Birim", s => s.Birim, 8),
+        new("Birim fiyat", s => s.BirimFiyat, 14),
+        new("KDV dahil", s => s.KdvDahilMi ? "Evet" : "Hayır", 10),
+        new("İskonto 1 %", s => s.Iskonto1, 10),
+        new("İskonto 2 %", s => s.Iskonto2, 10),
+        new("İskonto 3 %", s => s.Iskonto3, 10),
+        new("Matrah", s => s.Matrah, 16),
+        new("KDV %", s => s.KdvOrani, 8),
+        new("KDV tutarı", s => s.KdvTutari, 16),
+        new("Toplam", s => s.Toplam, 16)
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<TeklifSiparisSatiriDetayi>> _siparisKolonlari =
+    [
+        .. _teklifKolonlari,
+        new("Karşılanan", s => s.KarsilananMiktar, 12),
+        new("Kalan", s => s.KalanMiktar, 12)
+    ];
 
     private TeklifSiparisDetayi? _belge;
     private FirmaBilgileri? _firma;

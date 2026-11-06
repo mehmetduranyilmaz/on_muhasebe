@@ -39,7 +39,11 @@
     </MudGrid>
 }
 
-<div class="d-flex justify-end mb-2">
+<div class="d-flex justify-end align-center gap-2 mb-2">
+    @if (_hesaplar is { Count: > 0 })
+    {
+        <ExcelAktarDugmesi T="HesapOzeti" Ad="Kasa ve banka hesapları" Kolonlar="_excelKolonlari" Kayitlar="_hesaplar" />
+    }
     <MudSwitch T="bool" Value="_pasifleriGoster" ValueChanged="PasifDegistiAsync" Color="Color.Secondary" Label="Pasif hesapları göster" />
 </div>
 
@@ -83,6 +87,20 @@ else
 }
 
 @code {
+    private static readonly IReadOnlyList<ExcelKolonu<HesapOzeti>> _excelKolonlari =
+    [
+        new("Kod", h => h.Kod, 12),
+        new("Hesap", h => h.Ad, 35),
+        new("Tür", h => KasaMetinleri.HesapTuru(h.Tur), 16),
+        new("Banka", h => h.BankaAdi, 25),
+        new("IBAN", h => h.Iban, 30),
+        new("Para birimi", h => h.ParaBirimi, 10),
+        new("Bakiye", h => h.Bakiye, 16),
+        new("Bakiye (TL)", h => h.BakiyeTl, 16),
+        new("Limit", h => h.Limit, 16),
+        new("Durum", h => h.AktifMi ? "Aktif" : "Pasif", 10)
+    ];
+
     private List<HesapOzeti>? _hesaplar;
     private KasaBankaOzetRaporu? _ozet;
     private bool _pasifleriGoster;

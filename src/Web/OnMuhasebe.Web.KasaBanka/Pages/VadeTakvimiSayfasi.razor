@@ -47,7 +47,8 @@
         </div>
     }
 
-    <VeriTablosu T="VadeDilimi" Kayitlar="t.Dilimler.Where(d => d.AlinanAdet + d.VerilenAdet > 0).ToList()" Dense="true" BosBaslik="Bu aralıkta vade yok">
+    <VeriTablosu T="VadeDilimi" Kayitlar="t.Dilimler.Where(d => d.AlinanAdet + d.VerilenAdet > 0).ToList()" Dense="true" BosBaslik="Bu aralıkta vade yok"
+                 ExcelAdi="Vade takvimi" ExcelKolonlari="ExcelKolonlari">
         <Basliklar>
             <MudTh>Dönem</MudTh>
             <MudTh Class="sayi">Alınan</MudTh>
@@ -85,6 +86,20 @@ else
 
 @code {
     private static readonly IReadOnlyList<SutunSerisi> _seriler = [new("Alınan", "#16A34A"), new("Verilen", "#F59E0B")];
+
+    private IReadOnlyList<ExcelKolonu<VadeDilimi>>? _excelKolonlari;
+
+    private IReadOnlyList<ExcelKolonu<VadeDilimi>> ExcelKolonlari => _excelKolonlari ??=
+    [
+        new("Başlangıç", d => d.Baslangic, 12),
+        new("Bitiş", d => d.Bitis, 12),
+        new("Alınan (TL)", d => d.AlinanTl, 16),
+        new("Alınan adet", d => d.AlinanAdet, 10),
+        new("Verilen (TL)", d => d.VerilenTl, 16),
+        new("Verilen adet", d => d.VerilenAdet, 10),
+        new("Net (TL)", d => d.AlinanTl - d.VerilenTl, 16),
+        new("Kümülatif (TL)", d => _takvim is { } t ? Kumulatif(t, d) : 0m, 16)
+    ];
 
     private DateTime? _bas = DateTime.Today;
     private DateTime? _son = DateTime.Today.AddMonths(3);

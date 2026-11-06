@@ -46,6 +46,7 @@
 }
 
 <VeriTablosu T="DemirbasOzeti" Kayitlar="_liste?.Kalemler" Yukleniyor="_yukleniyor" SatirTiklandi="@(d => Navigasyon.NavigateTo($"demirbaslar/{d.Id}"))" Dense="true"
+             ExcelAdi="@($"Amortisman listesi {_yil}")" ExcelKolonlari="_excelKolonlari"
              BosIkon="@Icons.Material.Outlined.Chair" BosBaslik="Demirbaş yok" BosAciklama="Taşıt, bilgisayar, mobilya gibi sabit kıymetlerinizi ekleyin; amortisman otomatik hesaplanır.">
     <Basliklar>
         <MudTh>Sicil</MudTh>
@@ -79,6 +80,22 @@
     private bool _yukleniyor;
     private AmortismanListesi? _liste;
     private ApiHatasi? _hata;
+
+    private static readonly IReadOnlyList<ExcelKolonu<DemirbasOzeti>> _excelKolonlari =
+    [
+        new("Sicil no", d => d.SicilNo, 12),
+        new("Ad", d => d.Ad, 35),
+        new("Grup", d => DemirbasMetinleri.Grup(d.Grup), 22),
+        new("Zimmetli", d => d.Zimmetli, 22),
+        new("Edinme tarihi", d => d.EdinmeTarihi, 12),
+        new("Edinme bedeli", d => d.EdinmeBedeli, 16),
+        new("Faydalı ömür (yıl)", d => d.FaydaliOmur, 12),
+        new("Yöntem", d => DemirbasMetinleri.Yontem(d.Yontem), 20),
+        new("Yıl amortismanı", d => d.YilAmortismani, 16),
+        new("Birikmiş amortisman", d => d.Birikmis, 16),
+        new("Net defter değeri", d => d.NetDeger, 16),
+        new("Elden çıkarma tarihi", d => d.ElCikarmaTarihi, 14)
+    ];
 
     protected override async Task OnInitializedAsync()
     {

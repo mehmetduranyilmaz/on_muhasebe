@@ -82,7 +82,11 @@
     </MudGrid>
 
     <div class="panel-kart kart belirme mb-4" style="--i:6; overflow-x:auto">
-        <div class="panel-baslik"><MudIcon Icon="@Icons.Material.Filled.CalendarViewWeek" Size="Size.Small" Color="Color.Secondary" /> Dönemler <small style="opacity:.6">(ayrıntı için satıra tıklayın)</small></div>
+        <div class="panel-baslik">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarViewWeek" Size="Size.Small" Color="Color.Secondary" /> Dönemler <small style="opacity:.6">(ayrıntı için satıra tıklayın)</small>
+            <MudSpacer />
+            <ExcelAktarDugmesi T="NakitDonemi" Ad="Nakit akış takvimi" Kolonlar="_excelKolonlari" Kayitlar="r.Donemler" />
+        </div>
         <MudSimpleTable Dense="true" Hover="true" Class="nakit-tablosu">
             <thead>
                 <tr>
@@ -202,6 +206,22 @@ else if (_hata is null)
         ("13 hafta", NakitPeriyodu.Hafta, 13),
         ("6 ay", NakitPeriyodu.Ay, 6),
         ("12 ay", NakitPeriyodu.Ay, 12)
+    ];
+
+    // Çıkışlar ekrandaki gibi eksi işaretlidir; satırdaki kalemlerin toplamı Net'i verir.
+    private static readonly IReadOnlyList<ExcelKolonu<NakitDonemi>> _excelKolonlari =
+    [
+        new("Başlangıç", d => d.Baslangic, 12),
+        new("Bitiş", d => d.Bitis, 12),
+        new("Cari tahsilat", d => d.CariTahsilat, 16),
+        new("Çek/senet tahsil", d => d.CekSenetTahsil, 16),
+        new("POS", d => d.PosAktarim, 16),
+        new("Cari ödeme", d => -d.CariOdeme, 16),
+        new("Çek/senet ödeme", d => -d.CekSenetOdeme, 16),
+        new("Kredi kartı", d => -d.KrediKartiOdeme, 16),
+        new("Kredi taksiti", d => -d.KrediTaksiti, 16),
+        new("Net", d => d.Net, 16),
+        new("Bakiye", d => d.Kumulatif, 16)
     ];
 
     private NakitPeriyodu _periyot = NakitPeriyodu.Hafta;

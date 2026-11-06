@@ -22,7 +22,7 @@
     }
 </div>
 
-<VeriTablosu T="ZimmetCevabi" Kayitlar="_liste" Yukleniyor="_yukleniyor" Sayfa="1" ToplamSayfa="1" Dense="true" SatirTiklandi="@(z => AcAsync(z))" BosIkon="@Icons.Material.Outlined.Devices" BosBaslik="Zimmet yok">
+<VeriTablosu T="ZimmetCevabi" Kayitlar="_liste" ExcelAdi="Zimmetler" ExcelKolonlari="_excelKolonlari" Yukleniyor="_yukleniyor" Sayfa="1" ToplamSayfa="1" Dense="true" SatirTiklandi="@(z => AcAsync(z))" BosIkon="@Icons.Material.Outlined.Devices" BosBaslik="Zimmet yok">
     <Basliklar>
         <MudTh>Personel</MudTh>
         <MudTh>Eşya</MudTh>
@@ -48,6 +48,18 @@
     private ZimmetDurumu? _durum;
     private bool _yukleniyor;
     private ApiHatasi? _hata;
+
+    private static readonly IReadOnlyList<ExcelKolonu<ZimmetCevabi>> _excelKolonlari =
+    [
+        new("Personel", z => z.AdSoyad, 30),
+        new("Eşya", z => z.Ad, 35),
+        new("Seri no", z => z.SeriNo, 20),
+        new("Veriliş", z => z.VerilisTarihi, 12),
+        new("İade", z => z.IadeTarihi, 12),
+        new("Bedel", z => z.Bedel, 16),
+        new("Durum", z => PersonelMetinleri.Zimmet(z.Durum), 14),
+        new("Not", z => z.Not, 35)
+    ];
 
     protected override Task OnInitializedAsync() => YukleAsync();
 

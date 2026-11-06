@@ -12,6 +12,8 @@
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_ekstre is null" OnClick="YazdirAsync">Yazdır</MudButton>
     @if (_ekstre is { } paylasilan)
     {
+        <ExcelAktarDugmesi T="EkstreSatiri" Ad="@($"Cari ekstresi {paylasilan.Kod}")" Kayitlar="_excelSatirlari"
+                           Kolonlar="@(paylasilan.ParaBirimi == ParaBirimleri.Tl ? _excelKolonlari : _dovizliExcelKolonlari)" />
         <WhatsAppDugmesi Telefon="@_telefon" Metin="@WhatsAppMetni(paylasilan)" />
     }
     </Islemler>
@@ -112,9 +114,35 @@ else if (_ekstre is { } e)
     private DateTime? _baslangic;
     private DateTime? _bitis;
     private EkstreCevabi? _ekstre;
+    private List<EkstreSatiri> _excelSatirlari = [];
     private string? _telefon;
     private bool _yukleniyor;
     private ApiHatasi? _hata;
+
+    // Excel'de ilk satır devreden bakiyedir; HareketId boş olan satır devir satırı sayılır.
+    private static bool DevirMi(EkstreSatiri s) => s.HareketId == Guid.Empty;
+
+    private static readonly IReadOnlyList<ExcelKolonu<EkstreSatiri>> _excelKolonlari =
+    [
+        new("Tarih", s => s.Tarih, 12),
+        new("Tür", s => DevirMi(s) ? "Devreden bakiye" : CariMetinleri.HareketTuru(s.Tur), 22),
+        new("Belge no", s => s.BelgeNo, 18),
+        new("Açıklama", s => s.Aciklama, 40),
+        new("Vade", s => s.VadeTarihi, 12),
+        new("Borç", s => s.Borc, 16),
+        new("Alacak", s => s.Alacak, 16),
+        new("Bakiye", s => s.Bakiye, 16),
+        new("B/A", s => s.Bakiye > 0 ? "B" : s.Bakiye < 0 ? "A" : null, 6)
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<EkstreSatiri>> _dovizliExcelKolonlari =
+    [
+        .. _excelKolonlari,
+        new("Kur", s => DevirMi(s) ? null : s.Kur, 12),
+        new("Borç (TL)", s => s.BorcTl, 16),
+        new("Alacak (TL)", s => s.AlacakTl, 16),
+        new("Bakiye (TL)", s => s.BakiyeTl, 16)
+    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,6 +163,9 @@ else if (_ekstre is { } e)
         var sonuc = await Api.GetAsync<EkstreCevabi>(adres);
         _hata = sonuc.Hata;
         _ekstre = sonuc.BasariliMi ? sonuc.Deger : null;
+        _excelSatirlari = _ekstre is { } e
+            ? [new EkstreSatiri(Guid.Empty, e.Baslangic, null, CariHareketTuru.Acilis, null, null, 0, 0, e.DevirBakiye, 0, 0, 0, e.DevirBakiyeTl, null), .. e.Satirlar]
+            : [];
         _yukleniyor = false;
     }
 

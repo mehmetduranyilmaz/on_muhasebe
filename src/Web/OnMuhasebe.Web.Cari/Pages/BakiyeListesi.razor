@@ -6,6 +6,10 @@
 
 <SayfaBasligi Baslik="Cari Bakiye Listesi" AltBaslik="Bakiyeler, döviz değerlemesi ve kur farkı" GeriAdres="cari" Ikon="@Icons.Material.Filled.Assessment">
     <Islemler>
+    @if (_sonuc is not null)
+    {
+        <ExcelAktarDugmesi T="BakiyeSatiri" Ad="Cari bakiye listesi" Kolonlar="_excelKolonlari" SayfaGetir="ExcelSayfasiAsync" />
+    }
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Class="yazdirma-gizle" Disabled="_sonuc is null"
                OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
     </Islemler>
@@ -151,21 +155,46 @@
     private bool _yukleniyor;
     private ApiHatasi? _hata;
 
+    private static readonly IReadOnlyList<ExcelKolonu<BakiyeSatiri>> _excelKolonlari =
+    [
+        new("Kod", s => s.Kod, 12),
+        new("Ünvan", s => s.Unvan, 40),
+        new("Para birimi", s => s.ParaBirimi, 10),
+        new("Borç", s => s.Borc, 16),
+        new("Alacak", s => s.Alacak, 16),
+        new("Bakiye", s => s.Bakiye, 16),
+        new("B/A", s => s.Bakiye > 0 ? "B" : s.Bakiye < 0 ? "A" : null, 6),
+        new("Kayıtlı TL", s => s.BakiyeTl, 16),
+        new("Güncel kur", s => s.GuncelKur, 12),
+        new("Güncel TL", s => s.GuncelTl, 16),
+        new("Kur farkı", s => s.KurFarki, 16)
+    ];
+
     protected override async Task OnInitializedAsync()
     {
         _tarih = Zaman.GetLocalNow().Date;
         await YukleAsync();
     }
 
+    private string Adres(int sayfa, int boyut = 50) =>
+        $"api/cari/raporlar/bakiye-listesi?sayfa={sayfa}&boyut={boyut}&durum={_durum}"
+        + (_tarih is { } t ? $"&tarih={Bicim.Iso(DateOnly.FromDateTime(t))}" : "")
+        + (_tur is { } tur ? $"&tur={tur}" : "")
+        + (_paraBirimi is { } pb ? $"&paraBirimi={pb}" : "")
+        + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
+
+    private async Task<ApiSonucu<SayfaliSonuc<BakiyeSatiri>>> ExcelSayfasiAsync(int sayfa, int boyut)
+    {
+        var sonuc = await Api.GetAsync<BakiyeListesiCevabi>(Adres(sayfa, boyut));
+        return sonuc.BasariliMi
+            ? ApiSonucu<SayfaliSonuc<BakiyeSatiri>>.Basarili(sonuc.Deger.Satirlar)
+            : ApiSonucu<SayfaliSonuc<BakiyeSatiri>>.Basarisiz(sonuc.Hata);
+    }
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var adres = $"api/cari/raporlar/bakiye-listesi?sayfa={_sayfa}&boyut=50&durum={_durum}"
-                    + (_tarih is { } t ? $"&tarih={Bicim.Iso(DateOnly.FromDateTime(t))}" : "")
-                    + (_tur is { } tur ? $"&tur={tur}" : "")
-                    + (_paraBirimi is { } pb ? $"&paraBirimi={pb}" : "")
-                    + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
-        var sonuc = await Api.GetAsync<BakiyeListesiCevabi>(adres);
+        var sonuc = await Api.GetAsync<BakiyeListesiCevabi>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _sonuc = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

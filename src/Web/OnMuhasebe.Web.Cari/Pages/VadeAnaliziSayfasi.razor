@@ -64,7 +64,8 @@
         </MudAlert>
     }
 
-    <VeriTablosu T="VadeAnaliziSatiri" Kayitlar="a.Satirlar.Kayitlar" Dense="true" Sayfa="_sayfa" ToplamSayfa="a.Satirlar.ToplamSayfa" SayfaDegisti="SayfaDegistiAsync" Yukleniyor="_yukleniyor" SatirTiklandi="@(s => Navigasyon.NavigateTo($"cari/{s.CariId}"))"
+    <VeriTablosu T="VadeAnaliziSatiri" Kayitlar="a.Satirlar.Kayitlar" Dense="true" ExcelAdi="@(_alacakMi ? "Vade analizi alacaklar" : "Vade analizi borçlar")"
+                 ExcelKolonlari="_excelKolonlari" ExcelSayfaGetir="ExcelSayfasiAsync" Sayfa="_sayfa" ToplamSayfa="a.Satirlar.ToplamSayfa" SayfaDegisti="SayfaDegistiAsync" Yukleniyor="_yukleniyor" SatirTiklandi="@(s => Navigasyon.NavigateTo($"cari/{s.CariId}"))"
                  BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="@(_alacakMi ? "Açık alacak yok" : "Açık borç yok")">
         <Basliklar>
             <MudTh>Cari</MudTh>
@@ -110,6 +111,21 @@ else if (_hata is null)
         await YukleAsync();
     }
 
+    private static readonly IReadOnlyList<ExcelKolonu<VadeAnaliziSatiri>> _excelKolonlari =
+    [
+        new("Kod", s => s.Kod, 12),
+        new("Ünvan", s => s.Unvan, 40),
+        new("Para birimi", s => s.ParaBirimi, 10),
+        new("Vadesi gelmemiş", s => s.Dilimler.VadesiGelmemis, 16),
+        new("1-30 gün", s => s.Dilimler.Gun0Ile30, 16),
+        new("31-60 gün", s => s.Dilimler.Gun31Ile60, 16),
+        new("61-90 gün", s => s.Dilimler.Gun61Ile90, 16),
+        new("90+ gün", s => s.Dilimler.Gun90Ustu, 16),
+        new("Vadesi geçen", s => s.Dilimler.VadesiGecen, 16),
+        new("Toplam", s => s.Dilimler.Toplam, 16),
+        new("En uzun gecikme (gün)", s => s.EnUzunGecikmeGun > 0 ? s.EnUzunGecikmeGun : null, 14)
+    ];
+
     private static string Hucre(decimal tutar, string paraBirimi) => tutar == 0 ? "—" : Bicim.Tutar(tutar, paraBirimi);
 
     // Hücre zemini, satır toplamındaki payı oranında koyulaşır.
@@ -123,11 +139,22 @@ else if (_hata is null)
         await YukleAsync();
     }
 
+    private string Adres(int sayfa, int boyut = 50) =>
+        $"api/cari/raporlar/vade-analizi?tarih={Bicim.Iso(DateOnly.FromDateTime(_tarih ?? DateTime.Today))}&alacaklar={(_alacakMi ? "true" : "false")}&sayfa={sayfa}&boyut={boyut}"
+        + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}");
+
+    private async Task<ApiSonucu<SayfaliSonuc<VadeAnaliziSatiri>>> ExcelSayfasiAsync(int sayfa, int boyut)
+    {
+        var sonuc = await Api.GetAsync<VadeAnalizi>(Adres(sayfa, boyut));
+        return sonuc.BasariliMi
+            ? ApiSonucu<SayfaliSonuc<VadeAnaliziSatiri>>.Basarili(sonuc.Deger.Satirlar)
+            : ApiSonucu<SayfaliSonuc<VadeAnaliziSatiri>>.Basarisiz(sonuc.Hata);
+    }
+
     private async Task YukleAsync()
     {
         _yukleniyor = true;
-        var sonuc = await Api.GetAsync<VadeAnalizi>($"api/cari/raporlar/vade-analizi?tarih={Bicim.Iso(DateOnly.FromDateTime(_tarih ?? DateTime.Today))}&alacaklar={(_alacakMi ? "true" : "false")}&sayfa={_sayfa}&boyut=50"
-            + (string.IsNullOrWhiteSpace(_arama) ? "" : $"&arama={Uri.EscapeDataString(_arama)}"));
+        var sonuc = await Api.GetAsync<VadeAnalizi>(Adres(_sayfa));
         _hata = sonuc.Hata;
         _analiz = sonuc.BasariliMi ? sonuc.Deger : null;
         _yukleniyor = false;

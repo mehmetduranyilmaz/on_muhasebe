@@ -20,7 +20,7 @@
 }
 else
 {
-    <VeriTablosu T="MasrafCevabi" Kayitlar="_bilgi?.Masraflar" Yukleniyor="_bilgi is null" Sayfa="1" ToplamSayfa="1" Dense="true" SatirTiklandi="@(m => AcAsync(m))" BosIkon="@Icons.Material.Outlined.Receipt" BosBaslik="Masrafınız yok">
+    <VeriTablosu T="MasrafCevabi" Kayitlar="_bilgi?.Masraflar" ExcelAdi="Masraflarım" ExcelKolonlari="_excelKolonlari" Yukleniyor="_bilgi is null" Sayfa="1" ToplamSayfa="1" Dense="true" SatirTiklandi="@(m => AcAsync(m))" BosIkon="@Icons.Material.Outlined.Receipt" BosBaslik="Masrafınız yok">
         <Basliklar>
             <MudTh>Tarih</MudTh>
             <MudTh>Kategori</MudTh>
@@ -43,6 +43,18 @@ else
 @code {
     private BenimBilgim? _bilgi;
     private ApiHatasi? _hata;
+
+    private static readonly IReadOnlyList<ExcelKolonu<MasrafCevabi>> _excelKolonlari =
+    [
+        new("Tarih", m => m.Tarih, 12),
+        new("Kategori", m => PersonelMetinleri.Kategori(m.Kategori), 18),
+        new("Açıklama", m => m.Aciklama, 40),
+        new("Tutar", m => m.Tutar, 16),
+        new("Durum", m => PersonelMetinleri.Masraf(m.Durum), 14),
+        new("Karar veren", m => m.KararVeren, 24),
+        new("Karar tarihi", m => m.KararTarihi?.ToLocalTime(), 12),
+        new("Not", m => m.Not, 35)
+    ];
 
     protected override Task OnInitializedAsync() => YukleAsync();
 

@@ -41,7 +41,7 @@
 
     <MudGrid Spacing="3" Class="mb-2">
         <MudItem xs="12" md="8">
-            <VeriTablosu T="VadeFarkiSatiri" Kayitlar="h.Satirlar" Dense="true" BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="Vade farkı doğmamış"
+            <VeriTablosu T="VadeFarkiSatiri" Kayitlar="h.Satirlar" Dense="true" ExcelAdi="@($"Vade farkı {_cari?.Kod}")" ExcelKolonlari="_excelKolonlari" BosIkon="@Icons.Material.Outlined.TaskAlt" BosBaslik="Vade farkı doğmamış"
                          BosAciklama="Seçilen dönemde geç ödenen ya da vadesi geçmiş açık kalem yok.">
                 <Basliklar>
                     <MudTh>Belge</MudTh>
@@ -97,6 +97,18 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
+
+    private static readonly IReadOnlyList<ExcelKolonu<VadeFarkiSatiri>> _excelKolonlari =
+    [
+        new("Belge türü", s => CariMetinleri.HareketTuru(s.Tur), 22),
+        new("Belge no", s => s.BelgeNo, 18),
+        new("Vade", s => s.Vade, 12),
+        new("Ödeme", s => s.OdemeTarihi, 12),
+        new("Durum", s => s.OdemeTarihi is null ? "Açık" : "Geç ödendi", 12),
+        new("Geciken tutar", s => s.GecikenTutar, 16),
+        new("Gün", s => s.Gun, 8),
+        new("Vade farkı", s => s.Faiz, 16)
+    ];
 
     private CariDetayi? _cari;
     private DateTime? _baslangic;

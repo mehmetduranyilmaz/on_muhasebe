@@ -96,7 +96,7 @@ internal static class IsEmriIslemleri
             sorgu = sorgu.Where(x => x.i.Tur == tur);
         }
 
-        var sonuc = await sorgu.OrderByDescending(x => x.i.BildirimZamani)
+        var sonuc = await sorgu.OrderByDescending(x => x.i.BildirimZamani).ThenByDescending(x => x.i.Id)
             .Select(x => new { x.i.Id, x.i.Kod, x.i.EkipmanId, x.EkipmanAdi, x.i.Tur, x.i.Durum, x.i.Baslik, x.i.BildirimZamani, x.i.BaslangicZamani, x.i.BitisZamani, x.i.MakineDurduMu })
             .SayfalaAsync(new SayfalamaIstegi(sayfa ?? 1, boyut ?? SayfalamaIstegi.VarsayilanBoyut), ct);
         return TypedResults.Ok(new SayfaliSonuc<IsEmriOzeti>(sonuc.Kayitlar.Select(x => new IsEmriOzeti(x.Id, x.Kod, x.EkipmanId, x.EkipmanAdi, x.Tur, x.Durum, x.Baslik, x.BildirimZamani, x.BitisZamani,

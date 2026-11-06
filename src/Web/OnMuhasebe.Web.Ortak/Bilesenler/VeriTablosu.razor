@@ -1,6 +1,8 @@
 @* Liste ekranlarının ortak tablosu: yüklenirken iskelet, boşken BosDurum, satırlar kademeli belirir, sayfalama dahil.
-   Mobilde satırlar kart görünümüne geçer (MudTd DataLabel ile). *@
+   Mobilde satırlar kart görünümüne geçer (MudTd DataLabel ile). ExcelKolonlari verilirse sağ üstte Excel'e aktarma düğmesi çıkar:
+   sayfalı listede ExcelSayfaGetir ile filtreye uyan tüm kayıtlar, değilse ekrandaki kayıtlar aktarılır. *@
 @typeparam T
+@using OnMuhasebe.Shared.Contracts.Sayfalama
 
 <div class="veri-tablosu kart belirme">
     @if (Kayitlar is null)
@@ -18,6 +20,12 @@
     }
     else
     {
+        @if (ExcelKolonlari is not null)
+        {
+            <div class="veri-tablosu-arac">
+                <ExcelAktarDugmesi T="T" Ad="@(ExcelAdi ?? "Liste")" Kolonlar="ExcelKolonlari" SayfaGetir="ExcelSayfaGetir" Kayitlar="Kayitlar" />
+            </div>
+        }
         <MudTable T="T" Items="Kayitlar" Loading="Yukleniyor" Hover="true" Dense="Dense" Breakpoint="Breakpoint.Sm" Elevation="0"
                   RowClass="@(SatirTiklandi.HasDelegate ? "satir-belirme cursor-pointer" : "satir-belirme")"
                   RowStyleFunc="@((_, i) => $"--i:{i}")" OnRowClick="TiklaAsync" LoadingProgressColor="Color.Secondary">
@@ -52,6 +60,9 @@
     [Parameter] public int ToplamSayfa { get; set; }
     [Parameter] public EventCallback<int> SayfaDegisti { get; set; }
     [Parameter] public int IskeletSatirSayisi { get; set; } = 6;
+    [Parameter] public string? ExcelAdi { get; set; }
+    [Parameter] public IReadOnlyList<ExcelKolonu<T>>? ExcelKolonlari { get; set; }
+    [Parameter] public Func<int, int, Task<ApiSonucu<SayfaliSonuc<T>>>>? ExcelSayfaGetir { get; set; }
 
     private async Task TiklaAsync(TableRowClickEventArgs<T> e)
     {

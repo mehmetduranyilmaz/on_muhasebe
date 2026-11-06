@@ -186,7 +186,7 @@ internal static class CariHesapIslemleri
         }
 
         var sonuc = await sorgu
-            .OrderBy(c => c.Unvan)
+            .OrderBy(c => c.Unvan).ThenBy(c => c.Kod)
             .Select(c => new CariOzeti(
                 c.Id, c.Kod, c.Unvan, c.Tur, c.Grup != null ? c.Grup.Ad : null, c.ParaBirimi, c.Telefon, c.AktifMi,
                 db.CariHareketler.Where(h => h.CariHesapId == c.Id).Sum(h => h.Borc - h.Alacak),
