@@ -1,3 +1,4 @@
+#:property PublishAot=false
 // Yayınlanan index.html'deki satır içi scriptlerin (derlemede üretilen importmap) SHA-256 özetleriyle içerik güvenlik
 // politikasını (CSP) üretip Caddy parçası olarak yazar. Web imajı derlenirken çalışır: dotnet run deploy/csp.cs -- <index.html> <çıktı>
 using System.Security.Cryptography;
