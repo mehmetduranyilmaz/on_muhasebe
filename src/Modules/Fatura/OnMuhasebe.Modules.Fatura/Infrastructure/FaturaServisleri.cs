@@ -103,7 +103,7 @@ internal sealed class FaturaHazirlayici(
             istek.Tur, satisSekli, faturaCarisi, istek.Tarih, istek.VadeTarihi,
             FaturaTurleri.GidenMi(istek.Tur) ? null : Temiz(istek.Numara)?.ToUpperInvariant(),
             paraBirimi, kur, istek.GenelIskontoTuru, istek.GenelIskonto, Temiz(istek.Aciklama), satirlar.Deger, istek.PesinHesapId,
-            istek.StopajOrani, istek.MasrafMerkeziId);
+            istek.StopajOrani, istek.MasrafMerkeziId, FaturaTeslimatAdresi.Istekten(istek.TeslimatAdresi));
     }
 
     // Satış tarafında para hesaba girer (kredi kartına tahsilat olmaz), alış tarafında çıkar (POS'tan ödeme olmaz).

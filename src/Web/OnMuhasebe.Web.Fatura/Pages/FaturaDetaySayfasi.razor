@@ -140,6 +140,13 @@
                     {
                         <div class="ozet-alt">@adres</div>
                     }
+                    @if (f.TeslimatAdresi is { } t)
+                    {
+                        <div class="ozet-alt mt-1">
+                            <MudIcon Icon="@Icons.Material.Filled.LocalShipping" Size="Size.Small" Style="vertical-align:middle;opacity:.7" />
+                            Teslimat@(t.Baslik is null ? "" : $" ({t.Baslik})"): @FaturaMetinleri.TeslimatMetni(t)
+                        </div>
+                    }
                 </div>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">

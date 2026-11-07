@@ -17,6 +17,7 @@ internal sealed class FaturaAyari : FirmaEntity
     public bool ToptanKdvDahil { get; private set; }
     public bool PerakendeKdvDahil { get; private set; } = true;
     public int VarsayilanVadeGunu { get; private set; }
+    public string? VarsayilanAciklama { get; private set; }
 
     public static FaturaAyari Varsayilan() => new();
 
@@ -31,6 +32,7 @@ internal sealed class FaturaAyari : FirmaEntity
         ToptanKdvDahil = a.ToptanKdvDahil;
         PerakendeKdvDahil = a.PerakendeKdvDahil;
         VarsayilanVadeGunu = a.VarsayilanVadeGunu;
+        VarsayilanAciklama = string.IsNullOrWhiteSpace(a.VarsayilanAciklama) ? null : a.VarsayilanAciklama.Trim();
     }
 
     // Satış (toptan/perakende), alıştan iade ve gider pusulası numarayı biz veririz; diğer türlerin serisi yoktur.
@@ -44,7 +46,8 @@ internal sealed class FaturaAyari : FirmaEntity
     };
 
     public FaturaAyarlari Sozlesme() =>
-        new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu, GiderPusulasiSeri, IrsaliyeSeri);
+        new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu, GiderPusulasiSeri, IrsaliyeSeri,
+            VarsayilanAciklama);
 }
 
 // Seri + yıl başına son verilen sıra. Satır, numara alan transaction bitene kadar kilitli kalır; böylece

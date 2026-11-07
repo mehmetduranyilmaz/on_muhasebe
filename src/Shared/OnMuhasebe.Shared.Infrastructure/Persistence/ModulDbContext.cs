@@ -49,7 +49,8 @@ public abstract class ModulDbContext(DbContextOptions options, IMevcutKullanici 
             b.HasIndex(x => new { x.FirmaId, x.UstKayitId });
         });
 
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(t => t.BaseType is null))
+        // Bağımlı (owned) tipler sahibiyle birlikte yapılandırılır; Entity(tip) onları bağımsız varlığa çevirmeye çalışır.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(t => t.BaseType is null && !t.IsOwned()))
         {
             var tip = entityType.ClrType;
             var builder = modelBuilder.Entity(tip);

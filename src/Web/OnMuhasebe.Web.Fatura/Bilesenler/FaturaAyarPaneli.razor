@@ -48,6 +48,11 @@
                              Min="0" Max="365" Disabled="Oturum.SaltOkunurMu" HelperText="Carinin kendi vadesi varsa o kullanılır; 0 = vade yok"
                              Style="max-width:260px" />
         </MudItem>
+        <MudItem xs="12">
+            <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_varsayilanAciklama" Lines="2" MaxLength="1000"
+                          Label="Faturalara ön tanımlı açıklama" Disabled="Oturum.SaltOkunurMu"
+                          HelperText="Yeni satış faturalarına önerilir; ör. banka hesap bilgileri, iade ve teslim koşulları" />
+        </MudItem>
         @if (_ayar.KayitAkisi == KayitAkisi.TaslakOnay && _akis == KayitAkisi.DogrudanKayit)
         {
             <MudItem xs="12">
@@ -75,6 +80,7 @@
     private bool _toptanKdvDahil;
     private bool _perakendeKdvDahil;
     private int _vadeGunu;
+    private string? _varsayilanAciklama;
 
     private IEnumerable<(string Etiket, string Deger, EventCallback<string> Ata)> Seriler =>
     [
@@ -86,7 +92,8 @@
     ];
 
     private FaturaAyarlari Yeni => new(_akis, _toptanSeri.ToUpperInvariant(), _perakendeSeri.ToUpperInvariant(), _iadeSeri.ToUpperInvariant(),
-        _toptanKdvDahil, _perakendeKdvDahil, _vadeGunu, _giderPusulasiSeri.ToUpperInvariant(), _irsaliyeSeri.ToUpperInvariant());
+        _toptanKdvDahil, _perakendeKdvDahil, _vadeGunu, _giderPusulasiSeri.ToUpperInvariant(), _irsaliyeSeri.ToUpperInvariant(),
+        string.IsNullOrWhiteSpace(_varsayilanAciklama) ? null : _varsayilanAciklama.Trim());
 
     private bool DegistiMi => _ayar is not null && Yeni != _ayar;
 
@@ -109,7 +116,7 @@
         _ayar = a;
         (_akis, _toptanSeri, _perakendeSeri, _iadeSeri, _giderPusulasiSeri) = (a.KayitAkisi, a.ToptanSeri, a.PerakendeSeri, a.IadeSeri, a.GiderPusulasiSeri);
         _irsaliyeSeri = a.IrsaliyeSeri;
-        (_toptanKdvDahil, _perakendeKdvDahil, _vadeGunu) = (a.ToptanKdvDahil, a.PerakendeKdvDahil, a.VarsayilanVadeGunu);
+        (_toptanKdvDahil, _perakendeKdvDahil, _vadeGunu, _varsayilanAciklama) = (a.ToptanKdvDahil, a.PerakendeKdvDahil, a.VarsayilanVadeGunu, a.VarsayilanAciklama);
     }
 
     private async Task KaydetAsync()

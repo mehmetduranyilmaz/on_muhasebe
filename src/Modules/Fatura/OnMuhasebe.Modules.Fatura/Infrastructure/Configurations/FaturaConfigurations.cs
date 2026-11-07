@@ -29,6 +29,19 @@ internal sealed class FaturaBelgesiConfiguration : IEntityTypeConfiguration<Fatu
         builder.Property(x => x.Aciklama).HasMaxLength(1000);
         builder.Ignore(x => x.GidenMi);
 
+        // Teslimat adresi fatura tablosunda teslimat_* kolonlarında; adres boşsa teslimat adresi yoktur.
+        builder.OwnsOne(x => x.TeslimatAdresi, t =>
+        {
+            t.Property(a => a.Baslik).HasColumnName("teslimat_baslik").HasMaxLength(60);
+            t.Property(a => a.AliciAdi).HasColumnName("teslimat_alici_adi").HasMaxLength(100);
+            t.Property(a => a.Telefon).HasColumnName("teslimat_telefon").HasMaxLength(30);
+            t.Property(a => a.Ulke).HasColumnName("teslimat_ulke").HasMaxLength(60);
+            t.Property(a => a.Il).HasColumnName("teslimat_il").HasMaxLength(50);
+            t.Property(a => a.Ilce).HasColumnName("teslimat_ilce").HasMaxLength(50);
+            t.Property(a => a.Adres).HasColumnName("teslimat_adres").HasMaxLength(500);
+            t.Property(a => a.PostaKodu).HasColumnName("teslimat_posta_kodu").HasMaxLength(10);
+        });
+
         // Giden faturanın numarası firma içinde tekildir (seri + yıl + sıra). Gelen faturada numara karşı tarafındır
         // ve farklı tedarikçilerde aynı olabilir; o kontrol cari bazında uygulamada yapılır.
         builder.HasIndex(x => new { x.FirmaId, x.Numara }).IsUnique()
@@ -185,6 +198,7 @@ internal sealed class FaturaAyariConfiguration : IEntityTypeConfiguration<Fatura
         builder.Property(x => x.IadeSeri).HasMaxLength(3);
         builder.Property(x => x.GiderPusulasiSeri).HasMaxLength(3);
         builder.Property(x => x.IrsaliyeSeri).HasMaxLength(3);
+        builder.Property(x => x.VarsayilanAciklama).HasMaxLength(1000);
         builder.HasIndex(x => x.FirmaId).IsUnique();
     }
 }

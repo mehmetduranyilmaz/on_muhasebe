@@ -59,7 +59,20 @@ else
                                           HelperText="Karşı tarafın düzenlediği irsaliyedeki numara" Required="true" RequiredError="İrsaliye numarası gerekli." />
                         </MudItem>
                     }
-                    <MudItem xs="12">
+                    @if (_cariAdresleri.Count > 0)
+                    {
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Carinin kayıtlı adresi" Value="_seciliAdres"
+                                       ValueChanged="KayitliAdresSec" Clearable="true" AdornmentIcon="@Icons.Material.Filled.LocalShipping">
+                                @for (var i = 0; i < _cariAdresleri.Count; i++)
+                                {
+                                    var sira = i;
+                                    <MudSelectItem T="int?" Value="sira">@_cariAdresleri[sira].Baslik</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    }
+                    <MudItem xs="12" md="@(_cariAdresleri.Count > 0 ? 8 : 12)">
                         <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimAdresi" Label="Teslim adresi (cari adresinden farklıysa)" MaxLength="500" />
                     </MudItem>
                 }
@@ -332,6 +345,8 @@ else
     private bool _kurElleGirildi;
     private Guid? _hedefDepoId;
     private string? _teslimAdresi;
+    private List<CariAdresBilgisi> _cariAdresleri = [];
+    private int? _seciliAdres;
     private string? _aracPlakasi;
     private string? _soforAdi;
     private string? _soforTckn;
@@ -451,6 +466,7 @@ else
         if (i.CariHesapId is { } cariId)
         {
             _cari = new CariOzeti(cariId, i.CariKodu ?? "", i.CariUnvan, CariTuru.Musteri, null, i.ParaBirimi, null, true, 0m, 0m, null);
+            await CariAdresleriniYukleAsync();
         }
 
         _satirlar.AddRange(i.Satirlar.Select(IrsaliyeSatirModeli.Detaydan));
@@ -475,11 +491,34 @@ else
     private async Task CariSecildiAsync(CariOzeti? cari)
     {
         _cari = cari;
+        await CariAdresleriniYukleAsync();
         if (cari is not null && cari.ParaBirimi != _paraBirimi)
         {
             _paraBirimi = cari.ParaBirimi;
             _kurElleGirildi = false;
             await KurYukleAsync();
+        }
+    }
+
+    // Carinin teslimat adresleri (şube, depo, şantiye) seçilince teslim adresi alanına tek satır olarak yazılır.
+    private async Task CariAdresleriniYukleAsync()
+    {
+        _seciliAdres = null;
+        _cariAdresleri = _cari is not null && await Api.GetAsync<CariDetayi>($"api/cari/hesaplar/{_cari.Id}") is { BasariliMi: true } d
+            ? d.Deger.Adresler.ToList()
+            : [];
+    }
+
+    private void KayitliAdresSec(int? sira)
+    {
+        _seciliAdres = sira;
+        if (sira is { } i && i < _cariAdresleri.Count)
+        {
+            var a = _cariAdresleri[i];
+            var yer = string.Join("/", new[] { a.Ilce, a.Il }.Where(x => !string.IsNullOrEmpty(x)));
+            var kisi = string.Join(" ", new[] { a.AdSoyad, a.Telefon }.Where(x => !string.IsNullOrEmpty(x)));
+            var metin = string.Join(" ", new[] { a.Adres, a.PostaKodu, yer }.Where(x => !string.IsNullOrEmpty(x)));
+            _teslimAdresi = (kisi.Length == 0 ? metin : $"{metin} · {kisi}") is var tam && tam.Length > 500 ? tam[..500] : tam;
         }
     }
 

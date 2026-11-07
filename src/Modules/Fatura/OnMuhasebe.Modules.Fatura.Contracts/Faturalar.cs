@@ -113,7 +113,20 @@ public sealed record FaturaKaydetIstegi(
     Guid? PesinHesapId = null,
     decimal StopajOrani = 0m,
     Guid? MasrafMerkeziId = null,
-    Guid? IsyeriId = null);
+    Guid? IsyeriId = null,
+    TeslimatAdresi? TeslimatAdresi = null);
+
+// Malın teslim edileceği adres fatura adresinden farklıysa (şube, depo, şantiye). Faturada kayıt anındaki kopyası saklanır;
+// e-Fatura'da teslimat (Delivery) adresi olarak gönderilir.
+public sealed record TeslimatAdresi(
+    string? Baslik,
+    string? AliciAdi,
+    string? Telefon,
+    string? Ulke,
+    string? Il,
+    string? Ilce,
+    string Adres,
+    string? PostaKodu);
 
 public sealed record FaturaOzeti(
     Guid Id,
@@ -207,7 +220,8 @@ public sealed record FaturaDetayi(
     decimal? Kalan,
     IReadOnlyList<BagliBelge> Irsaliyeler,
     Guid? MasrafMerkeziId,
-    Guid? IsyeriId = null);
+    Guid? IsyeriId = null,
+    TeslimatAdresi? TeslimatAdresi = null);
 
 // Eksi stok ayarı "Uyar" ise kayıt yapılır ve uyarı döner.
 public sealed record FaturaCevabi(FaturaDetayi Fatura, string? Uyari);
@@ -221,7 +235,8 @@ public enum KayitAkisi
     TaslakOnay
 }
 
-// Seriler GİB biçiminde 3 karakterdir (A-Z, 0-9). KDV dahil ve vade günü yeni faturanın varsayılanlarıdır.
+// Seriler GİB biçiminde 3 karakterdir (A-Z, 0-9). KDV dahil, vade günü ve açıklama yeni faturanın varsayılanlarıdır;
+// varsayılan açıklama (ör. banka hesap bilgileri, iade koşulları) yalnızca giden faturalara önerilir.
 public sealed record FaturaAyarlari(
     KayitAkisi KayitAkisi,
     string ToptanSeri,
@@ -231,7 +246,8 @@ public sealed record FaturaAyarlari(
     bool PerakendeKdvDahil,
     int VarsayilanVadeGunu,
     string GiderPusulasiSeri = "GPS",
-    string IrsaliyeSeri = "IRS");
+    string IrsaliyeSeri = "IRS",
+    string? VarsayilanAciklama = null);
 
 // Tutarlar TL ve KDV hariçtir; iadeler düşülmüştür.
 public sealed record AylikFaturaTutari(int Yil, int Ay, decimal Satis, decimal Alis);

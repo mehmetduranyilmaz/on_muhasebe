@@ -34,6 +34,9 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi, II
     public string? Ilce { get; private set; }
     public string? Adres { get; private set; }
 
+    // Fatura adresinden farklı teslimat adresi; kayıt anındaki kopyadır.
+    public FaturaTeslimatAdresi? TeslimatAdresi { get; private set; }
+
     public string ParaBirimi { get; private set; } = null!;
     public decimal Kur { get; private set; }
     public GenelIskontoTuru GenelIskontoTuru { get; private set; }
@@ -167,6 +170,7 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi, II
         Il = b.Cari.Il;
         Ilce = b.Cari.Ilce;
         Adres = b.Cari.Adres;
+        TeslimatAdresi = b.TeslimatAdresi;
 
         ParaBirimi = b.ParaBirimi;
         Kur = b.ParaBirimi == ParaBirimleri.Tl ? 1m : Math.Round(b.Kur, KurOndalik, MidpointRounding.AwayFromZero);
@@ -331,4 +335,26 @@ internal sealed record FaturaBilgileri(
     IReadOnlyList<FaturaSatiriBilgisi> Satirlar,
     Guid? PesinHesapId = null,
     decimal StopajOrani = 0m,
-    Guid? MasrafMerkeziId = null);
+    Guid? MasrafMerkeziId = null,
+    FaturaTeslimatAdresi? TeslimatAdresi = null);
+
+internal sealed record FaturaTeslimatAdresi(
+    string? Baslik,
+    string? AliciAdi,
+    string? Telefon,
+    string? Ulke,
+    string? Il,
+    string? Ilce,
+    string Adres,
+    string? PostaKodu)
+{
+    public static FaturaTeslimatAdresi? Istekten(TeslimatAdresi? a)
+    {
+        static string? Temiz(string? d) => string.IsNullOrWhiteSpace(d) ? null : d.Trim();
+        return a is null || string.IsNullOrWhiteSpace(a.Adres)
+            ? null
+            : new(Temiz(a.Baslik), Temiz(a.AliciAdi), Temiz(a.Telefon), Temiz(a.Ulke), Temiz(a.Il), Temiz(a.Ilce), a.Adres.Trim(), Temiz(a.PostaKodu));
+    }
+
+    public TeslimatAdresi Sozlesme() => new(Baslik, AliciAdi, Telefon, Ulke, Il, Ilce, Adres, PostaKodu);
+}

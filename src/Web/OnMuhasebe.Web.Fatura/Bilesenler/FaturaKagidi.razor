@@ -69,6 +69,10 @@
         {
             <div>@(Fatura.VergiDairesi is null ? "" : $"{Fatura.VergiDairesi} V.D. · ")@(Fatura.VergiNo.Length == 11 ? "TCKN" : "VKN") @Fatura.VergiNo</div>
         }
+        @if (Fatura.TeslimatAdresi is { } teslimat)
+        {
+            <div class="fk-teslimat"><b>Teslimat adresi:</b> @FaturaMetinleri.TeslimatMetni(teslimat)</div>
+        }
     </section>
 
     <table class="fk-satirlar">

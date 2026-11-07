@@ -100,6 +100,11 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("toptan_seri");
 
+                    b.Property<string>("VarsayilanAciklama")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("varsayilan_aciklama");
+
                     b.Property<int>("VarsayilanVadeGunu")
                         .HasColumnType("integer")
                         .HasColumnName("varsayilan_vade_gunu");
@@ -1574,6 +1579,67 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasDatabaseName("ix_degisiklik_kaydi_firma_id_ust_kayit_id");
 
                     b.ToTable("degisiklik_kaydi", "fatura");
+                });
+
+            modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.FaturaBelgesi", b =>
+                {
+                    b.OwnsOne("OnMuhasebe.Modules.Fatura.Domain.FaturaTeslimatAdresi", "TeslimatAdresi", b1 =>
+                        {
+                            b1.Property<Guid>("FaturaBelgesiId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("Adres")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("teslimat_adres");
+
+                            b1.Property<string>("AliciAdi")
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("teslimat_alici_adi");
+
+                            b1.Property<string>("Baslik")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)")
+                                .HasColumnName("teslimat_baslik");
+
+                            b1.Property<string>("Il")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("teslimat_il");
+
+                            b1.Property<string>("Ilce")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("teslimat_ilce");
+
+                            b1.Property<string>("PostaKodu")
+                                .HasMaxLength(10)
+                                .HasColumnType("character varying(10)")
+                                .HasColumnName("teslimat_posta_kodu");
+
+                            b1.Property<string>("Telefon")
+                                .HasMaxLength(30)
+                                .HasColumnType("character varying(30)")
+                                .HasColumnName("teslimat_telefon");
+
+                            b1.Property<string>("Ulke")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)")
+                                .HasColumnName("teslimat_ulke");
+
+                            b1.HasKey("FaturaBelgesiId");
+
+                            b1.ToTable("fatura", "fatura");
+
+                            b1.WithOwner()
+                                .HasForeignKey("FaturaBelgesiId")
+                                .HasConstraintName("fk_fatura_fatura_id");
+                        });
+
+                    b.Navigation("TeslimatAdresi");
                 });
 
             modelBuilder.Entity("OnMuhasebe.Modules.Fatura.Domain.FaturaSatiri", b =>

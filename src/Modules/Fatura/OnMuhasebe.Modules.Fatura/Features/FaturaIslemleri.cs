@@ -59,6 +59,17 @@ internal static class FaturaIslemleri
                 .WithMessage("Vade tarihi fatura tarihinden önce olamaz.");
             RuleFor(x => x.Numara).MaximumLength(30);
             RuleFor(x => x.Aciklama).MaximumLength(1000);
+            RuleFor(x => x.TeslimatAdresi!).ChildRules(a =>
+            {
+                a.RuleFor(y => y.Adres).NotEmpty().WithMessage("Teslimat adresi gerekli.").MaximumLength(500);
+                a.RuleFor(y => y.Baslik).MaximumLength(60);
+                a.RuleFor(y => y.AliciAdi).MaximumLength(100);
+                a.RuleFor(y => y.Telefon).MaximumLength(30);
+                a.RuleFor(y => y.Ulke).MaximumLength(60);
+                a.RuleFor(y => y.Il).MaximumLength(50);
+                a.RuleFor(y => y.Ilce).MaximumLength(50);
+                a.RuleFor(y => y.PostaKodu).MaximumLength(10);
+            }).When(x => x.TeslimatAdresi is not null);
             RuleFor(x => x.NihaiTuketici!.AdSoyad).MaximumLength(250).When(x => x.NihaiTuketici is not null);
             RuleFor(x => x.NihaiTuketici!.Tckn)
                 .Must(t => t!.Trim() == FaturaBelgesi.NihaiTuketiciTckn || VergiKimlik.TcknGecerliMi(t.Trim()))
@@ -254,6 +265,7 @@ internal static class FaturaIslemleri
                 s.Iskonto1, s.Iskonto2, s.Iskonto3, s.KdvOrani, s.BrutTutar, s.IskontoTutari, s.GenelIskontoPayi, s.Matrah,
                 s.KdvTutari, s.Toplam, s.TevkifatKodu, s.TevkifatPay, s.TevkifatPayda, s.TevkifEdilenKdv, s.IrsaliyeSatiriId, s.SiparisSatiriId,
                 s.LotNo, s.SonKullanmaTarihi, s.SeriNolari, s.KdvIstisnaKodu)).ToList(),
-            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler, f.MasrafMerkeziId, f.IsyeriId);
+            f.Ettn, f.OnayTarihi, f.IptalTarihi, f.Surum, f.PesinHesapId, kalan, irsaliyeler, f.MasrafMerkeziId, f.IsyeriId,
+            f.TeslimatAdresi?.Sozlesme());
     }
 }

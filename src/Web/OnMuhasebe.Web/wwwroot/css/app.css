@@ -306,6 +306,9 @@ html, body {
 
 .veri-tablosu-arac { display: flex; justify-content: flex-end; padding: 4px 8px 0; }
 
+.vade-kisayollari { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.vade-kisayollari .mud-chip { margin: 0; }
+
 .veri-tablosu {
     overflow: hidden;
 }
@@ -1717,6 +1720,12 @@ h1:focus {
     .fk-alici-unvan {
         font-size: 12.5px;
         font-weight: 700;
+    }
+
+    .fk-teslimat {
+        margin-top: 4px;
+        padding-top: 4px;
+        border-top: 1px dashed #bbb;
     }
 
     .fk-satirlar {

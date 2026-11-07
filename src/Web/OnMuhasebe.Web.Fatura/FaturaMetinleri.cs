@@ -7,6 +7,16 @@ namespace OnMuhasebe.Web.Fatura;
 
 public static class FaturaMetinleri
 {
+    // Alıcı ve telefon dahil tek satır: "Organize San. 5. Cad. Çayırova/Kocaeli · Ali Veli 0532..."
+    public static string TeslimatMetni(TeslimatAdresi t)
+    {
+        var yer = string.Join("/", new[] { t.Ilce, t.Il }.Where(x => !string.IsNullOrEmpty(x)));
+        var ulke = t.Ulke is null or "Türkiye" ? null : t.Ulke;
+        var adres = string.Join(" ", new[] { t.Adres, t.PostaKodu, yer, ulke }.Where(x => !string.IsNullOrEmpty(x)));
+        var kisi = string.Join(" ", new[] { t.AliciAdi, t.Telefon }.Where(x => !string.IsNullOrEmpty(x)));
+        return kisi.Length == 0 ? adres : $"{adres} · {kisi}";
+    }
+
     public static IReadOnlyList<FaturaTuru> Turler { get; } = Enum.GetValues<FaturaTuru>();
 
     public static string Tur(FaturaTuru tur) => tur switch

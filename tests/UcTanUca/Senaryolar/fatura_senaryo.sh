@@ -174,7 +174,8 @@ istek GET "/api/fatura/faturalar/$TASLAK2" "$T"
 kontrol 404 "Silinen taslak bulunamaz"
 istek PUT /api/fatura/ayarlar "$T" '{"kayitAkisi":"DogrudanKayit","toptanSeri":"TOPTAN","perakendeSeri":"PRK","iadeSeri":"IAD","toptanKdvDahil":false,"perakendeKdvDahil":true,"varsayilanVadeGunu":0}'
 kontrol 400 "3 karakterden uzun seri reddedildi"
-istek PUT /api/fatura/ayarlar "$T" '{"kayitAkisi":"DogrudanKayit","toptanSeri":"TPT","perakendeSeri":"PRK","iadeSeri":"IAD","toptanKdvDahil":false,"perakendeKdvDahil":true,"varsayilanVadeGunu":0}'
+istek PUT /api/fatura/ayarlar "$T" '{"kayitAkisi":"DogrudanKayit","toptanSeri":"TPT","perakendeSeri":"PRK","iadeSeri":"IAD","toptanKdvDahil":false,"perakendeKdvDahil":true,"varsayilanVadeGunu":0,"varsayilanAciklama":"  IBAN: TR33 0006 1005 1978 6457 8413 26  "}'
+kontrol 200 "On tanimli fatura aciklamasi kirpilip kaydedildi" '"varsayilanAciklama":"IBAN: TR33 0006 1005 1978 6457 8413 26"'
 
 echo "--- Eszamanli numaralandirma"
 for i in 1 2 3 4 5; do
@@ -212,6 +213,10 @@ istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATI
 kontrol 400 "KDV'li satirda istisna kodu reddedildi" "%0 KDV"
 istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}")"
 kontrol 201 "%0 KDV'li satirda istisna kodu saklandi" '"kdvIstisnaKodu":"301"'
+istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}" '"teslimatAdresi":{"baslik":"Depo","aliciAdi":"Ali Veli","il":"Kocaeli","ilce":"Cayirova","adres":"  OSB 5. Cad. No:3 "}')"
+kontrol 201 "Teslimat adresi faturaya kopyalandi (kirpilmis)" '"teslimatAdresi":{"baslik":"Depo","aliciAdi":"Ali Veli","telefon":null,"ulke":null,"il":"Kocaeli","ilce":"Cayirova","adres":"OSB 5. Cad. No:3"'
+istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}" '"teslimatAdresi":{"il":"Kocaeli","adres":""}')"
+kontrol 400 "Bos teslimat adresi reddedildi" "Teslimat adresi gerekli"
 istek GET /api/yonetim/firma "$T"
 kontrol 200 "Firma bilgileri okunuyor" '"unvan":"Fatura Test AS"'
 istek PUT /api/yonetim/firma "$T" '{"unvan":"Fatura Test AS","vergiNo":"9876543217","vergiDairesi":"Kadikoy","il":"Istanbul","ilce":"Kadikoy","adres":"Moda Cad. 5","telefon":"0216 000 00 00","eposta":"info@fatura.test"}'

@@ -8,6 +8,8 @@
 @inject TimeProvider Zaman
 @inject IDialogService DialogService
 @inject IsyeriYoneticisi Isyerleri
+@using OnMuhasebe.Shared.Contracts.Dosyalar
+@using Microsoft.AspNetCore.Components.Forms
 
 <SayfaBasligi Baslik="@Baslik" GeriAdres="@(Id is null ? "fatura" : $"fatura/{Id}")" Ikon="@FaturaMetinleri.Ikon(_tur)"
              AltBaslik="@(_numara is not null && Id is not null ? _numara : FaturaMetinleri.TurAciklamasi(_tur))" />
@@ -105,6 +107,13 @@ else
                 <MudItem xs="6" md="3">
                     <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Vade" @bind-Date="_vade" Required="Z(FaturaZorunluAlanlari.VadeTarihi)" RequiredError="Bu alan zorunlu (firma ayarı)." DateFormat="dd.MM.yyyy"
                                    Clearable="true" MinDate="_tarih" />
+                    <div class="vade-kisayollari">
+                        @foreach (var gun in VadeKisayollari)
+                        {
+                            <MudChip T="int" Size="Size.Small" Variant="@(SeciliVadeGunu == gun ? Variant.Filled : Variant.Outlined)"
+                                     Color="@(SeciliVadeGunu == gun ? Color.Primary : Color.Default)" OnClick="() => VadeGunuSec(gun)">@gun gün</MudChip>
+                        }
+                    </div>
                 </MudItem>
                 @if (Dovizli)
                 {
@@ -117,6 +126,45 @@ else
                 <MudItem xs="12" md="@(Dovizli ? 4 : 6)">
                     <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_aciklama" Required="Z(FaturaZorunluAlanlari.Aciklama)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Açıklama" MaxLength="1000" />
                 </MudItem>
+                @if (TeslimatAdresiGirilebilirMi)
+                {
+                    <MudItem xs="12" Class="pt-0">
+                        <MudSwitch T="bool" Value="_teslimatFarkli" ValueChanged="TeslimatFarkliDegistiAsync" Color="Color.Secondary"
+                                   Label="Teslimat adresi fatura adresinden farklı" />
+                    </MudItem>
+                    @if (_teslimatFarkli)
+                    {
+                        @if (_cariAdresleri.Count > 0)
+                        {
+                            <MudItem xs="12" md="4">
+                                <MudSelect T="int?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Carinin kayıtlı adresi" Value="_seciliAdres"
+                                           ValueChanged="KayitliAdresSec" Clearable="true" AdornmentIcon="@Icons.Material.Filled.LocalShipping">
+                                    @for (var i = 0; i < _cariAdresleri.Count; i++)
+                                    {
+                                        var sira = i;
+                                        <MudSelectItem T="int?" Value="sira">@_cariAdresleri[sira].Baslik</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                        }
+                        <MudItem xs="12" sm="6" md="@(_cariAdresleri.Count > 0 ? 4 : 5)">
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimat.AliciAdi" Label="Teslim alacak kişi" MaxLength="100" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="@(_cariAdresleri.Count > 0 ? 4 : 3)">
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimat.Telefon" Label="Telefon" MaxLength="30" InputType="InputType.Telephone" />
+                        </MudItem>
+                        <MudItem xs="6" md="3">
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimat.Il" Label="İl" MaxLength="50" />
+                        </MudItem>
+                        <MudItem xs="6" md="3">
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimat.Ilce" Label="İlçe" MaxLength="50" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_teslimat.Adres" Label="Teslimat adresi" MaxLength="500"
+                                          Required="true" RequiredError="Teslimat adresi gerekli." />
+                        </MudItem>
+                    }
+                }
             </FormBolumu>
 
             <FormBolumu Baslik="Satırlar" Aciklama="@SatirAciklamasi" Ikon="@Icons.Material.Filled.FormatListNumbered" Sira="1">
@@ -455,8 +503,42 @@ else
                                 @(Id is null ? "Faturayı kaydet" : "Değişiklikleri kaydet")
                             </IslemDugmesi>
                         }
+                        @if (Id is null)
+                        {
+                            <IslemDugmesi Islem="() => KaydetAsync(onayla: TaslakAkisi, yeniAc: true)" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AddCircleOutline"
+                                          FullWidth="true" Disabled="!KaydedilebilirMi">
+                                Kaydet ve yeni
+                            </IslemDugmesi>
+                        }
                         <MudButton Href="@(Id is null ? "fatura" : $"fatura/{Id}")" FullWidth="true">Vazgeç</MudButton>
                     </div>
+                    @if (Oturum.YazabilirMi(DosyaYetkileri.Ek, YetkiIslemleri.Ekle))
+                    {
+                        <div class="mt-4">
+                            <div class="ozet-alt mb-1"><MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" Style="vertical-align:middle" /> Belge ekleri</div>
+                            @if (Id is { } faturaId)
+                            {
+                                <div class="d-flex align-center gap-2">
+                                    <DosyalarDugmesi Tur="@DosyaKayitTurleri.Fatura" KayitId="faturaId" />
+                                    <span class="ozet-alt">Ekleri görüntüle veya yeni ekle</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <InputFile OnChange="DosyalarSecildi" multiple accept="@DosyaSinirlari.KabulEdilenler" />
+                                @foreach (var dosya in _bekleyenDosyalar)
+                                {
+                                    <div class="d-flex align-center gap-1 mt-1">
+                                        <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Style="opacity:.6" />
+                                        <span class="ozet-alt flex-grow-1" style="overflow:hidden;text-overflow:ellipsis">@dosya.Name</span>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" aria-label="@($"{dosya.Name} kaldır")"
+                                                       OnClick="() => _bekleyenDosyalar.Remove(dosya)" />
+                                    </div>
+                                }
+                                <div class="ozet-alt mt-1" style="opacity:.7">İrsaliye, sipariş formu ya da fiş görseli; fatura kaydedilince eklenir (en çok 20 MB).</div>
+                            }
+                        </div>
+                    }
                     @if (Id is not null && _durum == FaturaDurumu.Onayli)
                     {
                         <div class="ozet-alt mt-3">Onaylı fatura düzenlenince cari ve stok hareketleri ters kayıtla kapatılıp yeniden yazılır.</div>
@@ -508,6 +590,15 @@ else
     private readonly List<FaturaSatirModeli> _satirlar = [];
     private string? _cariIstisnaKodu;
     private string? _cariTevkifatKodu;
+    private List<CariAdresBilgisi> _cariAdresleri = [];
+    private bool _cariAdresleriYuklendi;
+    private bool _teslimatFarkli;
+    private int? _seciliAdres;
+    private TeslimatModeli _teslimat = new();
+    private readonly List<IBrowserFile> _bekleyenDosyalar = [];
+    private const int EnCokBekleyenDosya = 10;
+
+    private static readonly int[] VadeKisayollari = [15, 30, 45, 60, 90, 120];
     private List<Depo> _depolar = [];
     private List<HesapOzeti> _pesinHesaplar = [];
     private List<MasrafMerkeziOzeti> _merkezler = [];
@@ -546,6 +637,14 @@ else
         ? $"Fatura kaydedilince seçilen hesaba {(ParaGirisi ? "tahsilat" : "ödeme")} yazılır ve fatura kapanır."
         : NihaiTuketiciMi ? "Nihai tüketici satışında tahsilat hesabı seçmeniz önerilir." : "Boş bırakılırsa tutar cari hesaba borç/alacak yazılır.";
     private bool GidenMi => FaturaTurleri.GidenMi(_tur);
+
+    // Teslimat adresi yalnızca carili satış faturasında anlamlıdır (mal başka adrese gönderilir).
+    private bool TeslimatAdresiGirilebilirMi => _tur == FaturaTuru.Satis && !NihaiTuketiciMi;
+
+    private int? SeciliVadeGunu => _tarih is { } t && _vade is { } v ? (int)(v.Date - t.Date).TotalDays : null;
+
+    // Yeni giden faturaya firmanın ön tanımlı açıklaması (ör. banka bilgileri) önerilir.
+    private string? VarsayilanAciklama => GidenMi ? _ayar?.VarsayilanAciklama : null;
     private bool StokAcik => Oturum.ModulAcikMi(ModulKodlari.Stok);
 
     private bool IrsaliyeAktarilabilirMi => StokAcik && !NihaiTuketiciMi && _cari is not null && IrsaliyeTurleri.Tur(_tur) is not null;
@@ -614,6 +713,7 @@ else
             }
 
             VarsayilanVadeyiUygula(null);
+            _aciklama = VarsayilanAciklama;
             if (CariParametresi is { } cariId && await CariGetirAsync(cariId) is { } detay)
             {
                 await CariAtaAsync(Ozet(detay), detay);
@@ -665,6 +765,10 @@ else
         (_tarih, _vade, _paraBirimi, _kur, _kurElleGirildi) = (Bicim.Takvim(f.Tarih), Bicim.Takvim(f.VadeTarihi), f.ParaBirimi, f.Kur, true);
         (_aciklama, _genelIskontoTuru, _genelIskonto, _stopajOrani) = (f.Aciklama, f.GenelIskontoTuru, f.GenelIskonto, f.StopajOrani);
         (_pesinHesapId, _masrafMerkeziId, _isyeriId) = (f.PesinHesapId, f.MasrafMerkeziId, f.IsyeriId);
+        if (f.TeslimatAdresi is { } teslimat)
+        {
+            (_teslimatFarkli, _teslimat) = (true, TeslimatModeli.Kopyala(teslimat));
+        }
         if (f.CariHesapId is { } cariId)
         {
             _cari = new CariOzeti(cariId, f.CariKodu ?? "", f.CariUnvan, CariTuru.Musteri, null, f.ParaBirimi, null, true, 0m, 0m, null);
@@ -726,6 +830,13 @@ else
         _cari = cari;
         _nihaiTuketici = false;
         CariVergisiniAyarla(detay);
+        if (_cariAdresleriYuklendi || _teslimatFarkli)
+        {
+            // Başka cariye geçildi: önceki carinin teslimat adresi taşınmaz.
+            (_teslimatFarkli, _teslimat, _seciliAdres) = (false, new(), null);
+        }
+
+        (_cariAdresleri, _cariAdresleriYuklendi) = (detay?.Adresler.ToList() ?? [], detay is not null);
         if (_paraBirimi != cari.ParaBirimi)
         {
             _paraBirimi = cari.ParaBirimi;
@@ -751,6 +862,89 @@ else
                 ? $"Carinin KDV istisnası ({_cariIstisnaKodu}) {uygulanan} satıra uygulandı."
                 : $"Carinin tevkifat kodu ({_cariTevkifatKodu}) {uygulanan} satıra uygulandı.", Severity.Info);
         }
+    }
+
+    private void VadeGunuSec(int gun) => _vade = _tarih?.AddDays(gun);
+
+    // Düzenlemede cari ayrıntısı yüklenmediği için kayıtlı adresler ilk açılışta getirilir; tek adres varsa doğrudan seçilir.
+    private async Task TeslimatFarkliDegistiAsync(bool farkli)
+    {
+        _teslimatFarkli = farkli;
+        if (farkli && !_cariAdresleriYuklendi && _cari is not null && await CariGetirAsync(_cari.Id) is { } detay)
+        {
+            (_cariAdresleri, _cariAdresleriYuklendi) = (detay.Adresler.ToList(), true);
+        }
+
+        if (farkli && _cariAdresleri.Count == 1 && string.IsNullOrWhiteSpace(_teslimat.Adres))
+        {
+            KayitliAdresSec(0);
+        }
+    }
+
+    private void KayitliAdresSec(int? sira)
+    {
+        _seciliAdres = sira;
+        if (sira is { } i && i < _cariAdresleri.Count)
+        {
+            _teslimat = TeslimatModeli.Caridan(_cariAdresleri[i]);
+        }
+    }
+
+    private void DosyalarSecildi(InputFileChangeEventArgs e)
+    {
+        foreach (var dosya in e.GetMultipleFiles(EnCokBekleyenDosya))
+        {
+            if (dosya.Size > DosyaSinirlari.AzamiBoyut)
+            {
+                Snackbar.Add($"{dosya.Name}: dosya en fazla 20 MB olabilir.", Severity.Error);
+            }
+            else if (_bekleyenDosyalar.Count < EnCokBekleyenDosya)
+            {
+                _bekleyenDosyalar.Add(dosya);
+            }
+        }
+    }
+
+    // Fatura kaydı kesinleştikten sonra yüklenir; bir dosyanın yüklenememesi faturayı geri almaz, kullanıcı detaydan tekrar ekleyebilir.
+    private async Task BekleyenDosyalariYukleAsync(Guid faturaId)
+    {
+        var yuklenemeyen = new List<string>();
+        foreach (var dosya in _bekleyenDosyalar)
+        {
+            try
+            {
+                await using var akis = dosya.OpenReadStream(DosyaSinirlari.AzamiBoyut);
+                var sonuc = await Api.DosyaYukleAsync<DosyaEkiOzeti>($"api/dosya/kayit/{DosyaKayitTurleri.Fatura}/{faturaId}", "dosya", akis, dosya.Name);
+                if (!sonuc.BasariliMi)
+                {
+                    yuklenemeyen.Add($"{dosya.Name} ({sonuc.Hata.Baslik})");
+                }
+            }
+            catch (IOException)
+            {
+                yuklenemeyen.Add(dosya.Name);
+            }
+        }
+
+        _bekleyenDosyalar.Clear();
+        if (yuklenemeyen.Count > 0)
+        {
+            Snackbar.Add($"Fatura kaydedildi ancak şu ekler yüklenemedi: {string.Join(", ", yuklenemeyen)}. Fatura detayından tekrar ekleyebilirsiniz.", Severity.Warning);
+        }
+    }
+
+    // "Kaydet ve yeni": tarih, satış şekli, işyeri ve stopaj oranı seri giriş için korunur; belgeye özgü her şey temizlenir.
+    private void YeniBelgeyeHazirla()
+    {
+        (_cari, _cariGrupId, _nihaiAd, _nihaiTckn, _numara, _surum) = (null, null, null, null, null, 0);
+        (_genelIskontoTuru, _genelIskonto, _pesinHesapId, _masrafMerkeziId) = (GenelIskontoTuru.Yuzde, 0m, null, null);
+        (_paraBirimi, _kur, _kurElleGirildi, _kurBilgisi) = (ParaBirimleri.Tl, null, false, null);
+        (_cariIstisnaKodu, _cariTevkifatKodu, _cariAdresleri, _cariAdresleriYuklendi) = (null, null, [], false);
+        (_teslimatFarkli, _teslimat, _seciliAdres, _durum, _hata) = (false, new(), null, FaturaDurumu.Taslak, null);
+        _satirlar.Clear();
+        _bekleyenDosyalar.Clear();
+        _aciklama = VarsayilanAciklama;
+        VarsayilanVadeyiUygula(null);
     }
 
     private void SatirEkle(FaturaSatirModeli satir)
@@ -1042,7 +1236,7 @@ else
             Dovizli ? _kur : null, Bicim.Gun(_tarih) ?? DateOnly.FromDateTime(DateTime.Today));
     }
 
-    private async Task KaydetAsync(bool onayla)
+    private async Task KaydetAsync(bool onayla, bool yeniAc = false)
     {
         _hata = null;
         if (Bicim.Gun(_tarih) is not { } tarih)
@@ -1067,7 +1261,8 @@ else
             UygunPesinHesaplar.Any(h => h.Id == _pesinHesapId) ? _pesinHesapId : null,
             StopajliMi ? _stopajOrani : 0m,
             _masrafMerkeziId,
-            _isyeriId);
+            _isyeriId,
+            TeslimatAdresiGirilebilirMi && _teslimatFarkli && !string.IsNullOrWhiteSpace(_teslimat.Adres) ? _teslimat.Istek() : null);
 
         var sonuc = Id is { } id
             ? await Api.PutAsync<FaturaCevabi>($"api/fatura/faturalar/{id}", istek, islemAnahtari: _anahtar.Deger)
@@ -1087,6 +1282,7 @@ else
             {
                 // Taslak kaydedildi ama onaylanamadı: kullanıcı detayda hatayı görüp düzeltebilsin.
                 Snackbar.Add($"Taslak kaydedildi ancak onaylanamadı: {onay.Hata.Baslik}", Severity.Error);
+                await BekleyenDosyalariYukleAsync(cevap.Fatura.Id);
                 Navigasyon.NavigateTo($"fatura/{cevap.Fatura.Id}");
                 return;
             }
@@ -1100,7 +1296,38 @@ else
         }
 
         var f = cevap.Fatura;
+        await BekleyenDosyalariYukleAsync(f.Id);
         Snackbar.Add(f.Durum == FaturaDurumu.Taslak ? "Taslak kaydedildi." : $"{f.Numara} numaralı fatura kaydedildi.", Severity.Success);
+        if (yeniAc)
+        {
+            YeniBelgeyeHazirla();
+            return;
+        }
+
         Navigasyon.NavigateTo($"fatura/{f.Id}");
+    }
+
+    private sealed class TeslimatModeli
+    {
+        public string? Baslik { get; set; }
+        public string? AliciAdi { get; set; }
+        public string? Telefon { get; set; }
+        public string? Ulke { get; set; }
+        public string? Il { get; set; }
+        public string? Ilce { get; set; }
+        public string? Adres { get; set; }
+        public string? PostaKodu { get; set; }
+
+        public static TeslimatModeli Caridan(CariAdresBilgisi a) => new()
+        {
+            Baslik = a.Baslik, AliciAdi = a.AdSoyad, Telefon = a.Telefon, Ulke = a.Ulke, Il = a.Il, Ilce = a.Ilce, Adres = a.Adres, PostaKodu = a.PostaKodu
+        };
+
+        public static TeslimatModeli Kopyala(TeslimatAdresi t) => new()
+        {
+            Baslik = t.Baslik, AliciAdi = t.AliciAdi, Telefon = t.Telefon, Ulke = t.Ulke, Il = t.Il, Ilce = t.Ilce, Adres = t.Adres, PostaKodu = t.PostaKodu
+        };
+
+        public TeslimatAdresi Istek() => new(Baslik, AliciAdi, Telefon, Ulke, Il, Ilce, Adres ?? "", PostaKodu);
     }
 }
