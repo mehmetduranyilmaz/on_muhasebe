@@ -3,6 +3,7 @@
 @inject OturumYoneticisi Oturum
 @inject ModulYukleyici Yukleyici
 @inject NavigationManager Navigasyon
+@inject IJSRuntime Js
 
 @* Modüllerin özet analizleri tek sayfada, sekme sekme. Ana sayfa kısa kalsın diye modül panelleri burada durur;
    her sekme modül lisansı ve rapor yetkisi varsa görünür, panel yalnızca açılan sekmede yüklenir. *@
@@ -64,16 +65,28 @@ else
         _sekmeler = _tumSekmeler.Where(s => Erisebilir(Oturum, s.Kod)).ToList();
         if ((_sekmeler.FirstOrDefault(s => s.Kod == SekmeParametresi) ?? _sekmeler.FirstOrDefault()) is { } ilk)
         {
-            await SecAsync(ilk);
+            await YukleAsync(ilk);
         }
     }
 
+    // Açılışta adres yazılmaz: başlatma sırasındaki NavigateTo sayfayı yeniden kurdurup sonsuz döngüye sokuyordu.
     private async Task SecAsync(Sekme sekme)
+    {
+        if (sekme.Kod == _secili?.Kod)
+        {
+            return;
+        }
+
+        await YukleAsync(sekme);
+
+        // Seçili sekme adreste durur (yenileme ve paylaşılan bağlantı aynı sekmeyi açar). Yönlendirici tetiklenmesin diye
+        // NavigateTo değil history.replaceState: yönlendirme sayfayı yeniden kurar, panel boşuna tekrar yüklenir.
+        await Js.InvokeVoidAsync("history.replaceState", null, "", Navigasyon.GetUriWithQueryParameter("sekme", sekme.Kod));
+    }
+
+    private async Task YukleAsync(Sekme sekme)
     {
         (_secili, _panel) = (sekme, null);
         _panel = await Yukleyici.OzetPaneliAsync(sekme.Kod);
-
-        // Seçili sekme adreste durur: yenileme ve paylaşılan bağlantı aynı sekmeyi açar.
-        Navigasyon.NavigateTo(Navigasyon.GetUriWithQueryParameter("sekme", sekme.Kod), replace: true);
     }
 }
