@@ -37,7 +37,7 @@ internal sealed class SatinalmaTesti : TarayiciTesti
         await Task.Delay(300);
         await Tikla("Kuralları Kaydet");
         Kontrol(await Bekle(Govde("Onay kuralları kaydedildi"), 10), "Onay basamagi kaydedildi");
-        await Git("/ayarlar");
+        await Git("/ayarlar/satinalma");
         Kontrol(await Bekle(Govde("Satın Alma Onayı"), 20), "Ayarlarda onay kurallari paneli");
 
         await GirisYap(talepEden, "Sifre1234");

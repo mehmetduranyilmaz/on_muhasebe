@@ -4,6 +4,11 @@
 @inject IJSRuntime Js
 
 <MudNavMenu Class="pt-2">
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.SpaceDashboard">Ana Sayfa</MudNavLink>
+    @if (_analiz)
+    {
+        <MudNavLink Href="analiz" Icon="@Icons.Material.Filled.Insights">Analiz</MudNavLink>
+    }
     @foreach (var grup in _gruplar)
     {
         @* Tek maddelik grupta başlık gereksiz: yalnız "Masraflarım"ı gören çalışan, Cari Hesaplar. e-Belge'nin yanında duran madde tek sayılmaz. *@
@@ -33,13 +38,15 @@
         }
     }
 
-    @if (_yonetim.Count > 0 || Oturum.Bilgi?.SistemYoneticisiMi == true)
+    @* Kullanıcılar, roller ve abonelik de Ayarlar merkezinin içinde; menüde tek giriş. *@
+    @if (_ayarlar)
     {
-        <MudNavGroup Title="@YonetimAdi" Icon="@Icons.Material.Filled.Settings" Class="menu-grubu" Expanded="@_acik.Contains(YonetimAdi)" ExpandedChanged="@(acik => AcikDegistiAsync(YonetimAdi, acik))">
-            @foreach (var (yol, ikon, ad) in _yonetim)
-            {
-                <MudNavLink Href="@yol" Icon="@ikon">@ad</MudNavLink>
-            }
+        <MudNavLink Href="ayarlar" Icon="@Icons.Material.Filled.Settings">Ayarlar</MudNavLink>
+    }
+
+    @if (Oturum.Bilgi?.SistemYoneticisiMi == true)
+    {
+        <MudNavGroup Title="@SistemAdi" Icon="@Icons.Material.Filled.Dns" Class="menu-grubu" Expanded="@_acik.Contains(SistemAdi)" ExpandedChanged="@(acik => AcikDegistiAsync(SistemAdi, acik))">
             <AuthorizeView Roles="@Roller.SistemYoneticisi">
                 <MudNavLink Href="sistem/firmalar" Icon="@Icons.Material.Filled.AdminPanelSettings">Firmalar ve Lisanslar</MudNavLink>
                 <MudNavLink Href="sistem/odeme-bildirimleri" Icon="@Icons.Material.Filled.AccountBalanceWallet">Ödeme Bildirimleri</MudNavLink>
@@ -51,21 +58,14 @@
 </MudNavMenu>
 
 @code {
-    private const string YonetimAdi = "Yönetim";
-
-    private static readonly (string Yol, string Ikon, string Ad)[] _yonetimOgeleri =
-    [
-        ("kullanicilar", Icons.Material.Filled.ManageAccounts, "Kullanıcılar"),
-        ("roller", Icons.Material.Filled.AdminPanelSettings, "Roller ve Yetkiler"),
-        ("abonelik", Icons.Material.Filled.WorkspacePremium, "Abonelik"),
-        ("ayarlar", Icons.Material.Filled.Tune, "Ayarlar")
-    ];
+    private const string SistemAdi = "Sistem";
 
     private sealed record GorunenGrup(string? Ad, string Ikon, IReadOnlyList<ModulMenuOgesi> Ogeler);
 
     private List<GorunenGrup> _gruplar = [];
     private MenuYakinda? _yakinda;
-    private List<(string Yol, string Ikon, string Ad)> _yonetim = [];
+    private bool _analiz;
+    private bool _ayarlar;
     private readonly HashSet<string> _acik = [];
 
     protected override void OnInitialized()
@@ -115,7 +115,8 @@
         }
 
         _yakinda = acikOgeler.ContainsKey(ModulMenusu.EBelge.SonraGelecegiYol) ? ModulMenusu.EBelge : null;
-        _yonetim = _yonetimOgeleri.Where(o => SayfaYetkileri.Gereken(o.Yol) is { } y && Oturum.YetkiVarMi(y)).ToList();
+        _analiz = Pages.Analiz.GorunurMu(Oturum);
+        _ayarlar = AyarBolumleri.Erisilebilir(Oturum).Any();
     }
 
     // İçinde bulunulan sayfanın grubu her zaman açık gelir.
@@ -126,9 +127,9 @@
         {
             _acik.Add(ad);
         }
-        else if (yol == "sistem" || _yonetimOgeleri.Any(o => o.Yol == yol))
+        else if (yol == "sistem")
         {
-            _acik.Add(YonetimAdi);
+            _acik.Add(SistemAdi);
         }
     }
 

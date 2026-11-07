@@ -65,7 +65,7 @@ internal sealed class BildirimTesti : TarayiciTesti
         var tercih = await http.GetFromJsonAsync<JsonObject>(Api + "api/bildirim/tercihler");
         Kontrol(tercih!["eposta"]!.GetValue<string>() == "Aninda" && tercih["kapaliTurler"]!.AsArray().Count == 1, "API'de tercih: aninda, risk kapali");
 
-        await Git("/ayarlar");
+        await Git("/ayarlar/bildirimler");
         Kontrol(await Bekle($"{Govde("Firmada üretilecek türler")} && !!{Alan("Vade kaç gün önce hatırlatılsın")}", 20), "Ayarlarda bildirim paneli");
         await Doldur("Vade kaç gün önce hatırlatılsın", "10");
         await Task.Delay(300);

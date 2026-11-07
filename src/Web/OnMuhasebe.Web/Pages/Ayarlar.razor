@@ -1,44 +1,88 @@
 @page "/ayarlar"
+@page "/ayarlar/{Bolum}"
 @attribute [Authorize]
 @inject OturumYoneticisi Oturum
 @inject ModulYukleyici Yukleyici
+@inject NavigationManager Navigasyon
 
-<SayfaBasligi Baslik="Ayarlar" AltBaslik="@(Oturum.Bilgi?.AktifFirma?.Unvan is { } unvan ? $"{unvan} için firma ayarları" : null)"
-             Ikon="@Icons.Material.Filled.Tune" />
+@* Ayarlar merkezi: her bölüm kendi adresinde (/ayarlar/firma, /ayarlar/kagit-cikti...). Adressiz açılırsa erişilebilen ilk bölüme gider. *@
+<PageTitle>Ayarlar - Ön Muhasebe</PageTitle>
 
-<FirmaBilgileriPaneli Sira="0" />
-<IsyerleriPaneli Sira="1" />
-
-@if (_yukleniyor)
+@if (_bolum is { } b)
 {
-    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="260px" Animation="Animation.Wave" Class="rounded-lg" />
+    <AyarlarCercevesi SeciliYol="@b.Yol">
+        <SayfaBasligi Baslik="Ayarlar" AltBaslik="@($"{b.Grup} · {b.Ad}")" Ikon="@Icons.Material.Filled.Tune" />
+        @switch (b.Yol)
+        {
+            case "firma":
+                <FirmaBilgileriPaneli />
+                break;
+            case "isyerleri":
+                <IsyerleriPaneli />
+                break;
+            case "zorunlu-alanlar":
+                <ZorunluAlanlarPaneli />
+                break;
+            case "donem-kilidi":
+                <DonemKilidiPaneli />
+                break;
+            case "bildirimler":
+                <BildirimAyarPaneli />
+                break;
+            default:
+                @if (_panel is { } panel)
+                {
+                    <DynamicComponent @key="b.Yol" Type="panel" Parameters="@(b.PanelParametreleri?.ToDictionary() ?? [])" />
+                }
+                else
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="260px" Animation="Animation.Wave" Class="rounded-lg" />
+                }
+                break;
+        }
+    </AyarlarCercevesi>
 }
-else
+else if (_erisimYok)
 {
-    @for (var i = 0; i < _paneller.Count; i++)
-    {
-        <DynamicComponent Type="_paneller[i]" Parameters="@(new Dictionary<string, object> { ["Sira"] = i + 1 })" />
-    }
-    <ZorunluAlanlarPaneli Sira="_paneller.Count + 1" />
-    <DonemKilidiPaneli Sira="_paneller.Count + 2" />
-    <BildirimAyarPaneli Sira="_paneller.Count + 3" />
+    <BosDurum Ikon="@Icons.Material.Outlined.Lock" Baslik="Bu ayara erişiminiz yok" Aciklama="Firma yöneticinizden yetki isteyebilirsiniz." />
 }
 
 @code {
-    private readonly List<Type> _paneller = [];
-    private bool _yukleniyor = true;
+    [Parameter] public string? Bolum { get; set; }
 
-    // Her lisanslı modül kendi ayar panelini kendi lazy paketinde sunar.
-    protected override async Task OnInitializedAsync()
+    private AyarBolumu? _bolum;
+    private Type? _panel;
+    private bool _erisimYok;
+
+    protected override async Task OnParametersSetAsync()
     {
-        foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod)))
+        (_bolum, _panel, _erisimYok) = (null, null, false);
+        if (Bolum is null)
         {
-            if (await Yukleyici.AyarPaneliAsync(modul.Kod) is { } panel)
+            // Sayfası bu merkezde olan ilk bölüme; yoksa (yalnız kullanıcı yönetimi yetkisi gibi) ayrı sayfasına.
+            var erisilebilir = AyarBolumleri.Erisilebilir(Oturum).ToList();
+            if ((erisilebilir.FirstOrDefault(x => x.Href is null) ?? erisilebilir.FirstOrDefault()) is { } ilk)
             {
-                _paneller.Add(panel);
+                Navigasyon.NavigateTo(ilk.Adres, replace: true);
             }
+            else
+            {
+                _erisimYok = true;
+            }
+
+            return;
         }
 
-        _yukleniyor = false;
+        if (AyarBolumleri.Bul(Bolum) is not { Href: null } bolum || !bolum.ErisilebilirMi(Oturum))
+        {
+            _erisimYok = true;
+            return;
+        }
+
+        _bolum = bolum;
+        if (bolum is { ModulKodu: { } modul, PanelTipi: { } tip })
+        {
+            _panel = await Yukleyici.PanelAsync(modul, tip);
+        }
     }
 }

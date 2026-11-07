@@ -141,7 +141,7 @@ internal sealed class KasaBankaTesti : TarayiciTesti
         await Tikla("Faturayı kaydet");
         Kontrol(await Bekle($"{Govde("TPT")} && {Govde("Ödendi")} && {Govde("Peşin tahsil edildi")}", 15), "Pesin fatura kaydedildi ve odendi gorundu");
 
-        await Git("/ayarlar");
+        await Git("/ayarlar/gelir-gider");
         Kontrol(await Bekle($"{Govde("Gelir / gider kategorileri")} && {Govde("Faiz geliri")}"), "Ayarlarda gelir/gider kategorileri paneli");
 
         // Açık yönlendirme: adres çubuğundaki dış dönüş adresi kullanılmaz.

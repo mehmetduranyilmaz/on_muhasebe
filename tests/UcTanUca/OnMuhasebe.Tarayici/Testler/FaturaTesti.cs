@@ -107,10 +107,12 @@ internal sealed class FaturaTesti : TarayiciTesti
         Kontrol(await Bekle(Govde("90 Adet")), "Stok miktari 100 - 10 - 1 + 1 (iptal) = 90");
 
         await Git("/ayarlar");
-        Kontrol(await Bekle($"{Govde("Firma bilgileri")} && {Govde("Kayıt akışı")} && {Govde("Numara serileri")}"), "Ayarlarda firma ve fatura panelleri var");
+        Kontrol(await Bekle($"{Govde("Firma bilgileri")} && {Govde("Kayıt akışı ve seriler")}"), "Ayarlar firma bolumunde acildi, menude fatura serileri var");
         await Doldur("Adres", "Kordon Boyu 12");
         await Tikla("Firma bilgilerini kaydet");
         Kontrol(await Bekle(Govde("Firma bilgileri kaydedildi")), "Firma adresi kaydedildi");
+        await Git("/ayarlar/fatura-seriler");
+        Kontrol(await Bekle($"{Govde("Kayıt akışı")} && {Govde("Numara serileri")} && !{Govde("Kağıt / PDF çıktı")}"), "Seriler bolumu yalniz kendi alanlarini gosteriyor");
         await Js("[...document.querySelectorAll('.ayar-secenek')].find(e => e.innerText.startsWith('Taslak ve onay')).querySelector('input').click()");
         await Tikla("Fatura ayarlarını kaydet");
         Kontrol(await Bekle(Govde("Fatura ayarları kaydedildi")), "Taslak-onay akisina gecildi");
@@ -129,8 +131,8 @@ internal sealed class FaturaTesti : TarayiciTesti
         await Js("[...document.querySelectorAll('.mud-dialog button')].find(b => b.textContent.trim() === 'Onayla').click()");
         Kontrol(await Bekle($"{Govde("Fatura onaylandı")} && {Govde("TPT2026000000002")}"), "Taslak detaydan onaylandi ve sira numarasini aldi");
 
-        await Git("/");
-        Kontrol(await Bekle("document.querySelectorAll('.sutun').length >= 2"), "Ana sayfada aylik satis/alis sutun grafigi cizildi");
-        Kontrol(await Bekle(Govde("Bu ay satış")), "Ana sayfada bu ay satis karti var");
+        await Git("/analiz");
+        Kontrol(await Bekle("document.querySelectorAll('.sutun').length >= 2"), "Analizde aylik satis/alis sutun grafigi cizildi");
+        Kontrol(await Bekle(Govde("Bu ay satış")), "Analizde bu ay satis karti var");
     }
 }

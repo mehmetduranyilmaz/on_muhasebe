@@ -1,0 +1,79 @@
+@page "/analiz"
+@attribute [Authorize]
+@inject OturumYoneticisi Oturum
+@inject ModulYukleyici Yukleyici
+@inject NavigationManager Navigasyon
+
+@* Modüllerin özet analizleri tek sayfada, sekme sekme. Ana sayfa kısa kalsın diye modül panelleri burada durur;
+   her sekme modül lisansı ve rapor yetkisi varsa görünür, panel yalnızca açılan sekmede yüklenir. *@
+<PageTitle>Analiz - Ön Muhasebe</PageTitle>
+
+<SayfaBasligi Baslik="Analiz" AltBaslik="Satış, cari, stok ve nakit tarafının özet göstergeleri" Ikon="@Icons.Material.Filled.Insights" />
+
+@if (_sekmeler.Count == 0)
+{
+    <BosDurum Ikon="@Icons.Material.Outlined.Insights" Baslik="Gösterilecek analiz yok"
+              Aciklama="Analizler ilgili modülün lisansı ve rapor yetkisiyle görünür." />
+}
+else
+{
+    <div class="tur-sekmeleri belirme">
+        @foreach (var s in _sekmeler)
+        {
+            <button type="button" class="tur-sekmesi @(s.Kod == _secili?.Kod ? "secili" : "")" style="--vurgu:@s.Renk" @onclick="() => SecAsync(s)">
+                <MudIcon Icon="@s.Ikon" Size="Size.Small" /> @s.Ad
+            </button>
+        }
+    </div>
+
+    @if (_panel is { } panel)
+    {
+        <DynamicComponent @key="_secili!.Kod" Type="panel" />
+    }
+    else
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+    }
+}
+
+@code {
+    private sealed record Sekme(string Kod, string Ad, string Ikon, string Renk);
+
+    // Sıra: önce para (satış, nakit), sonra cari ve stok.
+    private static readonly Sekme[] _tumSekmeler =
+    [
+        new(ModulKodlari.Fatura, "Satış ve KDV", Icons.Material.Filled.ReceiptLong, "#14B8A6"),
+        new(ModulKodlari.KasaBanka, "Kasa / Banka ve Çek", Icons.Material.Filled.AccountBalance, "#3B82F6"),
+        new(ModulKodlari.Cari, "Cari", Icons.Material.Filled.People, "#F59E0B"),
+        new(ModulKodlari.Stok, "Stok", Icons.Material.Filled.Inventory2, "#8B5CF6")
+    ];
+
+    [SupplyParameterFromQuery(Name = "sekme")] public string? SekmeParametresi { get; set; }
+
+    private List<Sekme> _sekmeler = [];
+    private Sekme? _secili;
+    private Type? _panel;
+
+    public static bool GorunurMu(OturumYoneticisi oturum) => _tumSekmeler.Any(s => Erisebilir(oturum, s.Kod));
+
+    private static bool Erisebilir(OturumYoneticisi oturum, string kod) =>
+        oturum.ModulAcikMi(kod) && SayfaYetkileri.OzetPaneli.TryGetValue(kod, out var yetki) && oturum.YetkiVarMi(yetki);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sekmeler = _tumSekmeler.Where(s => Erisebilir(Oturum, s.Kod)).ToList();
+        if ((_sekmeler.FirstOrDefault(s => s.Kod == SekmeParametresi) ?? _sekmeler.FirstOrDefault()) is { } ilk)
+        {
+            await SecAsync(ilk);
+        }
+    }
+
+    private async Task SecAsync(Sekme sekme)
+    {
+        (_secili, _panel) = (sekme, null);
+        _panel = await Yukleyici.OzetPaneliAsync(sekme.Kod);
+
+        // Seçili sekme adreste durur: yenileme ve paylaşılan bağlantı aynı sekmeyi açar.
+        Navigasyon.NavigateTo(Navigasyon.GetUriWithQueryParameter("sekme", sekme.Kod), replace: true);
+    }
+}

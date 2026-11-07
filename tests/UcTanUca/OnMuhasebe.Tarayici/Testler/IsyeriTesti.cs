@@ -14,7 +14,7 @@ internal sealed class IsyeriTesti : TarayiciTesti
         await GirisYap(eposta, "Sifre1234");
         Kontrol(await Bekle("!document.querySelector('.isyeri-secici')", 5), "Tek isyerli firmada ust cubukta isyeri secici yok");
 
-        await Git("/ayarlar");
+        await Git("/ayarlar/isyerleri");
         Kontrol(await Bekle($"{Govde("İşyerleri")} && {Govde("MRK")} && {Govde("Merkez")}", 15), "Ayarlar'da isyerleri paneli ve merkez");
         await Tikla("Yeni işyeri");
         await Bekle("!!document.querySelector('.mud-dialog') && " + Govde("SGK işyeri sicil no"), 10);

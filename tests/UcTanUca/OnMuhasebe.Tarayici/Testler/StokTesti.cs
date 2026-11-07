@@ -59,6 +59,8 @@ internal sealed class StokTesti : TarayiciTesti
         Kontrol(await Bekle(Govde("-2 Adet")), "Miktar -2 adet");
 
         await Js("document.querySelector('.mud-drawer a[href=\"ayarlar\"]').click()");
+        Kontrol(await Bekle("!!document.querySelector('.ayarlar-menu-ogesi[href=\"ayarlar/stok\"]')"), "Ayarlar merkezinde stok bolumu menude");
+        await Js("document.querySelector('.ayarlar-menu-ogesi[href=\"ayarlar/stok\"]').click()");
         await Bekle(Govde("Stok eksiye düşerse"));
         await Js("[...document.querySelectorAll('.ayar-secenek')].find(e => e.innerText.startsWith('Engelle')).querySelector('input').click()");
         await Bekle(Govde("Stok ayarlarını kaydet"));

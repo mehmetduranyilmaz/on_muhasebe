@@ -6,6 +6,7 @@
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
 
+<AyarlarCercevesi SeciliYol="roller">
 <SayfaBasligi Baslik="Roller ve Yetkiler" AltBaslik="Kim hangi ekranda ne yapabilir; kullanıcıya rolü Kullanıcılar sayfasından verilir"
              Ikon="@Icons.Material.Filled.AdminPanelSettings">
     <Islemler>
@@ -64,6 +65,7 @@
         </MudTd>
     </Satir>
 </VeriTablosu>
+</AyarlarCercevesi>
 
 @code {
     private List<RolCevabi>? _roller;

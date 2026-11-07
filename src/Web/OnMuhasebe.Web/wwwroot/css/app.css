@@ -3598,3 +3598,73 @@ td.soluk {
 .vade-kovasi-tutar { display: flex; flex-direction: column; align-items: flex-end; font-size: .8rem; line-height: 1.25; }
 .aylik-nakit-tablosu { display: grid; grid-template-columns: repeat(12, minmax(64px, 1fr)); gap: 6px; overflow-x: auto; margin-top: 8px; }
 .aylik-nakit-tablosu > div { display: flex; flex-direction: column; align-items: center; padding: 4px; border-radius: 6px; background: color-mix(in srgb, var(--mud-palette-primary) 4%, transparent); font-size: .8rem; }
+
+/* ---------- Ayarlar merkezi ---------- */
+.ayarlar-cercevesi {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.ayarlar-menusu {
+    position: sticky;
+    top: 80px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ayarlar-menu-grubu {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    padding: 12px 10px 4px;
+}
+
+.ayarlar-menu-grubu:first-child { padding-top: 4px; }
+
+.ayarlar-menu-ogesi {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: var(--mud-palette-text-primary);
+    text-decoration: none;
+    font-size: .9rem;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.ayarlar-menu-ogesi .mud-icon-root { color: var(--mud-palette-text-secondary); transition: color .15s ease; }
+
+.ayarlar-menu-ogesi:hover { background: var(--mud-palette-action-default-hover); }
+
+.ayarlar-menu-ogesi.secili {
+    background: color-mix(in srgb, var(--om-turkuaz) 14%, transparent);
+    color: var(--om-turkuaz);
+    font-weight: 600;
+}
+
+.ayarlar-menu-ogesi.secili .mud-icon-root { color: var(--om-turkuaz); }
+
+.ayarlar-icerik { min-width: 0; animation: om-belir .35s ease both; }
+
+@media (max-width: 959.98px) {
+    .ayarlar-cercevesi { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+
+    /* Telefonda menü üstte yatay kaydırılan şerit; grup başlıkları gizlenir. */
+    .ayarlar-menusu {
+        position: static;
+        flex-direction: row;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 6px;
+    }
+
+    .ayarlar-menu-grubu { display: none; }
+    .ayarlar-menu-ogesi { white-space: nowrap; flex: 0 0 auto; }
+}

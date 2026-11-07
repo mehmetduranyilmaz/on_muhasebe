@@ -1,4 +1,4 @@
-@* Ayarlar ekranındaki Kasa/Banka paneli: gelir/gider kategorileri. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@* Ayarlar: gelir/gider kategorileri. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
 @inject ApiIstemcisi Api
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
@@ -55,10 +55,6 @@
         </MudItem>
     }
 </FormBolumu>
-
-<EkstreKurallariPaneli Sira="Sira + 1" />
-
-<CekSenetAyarPaneli Sira="Sira + 2" />
 
 @code {
     [Parameter] public int Sira { get; set; }

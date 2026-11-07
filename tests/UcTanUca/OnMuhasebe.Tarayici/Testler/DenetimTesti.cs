@@ -45,12 +45,12 @@ internal sealed class DenetimTesti : TarayiciTesti
         await Js("document.querySelector('.mud-dialog .mud-button-close')?.click()");
         await Task.Delay(500);
 
-        await Git("/ayarlar");
+        await Git("/ayarlar/donem-kilidi");
         Kontrol(await Bekle($"{Govde("Dönem kilidi")} && !!{Alan("Kilit tarihi")}", 20), "Ayarlarda donem kilidi paneli");
         Kontrol(!await Bekle(Govde("ve öncesine ait hareketler kilitli"), 2), "Kilit yokken bilgi notu yok");
         var kilit = await http.PutAsJsonAsync(Api + "api/yonetim/donem-kilidi", new { kilitTarihi = "2026-09-30", aciklama = "Eylul KDV" });
         Kontrol(kilit.IsSuccessStatusCode, "Kilit API ile kondu");
-        await Git("/ayarlar");
+        await Git("/ayarlar/donem-kilidi");
         Kontrol(await Bekle(Govde("30.09.2026 ve öncesine ait hareketler kilitli"), 20), "Panel kilit tarihini gosteriyor");
         Kontrol(await Js($"{Alan("Açıklama")}.value") == "Eylul KDV", "Aciklama dolu geldi");
         await Js("[...document.querySelectorAll('.mud-paper')].find(p => p.textContent.includes('Dönem kilidi'))?.scrollIntoView()");

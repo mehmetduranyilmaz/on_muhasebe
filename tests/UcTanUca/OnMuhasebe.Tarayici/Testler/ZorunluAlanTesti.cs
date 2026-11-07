@@ -28,7 +28,7 @@ internal sealed class ZorunluAlanTesti : TarayiciTesti
         await Bekle("!!" + Alan("Telefon"), 15);
         Kontrol((await Js(Etiket("Telefon"))) == "serbest", "Ayar yokken telefon zorunlu isaretli degil");
 
-        await Git("/ayarlar");
+        await Git("/ayarlar/zorunlu-alanlar");
         Kontrol(await Bekle($"{Govde("Zorunlu alanlar")} && {Govde("Cari kartı")} && {Govde("Stok kartı")} && {Govde("Çek/senet bordrosu")}", 20),
             "Ayarlarda zorunlu alanlar paneli, lisansli formlar gruplu");
         await Js("[...document.querySelectorAll('.zorunlu-alanlar')].find(g => g.closest('.mud-grid-item').textContent.includes('Cari kartı'))"

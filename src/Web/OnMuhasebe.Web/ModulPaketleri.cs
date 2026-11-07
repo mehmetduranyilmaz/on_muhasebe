@@ -2,7 +2,7 @@ using OnMuhasebe.Shared.Contracts.Moduller;
 
 namespace OnMuhasebe.Web;
 
-// Modül ekranlarının lazy yüklenen derlemeleri ve ana sayfa / ayarlar ekranına koydukları paneller.
+// Modül ekranlarının lazy yüklenen derlemeleri ve analiz ekranına koydukları özet paneller.
 // Yeni modül eklendiğinde buraya ve csproj'daki BlazorWebAssemblyLazyLoad listesine eklenir.
 public static class ModulPaketleri
 {
@@ -78,13 +78,8 @@ public static class ModulPaketleri
         [ModulKodlari.KasaBanka] = "OnMuhasebe.Web.KasaBanka.Bilesenler.KasaBankaOzetPaneli"
     };
 
-    public static IReadOnlyDictionary<string, string> AyarPanelleri { get; } = new Dictionary<string, string>
-    {
-        [ModulKodlari.Stok] = "OnMuhasebe.Web.Stok.Bilesenler.StokAyarPaneli",
-        [ModulKodlari.Fatura] = "OnMuhasebe.Web.Fatura.Bilesenler.FaturaAyarPaneli",
-        [ModulKodlari.KasaBanka] = "OnMuhasebe.Web.KasaBanka.Bilesenler.KasaBankaAyarPaneli",
-        [ModulKodlari.Satinalma] = "OnMuhasebe.Web.Satinalma.Bilesenler.SatinalmaAyarPaneli"
-    };
+    // Ana sayfadaki finansal durum (varlık/borç) paneli; ayar panelleri AyarBolumleri'nde.
+    public const string FinansalDurumPaneli = "OnMuhasebe.Web.KasaBanka.Bilesenler.FinansalDurumPaneli";
 
     // Adresin ilk parçası modülün yoludur (ör. "cari/123/ekstre" -> cari).
     public static ModulMenuOgesi? AdrestekiModul(string adres)

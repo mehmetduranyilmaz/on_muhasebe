@@ -1,16 +1,19 @@
-@* Ayarlar ekranındaki Fatura paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir. *@
+@* Ayarlar ekranındaki Fatura paneli. Ana uygulama bunu tip adıyla, modül lisanslıysa lazy yükleyip gösterir.
+   Bolum verilirse yalnız o kısım çizilir (Seriler / Varsayilanlar / Kagit); kayıt yine tüm ayarı gönderir, görünmeyen alanlar olduğu gibi kalır. *@
 @inject ApiIstemcisi Api
 @inject ISnackbar Snackbar
 @inject OturumYoneticisi Oturum
 @inject TimeProvider Zaman
 
-<FormBolumu Baslik="Fatura" Aciklama="Kayıt akışı, numara serileri ve yeni fatura varsayılanları" Ikon="@Icons.Material.Filled.ReceiptLong" Sira="Sira">
+<FormBolumu Baslik="@Baslik.Ad" Aciklama="@Baslik.Aciklama" Ikon="@Baslik.Ikon" Sira="Sira">
     @if (_ayar is null)
     {
         <MudItem xs="12"><MudSkeleton Height="200px" SkeletonType="SkeletonType.Rectangle" Animation="Animation.Wave" /></MudItem>
     }
     else
     {
+        @if (Goster("Seriler"))
+        {
         <MudItem xs="12" md="6">
             <div class="ayar-baslik">Kayıt akışı</div>
             <MudRadioGroup T="KayitAkisi" @bind-Value="_akis">
@@ -36,6 +39,9 @@
                 </div>
             }
         </MudItem>
+        }
+        @if (Goster("Varsayilanlar"))
+        {
         <MudItem xs="12" md="6">
             <div class="ayar-baslik">Yeni fatura varsayılanları</div>
             <MudSwitch T="bool" @bind-Value="_toptanKdvDahil" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu"
@@ -53,8 +59,14 @@
                           Label="Faturalara ön tanımlı açıklama" Disabled="Oturum.SaltOkunurMu"
                           HelperText="Yeni satış faturalarına önerilir; ör. banka hesap bilgileri, iade ve teslim koşulları" />
         </MudItem>
+        }
+        @if (Goster("Kagit"))
+        {
         <MudItem xs="12" md="6">
-            <div class="ayar-baslik">Kağıt / PDF çıktı</div>
+            @if (Bolum is null)
+            {
+                <div class="ayar-baslik">Kağıt / PDF çıktı</div>
+            }
             <MudSelect T="KagitSablonu" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kagitSablonu" Label="Şablon" Disabled="Oturum.SaltOkunurMu">
                 <MudSelectItem Value="KagitSablonu.Standart">Standart</MudSelectItem>
                 <MudSelectItem Value="KagitSablonu.Kompakt">Kompakt (sık satırlı, uzun faturalar için)</MudSelectItem>
@@ -67,7 +79,8 @@
             <MudSwitch T="bool" @bind-Value="_kagittaImzaAlani" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu"
                        Label="Teslim eden / teslim alan imza alanı" />
         </MudItem>
-        @if (_ayar.KayitAkisi == KayitAkisi.TaslakOnay && _akis == KayitAkisi.DogrudanKayit)
+        }
+        @if (Goster("Seriler") && _ayar.KayitAkisi == KayitAkisi.TaslakOnay && _akis == KayitAkisi.DogrudanKayit)
         {
             <MudItem xs="12">
                 <MudAlert Severity="Severity.Info" Dense="true">Mevcut taslak faturalar taslak olarak kalır; fatura detayından onaylayabilirsiniz.</MudAlert>
@@ -83,6 +96,17 @@
 
 @code {
     [Parameter] public int Sira { get; set; }
+    [Parameter] public string? Bolum { get; set; }
+
+    private bool Goster(string bolum) => Bolum is null || Bolum == bolum;
+
+    private (string Ad, string Aciklama, string Ikon) Baslik => Bolum switch
+    {
+        "Seriler" => ("Kayıt akışı ve numara serileri", "Faturalar doğrudan mı kaydedilsin, taslak-onay mı; GİB biçiminde belge serileri", Icons.Material.Filled.Numbers),
+        "Varsayilanlar" => ("Yeni fatura varsayılanları", "Fiyat girişi, vade ve faturaya önerilen açıklama", Icons.Material.Filled.ReceiptLong),
+        "Kagit" => ("Kağıt / PDF çıktı", "Yazdırılan faturanın şablonu ve alt bilgileri", Icons.Material.Filled.Print),
+        _ => ("Fatura", "Kayıt akışı, numara serileri ve yeni fatura varsayılanları", Icons.Material.Filled.ReceiptLong)
+    };
 
     private FaturaAyarlari? _ayar;
     private KayitAkisi _akis;

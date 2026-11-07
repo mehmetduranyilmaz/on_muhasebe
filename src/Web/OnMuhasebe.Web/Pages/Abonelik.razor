@@ -8,6 +8,7 @@
 @inject IJSRuntime Js
 @inject TimeProvider Zaman
 
+<AyarlarCercevesi SeciliYol="abonelik">
 <SayfaBasligi Baslik="Abonelik" AltBaslik="Paketiniz, kalan süreniz ve havale/EFT ile yenileme" Ikon="@Icons.Material.Filled.WorkspacePremium" />
 
 <HataGosterimi Hata="_hata" />
@@ -182,6 +183,7 @@ else
         </MudItem>
     </MudGrid>
 }
+</AyarlarCercevesi>
 
 @code {
     private DepolamaKullanimi? _depolama;

@@ -1,0 +1,27 @@
+@* Ayarlar merkezinin iskeleti: solda gruplu alt menü (yalnızca erişilebilen bölümler), sağda seçili sayfa.
+   Telefonda menü üstte yatay kaydırılabilir şerit olur. Kullanıcılar, Roller ve Abonelik sayfaları da bu çerçeveyle açılır. *@
+@inject OturumYoneticisi Oturum
+
+<div class="ayarlar-cercevesi">
+    <nav class="ayarlar-menusu kart" aria-label="Ayarlar">
+        @foreach (var grup in Bolumler.GroupBy(b => b.Grup))
+        {
+            <div class="ayarlar-menu-grubu">@grup.Key</div>
+            @foreach (var b in grup)
+            {
+                <a href="@b.Adres" class="ayarlar-menu-ogesi @(b.Yol == SeciliYol ? "secili" : "")" aria-current="@(b.Yol == SeciliYol ? "page" : null)">
+                    <MudIcon Icon="@b.Ikon" Size="Size.Small" />
+                    <span>@b.Ad</span>
+                </a>
+            }
+        }
+    </nav>
+    <div class="ayarlar-icerik">@ChildContent</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string SeciliYol { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private IEnumerable<AyarBolumu> Bolumler => AyarBolumleri.Erisilebilir(Oturum);
+}

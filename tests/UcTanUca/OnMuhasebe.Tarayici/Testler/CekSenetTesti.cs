@@ -150,7 +150,7 @@ internal sealed class CekSenetTesti : TarayiciTesti
         await Git($"/cari/{musteri}");
         Kontrol(await Bekle($"{Govde("Çek/senet al")} && !!document.querySelector('.cek-riski') && {Govde("Portföyde")}", 15), "Cari kartinda cek riski ve cek/senet al");
 
-        await Git("/ayarlar");
+        await Git("/ayarlar/cek-senet");
         Kontrol(await Bekle($"{Govde("Çekte keşideci VKN/TCKN zorunlu")} && {Govde("Uyar ve onay iste")}"), "Ayarlarda cek/senet bolumu");
     }
 }

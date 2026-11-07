@@ -10,11 +10,10 @@ public static class SayfaYetkileri
     {
         ["kullanicilar"] = YonetimYetkileri.Kullanici.Yetki(YetkiIslemleri.Goruntule),
         ["roller"] = YonetimYetkileri.Kullanici.Yetki(YetkiIslemleri.Goruntule),
-        ["abonelik"] = YonetimYetkileri.Abonelik.Yetki(YetkiIslemleri.Goruntule),
-        ["ayarlar"] = YonetimYetkileri.Firma.Yetki(YetkiIslemleri.Duzenle)
+        ["abonelik"] = YonetimYetkileri.Abonelik.Yetki(YetkiIslemleri.Goruntule)
     };
 
-    // Ana sayfadaki modül özet panelleri modülün rapor yetkisini ister.
+    // Analiz sekmelerindeki modül özet panelleri modülün rapor yetkisini ister. Ayarlar her bölümü kendisi denetler (AyarBolumleri).
     public static IReadOnlyDictionary<string, string> OzetPaneli { get; } = new Dictionary<string, string>
     {
         [ModulKodlari.Cari] = "cari.rapor.goruntule",

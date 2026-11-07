@@ -98,7 +98,7 @@ internal sealed class EkstreTesti : TarayiciTesti
         await Bekle(Govde("satır okundu"), 15);
         Kontrol(await Bekle($"{Govde("Daha önce aktarılan")} && {Govde("Onayla ve aktar")}"), "Tekrar yukleme: kayitli sablonla esleme atlandi, satirlar daha once aktarildi");
 
-        await Git("/ayarlar");
+        await Git("/ayarlar/ekstre-kurallari");
         Kontrol(await Bekle($"{Govde("Ekstre eşleştirme kuralları")} && {Govde("ENERJISA")} && {Govde("1 kez")}"), "Ayarlarda ogrenilen kural ve kullanim sayisi");
         await Tikla("Kural ekle");
         await Bekle("!!document.querySelector('.mud-dialog')");
