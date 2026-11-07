@@ -143,7 +143,7 @@ istek GET /api/kasabanka/raporlar/ozet "$T"
 kontrol 200 "Ozette kredi karti borcu 300" '"krediKartiBorcuTl":300'
 istek GET /api/kasabanka/raporlar/finansal-durum "$T"
 kontrol 200 "Finansal durum: mini bilanco, 5 vade kovasi ve 12 ay" '"bilanco":{"kasaBankaTl":.*"vadeKovalari":\[{.*}.*"aylar":\[{"yil":[0-9]*,"ay":[0-9]*'
-kontrol 200 "Finansal durumda kredi karti borcu yukumluluk olarak 300" '"krediKartiBorcuTl":300\(\.0*\)\?,'
+kontrol 200 "Finansal durumda kredi karti borcu yukumluluk olarak 300" '"krediKartiBorcuTl":300(\.0+)?,'
 istek POST /api/kasabanka/islemler/virman "$T" '{"kaynakHesapId":"'"$BANKA"'","hedefHesapId":"'"$KART"'","tarih":"2026-10-17","tutar":300}'
 bakiye "$KART" "Kart ekstresi bankadan odendi: 0" 0
 istek POST /api/kasabanka/islemler/tahsilat "$T" '{"hesapId":"'"$POS"'","cariHesapId":"'"$C1"'","tarih":"2026-10-17","tutar":1000}'
