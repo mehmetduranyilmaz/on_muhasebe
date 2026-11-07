@@ -1,0 +1,190 @@
+@page "/fatura/urun-toplamlari"
+@inject IsyeriYoneticisi Isyerleri
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Ürün Alış-Satış Toplamları" AltBaslik="Ürün ve hizmet bazında miktar, tutar ve KDV; iadeler düşülmüş" GeriAdres="fatura" Ikon="@Icons.Material.Filled.Inventory2">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<FiltreCubugu>
+    <MudItem xs="12" md="5" Class="d-flex gap-1 flex-wrap align-center">
+        @foreach (var (etiket, bas, son) in Hazirlar)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="@(Bicim.Gun(_baslangic) == bas && Bicim.Gun(_bitis) == son ? Variant.Filled : Variant.Outlined)"
+                     OnClick="() => DonemAsync(bas, son)">@etiket</MudChip>
+        }
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" Date="_baslangic" DateChanged="d => DonemAsync(Bicim.Gun(d), Bicim.Gun(_bitis))" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" Date="_bitis" DateChanged="d => DonemAsync(Bicim.Gun(_baslangic), Bicim.Gun(d))" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="12" md="3">
+        <MudTextField T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_arama" Immediate="true" DebounceInterval="200" Clearable="true"
+                      Placeholder="Ürün adı veya kodu" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    </MudItem>
+</FiltreCubugu>
+
+@if (_rapor is { } r)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Ürün Alış-Satış Toplamları · @Bicim.Tarih(r.Baslangic) – @Bicim.Tarih(r.Bitis)</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Net satış" Deger="r.SatisMatrahTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.PointOfSale" Renk="#14B8A6" Sira="0" AltMetin="KDV hariç" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Net alış" Deger="r.AlisMatrahTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.ShoppingCart" Renk="#F59E0B" Sira="1" AltMetin="KDV hariç, giderler dahil" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Satılan kalem" Deger="r.Satirlar.Count(s => s.SatisMatrahTl != 0)" Bicimle="@(d => d.ToString("N0"))" Ikon="@Icons.Material.Filled.Sell" Renk="#3B82F6" Sira="2" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Alınan kalem" Deger="r.Satirlar.Count(s => s.AlisMatrahTl != 0)" Bicimle="@(d => d.ToString("N0"))" Ikon="@Icons.Material.Filled.Inventory" Renk="#8B5CF6" Sira="3" />
+        </MudItem>
+    </MudGrid>
+
+    <VeriTablosu T="UrunToplamSatiri" Kayitlar="Gorunenler" Dense="true" SatirTiklandi="Ac"
+                 ExcelAdi="@($"Ürün toplamları {Bicim.Tarih(r.Baslangic)}-{Bicim.Tarih(r.Bitis)}")" ExcelKolonlari="_excelKolonlari"
+                 BosIkon="@Icons.Material.Outlined.Inventory2" BosBaslik="@(string.IsNullOrWhiteSpace(_arama) ? "Bu dönemde onaylı fatura yok" : "Aramaya uyan ürün yok")">
+        <Basliklar>
+            <MudTh>Ürün / hizmet</MudTh>
+            <MudTh Class="sayi">Satış miktarı</MudTh>
+            <MudTh Class="sayi">Satış tutarı</MudTh>
+            <MudTh Class="sayi">Satış KDV</MudTh>
+            <MudTh Class="sayi">Alış miktarı</MudTh>
+            <MudTh Class="sayi">Alış tutarı</MudTh>
+            <MudTh Class="sayi">Alış KDV</MudTh>
+        </Basliklar>
+        <Satir>
+            <MudTd DataLabel="Ürün / hizmet">
+                <b>@context.Ad</b>
+                <span class="mobil-alt-bilgi">@(context.StokKodu ?? "Kartsız (serbest) satır")</span>
+            </MudTd>
+            <MudTd DataLabel="Satış miktarı" Class="sayi">@Miktar(context.SatisMiktari, context.Birim)</MudTd>
+            <MudTd DataLabel="Satış tutarı" Class="sayi">
+                <b>@Tutar(context.SatisMatrahTl)</b>
+                @if (context.SatisIskontoTl != 0)
+                {
+                    <span class="mobil-alt-bilgi">iskonto @Tl(context.SatisIskontoTl)</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Satış KDV" Class="sayi">@Tutar(context.SatisKdvTl)</MudTd>
+            <MudTd DataLabel="Alış miktarı" Class="sayi">@Miktar(context.AlisMiktari, context.Birim)</MudTd>
+            <MudTd DataLabel="Alış tutarı" Class="sayi">
+                <b>@Tutar(context.AlisMatrahTl)</b>
+                @if (context.AlisIskontoTl != 0)
+                {
+                    <span class="mobil-alt-bilgi">iskonto @Tl(context.AlisIskontoTl)</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Alış KDV" Class="sayi">@Tutar(context.AlisKdvTl)</MudTd>
+        </Satir>
+    </VeriTablosu>
+    <div class="ozet-alt mt-2">
+        Miktarlar ürün kartının temel biriminde (koli ile kesilen satır adete çevrilir). Satış: satış − satıştan iade; alış: alış, serbest meslek makbuzu
+        ve gider pusulası − alıştan iade. Kartsız satırlar aynı adla toplanır.
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly IReadOnlyList<ExcelKolonu<UrunToplamSatiri>> _excelKolonlari =
+    [
+        new("Stok kodu", s => s.StokKodu, 14),
+        new("Ürün / hizmet", s => s.Ad, 40),
+        new("Birim", s => s.Birim, 10),
+        new("Satış miktarı", s => s.SatisMiktari, 14),
+        new("Satış iskontosu (TL)", s => s.SatisIskontoTl, 16),
+        new("Satış tutarı (TL)", s => s.SatisMatrahTl, 16),
+        new("Satış KDV (TL)", s => s.SatisKdvTl, 16),
+        new("Alış miktarı", s => s.AlisMiktari, 14),
+        new("Alış iskontosu (TL)", s => s.AlisIskontoTl, 16),
+        new("Alış tutarı (TL)", s => s.AlisMatrahTl, 16),
+        new("Alış KDV (TL)", s => s.AlisKdvTl, 16)
+    ];
+
+    private static readonly System.Globalization.CultureInfo _tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private string? _arama;
+    private UrunToplamlariRaporu? _rapor;
+    private ApiHatasi? _hata;
+
+    private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+
+    // Arama ekrandaki listeyi daraltır; Excel'e de daraltılmış liste gider.
+    private IReadOnlyList<UrunToplamSatiri>? Gorunenler => string.IsNullOrWhiteSpace(_arama) || _rapor is null
+        ? _rapor?.Satirlar
+        : _rapor.Satirlar.Where(s => Iceriyor(s.Ad, _arama) || (s.StokKodu is { } kod && Iceriyor(kod, _arama))).ToList();
+
+    private static bool Iceriyor(string metin, string arama) =>
+        _tr.CompareInfo.IndexOf(metin, arama.Trim(), System.Globalization.CompareOptions.IgnoreCase) >= 0;
+
+    private IEnumerable<(string, DateOnly, DateOnly)> Hazirlar
+    {
+        get
+        {
+            var ayBasi = new DateOnly(Bugun.Year, Bugun.Month, 1);
+            yield return ("Bu ay", ayBasi, Bugun);
+            yield return ("Geçen ay", ayBasi.AddMonths(-1), ayBasi.AddDays(-1));
+            yield return ("Son 3 ay", ayBasi.AddMonths(-2), Bugun);
+            yield return ("Bu yıl", new DateOnly(Bugun.Year, 1, 1), Bugun);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        (_baslangic, _bitis) = (Bicim.Takvim(new DateOnly(Bugun.Year, Bugun.Month, 1)), Bicim.Takvim(Bugun));
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        if (Bicim.Gun(_baslangic) is not { } bas || Bicim.Gun(_bitis) is not { } son)
+        {
+            return;
+        }
+
+        _rapor = null;
+        var sonuc = await Api.GetAsync<UrunToplamlariRaporu>($"api/fatura/raporlar/urun-toplamlari?baslangic={Bicim.Iso(bas)}&bitis={Bicim.Iso(son)}{Isyerleri.Sorgu()}");
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task DonemAsync(DateOnly? bas, DateOnly? son)
+    {
+        (_baslangic, _bitis) = (Bicim.Takvim(bas), Bicim.Takvim(son));
+        await YukleAsync();
+    }
+
+    private void Ac(UrunToplamSatiri s)
+    {
+        if (s.StokKartiId is { } id && Oturum.ModulAcikMi(ModulKodlari.Stok))
+        {
+            Navigasyon.NavigateTo($"stok/{id}");
+        }
+    }
+
+    private static string Miktar(decimal miktar, string? birim) => miktar == 0 ? "" : birim is null ? "—" : Bicim.Miktar(miktar, birim);
+
+    private static string Tutar(decimal d) => d == 0 ? "" : Tl(d);
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+}

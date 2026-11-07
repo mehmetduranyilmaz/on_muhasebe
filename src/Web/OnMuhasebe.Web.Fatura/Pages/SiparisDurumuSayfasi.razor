@@ -1,0 +1,217 @@
+@page "/siparis/durum-ozeti"
+@inject IsyeriYoneticisi Isyerleri
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Sipariş Durum Özeti" AltBaslik="Karşılama (sevk), faturalama ve ödeme durumu; termini geçenler işaretli" GeriAdres="siparis" Ikon="@Icons.Material.Filled.ShoppingBag">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme yazdirma-gizle">
+    @foreach (var (etiket, tur, ikon, renk) in _turler)
+    {
+        <button type="button" class="tur-sekmesi @(_tur == tur ? "secili" : "")" style="--vurgu:@renk" @onclick="() => FiltreAsync(() => _tur = tur)">
+            <MudIcon Icon="@ikon" Size="Size.Small" /> @etiket
+        </button>
+    }
+</div>
+
+<FiltreCubugu>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" Date="_baslangic" DateChanged="d => FiltreAsync(() => _baslangic = d)" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" Date="_bitis" DateChanged="d => FiltreAsync(() => _bitis = d)" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudSelect T="TeklifSiparisDurumu?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Sipariş durumu" Value="_durum" Clearable="true"
+                   ValueChanged="d => FiltreAsync(() => _durum = d)" Placeholder="Açık ve kapatılmış">
+            <MudSelectItem T="TeklifSiparisDurumu?" Value="TeklifSiparisDurumu.Acik">Açık</MudSelectItem>
+            <MudSelectItem T="TeklifSiparisDurumu?" Value="TeklifSiparisDurumu.Kapatildi">Kapatıldı</MudSelectItem>
+            <MudSelectItem T="TeklifSiparisDurumu?" Value="TeklifSiparisDurumu.Taslak">Taslak</MudSelectItem>
+            <MudSelectItem T="TeklifSiparisDurumu?" Value="TeklifSiparisDurumu.Iptal">İptal</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="6" md="3">
+        <MudSelect T="SiparisOdemeDurumu?" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Ödeme durumu" Value="_odeme" Clearable="true"
+                   ValueChanged="o => FiltreAsync(() => _odeme = o)" Placeholder="Tümü">
+            @foreach (var o in Enum.GetValues<SiparisOdemeDurumu>())
+            {
+                <MudSelectItem T="SiparisOdemeDurumu?" Value="o">@OdemeMetni(o)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" md="2" Class="d-flex align-center">
+        <MudSwitch T="bool" @bind-Value="_yalnizGeciken" Color="Color.Error" Label="Termini geçenler" />
+    </MudItem>
+</FiltreCubugu>
+
+@if (_rapor is { } r)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">Sipariş Durum Özeti · @Bicim.Tarih(r.Baslangic) – @Bicim.Tarih(r.Bitis)</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Sipariş" Deger="r.SiparisSayisi" Bicimle="@(d => d.ToString("N0"))" Ikon="@Icons.Material.Filled.ShoppingBag" Renk="#3B82F6" Sira="0"
+                       AltMetin="@($"{r.Satirlar.Count(s => s.Karsilama == KarsilamaDurumu.Tamamlandi)} tamamı karşılandı")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Termini geçen" Deger="r.GecikenSayisi" Bicimle="@(d => d.ToString("N0"))" Ikon="@Icons.Material.Filled.AlarmOn"
+                       Renk="@(r.GecikenSayisi > 0 ? "#DC2626" : "#16A34A")" Sira="1" AltMetin="Açık ve tam karşılanmamış" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Faturalanan" Deger="r.FaturalananTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.ReceiptLong" Renk="#14B8A6" Sira="2" AltMetin="Siparişe bağlı fatura satırları" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Ödenmemiş" Deger="r.KalanTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.HourglassBottom" Renk="#F59E0B" Sira="3" AltMetin="Faturaların açık kalanı" />
+        </MudItem>
+    </MudGrid>
+
+    <VeriTablosu T="SiparisDurumSatiri" Kayitlar="Gorunenler" Dense="true" SatirTiklandi="@(s => Navigasyon.NavigateTo($"siparis/{s.Id}"))"
+                 ExcelAdi="@($"Sipariş durumu {Bicim.Tarih(r.Baslangic)}-{Bicim.Tarih(r.Bitis)}")" ExcelKolonlari="_excelKolonlari"
+                 BosIkon="@Icons.Material.Outlined.ShoppingBag" BosBaslik="Filtreye uyan sipariş yok">
+        <Basliklar>
+            <MudTh>Sipariş</MudTh>
+            <MudTh>Cari</MudTh>
+            <MudTh>Termin</MudTh>
+            <MudTh>Karşılama</MudTh>
+            <MudTh Class="sayi">Tutar</MudTh>
+            <MudTh Class="sayi">Faturalanan</MudTh>
+            <MudTh>Ödeme</MudTh>
+        </Basliklar>
+        <Satir>
+            <MudTd DataLabel="Sipariş">
+                <b>@(context.Numara ?? "—")</b>
+                <span class="mobil-alt-bilgi">@Bicim.Tarih(context.Tarih) · @(context.Tur == TeklifSiparisTuru.SatisSiparisi ? "Müşteri" : "Satınalma")</span>
+            </MudTd>
+            <MudTd DataLabel="Cari">@context.CariUnvan</MudTd>
+            <MudTd DataLabel="Termin">
+                @(context.TerminTarihi is { } t ? Bicim.Tarih(t) : "")
+                @if (context.GecikmeGun is { } g)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">@g gün gecikti</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Karşılama" Style="min-width:140px">
+                <MudProgressLinear Value="(double)context.KarsilamaYuzde" Color="@(context.KarsilamaYuzde >= 100 ? Color.Success : Color.Info)" Rounded="true" Size="Size.Small" />
+                <span class="mobil-alt-bilgi">%@context.KarsilamaYuzde.ToString("0.#")@(context.Durum == TeklifSiparisDurumu.Kapatildi ? " · kapatıldı" : "")</span>
+            </MudTd>
+            <MudTd DataLabel="Tutar" Class="sayi">@Bicim.Tutar(context.GenelToplam, context.ParaBirimi)</MudTd>
+            <MudTd DataLabel="Faturalanan" Class="sayi">
+                @(context.FaturalananTl == 0 ? "" : Tl(context.FaturalananTl))
+                @if (context.KalanTl > 0)
+                {
+                    <span class="mobil-alt-bilgi">kalan @Tl(context.KalanTl)</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Ödeme">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@OdemeRengi(context.OdemeDurumu)">@OdemeMetni(context.OdemeDurumu)</MudChip>
+            </MudTd>
+        </Satir>
+    </VeriTablosu>
+    <div class="ozet-alt mt-2">
+        Faturalanan tutar siparişe bağlı onaylı fatura satırlarından (irsaliyeli ya da doğrudan) gelir. Ödeme durumu bu faturaların cari hesaptaki
+        açık kalanına göredir; bir fatura birden çok siparişi karşılıyorsa kalan, satır tutarı oranında paylaştırılır. Taslak ve iptal siparişler
+        yalnızca durum filtresiyle seçilince görünür.
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly (string Etiket, TeklifSiparisTuru? Tur, string Ikon, string Renk)[] _turler =
+    [
+        ("Tümü", null, Icons.Material.Filled.AllInbox, "#64748B"),
+        ("Müşteri siparişleri", TeklifSiparisTuru.SatisSiparisi, Icons.Material.Filled.ShoppingBag, "#14B8A6"),
+        ("Satınalma siparişleri", TeklifSiparisTuru.SatinalmaSiparisi, Icons.Material.Filled.AddShoppingCart, "#F59E0B")
+    ];
+
+    private static readonly IReadOnlyList<ExcelKolonu<SiparisDurumSatiri>> _excelKolonlari =
+    [
+        new("Tarih", s => s.Tarih, 12),
+        new("Sipariş No", s => s.Numara, 18),
+        new("Tür", s => s.Tur == TeklifSiparisTuru.SatisSiparisi ? "Müşteri siparişi" : "Satınalma siparişi", 18),
+        new("Cari", s => s.CariUnvan, 40),
+        new("Durum", s => TeklifSiparisMetinleri.Durum(s.Durum, false, false), 12),
+        new("Termin", s => s.TerminTarihi, 12),
+        new("Gecikme (gün)", s => s.GecikmeGun, 12),
+        new("Karşılama", s => s.Karsilama is { } k ? TeklifSiparisMetinleri.Karsilama(k) : null, 12),
+        new("Karşılama %", s => s.KarsilamaYuzde, 12),
+        new("Para birimi", s => s.ParaBirimi, 10),
+        new("Tutar", s => s.GenelToplam, 16),
+        new("Faturalanan (TL)", s => s.FaturalananTl, 16),
+        new("Ödenmemiş (TL)", s => s.KalanTl, 16),
+        new("Ödeme durumu", s => OdemeMetni(s.OdemeDurumu), 16)
+    ];
+
+    private TeklifSiparisTuru? _tur;
+    private TeklifSiparisDurumu? _durum;
+    private SiparisOdemeDurumu? _odeme;
+    private bool _yalnizGeciken;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private SiparisDurumRaporu? _rapor;
+    private ApiHatasi? _hata;
+
+    private IReadOnlyList<SiparisDurumSatiri>? Gorunenler => _yalnizGeciken ? _rapor?.Satirlar.Where(s => s.GecikmeGun is not null).ToList() : _rapor?.Satirlar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var bugun = DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+        (_baslangic, _bitis) = (Bicim.Takvim(new DateOnly(bugun.Year, 1, 1)), Bicim.Takvim(bugun));
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        if (Bicim.Gun(_baslangic) is not { } bas || Bicim.Gun(_bitis) is not { } son)
+        {
+            return;
+        }
+
+        _rapor = null;
+        var adres = $"api/fatura/raporlar/siparis-durumu?baslangic={Bicim.Iso(bas)}&bitis={Bicim.Iso(son)}{Isyerleri.Sorgu()}"
+                    + (_tur is { } t ? $"&tur={t}" : "")
+                    + (_durum is { } d ? $"&durum={d}" : "")
+                    + (_odeme is { } o ? $"&odeme={o}" : "");
+        var sonuc = await Api.GetAsync<SiparisDurumRaporu>(adres);
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task FiltreAsync(Action degistir)
+    {
+        degistir();
+        await YukleAsync();
+    }
+
+    private static string OdemeMetni(SiparisOdemeDurumu o) => o switch
+    {
+        SiparisOdemeDurumu.Faturalanmadi => "Faturalanmadı",
+        SiparisOdemeDurumu.Odenmedi => "Ödenmedi",
+        SiparisOdemeDurumu.KismenOdendi => "Kısmen ödendi",
+        _ => "Ödendi"
+    };
+
+    private static Color OdemeRengi(SiparisOdemeDurumu o) => o switch
+    {
+        SiparisOdemeDurumu.Faturalanmadi => Color.Default,
+        SiparisOdemeDurumu.Odenmedi => Color.Error,
+        SiparisOdemeDurumu.KismenOdendi => Color.Warning,
+        _ => Color.Success
+    };
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+}

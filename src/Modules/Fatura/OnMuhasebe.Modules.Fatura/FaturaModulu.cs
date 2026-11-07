@@ -63,5 +63,6 @@ public sealed class FaturaModulu : IModul
         BelgeOkumaIslemleri.Map(grup);
         FaturaAyarIslemleri.Map(grup);
         FaturaRaporlari.Map(grup);
+        TicariRaporIslemleri.Map(grup);
     }
 }

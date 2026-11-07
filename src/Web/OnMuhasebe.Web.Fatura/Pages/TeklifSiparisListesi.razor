@@ -9,6 +9,10 @@
               AltBaslik="@(_teklifMi ? "Satış teklifleri: geçerlilik, kabul/red ve siparişe dönüşüm" : "Müşteri ve satınalma siparişleri, termin ve karşılama")"
               Ikon="@(_teklifMi ? Icons.Material.Filled.RequestPage : Icons.Material.Filled.ShoppingBag)">
     <Islemler>
+        @if (!_teklifMi && Oturum.YetkiVarMi(FaturaYetkileri.Rapor, YetkiIslemleri.Goruntule))
+        {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Assessment" Href="siparis/durum-ozeti">Durum özeti</MudButton>
+        }
         @if (Oturum.YazabilirMi(FaturaYetkileri.Teklif, YetkiIslemleri.Ekle))
         {
             @if (_teklifMi)

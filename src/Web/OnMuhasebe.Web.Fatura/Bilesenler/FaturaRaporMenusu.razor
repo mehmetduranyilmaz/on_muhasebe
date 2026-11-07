@@ -1,0 +1,45 @@
+@* Satış/alış raporları tek menüde; her madde kendi yetkisiyle görünür. *@
+@inject OturumYoneticisi Oturum
+
+@if (Raporlar.Any())
+{
+    <MudMenu StartIcon="@Icons.Material.Filled.Assessment" EndIcon="@Icons.Material.Filled.KeyboardArrowDown" Label="Raporlar"
+             Variant="Variant.Outlined" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+        @foreach (var (ad, aciklama, yol, ikon) in Raporlar)
+        {
+            <MudMenuItem Href="@yol" Icon="@ikon">
+                <div>@ad</div>
+                <div class="ozet-alt">@aciklama</div>
+            </MudMenuItem>
+        }
+    </MudMenu>
+}
+
+@code {
+    private IEnumerable<(string Ad, string Aciklama, string Yol, string Ikon)> Raporlar
+    {
+        get
+        {
+            if (Oturum.YetkiVarMi(FaturaYetkileri.Rapor, YetkiIslemleri.Goruntule))
+            {
+                yield return ("Satış / alış özeti", "Cari, ay ya da fatura bazında; iadeler düşülmüş", "fatura/satis-alis-ozeti", Icons.Material.Filled.Summarize);
+                yield return ("Ürün alış-satış toplamları", "Ürün bazında miktar, tutar ve KDV", "fatura/urun-toplamlari", Icons.Material.Filled.Inventory2);
+                if (Oturum.YetkiVarMi(FaturaYetkileri.Teklif, YetkiIslemleri.Goruntule))
+                {
+                    yield return ("Sipariş durum özeti", "Karşılama, faturalama ve ödeme durumu", "siparis/durum-ozeti", Icons.Material.Filled.ShoppingBag);
+                }
+            }
+
+            if (Oturum.YetkiVarMi(StokYetkileri.Maliyet, YetkiIslemleri.Goruntule))
+            {
+                yield return ("Brüt kârlılık", "Net satış, maliyet ve marj", "fatura/karlilik", Icons.Material.Filled.TrendingUp);
+            }
+
+            if (Oturum.YetkiVarMi(FaturaYetkileri.Rapor, YetkiIslemleri.Goruntule))
+            {
+                yield return ("KDV özeti", "KDV1, KDV2 ve muhtasar hazırlığı", "fatura/kdv-ozeti", Icons.Material.Filled.AccountBalance);
+                yield return ("Ba / Bs", "Mal ve hizmet alış/satış bildirim formları", "fatura/ba-bs", Icons.Material.Filled.FactCheck);
+            }
+        }
+    }
+}

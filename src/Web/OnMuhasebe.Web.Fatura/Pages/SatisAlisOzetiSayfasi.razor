@@ -1,0 +1,228 @@
+@page "/fatura/satis-alis-ozeti"
+@inject IsyeriYoneticisi Isyerleri
+@inject ApiIstemcisi Api
+@inject NavigationManager Navigasyon
+@inject IJSRuntime Js
+@inject TimeProvider Zaman
+@inject OturumYoneticisi Oturum
+
+<SayfaBasligi Baslik="Satış / Alış Özeti" AltBaslik="Onaylı faturalar; iadeler düşülmüş, dövizli faturalar fatura kuruyla TL" GeriAdres="fatura" Ikon="@Icons.Material.Filled.Summarize">
+    <Islemler>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" Disabled="_rapor is null" OnClick="@(async () => await Js.InvokeVoidAsync("print"))">Yazdır</MudButton>
+    </Islemler>
+</SayfaBasligi>
+
+<HataGosterimi Hata="_hata" />
+
+<div class="tur-sekmeleri belirme yazdirma-gizle">
+    <button type="button" class="tur-sekmesi @(_taraf == TicariTaraf.Satis ? "secili" : "")" style="--vurgu:#14B8A6" @onclick="() => TarafAsync(TicariTaraf.Satis)">
+        <MudIcon Icon="@Icons.Material.Filled.PointOfSale" Size="Size.Small" /> Satışlar
+    </button>
+    <button type="button" class="tur-sekmesi @(_taraf == TicariTaraf.Alis ? "secili" : "")" style="--vurgu:#F59E0B" @onclick="() => TarafAsync(TicariTaraf.Alis)">
+        <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Small" /> Alışlar ve giderler
+    </button>
+</div>
+
+<FiltreCubugu>
+    <MudItem xs="12" md="5" Class="d-flex gap-1 flex-wrap align-center">
+        @foreach (var (etiket, bas, son) in Hazirlar)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="@(Bicim.Gun(_baslangic) == bas && Bicim.Gun(_bitis) == son ? Variant.Filled : Variant.Outlined)"
+                     OnClick="() => DonemAsync(bas, son)">@etiket</MudChip>
+        }
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Başlangıç" Date="_baslangic" DateChanged="d => DonemAsync(Bicim.Gun(d), Bicim.Gun(_bitis))" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="6" md="2">
+        <MudDatePicker Variant="Variant.Outlined" Margin="Margin.Dense" Label="Bitiş" Date="_bitis" DateChanged="d => DonemAsync(Bicim.Gun(_baslangic), Bicim.Gun(d))" DateFormat="dd.MM.yyyy" />
+    </MudItem>
+    <MudItem xs="12" md="3">
+        <MudSelect T="FaturaOzetKirilimi" Variant="Variant.Outlined" Margin="Margin.Dense" Label="Kırılım" Value="_kirilim" ValueChanged="KirilimAsync">
+            <MudSelectItem Value="FaturaOzetKirilimi.Cari">Cari bazında</MudSelectItem>
+            <MudSelectItem Value="FaturaOzetKirilimi.Ay">Ay bazında</MudSelectItem>
+            <MudSelectItem Value="FaturaOzetKirilimi.Fatura">Fatura bazında</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+</FiltreCubugu>
+
+@if (_rapor is { } r)
+{
+    <div class="mb-3 sadece-yazdir">
+        <MudText Typo="Typo.subtitle2">@Oturum.Bilgi?.AktifFirma?.Unvan</MudText>
+        <MudText Typo="Typo.h6">@(SatisMi ? "Satış" : "Alış") Özeti · @Bicim.Tarih(r.Baslangic) – @Bicim.Tarih(r.Bitis)</MudText>
+    </div>
+
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Fatura" Deger="r.Toplam.FaturaSayisi" Bicimle="@(d => d.ToString("N0"))" Ikon="@Icons.Material.Filled.ReceiptLong" Renk="#3B82F6" Sira="0"
+                       AltMetin="@(r.Toplam.IadeSayisi > 0 ? $"{r.Toplam.IadeSayisi} iade faturası düşüldü" : "İade yok")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Matrah" Deger="r.Toplam.MatrahTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Functions" Renk="@Vurgu" Sira="1"
+                       AltMetin="@($"İskonto {Tl(r.Toplam.IskontoTl)}")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="KDV" Deger="r.Toplam.KdvTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Percent" Renk="#8B5CF6" Sira="2"
+                       AltMetin="@(r.Toplam.TevkifatTl != 0 ? $"Tevkifat {Tl(r.Toplam.TevkifatTl)}" : SatisMi ? "Hesaplanan" : "İndirilecek")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Genel toplam" Deger="r.Toplam.GenelToplamTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Payments" Renk="#16A34A" Sira="3" AltMetin="KDV dahil" />
+        </MudItem>
+    </MudGrid>
+
+    <VeriTablosu T="FaturaOzetSatiri" Kayitlar="r.Satirlar" Dense="true" SatirTiklandi="Ac"
+                 ExcelAdi="@($"{(SatisMi ? "Satış" : "Alış")} özeti {Bicim.Tarih(r.Baslangic)}-{Bicim.Tarih(r.Bitis)}")" ExcelKolonlari="ExcelKolonlari"
+                 BosIkon="@Icons.Material.Outlined.Summarize" BosBaslik="@($"Bu dönemde onaylı {(SatisMi ? "satış" : "alış")} faturası yok")">
+        <Basliklar>
+            <MudTh>@KirilimBasligi</MudTh>
+            <MudTh Class="sayi">Fatura</MudTh>
+            <MudTh Class="sayi">Brüt</MudTh>
+            <MudTh Class="sayi">İskonto</MudTh>
+            <MudTh Class="sayi">Matrah</MudTh>
+            <MudTh Class="sayi">KDV</MudTh>
+            <MudTh Class="sayi">Genel toplam</MudTh>
+        </Basliklar>
+        <Satir>
+            <MudTd DataLabel="@KirilimBasligi">
+                <b>@context.Anahtar</b>
+                @if (context.Ek is not null)
+                {
+                    <span class="mobil-alt-bilgi">@context.Ek</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Fatura" Class="sayi">
+                @context.FaturaSayisi
+                @if (context.IadeSayisi > 0)
+                {
+                    <span class="mobil-alt-bilgi">@context.IadeSayisi iade</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Brüt" Class="sayi">@Tl(context.BrutTl)</MudTd>
+            <MudTd DataLabel="İskonto" Class="sayi">@(context.IskontoTl == 0 ? "" : Tl(context.IskontoTl))</MudTd>
+            <MudTd DataLabel="Matrah" Class="sayi"><b>@Tl(context.MatrahTl)</b></MudTd>
+            <MudTd DataLabel="KDV" Class="sayi">
+                @Tl(context.KdvTl)
+                @if (context.TevkifatTl != 0)
+                {
+                    <span class="mobil-alt-bilgi">tevkifat −@Tl(context.TevkifatTl)</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Genel toplam" Class="sayi">@Tl(context.GenelToplamTl)</MudTd>
+        </Satir>
+        <AltBilgi>
+            <MudTd><b>Toplam</b></MudTd>
+            <MudTd Class="sayi"><b>@r.Toplam.FaturaSayisi</b></MudTd>
+            <MudTd Class="sayi"><b>@Tl(r.Toplam.BrutTl)</b></MudTd>
+            <MudTd Class="sayi"><b>@Tl(r.Toplam.IskontoTl)</b></MudTd>
+            <MudTd Class="sayi"><b>@Tl(r.Toplam.MatrahTl)</b></MudTd>
+            <MudTd Class="sayi"><b>@Tl(r.Toplam.KdvTl)</b></MudTd>
+            <MudTd Class="sayi"><b>@Tl(r.Toplam.GenelToplamTl)</b></MudTd>
+        </AltBilgi>
+    </VeriTablosu>
+    <div class="ozet-alt mt-2">
+        @(SatisMi
+            ? "Satış faturaları; satıştan iade faturaları eksi olarak düşülmüştür."
+            : "Alış faturaları, serbest meslek makbuzları ve gider pusulaları; alıştan iade faturaları eksi olarak düşülmüştür.")
+    </div>
+}
+else if (_hata is null)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="rounded-lg" />
+}
+
+@code {
+    private static readonly IReadOnlyList<ExcelKolonu<FaturaOzetSatiri>> _tutarKolonlari =
+    [
+        new("Fatura", s => s.FaturaSayisi, 10),
+        new("İade", s => s.IadeSayisi, 8),
+        new("Brüt (TL)", s => s.BrutTl, 16),
+        new("İskonto (TL)", s => s.IskontoTl, 16),
+        new("Matrah (TL)", s => s.MatrahTl, 16),
+        new("KDV (TL)", s => s.KdvTl, 16),
+        new("Tevkifat (TL)", s => s.TevkifatTl, 16),
+        new("Genel toplam (TL)", s => s.GenelToplamTl, 18)
+    ];
+
+    private IReadOnlyList<ExcelKolonu<FaturaOzetSatiri>> ExcelKolonlari => _kirilim == FaturaOzetKirilimi.Fatura
+        ? [new("Fatura No", s => s.Anahtar, 18), new("Cari", s => s.Ek, 40), .. _tutarKolonlari]
+        : [new(KirilimBasligi, s => s.Anahtar, 40), .. _tutarKolonlari];
+
+    private TicariTaraf _taraf = TicariTaraf.Satis;
+    private FaturaOzetKirilimi _kirilim = FaturaOzetKirilimi.Cari;
+    private DateTime? _baslangic;
+    private DateTime? _bitis;
+    private SatisAlisOzetRaporu? _rapor;
+    private ApiHatasi? _hata;
+
+    private bool SatisMi => _taraf == TicariTaraf.Satis;
+    private string Vurgu => SatisMi ? "#14B8A6" : "#F59E0B";
+    private DateOnly Bugun => DateOnly.FromDateTime(Zaman.GetLocalNow().Date);
+
+    private string KirilimBasligi => _kirilim switch
+    {
+        FaturaOzetKirilimi.Cari => SatisMi ? "Müşteri" : "Tedarikçi",
+        FaturaOzetKirilimi.Ay => "Ay",
+        _ => "Fatura"
+    };
+
+    private IEnumerable<(string, DateOnly, DateOnly)> Hazirlar
+    {
+        get
+        {
+            var ayBasi = new DateOnly(Bugun.Year, Bugun.Month, 1);
+            yield return ("Bu ay", ayBasi, Bugun);
+            yield return ("Geçen ay", ayBasi.AddMonths(-1), ayBasi.AddDays(-1));
+            yield return ("Son 3 ay", ayBasi.AddMonths(-2), Bugun);
+            yield return ("Bu yıl", new DateOnly(Bugun.Year, 1, 1), Bugun);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        (_baslangic, _bitis) = (Bicim.Takvim(new DateOnly(Bugun.Year, Bugun.Month, 1)), Bicim.Takvim(Bugun));
+        await YukleAsync();
+    }
+
+    private async Task YukleAsync()
+    {
+        if (Bicim.Gun(_baslangic) is not { } bas || Bicim.Gun(_bitis) is not { } son)
+        {
+            return;
+        }
+
+        _rapor = null;
+        var sonuc = await Api.GetAsync<SatisAlisOzetRaporu>(
+            $"api/fatura/raporlar/fatura-ozeti?baslangic={Bicim.Iso(bas)}&bitis={Bicim.Iso(son)}&taraf={_taraf}&kirilim={_kirilim}{Isyerleri.Sorgu()}");
+        _hata = sonuc.Hata;
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task TarafAsync(TicariTaraf taraf)
+    {
+        _taraf = taraf;
+        await YukleAsync();
+    }
+
+    private async Task KirilimAsync(FaturaOzetKirilimi kirilim)
+    {
+        _kirilim = kirilim;
+        await YukleAsync();
+    }
+
+    private async Task DonemAsync(DateOnly? bas, DateOnly? son)
+    {
+        (_baslangic, _bitis) = (Bicim.Takvim(bas), Bicim.Takvim(son));
+        await YukleAsync();
+    }
+
+    private void Ac(FaturaOzetSatiri s)
+    {
+        if (s.Id is { } id)
+        {
+            Navigasyon.NavigateTo(_kirilim == FaturaOzetKirilimi.Cari ? $"cari/{id}" : $"fatura/{id}");
+        }
+    }
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+}

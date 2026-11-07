@@ -217,6 +217,15 @@ istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATI
 kontrol 201 "Teslimat adresi faturaya kopyalandi (kirpilmis)" '"teslimatAdresi":{"baslik":"Depo","aliciAdi":"Ali Veli","telefon":null,"ulke":null,"il":"Kocaeli","ilce":"Cayirova","adres":"OSB 5. Cad. No:3"'
 istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}" '"teslimatAdresi":{"il":"Kocaeli","adres":""}')"
 kontrol 400 "Bos teslimat adresi reddedildi" "Teslimat adresi gerekli"
+istek GET "/api/fatura/raporlar/fatura-ozeti?baslangic=2026-10-01&bitis=2026-10-31&taraf=Satis&kirilim=Ay" "$T"
+kontrol 200 "Satis ozeti ay kiriliminda Turkce ay adiyla" '"anahtar":"Ekim 2026"'
+kontrol 200 "Satis ozetinde satistan iade sayildi" '"iadeSayisi":[1-9]'
+istek GET "/api/fatura/raporlar/fatura-ozeti?baslangic=2026-10-31&bitis=2026-10-01" "$T"
+kontrol 400 "Ters tarih araligi reddedildi" tarih_araligi
+istek GET "/api/fatura/raporlar/urun-toplamlari?baslangic=2026-10-01&bitis=2026-10-31" "$T"
+kontrol 200 "Urun toplamlari: kartli urun temel birimle listelendi" '"ad":"Su 0.5 L","birim":"ADET"'
+istek GET "/api/fatura/raporlar/siparis-durumu?baslangic=2026-01-01&bitis=2026-12-31" "$T"
+kontrol 200 "Siparis durum raporu calisiyor" '"siparisSayisi":[0-9]'
 istek GET /api/yonetim/firma "$T"
 kontrol 200 "Firma bilgileri okunuyor" '"unvan":"Fatura Test AS"'
 istek PUT /api/yonetim/firma "$T" '{"unvan":"Fatura Test AS","vergiNo":"9876543217","vergiDairesi":"Kadikoy","il":"Istanbul","ilce":"Kadikoy","adres":"Moda Cad. 5","telefon":"0216 000 00 00","eposta":"info@fatura.test"}'
