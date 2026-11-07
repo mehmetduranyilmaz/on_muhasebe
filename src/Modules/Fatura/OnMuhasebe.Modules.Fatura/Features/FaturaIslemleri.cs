@@ -79,6 +79,13 @@ internal static class FaturaIslemleri
                 .Must(s => s.Count <= AzamiSatirSayisi).WithMessage($"Bir faturada en fazla {AzamiSatirSayisi} satır olabilir.");
             RuleFor(x => x.Satirlar).Must(s => s.All(sat => sat.KdvOrani == 0)).When(x => FaturaTurleri.KdvsizMi(x.Tur))
                 .WithMessage("Gider pusulasında KDV uygulanmaz; satırların KDV oranı %0 olmalıdır.");
+            // e-Fatura'da ihraç kayıtlı kodlar (7xx) IHRACKAYITLI, kısmi/tam istisnalar ISTISNA fatura tipindedir; bir belge ikisini birden taşıyamaz.
+            RuleFor(x => x.Satirlar)
+                .Must(s => s.Where(sat => !string.IsNullOrWhiteSpace(sat.KdvIstisnaKodu))
+                    .Select(sat => KdvIstisnaKodlari.Bul(sat.KdvIstisnaKodu!.Trim())?.Tur == KdvIstisnaTuru.IhracKayitli)
+                    .Distinct().Count() <= 1)
+                .OverridePropertyName("KdvIstisnaKodu")
+                .WithMessage("İhraç kayıtlı satış kodları (7xx) diğer istisna kodlarıyla aynı faturada kullanılamaz.");
             RuleForEach(x => x.Satirlar).ChildRules(s =>
             {
                 s.RuleFor(x => x.Ad).MaximumLength(250);

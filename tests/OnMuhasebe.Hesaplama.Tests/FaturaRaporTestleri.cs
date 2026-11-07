@@ -54,7 +54,7 @@ public class FaturaRaporTestleri
         [
             Kdv(FaturaTuru.Satis, 1000m),                                  // 200 hesaplanan
             Kdv(FaturaTuru.Satis, 500m, 10),                               // 50 hesaplanan (%10)
-            Kdv(FaturaTuru.Satis, 1000m, 20, 5, 10, "617"),                // KDV 200, tevkif 100, satıcı 100 beyan eder
+            Kdv(FaturaTuru.Satis, 1000m, 20, 5, 10, "616"),                // KDV 200, tevkif 100, satıcı 100 beyan eder
             Kdv(FaturaTuru.AlistanIade, 100m),                             // 20 hesaplanan (diğer işlemler)
             Kdv(FaturaTuru.Alis, 2000m),                                   // 400 indirilecek
             Kdv(FaturaTuru.Alis, 1000m, 20, 9, 10, "602"),                 // KDV 200: 20 satıcıya, 180 KDV2 sorumlu sıfatıyla
@@ -85,7 +85,7 @@ public class FaturaRaporTestleri
 
         Assert.Equal([new KdvOranSatiri(20, 1000m, 200m)], o.TeslimVeHizmetler);
         Assert.Equal(2, o.Istisnalar.Count);
-        Assert.Equal(new KdvIstisnaSatiri("301", "11/1-a Mal ihracatı", 5000m), o.Istisnalar[0]);
+        Assert.Equal(new KdvIstisnaSatiri("301", "11/1-a Mal İhracatı", 5000m), o.Istisnalar[0]);
         Assert.Equal(400m, o.Istisnalar[1].TeslimBedeliTl);
         Assert.Equal(200m, o.HesaplananKdvTl);
     }

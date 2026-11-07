@@ -135,11 +135,11 @@ istek DELETE "/api/stok/depolar/$SUBE" "$T"
 kontrol 422 "Hareketli depo silinemez" hareketli_depo_silinemez
 
 echo "--- Ikinci ad ve varsayilan tevkifat"
-istek POST /api/stok/kartlar "$T" '{"ad":"Ofis temizligi","ad2":"Office cleaning","tur":"Hizmet","temelBirim":"AY","kdvOrani":20,"paraBirimi":"TRY","varsayilanTevkifatKodu":"611"}'
-kontrol 201 "Ikinci ad ve tevkifat kodu kaydedildi" '"ad2":"Office cleaning","varsayilanTevkifatKodu":"611"'
+istek POST /api/stok/kartlar "$T" '{"ad":"Ofis temizligi","ad2":"Office cleaning","tur":"Hizmet","temelBirim":"AY","kdvOrani":20,"paraBirimi":"TRY","varsayilanTevkifatKodu":"612"}'
+kontrol 201 "Ikinci ad ve tevkifat kodu kaydedildi" '"ad2":"Office cleaning","varsayilanTevkifatKodu":"612"'
 istek GET "/api/stok/kartlar?arama=cleaning" "$T"
 kontrol 200 "Ikinci adla arama buluyor" '"toplamKayit":1'
-istek POST /api/stok/kartlar "$T" '{"ad":"Kitap","tur":"Urun","temelBirim":"ADET","kdvOrani":0,"paraBirimi":"TRY","varsayilanTevkifatKodu":"611"}'
+istek POST /api/stok/kartlar "$T" '{"ad":"Kitap","tur":"Urun","temelBirim":"ADET","kdvOrani":0,"paraBirimi":"TRY","varsayilanTevkifatKodu":"612"}'
 kontrol 400 "KDV'siz urunde tevkifat reddedildi" "tevkifat"
 
 echo "--- Yetki, izolasyon, lisans"

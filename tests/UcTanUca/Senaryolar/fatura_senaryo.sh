@@ -214,6 +214,9 @@ istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATI
 kontrol 400 "KDV'li satirda istisna kodu reddedildi" "%0 KDV"
 istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}")"
 kontrol 201 "%0 KDV'li satirda istisna kodu saklandi" '"kdvIstisnaKodu":"301"'
+IHRAC_KAYITLI_SATIRI='{"ad":"Ihrac kayitli","birim":"ADET","miktar":1,"birimFiyat":100,"kdvOrani":0,"kdvDahilMi":false,"iskonto1":0,"iskonto2":0,"iskonto3":0,"kdvIstisnaKodu":"701"}'
+istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0},$IHRAC_KAYITLI_SATIRI")"
+kontrol 400 "Ihrac kayitli (7xx) ile tam istisna (3xx) ayni faturada reddedildi" "7xx"
 istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}" '"teslimatAdresi":{"baslik":"Depo","aliciAdi":"Ali Veli","il":"Kocaeli","ilce":"Cayirova","adres":"  OSB 5. Cad. No:3 "}')"
 kontrol 201 "Teslimat adresi faturaya kopyalandi (kirpilmis)" '"teslimatAdresi":{"baslik":"Depo","aliciAdi":"Ali Veli","telefon":null,"ulke":null,"il":"Kocaeli","ilce":"Cayirova","adres":"OSB 5. Cad. No:3"'
 istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}" '"teslimatAdresi":{"il":"Kocaeli","adres":""}')"
