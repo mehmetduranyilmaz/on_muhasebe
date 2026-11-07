@@ -53,6 +53,20 @@
                           Label="Faturalara ön tanımlı açıklama" Disabled="Oturum.SaltOkunurMu"
                           HelperText="Yeni satış faturalarına önerilir; ör. banka hesap bilgileri, iade ve teslim koşulları" />
         </MudItem>
+        <MudItem xs="12" md="6">
+            <div class="ayar-baslik">Kağıt / PDF çıktı</div>
+            <MudSelect T="KagitSablonu" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_kagitSablonu" Label="Şablon" Disabled="Oturum.SaltOkunurMu">
+                <MudSelectItem Value="KagitSablonu.Standart">Standart</MudSelectItem>
+                <MudSelectItem Value="KagitSablonu.Kompakt">Kompakt (sık satırlı, uzun faturalar için)</MudSelectItem>
+                <MudSelectItem Value="KagitSablonu.Dovizli">Dövizli (satırlarda TL karşılığı)</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex flex-column justify-end">
+            <MudSwitch T="bool" @bind-Value="_kagittaBankaBilgisi" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu"
+                       Label="Banka hesaplarımızı (IBAN) faturanın altına bas" />
+            <MudSwitch T="bool" @bind-Value="_kagittaImzaAlani" Color="Color.Secondary" Disabled="Oturum.SaltOkunurMu"
+                       Label="Teslim eden / teslim alan imza alanı" />
+        </MudItem>
         @if (_ayar.KayitAkisi == KayitAkisi.TaslakOnay && _akis == KayitAkisi.DogrudanKayit)
         {
             <MudItem xs="12">
@@ -78,6 +92,9 @@
     private string _giderPusulasiSeri = "";
     private string _irsaliyeSeri = "";
     private string _serbestMeslekSeri = "";
+    private KagitSablonu _kagitSablonu;
+    private bool _kagittaBankaBilgisi;
+    private bool _kagittaImzaAlani;
     private bool _toptanKdvDahil;
     private bool _perakendeKdvDahil;
     private int _vadeGunu;
@@ -95,7 +112,8 @@
 
     private FaturaAyarlari Yeni => new(_akis, _toptanSeri.ToUpperInvariant(), _perakendeSeri.ToUpperInvariant(), _iadeSeri.ToUpperInvariant(),
         _toptanKdvDahil, _perakendeKdvDahil, _vadeGunu, _giderPusulasiSeri.ToUpperInvariant(), _irsaliyeSeri.ToUpperInvariant(),
-        string.IsNullOrWhiteSpace(_varsayilanAciklama) ? null : _varsayilanAciklama.Trim(), _serbestMeslekSeri.ToUpperInvariant());
+        string.IsNullOrWhiteSpace(_varsayilanAciklama) ? null : _varsayilanAciklama.Trim(), _serbestMeslekSeri.ToUpperInvariant(),
+        _kagitSablonu, _kagittaBankaBilgisi, _kagittaImzaAlani);
 
     private bool DegistiMi => _ayar is not null && Yeni != _ayar;
 
@@ -119,6 +137,7 @@
         _ayar = a;
         (_akis, _toptanSeri, _perakendeSeri, _iadeSeri, _giderPusulasiSeri) = (a.KayitAkisi, a.ToptanSeri, a.PerakendeSeri, a.IadeSeri, a.GiderPusulasiSeri);
         (_irsaliyeSeri, _serbestMeslekSeri) = (a.IrsaliyeSeri, a.SerbestMeslekSeri);
+        (_kagitSablonu, _kagittaBankaBilgisi, _kagittaImzaAlani) = (a.KagitSablonu, a.KagittaBankaBilgisi, a.KagittaImzaAlani);
         (_toptanKdvDahil, _perakendeKdvDahil, _vadeGunu, _varsayilanAciklama) = (a.ToptanKdvDahil, a.PerakendeKdvDahil, a.VarsayilanVadeGunu, a.VarsayilanAciklama);
     }
 

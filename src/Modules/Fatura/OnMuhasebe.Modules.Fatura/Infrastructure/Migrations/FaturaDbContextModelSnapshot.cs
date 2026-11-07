@@ -60,6 +60,20 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("irsaliye_seri");
 
+                    b.Property<string>("KagitSablonu")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("kagit_sablonu");
+
+                    b.Property<bool>("KagittaBankaBilgisi")
+                        .HasColumnType("boolean")
+                        .HasColumnName("kagitta_banka_bilgisi");
+
+                    b.Property<bool>("KagittaImzaAlani")
+                        .HasColumnType("boolean")
+                        .HasColumnName("kagitta_imza_alani");
+
                     b.Property<string>("KayitAkisi")
                         .IsRequired()
                         .HasMaxLength(20)

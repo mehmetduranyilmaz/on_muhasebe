@@ -174,8 +174,9 @@ istek GET "/api/fatura/faturalar/$TASLAK2" "$T"
 kontrol 404 "Silinen taslak bulunamaz"
 istek PUT /api/fatura/ayarlar "$T" '{"kayitAkisi":"DogrudanKayit","toptanSeri":"TOPTAN","perakendeSeri":"PRK","iadeSeri":"IAD","toptanKdvDahil":false,"perakendeKdvDahil":true,"varsayilanVadeGunu":0}'
 kontrol 400 "3 karakterden uzun seri reddedildi"
-istek PUT /api/fatura/ayarlar "$T" '{"kayitAkisi":"DogrudanKayit","toptanSeri":"TPT","perakendeSeri":"PRK","iadeSeri":"IAD","toptanKdvDahil":false,"perakendeKdvDahil":true,"varsayilanVadeGunu":0,"varsayilanAciklama":"  IBAN: TR33 0006 1005 1978 6457 8413 26  "}'
+istek PUT /api/fatura/ayarlar "$T" '{"kayitAkisi":"DogrudanKayit","toptanSeri":"TPT","perakendeSeri":"PRK","iadeSeri":"IAD","toptanKdvDahil":false,"perakendeKdvDahil":true,"varsayilanVadeGunu":0,"varsayilanAciklama":"  IBAN: TR33 0006 1005 1978 6457 8413 26  ","kagitSablonu":"Dovizli","kagittaBankaBilgisi":true}'
 kontrol 200 "On tanimli fatura aciklamasi kirpilip kaydedildi" '"varsayilanAciklama":"IBAN: TR33 0006 1005 1978 6457 8413 26"'
+kontrol 200 "Kagit sablonu ve banka bilgisi secimi kaydedildi" '"kagitSablonu":"Dovizli","kagittaBankaBilgisi":true,"kagittaImzaAlani":false'
 
 echo "--- Eszamanli numaralandirma"
 for i in 1 2 3 4 5; do

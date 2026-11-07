@@ -261,7 +261,21 @@ public sealed record FaturaAyarlari(
     string GiderPusulasiSeri = "GPS",
     string IrsaliyeSeri = "IRS",
     string? VarsayilanAciklama = null,
-    string SerbestMeslekSeri = "SMM");
+    string SerbestMeslekSeri = "SMM",
+    KagitSablonu KagitSablonu = KagitSablonu.Standart,
+    bool KagittaBankaBilgisi = false,
+    bool KagittaImzaAlani = false);
+
+// Yazdırılan (kağıt/PDF) faturanın düzeni. Dövizli şablon TL faturada standart gibi basılır.
+[JsonConverter(typeof(JsonStringEnumConverter<KagitSablonu>))]
+public enum KagitSablonu
+{
+    Standart,
+    // Sık satırlı, küçük yazı: uzun faturaların daha az sayfaya sığması için.
+    Kompakt,
+    // Dövizli faturada satır tutarlarının TL karşılığı da basılır.
+    Dovizli
+}
 
 // Tutarlar TL ve KDV hariçtir; iadeler düşülmüştür.
 public sealed record AylikFaturaTutari(int Yil, int Ay, decimal Satis, decimal Alis);

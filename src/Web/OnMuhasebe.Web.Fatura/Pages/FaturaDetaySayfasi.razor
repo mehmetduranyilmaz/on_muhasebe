@@ -276,7 +276,7 @@
         </MudGrid>
     </div>
 
-    <FaturaKagidi Fatura="f" Firma="_firma" />
+    <FaturaKagidi Fatura="f" Firma="_firma" Ayar="_ayar" BankaHesaplari="_bankaHesaplari" />
 }
 else if (_hata is null)
 {
@@ -320,6 +320,7 @@ else if (_hata is null)
     private FaturaDetayi? _fatura;
     private CariAvansDurumu? _avans;
     private FaturaAyarlari? _ayar;
+    private List<HesapOzeti> _bankaHesaplari = [];
     private FirmaBilgileri? _firma;
     private string? _telefon;
     private ApiHatasi? _hata;
@@ -336,6 +337,14 @@ else if (_hata is null)
         _ayar = ayar.BasariliMi ? ayar.Deger : null;
         var firma = await Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
         _firma = firma.BasariliMi ? firma.Deger : null;
+
+        // Çıktıya basılacak banka hesapları: yalnızca IBAN'ı olan aktif banka hesapları.
+        _bankaHesaplari = [];
+        if (_ayar?.KagittaBankaBilgisi == true && Oturum.ModulAcikMi(ModulKodlari.KasaBanka)
+            && await Api.GetAsync<List<HesapOzeti>>("api/kasabanka/hesaplar?aktif=true") is { BasariliMi: true } hesaplar)
+        {
+            _bankaHesaplari = hesaplar.Deger.Where(h => h.Tur == HesapTuru.Banka && !string.IsNullOrWhiteSpace(h.Iban)).ToList();
+        }
 
         await AvansYukleAsync();
 

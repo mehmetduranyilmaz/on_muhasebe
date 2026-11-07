@@ -1,6 +1,6 @@
 @* Faturanın A4 yazdırma görünümü; ekranda gizlidir, yalnızca yazdırırken (veya PDF olarak kaydederken) görünür.
    Taslak ve iptal faturalarda filigran basılır. *@
-<div class="sadece-yazdir fatura-kagidi">
+<div class="sadece-yazdir fatura-kagidi @(Ayar?.KagitSablonu == KagitSablonu.Kompakt ? "sablon-kompakt" : "")">
     @if (Fatura.Durum != FaturaDurumu.Onayli)
     {
         <div class="filigran">@(Fatura.Durum == FaturaDurumu.Taslak ? "TASLAK" : "İPTAL")</div>
@@ -86,6 +86,10 @@
                 <th>KDV %</th>
                 <th>KDV Tutarı</th>
                 <th>Mal / Hizmet Tutarı</th>
+                @if (TlSutunu)
+                {
+                    <th>Tutar (TL)</th>
+                }
             </tr>
         </thead>
         <tbody>
@@ -100,6 +104,10 @@
                     <td>%@s.KdvOrani</td>
                     <td>@Bicim.Tutar(s.KdvTutari)</td>
                     <td>@Bicim.Tutar(s.Matrah)</td>
+                    @if (TlSutunu)
+                    {
+                        <td>@Bicim.Tutar(FaturaHesaplayici.Yuvarla(s.Matrah * Fatura.Kur), ParaBirimleri.Tl)</td>
+                    }
                 </tr>
             }
         </tbody>
@@ -124,6 +132,16 @@
             @if (IrsaliyeYerineGecerMi)
             {
                 <div class="fk-aciklama"><b>İrsaliye yerine geçer.</b> Fiili sevk tarihi: @Bicim.Tarih(Fatura.Tarih)</div>
+            }
+            @if (BankaHesaplari.Count > 0)
+            {
+                <div class="fk-banka">
+                    <b>Banka hesaplarımız</b>
+                    @foreach (var h in BankaHesaplari)
+                    {
+                        <div>@(h.BankaAdi ?? h.Ad) · @IbanBicimi(h.Iban!) · @h.ParaBirimi</div>
+                    }
+                </div>
             }
             <div class="fk-ettn">ETTN: @Fatura.Ettn</div>
         </div>
@@ -157,6 +175,14 @@
             }
         </table>
     </div>
+
+    @if (Ayar?.KagittaImzaAlani == true)
+    {
+        <div class="fk-imzalar">
+            <div><span>Teslim eden</span></div>
+            <div><span>Teslim alan</span></div>
+        </div>
+    }
 </div>
 
 @code {
@@ -164,11 +190,18 @@
 
     [Parameter, EditorRequired] public FaturaDetayi Fatura { get; set; } = null!;
     [Parameter] public FirmaBilgileri? Firma { get; set; }
+    [Parameter] public FaturaAyarlari? Ayar { get; set; }
+    [Parameter] public IReadOnlyList<HesapOzeti> BankaHesaplari { get; set; } = [];
 
-    // Bizim sevk ettiğimiz (giden) faturada irsaliyesiz ürün satırı varsa mal faturayla sevk edilmiştir: irsaliyeli fatura (VUK 231).
     // Verilen makbuz, alıcısına "serbest meslek makbuzu" başlığıyla verilir (brüt ücret, stopaj, net ücret, KDV, tahsil edilen).
     private bool MakbuzMu => Fatura.Tur == FaturaTuru.VerilenSerbestMeslekMakbuzu;
 
+    private bool TlSutunu => Ayar?.KagitSablonu == KagitSablonu.Dovizli && Fatura.ParaBirimi != ParaBirimleri.Tl;
+
+    // IBAN dörtlü gruplarla okunur: TR33 0006 1005 ...
+    private static string IbanBicimi(string iban) => string.Join(' ', iban.Chunk(4).Select(c => new string(c)));
+
+    // Bizim sevk ettiğimiz (giden) faturada irsaliyesiz ürün satırı varsa mal faturayla sevk edilmiştir: irsaliyeli fatura (VUK 231).
     private bool IrsaliyeYerineGecerMi => FaturaTurleri.GidenMi(Fatura.Tur) && Fatura.Satirlar.Any(s => s.StokluMu && s.IrsaliyeSatiriId is null);
 
     private static string Yer(string? ilce, string? il) => string.Join(" / ", new[] { ilce, il }.Where(x => !string.IsNullOrEmpty(x)));

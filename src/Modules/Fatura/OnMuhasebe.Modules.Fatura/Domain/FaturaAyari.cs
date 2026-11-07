@@ -15,6 +15,9 @@ internal sealed class FaturaAyari : FirmaEntity
     public string GiderPusulasiSeri { get; private set; } = "GPS";
     public string IrsaliyeSeri { get; private set; } = "IRS";
     public string SerbestMeslekSeri { get; private set; } = "SMM";
+    public KagitSablonu KagitSablonu { get; private set; }
+    public bool KagittaBankaBilgisi { get; private set; }
+    public bool KagittaImzaAlani { get; private set; }
     public bool ToptanKdvDahil { get; private set; }
     public bool PerakendeKdvDahil { get; private set; } = true;
     public int VarsayilanVadeGunu { get; private set; }
@@ -31,6 +34,7 @@ internal sealed class FaturaAyari : FirmaEntity
         GiderPusulasiSeri = a.GiderPusulasiSeri.ToUpperInvariant();
         IrsaliyeSeri = a.IrsaliyeSeri.ToUpperInvariant();
         SerbestMeslekSeri = a.SerbestMeslekSeri.ToUpperInvariant();
+        (KagitSablonu, KagittaBankaBilgisi, KagittaImzaAlani) = (a.KagitSablonu, a.KagittaBankaBilgisi, a.KagittaImzaAlani);
         ToptanKdvDahil = a.ToptanKdvDahil;
         PerakendeKdvDahil = a.PerakendeKdvDahil;
         VarsayilanVadeGunu = a.VarsayilanVadeGunu;
@@ -51,7 +55,7 @@ internal sealed class FaturaAyari : FirmaEntity
 
     public FaturaAyarlari Sozlesme() =>
         new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu, GiderPusulasiSeri, IrsaliyeSeri,
-            VarsayilanAciklama, SerbestMeslekSeri);
+            VarsayilanAciklama, SerbestMeslekSeri, KagitSablonu, KagittaBankaBilgisi, KagittaImzaAlani);
 }
 
 // Seri + yıl başına son verilen sıra. Satır, numara alan transaction bitene kadar kilitli kalır; böylece

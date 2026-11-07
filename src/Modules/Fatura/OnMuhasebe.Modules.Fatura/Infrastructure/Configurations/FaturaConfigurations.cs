@@ -199,6 +199,7 @@ internal sealed class FaturaAyariConfiguration : IEntityTypeConfiguration<Fatura
         builder.Property(x => x.GiderPusulasiSeri).HasMaxLength(3);
         builder.Property(x => x.IrsaliyeSeri).HasMaxLength(3);
         builder.Property(x => x.SerbestMeslekSeri).HasMaxLength(3);
+        builder.Property(x => x.KagitSablonu).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.VarsayilanAciklama).HasMaxLength(1000);
         builder.HasIndex(x => x.FirmaId).IsUnique();
     }

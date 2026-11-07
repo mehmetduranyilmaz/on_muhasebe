@@ -36,6 +36,7 @@ internal static class FaturaAyarIslemleri
             RuleFor(x => x.SerbestMeslekSeri).NotEmpty().Matches("^[A-Za-z0-9]{3}$").WithMessage("Seri 3 harf/rakamdan oluşmalıdır.");
             RuleFor(x => x.VarsayilanVadeGunu).InclusiveBetween(0, 365);
             RuleFor(x => x.VarsayilanAciklama).MaximumLength(1000);
+            RuleFor(x => x.KagitSablonu).IsInEnum();
         }
     }
 
