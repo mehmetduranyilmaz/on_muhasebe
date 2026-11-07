@@ -21,7 +21,7 @@ internal sealed class StokTesti : TarayiciTesti
         await Doldur("E-posta", eposta);
         await Doldur("Şifre", "Sifre1234");
         await Tikla("Giriş Yap");
-        Kontrol(await Bekle(Govde("Stok özeti")), "Giris: ana sayfada Stok ozet paneli var");
+        Kontrol(await Bekle($"{Govde("İlgilenmeniz gerekenler")} && {Govde("Başlarken")}"), "Giris: yeni firmada gundem ve Baslarken adimlari var");
 
         await Js("document.querySelector('.mud-drawer a[href=\"stok\"]').click()");
         Kontrol(await Bekle($"{Govde("Stok kartı bulunamadı")}"), "Bos stok listesi ve bos durum mesaji");

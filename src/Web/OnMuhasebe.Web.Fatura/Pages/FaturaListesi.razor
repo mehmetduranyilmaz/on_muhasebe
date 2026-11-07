@@ -123,7 +123,14 @@
 
     private bool FiltreVarMi => _tur is not null || _durum is not null || !string.IsNullOrWhiteSpace(_arama) || _baslangic is not null || _bitis is not null;
 
-    protected override Task OnInitializedAsync() => YukleAsync();
+    // Ana sayfa gündeminden "taslak faturalar" gibi filtreli gelinebilir.
+    [SupplyParameterFromQuery(Name = "durum")] public string? DurumParametresi { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        _durum = Enum.TryParse<FaturaDurumu>(DurumParametresi, out var d) ? d : null;
+        return YukleAsync();
+    }
 
     private static readonly IReadOnlyList<ExcelKolonu<FaturaOzeti>> _excelKolonlari =
     [

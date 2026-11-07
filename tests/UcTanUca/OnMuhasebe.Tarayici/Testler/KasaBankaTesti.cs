@@ -32,7 +32,7 @@ internal sealed class KasaBankaTesti : TarayiciTesti
         await Doldur("E-posta", eposta);
         await Doldur("Şifre", "Sifre1234");
         await Tikla("Giriş Yap");
-        Kontrol(await Bekle(Govde("Kasa / Banka özeti")), "Ana sayfada Kasa/Banka ozet paneli var");
+        Kontrol(await Bekle($"{Govde("Finansal durum")} && {Govde("İlgilenmeniz gerekenler")} && {Govde("Tahsilat")}"), "Ana sayfada gundem, finansal durum ve hizli islemler var");
 
         await Js("document.querySelector('.mud-drawer a[href=\"kasabanka\"]').click()");
         Kontrol(await Bekle(Govde("Henüz hesap yok")), "Bos hesap listesi");

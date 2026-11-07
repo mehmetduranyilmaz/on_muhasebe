@@ -3,16 +3,27 @@
 @inject ModulYukleyici Yukleyici
 @inject TimeProvider Zaman
 
+@* Ana sayfa "bugün ne yapmalıyım" sorusuna cevap verir: hızlı işlemler, gündem ve finansal durum.
+   Modüllerin ayrıntılı özetleri Analiz sayfasında; modül tanıtımı burada yer kaplamaz. *@
 <PageTitle>Ana Sayfa - Ön Muhasebe</PageTitle>
 
 <section class="panel-karsilama">
     <span class="blob" style="width:260px;height:260px;background:#14B8A6;top:-90px;right:8%;"></span>
     <span class="blob" style="width:200px;height:200px;background:#3B82F6;bottom:-90px;right:30%;animation-delay:-6s;"></span>
-    <h1>Hoş geldiniz, @Oturum.Bilgi?.Ad</h1>
+    <h1>@Selam, @Oturum.Bilgi?.Ad</h1>
     <p>@(Oturum.Bilgi?.AktifFirma?.Unvan ?? (Oturum.Bilgi?.SistemYoneticisiMi == true ? "Sistem yönetimi" : "")) · @Zaman.GetLocalNow().ToString("d MMMM yyyy, dddd")</p>
+    @if (_hizliIslemler.Count > 0)
+    {
+        <div class="hizli-islemler">
+            @foreach (var h in _hizliIslemler)
+            {
+                <a href="@h.Href" class="hizli-islem"><MudIcon Icon="@h.Ikon" Size="Size.Small" /> @h.Ad</a>
+            }
+        </div>
+    }
 </section>
 
-@if (_acikModuller.Count == 0)
+@if (!_modulVar)
 {
     <BosDurum Ikon="@Icons.Material.Outlined.AdminPanelSettings"
               Baslik="@(Oturum.Bilgi?.SistemYoneticisiMi == true ? "Sistem yöneticisi" : "Açık modül yok")"
@@ -27,47 +38,61 @@
 }
 else
 {
-    <MudGrid Spacing="3" Class="mb-6">
-        @for (var i = 0; i < _acikModuller.Count; i++)
-        {
-            // Döngü değişkeni MudItem içeriğinde kullanılmadan önce kopyalanır: içerik döngü bittikten sonra çizilir.
-            var sira = i;
-            var modul = _acikModuller[i];
-            <MudItem xs="6" lg="3">
-                <a href="@modul.Yol" class="ozet-karti modul-karti kart kart-hover belirme" style="--i:@sira; --vurgu:@UygulamaTemasi.GrafikRenkleri[sira % UygulamaTemasi.GrafikRenkleri.Count]">
-                    <div class="ozet-ust">
-                        <div class="ozet-ikon"><MudIcon Icon="@modul.Ikon" /></div>
-                        <div class="ozet-deger" style="font-size:1.1rem">@modul.Ad</div>
-                    </div>
-                    <div class="ozet-alt">@modul.Aciklama</div>
-                    <div class="ozet-isik"></div>
-                </a>
-            </MudItem>
-        }
-    </MudGrid>
+    <GundemPaneli VadesiGecmisTahsil="_gecmisTahsil" VadesiGecmisOdeme="_gecmisOdeme" />
 
-    @foreach (var panel in _paneller)
+    @if (_finansalDurum is { } panel)
     {
-        <DynamicComponent Type="panel" />
+        <DynamicComponent Type="panel" Parameters="_finansalParametreler" />
+    }
+
+    @if (Analiz.GorunurMu(Oturum))
+    {
+        <div class="d-flex justify-end mb-4">
+            <MudButton Href="analiz" Variant="Variant.Text" Color="Color.Secondary" EndIcon="@Icons.Material.Filled.ArrowForward">Tüm analizler</MudButton>
+        </div>
     }
 }
 
 @code {
-    private List<ModulMenuOgesi> _acikModuller = [];
-    private readonly List<Type> _paneller = [];
+    private sealed record HizliIslem(string Ad, string Ikon, string Href, string Modul, string Yetki);
 
-    // Her lisanslı modülün kendi özet paneli, modülün lazy paketinden yüklenip gösterilir.
+    private static readonly HizliIslem[] _tumHizliIslemler =
+    [
+        new("Satış faturası", Icons.Material.Filled.ReceiptLong, "fatura/yeni/satis", ModulKodlari.Fatura, "fatura.belge.ekle"),
+        new("Tahsilat", Icons.Material.Filled.CallReceived, "kasabanka/islem/tahsilat", ModulKodlari.KasaBanka, "kasabanka.islem.ekle"),
+        new("Ödeme", Icons.Material.Filled.CallMade, "kasabanka/islem/odeme", ModulKodlari.KasaBanka, "kasabanka.islem.ekle"),
+        new("Hızlı gider", Icons.Material.Filled.LocalGasStation, "fatura/hizli-gider", ModulKodlari.Fatura, "fatura.belge.ekle"),
+        new("Yeni cari", Icons.Material.Filled.PersonAdd, "cari/yeni", ModulKodlari.Cari, "cari.hesap.ekle")
+    ];
+
+    private List<HizliIslem> _hizliIslemler = [];
+    private bool _modulVar;
+    private Type? _finansalDurum;
+    private Dictionary<string, object> _finansalParametreler = [];
+    private decimal _gecmisTahsil;
+    private decimal _gecmisOdeme;
+
+    private string Selam => Zaman.GetLocalNow().Hour switch
+    {
+        < 5 => "İyi geceler",
+        < 12 => "Günaydın",
+        < 18 => "İyi günler",
+        _ => "İyi akşamlar"
+    };
+
     protected override async Task OnInitializedAsync()
     {
-        _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(m.GorunumYetkisi)).ToList();
-        // Kasa/Banka paneli finansal durumu (mini bilanço, vade kovaları, 12 aylık nakit) içerdiği için en üstte durur.
-        foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(SayfaYetkileri.OzetPaneli[m.Kod]))
-                     .OrderBy(m => m.Kod == ModulKodlari.KasaBanka ? 0 : 1))
+        _hizliIslemler = _tumHizliIslemler.Where(h => Oturum.ModulAcikMi(h.Modul) && Oturum.YazabilirMi(h.Yetki)).ToList();
+        _modulVar = ModulMenusu.Tumu.Any(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(m.GorunumYetkisi));
+
+        // Finansal durum (gösterge şeridi + mini bilanço + vade + nakit akışı) Kasa/Banka paketinde; vadesi geçmişler gündeme akar.
+        if (Oturum.ModulAcikMi(ModulKodlari.KasaBanka) && Oturum.YetkiVarMi(SayfaYetkileri.OzetPaneli[ModulKodlari.KasaBanka]))
         {
-            if (await Yukleyici.OzetPaneliAsync(modul.Kod) is { } panel)
+            _finansalParametreler = new()
             {
-                _paneller.Add(panel);
-            }
+                ["VadesiGecmis"] = EventCallback.Factory.Create<(decimal Tahsil, decimal Odeme)>(this, v => (_gecmisTahsil, _gecmisOdeme) = v)
+            };
+            _finansalDurum = await Yukleyici.PanelAsync(ModulKodlari.KasaBanka, ModulPaketleri.FinansalDurumPaneli);
         }
     }
 }

@@ -1,4 +1,5 @@
-@* Ana sayfanın en üstündeki finansal durum: mini bilanço, vade kovaları ve son 12 ayın gerçekleşen nakit akışı. *@
+@* Ana sayfanın finansal durumu: üstte dört gösterge, altında mini bilanço, vade kovaları ve son 12 ayın gerçekleşen nakit akışı.
+   Ana uygulama tip adıyla lazy yükler; vadesi geçmiş tutarlar gündeme VadesiGecmis ile verilir (rapor ikinci kez çekilmesin). *@
 @inject ApiIstemcisi Api
 @inject OturumYoneticisi Oturum
 
@@ -15,6 +16,27 @@ else
 {
     var r = _rapor;
     var b = r.Bilanco;
+    var gecmis = r.VadeKovalari.FirstOrDefault(k => k.GunBaslangic is null);
+    <MudGrid Spacing="3" Class="mb-2">
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Nakit" Deger="b.KasaBankaTl + b.PosBekleyenTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Savings" Renk="#14B8A6"
+                       Href="kasabanka" Sira="0" AltMetin="Kasa, banka ve POS'ta bekleyen" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Tahsil edilecek" Deger="b.CariAlacakTl + b.AlinanCekSenetTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.CallReceived" Renk="#3B82F6"
+                       Href="@(CariAcik ? "cari/vade-analizi" : "cek-senet")" Sira="1"
+                       AltMetin="@(gecmis?.TahsilEdilecekTl > 0 ? $"{KisaTl(gecmis.TahsilEdilecekTl)} vadesi geçmiş" : "Cari alacak ve portföydeki evrak")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Ödenecek" Deger="b.CariBorcTl + b.VerilenCekSenetTl + b.KrediKartiBorcuTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.CallMade" Renk="#F59E0B"
+                       Href="@(CariAcik ? "cari/vade-analizi" : "cek-senet?yon=verilen")" Sira="2"
+                       AltMetin="@(gecmis?.OdenecekTl > 0 ? $"{KisaTl(gecmis.OdenecekTl)} vadesi geçmiş" : "Cari borç, verilen evrak, kredi kartı")" />
+        </MudItem>
+        <MudItem xs="6" lg="3">
+            <OzetKarti Baslik="Net durum" Deger="b.NetTl" Bicimle="Tl" Ikon="@Icons.Material.Filled.Balance" Renk="@(b.NetTl >= 0 ? "#16A34A" : "#DC2626")"
+                       Sira="3" AltMetin="Varlıklar eksi yükümlülükler" />
+        </MudItem>
+    </MudGrid>
     <MudGrid Spacing="3" Class="mb-4">
         <MudItem xs="12" lg="6">
             <div class="panel-kart kart belirme" style="--i:0; height:100%">
@@ -111,6 +133,9 @@ else
     private static readonly System.Globalization.CultureInfo _tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
     private static readonly IReadOnlyList<SutunSerisi> _seriler = [new("Giriş", "#16A34A"), new("Çıkış", "#DC2626")];
 
+    // (tahsil edilecek, ödenecek) vadesi geçmiş TL; tuple BCL tipi olduğundan ana uygulama bu derlemeye bağımlı olmadan dinler.
+    [Parameter] public EventCallback<(decimal Tahsil, decimal Odeme)> VadesiGecmis { get; set; }
+
     private FinansalDurumRaporu? _rapor;
 
     private bool CariAcik => Oturum.ModulAcikMi(ModulKodlari.Cari);
@@ -119,6 +144,10 @@ else
     {
         var sonuc = await Api.GetAsync<FinansalDurumRaporu>("api/kasabanka/raporlar/finansal-durum");
         _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+        if (_rapor?.VadeKovalari.FirstOrDefault(k => k.GunBaslangic is null) is { } gecmis && VadesiGecmis.HasDelegate)
+        {
+            await VadesiGecmis.InvokeAsync((gecmis.TahsilEdilecekTl, gecmis.OdenecekTl));
+        }
     }
 
     private static IReadOnlyList<SutunGrubu> Gruplar(FinansalDurumRaporu r) =>

@@ -34,8 +34,10 @@ internal sealed class MenuTesti : TarayiciTesti
         await Post("api/yonetim/davet-kabul", new { kod, ad = "Can", soyad = "Calisan", sifre = "Sifre1234" });
 
         await GirisYap(eposta, "Sifre1234");
-        Kontrol(await Bekle($"{Basliklar} === 'Stok ve Fiyat|Satış ve Satın Alma|Finans|Muhasebe|Personel|Takip|Yönetim'", 15), "Gruplar dogru sirada");
-        Kontrol(await Js("[...document.querySelectorAll('.mud-navmenu > a, .mud-navmenu > .mud-nav-item a')][0]?.getAttribute('href')") == "cari", "Cari Hesaplar basliksiz en ustte");
+        Kontrol(await Bekle($"{Basliklar} === 'Stok ve Fiyat|Satış ve Satın Alma|Finans|Muhasebe|Personel|Takip'", 15), "Gruplar dogru sirada; Yonetim grubu yok (Ayarlar tek madde)");
+        const string UstMaddeler = "[...document.querySelectorAll('.mud-navmenu > a, .mud-navmenu > .mud-nav-item a')].map(a => a.getAttribute('href'))";
+        Kontrol(await Js($"{UstMaddeler}.slice(0, 3).join('|')") == "|analiz|cari", "Ana Sayfa, Analiz, sonra basliksiz Cari Hesaplar");
+        Kontrol(await Js($"{UstMaddeler}.includes('ayarlar') && !{UstMaddeler}.includes('kullanicilar')") == "true", "Ayarlar tek madde; kullanicilar ayarlarin icinde");
         Kontrol(await Js("(() => { const d = document.querySelector('.mud-drawer .mud-drawer-content'); return d.scrollWidth <= d.clientWidth; })()") == "true", "Menude yatay tasma yok");
         await Ekran("1-menu");
 
@@ -63,6 +65,8 @@ internal sealed class MenuTesti : TarayiciTesti
         var calisanBasliklari = await Js(Basliklar);
         Kontrol(!calisanBasliklari.Contains("Finans") && !calisanBasliklari.Contains("Stok ve Fiyat") && !calisanBasliklari.Contains("Personel"), "Yetkisiz gruplar ve tek maddelik grup basligi yok");
         Kontrol(await Js("document.querySelector('.menu-yakinda') === null") == "true", "Fatura gormeyen e-Belgeyi de gormuyor");
+        Kontrol(await Js("!document.querySelector('.mud-navmenu a[href=\"ayarlar\"]') && !document.querySelector('.mud-navmenu a[href=\"analiz\"]')") == "true",
+            "Yetkisi olmayan calisan Ayarlar ve Analiz'i gormuyor");
         await Ekran("4-calisan");
     }
 }

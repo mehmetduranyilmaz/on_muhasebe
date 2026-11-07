@@ -55,7 +55,7 @@ internal sealed class GenelTesti : TarayiciTesti
         Kontrol(await Bekle($"{GovdeIcerir}('erişim yetkiniz yok')"), "Normal kullanici sistem sayfasina erisemiyor");
 
         await Git("/");
-        await Bekle($"{GovdeIcerir}('Hoş geldiniz')");
+        await Bekle("!!document.querySelector('.panel-karsilama h1')");
         // Gerçek fare tıklaması: avatarın ortasına bas-bırak.
         var konum = JsonNode.Parse(await Js("JSON.stringify((r => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 }))(document.querySelector('.ust-cubuk .kullanici-avatar').getBoundingClientRect()))"))!;
         var (fx, fy) = (konum["x"]!.GetValue<double>(), konum["y"]!.GetValue<double>());

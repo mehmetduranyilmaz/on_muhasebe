@@ -1,0 +1,277 @@
+@using OnMuhasebe.Shared.Contracts.Doviz
+@* Ana sayfa gündemi: bugün ilgilenilmesi gereken işler, her biri ilgili listeye bağlantı. Modül özetleri lisans + rapor yetkisi varsa
+   paralel çekilir. Ana uygulama lazy modül derlemelerine bağımlı olmasın diye cevaplar yalnız gereken alanlarıyla yerel kayıtlara okunur.
+   Yeni firmada (cari, ürün, hesap ya da fatura yoksa) "Başlarken" adımları da burada; kullanıcı kapatabilir. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+@inject IJSRuntime Js
+
+@if (_baslarken is { } adimlar)
+{
+    <div class="kart baslarken belirme mb-4">
+        <div class="d-flex align-center justify-space-between">
+            <div>
+                <div class="panel-baslik ma-0"><MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Color="Color.Secondary" /> Başlarken</div>
+                <div class="ozet-alt">@adimlar.Count(a => a.Tamam) / @adimlar.Count adım tamam · Firmanızı birkaç adımda kullanıma hazırlayın</div>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="BaslarkeniKapatAsync" aria-label="Başlarken adımlarını gizle" title="Gizle" />
+        </div>
+        <MudProgressLinear Color="Color.Secondary" Rounded="true" Size="Size.Small" Class="my-3" Value="@(100.0 * adimlar.Count(a => a.Tamam) / adimlar.Count)" />
+        <div class="baslarken-adimlari">
+            @foreach (var a in adimlar)
+            {
+                <a href="@a.Href" class="baslarken-adimi @(a.Tamam ? "tamam" : "")">
+                    <MudIcon Icon="@(a.Tamam ? Icons.Material.Filled.CheckCircle : Icons.Material.Outlined.Circle)" Size="Size.Small" />
+                    <span>@a.Ad</span>
+                </a>
+            }
+        </div>
+    </div>
+}
+
+<div class="kart gundem belirme mb-4">
+    <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-1">
+        <div class="panel-baslik ma-0"><MudIcon Icon="@Icons.Material.Filled.ChecklistRtl" Color="Color.Secondary" /> İlgilenmeniz gerekenler</div>
+        @if (_fatura is { } f)
+        {
+            <a href="analiz?sekme=fatura" class="gundem-satis" title="KDV hariç, iadeler düşülmüş">
+                Bu ay satış <b>@Bicim.Tutar(f.BuAySatis, ParaBirimleri.Tl)</b> · @f.BuAyFaturaSayisi fatura
+            </a>
+        }
+    </div>
+
+    @if (_yukleniyor)
+    {
+        @for (var i = 0; i < 3; i++)
+        {
+            <MudSkeleton Height="44px" Animation="Animation.Wave" />
+        }
+    }
+    else if (Maddeler.ToList() is { Count: > 0 } maddeler)
+    {
+        <div class="gundem-listesi">
+            @for (var i = 0; i < maddeler.Count; i++)
+            {
+                var m = maddeler[i];
+                <a href="@m.Href" class="gundem-maddesi" style="--renk:@m.Renk; --i:@i">
+                    <span class="gundem-ikon"><MudIcon Icon="@m.Ikon" Size="Size.Small" /></span>
+                    <span class="gundem-metin">
+                        <span>@m.Metin</span>
+                        @if (m.Detay is { } d)
+                        {
+                            <span class="gundem-detay">@d</span>
+                        }
+                    </span>
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Class="gundem-ok" />
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="gundem-bos">
+            <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Success" />
+            <span>Her şey yolunda; bekleyen ya da geciken iş görünmüyor.</span>
+        </div>
+    }
+</div>
+
+@code {
+    private sealed record FaturaOzeti(decimal BuAySatis, int BuAyFaturaSayisi, int TaslakSayisi, List<object>? SonFaturalar);
+    private sealed record CariOzeti(int AktifCariSayisi, int RiskAsanCariSayisi);
+    private sealed record StokOzeti(int UrunSayisi, int KritikSayisi, int EksiSayisi);
+    private sealed record CekSenetOzeti(decimal YaklasanAlinanTl, decimal YaklasanVerilenTl, int VadesiGecmisVerilenAdet, decimal KarsiliksizTl);
+    private sealed record KasaBankaOzeti(List<object>? Hesaplar);
+    private sealed record Madde(string Ikon, string Renk, string Metin, string? Detay, string Href);
+    private sealed record Adim(string Ad, bool Tamam, string Href);
+
+    // Ana sayfa finansal durum panelinden gelir (aynı raporu ikinci kez çekmemek için).
+    [Parameter] public decimal VadesiGecmisTahsil { get; set; }
+    [Parameter] public decimal VadesiGecmisOdeme { get; set; }
+
+    private FaturaOzeti? _fatura;
+    private CariOzeti? _cari;
+    private StokOzeti? _stok;
+    private CekSenetOzeti? _cek;
+    private int _onayBekleyen;
+    private bool _yukleniyor = true;
+    private Task _yukleme = Task.CompletedTask;
+    private List<Adim>? _baslarken;
+
+    private string BaslarkenAnahtari => $"om-baslarken-gizli-{Oturum.Bilgi?.AktifFirma?.Id}";
+
+    private bool Acik(string modul, string yetki) => Oturum.ModulAcikMi(modul) && Oturum.YetkiVarMi(yetki);
+
+    protected override Task OnInitializedAsync() => _yukleme = YukleAsync();
+
+    private async Task YukleAsync()
+    {
+        var fatura = Getir<FaturaOzeti>(ModulKodlari.Fatura, "fatura.rapor.goruntule", "api/fatura/raporlar/ozet");
+        var cari = Getir<CariOzeti>(ModulKodlari.Cari, "cari.rapor.goruntule", "api/cari/raporlar/ozet");
+        var stok = Getir<StokOzeti>(ModulKodlari.Stok, "stok.rapor.goruntule", "api/stok/raporlar/ozet");
+        var cek = Getir<CekSenetOzeti>(ModulKodlari.KasaBanka, "kasabanka.cek.goruntule", "api/kasabanka/cek-senet/raporlar/ozet");
+        var onay = Getir<List<object>>(ModulKodlari.Satinalma, "satinalma.onay.goruntule", "api/satinalma/talepler/bekleyenler");
+        await Task.WhenAll(fatura, cari, stok, cek, onay);
+        (_fatura, _cari, _stok, _cek, _onayBekleyen) = (fatura.Result, cari.Result, stok.Result, cek.Result, onay.Result?.Count ?? 0);
+        _yukleniyor = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !Oturum.YetkiVarMi(YonetimYetkileri.Firma.Yetki(YetkiIslemleri.Duzenle)))
+        {
+            return;
+        }
+
+        try
+        {
+            if (await Js.InvokeAsync<string?>("localStorage.getItem", BaslarkenAnahtari) is not null)
+            {
+                return;
+            }
+        }
+        catch (JSException)
+        {
+        }
+
+        // İlk render'da özetler henüz gelmemiş olabilir; Başlarken onlardan sonra hesaplanır.
+        await _yukleme;
+        var firmaGorevi = Api.GetAsync<FirmaBilgileri>("api/yonetim/firma");
+        var kasa = await Getir<KasaBankaOzeti>(ModulKodlari.KasaBanka, "kasabanka.rapor.goruntule", "api/kasabanka/raporlar/ozet");
+        var firma = await firmaGorevi;
+        List<Adim> adimlar = [];
+        if (firma.BasariliMi)
+        {
+            var b = firma.Deger;
+            adimlar.Add(new("Firma bilgilerini tamamlayın (faturada yazar)",
+                !string.IsNullOrWhiteSpace(b.VergiNo) && !string.IsNullOrWhiteSpace(b.VergiDairesi) && !string.IsNullOrWhiteSpace(b.Adres), "ayarlar/firma"));
+        }
+
+        if (Oturum.ModulAcikMi(ModulKodlari.Cari) && _cari is { } c)
+        {
+            adimlar.Add(new("İlk cari kartı ekleyin", c.AktifCariSayisi > 0, "cari/yeni"));
+        }
+
+        if (Oturum.ModulAcikMi(ModulKodlari.Stok) && _stok is { } s)
+        {
+            adimlar.Add(new("Ürün ya da hizmet tanımlayın", s.UrunSayisi > 0, "stok/yeni"));
+        }
+
+        if (kasa is { } k)
+        {
+            adimlar.Add(new("Kasa ve banka hesaplarını açın", k.Hesaplar?.Count > 0, "kasabanka/yeni"));
+        }
+
+        if (_fatura is { } f)
+        {
+            adimlar.Add(new("İlk faturayı kesin", f.SonFaturalar?.Count > 0, "fatura/yeni/satis"));
+        }
+
+        if (adimlar.Any(a => !a.Tamam))
+        {
+            _baslarken = adimlar;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<T?> Getir<T>(string modul, string yetki, string adres) where T : class
+    {
+        if (!Acik(modul, yetki))
+        {
+            return null;
+        }
+
+        var sonuc = await Api.GetAsync<T>(adres);
+        return sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private async Task BaslarkeniKapatAsync()
+    {
+        _baslarken = null;
+        try
+        {
+            await Js.InvokeVoidAsync("localStorage.setItem", BaslarkenAnahtari, "1");
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    // Önem sırası: geciken para, yaklaşan ödeme, onay bekleyen işler, sonra uyarılar.
+    private IEnumerable<Madde> Maddeler
+    {
+        get
+        {
+            if (VadesiGecmisTahsil > 0)
+            {
+                yield return new(Icons.Material.Filled.MoneyOff, "#DC2626", $"Vadesi geçmiş alacak: {Tl(VadesiGecmisTahsil)}",
+                    "Cari açık kalemler ve tahsil edilmemiş çek/senet", Oturum.ModulAcikMi(ModulKodlari.Cari) ? "cari/vade-analizi" : "cek-senet/vade-takvimi");
+            }
+
+            if (VadesiGecmisOdeme > 0)
+            {
+                yield return new(Icons.Material.Filled.EventBusy, "#EA580C", $"Vadesi geçmiş borç: {Tl(VadesiGecmisOdeme)}",
+                    "Ödenmemiş cari borçlar ve verilen evrak", Oturum.ModulAcikMi(ModulKodlari.Cari) ? "cari/vade-analizi" : "cek-senet/vade-takvimi");
+            }
+
+            if (_cek is { } c)
+            {
+                if (c.VadesiGecmisVerilenAdet > 0)
+                {
+                    yield return new(Icons.Material.Filled.ReportProblem, "#DC2626", $"{c.VadesiGecmisVerilenAdet} verilen çek/senedin vadesi geçti",
+                        "Ödendiyse bankadan ödendi olarak işleyin", "cek-senet?yon=verilen");
+                }
+
+                if (c.YaklasanVerilenTl > 0)
+                {
+                    yield return new(Icons.Material.Filled.Outbox, "#F59E0B", $"7 gün içinde ödenecek çek/senet: {Tl(c.YaklasanVerilenTl)}",
+                        "Hesapta karşılığı olduğundan emin olun", "cek-senet/vade-takvimi");
+                }
+
+                if (c.YaklasanAlinanTl > 0)
+                {
+                    yield return new(Icons.Material.Filled.MoveToInbox, "#3B82F6", $"7 gün içinde tahsil edilecek çek/senet: {Tl(c.YaklasanAlinanTl)}",
+                        "Bankaya tahsile verin ya da ciro edin", "cek-senet/vade-takvimi");
+                }
+
+                if (c.KarsiliksizTl > 0)
+                {
+                    yield return new(Icons.Material.Filled.Gavel, "#7C3AED", $"Karşılıksız / takipteki evrak: {Tl(c.KarsiliksizTl)}", null, "cek-senet");
+                }
+            }
+
+            if (_onayBekleyen > 0)
+            {
+                yield return new(Icons.Material.Filled.FactCheck, "#0EA5E9", $"{_onayBekleyen} satın alma talebi onayınızı bekliyor", null, "satinalma");
+            }
+
+            if (_fatura is { TaslakSayisi: > 0 } f)
+            {
+                yield return new(Icons.Material.Filled.EditNote, "#64748B", $"{f.TaslakSayisi} taslak fatura onaylanmayı bekliyor",
+                    "Taslaklar cari ve stoğa işlenmez", "fatura?durum=Taslak");
+            }
+
+            if (_cari is { RiskAsanCariSayisi: > 0 } cari)
+            {
+                yield return new(Icons.Material.Filled.WarningAmber, "#F59E0B", $"{cari.RiskAsanCariSayisi} cari risk limitini aştı",
+                    "Yeni satıştan önce tahsilat ya da teminat isteyin", "cari");
+            }
+
+            if (_stok is { } s)
+            {
+                if (s.EksiSayisi > 0)
+                {
+                    yield return new(Icons.Material.Filled.RemoveShoppingCart, "#DC2626", $"{s.EksiSayisi} üründe stok eksiye düştü",
+                        "Eksik giriş ya da sayım farkı olabilir", "stok/durum");
+                }
+
+                if (s.KritikSayisi > 0)
+                {
+                    yield return new(Icons.Material.Filled.Inventory, "#F59E0B", $"{s.KritikSayisi} ürün kritik seviyenin altında", "Sipariş zamanı", "stok/durum");
+                }
+            }
+        }
+    }
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+}

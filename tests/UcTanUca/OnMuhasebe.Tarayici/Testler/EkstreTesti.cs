@@ -33,7 +33,7 @@ internal sealed class EkstreTesti : TarayiciTesti
         await Doldur("E-posta", eposta);
         await Doldur("Şifre", "Sifre1234");
         await Tikla("Giriş Yap");
-        await Bekle(Govde("Kasa / Banka özeti"));
+        await Bekle(Govde("Finansal durum"));
 
         await Git($"/kasabanka/{banka}");
         Kontrol(await Bekle(Govde("Ekstre içe aktar")), "Banka hesap sayfasinda 'Ekstre ice aktar' dugmesi");
