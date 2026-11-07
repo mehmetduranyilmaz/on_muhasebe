@@ -10,6 +10,7 @@
         <FaturaRaporMenusu />
         @if (Oturum.YazabilirMi(FaturaYetkileri.Belge, YetkiIslemleri.Ekle))
         {
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ReceiptLong" Href="fatura/hizli-gider">Hızlı Gider</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.DocumentScanner" OnClick="BelgeOkuAsync">Belgeden Oluştur</MudButton>
             <YeniFaturaMenusu />
         }

@@ -79,6 +79,15 @@ else
                             </div>
                         </MudItem>
                     }
+                    @if (_tur == IslemTuru.Gider && Oturum.ModulAcikMi(ModulKodlari.Fatura) && Oturum.YazabilirMi($"fatura.belge.{YetkiIslemleri.Ekle}"))
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.ReceiptLong">
+                                Bu kayıt KDV'siz giderdir (ör. aidat, harç, banka masrafı). Fişli/faturalı ve KDV'li gider için
+                                <MudLink Href="fatura/hizli-gider">Hızlı Gider</MudLink> ekranını kullanın; KDV indirime girer.
+                            </MudAlert>
+                        </MudItem>
+                    }
                 </FormBolumu>
             }
 
