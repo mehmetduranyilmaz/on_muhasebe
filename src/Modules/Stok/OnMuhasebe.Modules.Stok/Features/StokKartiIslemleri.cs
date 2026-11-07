@@ -55,6 +55,11 @@ internal static class StokKartiIslemleri
             RuleFor(x => x.Kod).MaximumLength(30).Matches("^[A-Za-z0-9._-]*$")
                 .WithMessage("Stok kodu yalnızca harf, rakam, nokta, tire ve alt çizgi içerebilir.");
             RuleFor(x => x.Ad).NotEmpty().MaximumLength(250);
+            RuleFor(x => x.Ad2).MaximumLength(250);
+            RuleFor(x => x.VarsayilanTevkifatKodu).Must(k => TevkifatKodlari.GecerliMi(k!.Trim()))
+                .When(x => !string.IsNullOrWhiteSpace(x.VarsayilanTevkifatKodu)).WithMessage("Geçersiz tevkifat kodu.");
+            RuleFor(x => x.VarsayilanTevkifatKodu).Empty().When(x => x.KdvOrani == 0)
+                .WithMessage("KDV'siz üründe tevkifat uygulanamaz.");
             RuleFor(x => x.Tur).IsInEnum();
             RuleFor(x => x.TemelBirim).Must(Birimler.GecerliMi).WithMessage("Geçersiz birim.");
             RuleFor(x => x.Barkod).MaximumLength(50);
@@ -83,7 +88,7 @@ internal static class StokKartiIslemleri
         {
             var metin = arama.Trim();
             var desen = AramaDeseni.Icerir(metin);
-            sorgu = sorgu.Where(k => EF.Functions.ILike(k.Ad, desen) || EF.Functions.ILike(k.Kod, desen)
+            sorgu = sorgu.Where(k => EF.Functions.ILike(k.Ad, desen) || EF.Functions.ILike(k.Kod, desen) || (k.Ad2 != null && EF.Functions.ILike(k.Ad2, desen))
                                      || k.Barkod == metin || k.Birimler.Any(b => b.Barkod == metin));
         }
 
@@ -269,7 +274,9 @@ internal static class StokKartiIslemleri
             hesap is not null,
             kart.Surum,
             kart.Izleme,
-            kart.SktTakibi);
+            kart.SktTakibi,
+            kart.Ad2,
+            kart.VarsayilanTevkifatKodu);
     }
 
     // Grup var mı, barkodlar (kart + ek birimler) firma içinde benzersiz mi.

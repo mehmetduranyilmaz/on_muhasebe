@@ -1127,6 +1127,13 @@ else
         {
             satir.KdvOrani = 0;
         }
+        // Ürüne özgü tevkifat carinin tevkifatından önce gelir; carinin KDV istisnası ise ikisinden de önce (KDV sıfırlanır).
+        if (kart.VarsayilanTevkifatKodu is { } tevkifat && _cariIstisnaKodu is null && satir.KdvOrani > 0)
+        {
+            satir.TevkifatSec(tevkifat);
+            satir.TevkifatAcik = satir.TevkifatliMi;
+        }
+
         satir.Oneri = await new FiyatOnerici(Api).OnerAsync(kart, await FiyatBaglamiAsync(), satir.KdvDahilMi);
         satir.OneriUygula();
         if (birim is not null)

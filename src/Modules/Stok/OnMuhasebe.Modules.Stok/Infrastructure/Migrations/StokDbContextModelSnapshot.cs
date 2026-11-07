@@ -624,6 +624,11 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasColumnType("character varying(250)")
                         .HasColumnName("ad");
 
+                    b.Property<string>("Ad2")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("ad2");
+
                     b.Property<bool>("AktifMi")
                         .HasColumnType("boolean")
                         .HasColumnName("aktif_mi");
@@ -728,6 +733,11 @@ namespace OnMuhasebe.Modules.Stok.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)")
                         .HasColumnName("tur");
+
+                    b.Property<string>("VarsayilanTevkifatKodu")
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("varsayilan_tevkifat_kodu");
 
                     b.HasKey("Id")
                         .HasName("pk_stok_karti");

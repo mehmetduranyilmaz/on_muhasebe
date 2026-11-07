@@ -12,6 +12,8 @@ internal sealed class StokKartiConfiguration : IEntityTypeConfiguration<StokKart
         builder.Property(x => x.Izleme).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.Kod).HasMaxLength(30);
         builder.Property(x => x.Ad).HasMaxLength(250);
+        builder.Property(x => x.Ad2).HasMaxLength(250);
+        builder.Property(x => x.VarsayilanTevkifatKodu).HasMaxLength(5);
         builder.Property(x => x.Tur).HasConversion<string>().HasMaxLength(10);
         builder.Property(x => x.TemelBirim).HasMaxLength(10);
         builder.Property(x => x.Barkod).HasMaxLength(50);

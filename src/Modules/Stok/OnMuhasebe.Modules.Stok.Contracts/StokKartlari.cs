@@ -31,7 +31,9 @@ public sealed record StokKartiKaydetIstegi(
     IReadOnlyList<EkBirim>? EkBirimler,
     uint Surum = 0,
     IzlemeTuru Izleme = IzlemeTuru.Yok,
-    bool SktTakibi = false);
+    bool SktTakibi = false,
+    string? Ad2 = null,
+    string? VarsayilanTevkifatKodu = null);
 
 public sealed record StokKartiOzeti(
     Guid Id,
@@ -80,7 +82,9 @@ public sealed record StokKartiDetayi(
     bool HareketVarMi,
     uint Surum,
     IzlemeTuru Izleme = IzlemeTuru.Yok,
-    bool SktTakibi = false);
+    bool SktTakibi = false,
+    string? Ad2 = null,
+    string? VarsayilanTevkifatKodu = null);
 
 // Barkod okutma: barkod kartın kendisine ya da ek birimlerinden birine ait olabilir.
 // GS1 karekod okutulduysa lot, SKT ve seri de döner.

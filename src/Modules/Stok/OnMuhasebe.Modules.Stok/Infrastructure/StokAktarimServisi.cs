@@ -25,6 +25,7 @@ internal sealed class StokAktarimServisi(
         new("ad", "Stok Adı", Zorunlu: true, Esanlamlilar: ["Ad", "Adı", "Ürün Adı", "Malzeme Adı", "Stok Açıklaması", "Ürün"], Genislik: 40),
         new("tur", "Tür", Esanlamlilar: ["Stok Türü", "Stok Tipi"]),
         new("birim", "Birim", Esanlamlilar: ["Ana Birim", "Temel Birim", "Ölçü Birimi"]),
+        new("ad2", "İkinci Ad", Esanlamlilar: ["Ürün Adı 2", "Yabancı Ad", "İngilizce Ad", "Stok Adı 2"], Genislik: 30),
         new("barkod", "Barkod", Esanlamlilar: ["Barkod No", "EAN"]),
         new("kdv", "KDV Oranı", Zorunlu: true, Esanlamlilar: ["KDV", "KDV %", "KDV Yüzdesi", "Satış KDV"]),
         new("alis", "Alış Fiyatı", Esanlamlilar: ["Alış"]),
@@ -144,7 +145,8 @@ internal sealed class StokAktarimServisi(
             }
 
             var istek = new StokKartiKaydetIstegi(kod, ad, tur, birim, barkod, kdv, maliyetGorur ? alis : null, satir.Sayi("satis", hatalar),
-                satir.Sayi("perakende", hatalar), ParaBirimiCoz(satir.Metin("paraBirimi")), grupId, satir.Sayi("kritik", hatalar), satir.Metin("aciklama"), null);
+                satir.Sayi("perakende", hatalar), ParaBirimiCoz(satir.Metin("paraBirimi")), grupId, satir.Sayi("kritik", hatalar), satir.Metin("aciklama"), null,
+                Ad2: satir.Metin("ad2"));
             var dogrulama = await dogrulayici.ValidateAsync(istek, ct);
             hatalar.AddRange(dogrulama.Errors.Select(e => e.ErrorMessage));
 

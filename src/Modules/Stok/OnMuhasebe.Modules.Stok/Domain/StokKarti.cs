@@ -14,6 +14,9 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
 
     public string Kod { get; private set; } = null!;
     public string Ad { get; private set; } = null!;
+
+    // İkinci (ör. yabancı dildeki) ad: ihracat faturası, yabancı müşteri teklifi.
+    public string? Ad2 { get; private set; }
     public StokTuru Tur { get; private set; }
     public string TemelBirim { get; private set; } = null!;
     public string? Barkod { get; private set; }
@@ -31,6 +34,9 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
 
     // Son kullanma tarihi lot/seri girişinde zorunlu tutulur (gıda, ilaç, kozmetik).
     public bool SktTakibi { get; private set; }
+
+    // Ürüne özgü KDV tevkifatı (ör. hurda metal 803, temizlik hizmeti 611); faturada satıra önerilir.
+    public string? VarsayilanTevkifatKodu { get; private set; }
     public bool AktifMi { get; private set; } = true;
     public bool SilindiMi { get; private set; }
     public DateTime? SilinmeTarihi { get; private set; }
@@ -113,6 +119,8 @@ internal sealed class StokKarti : FirmaEntity, ISilinebilir
     private void BilgileriAyarla(StokKartiBilgileri b)
     {
         Ad = b.Ad;
+        Ad2 = b.Ad2;
+        VarsayilanTevkifatKodu = b.VarsayilanTevkifatKodu;
         Barkod = b.Barkod;
         KdvOrani = b.KdvOrani;
         AlisFiyati = b.AlisFiyati;
@@ -145,11 +153,13 @@ internal sealed record StokKartiBilgileri(
     decimal? KritikSeviye,
     string? Aciklama,
     IzlemeTuru Izleme = IzlemeTuru.Yok,
-    bool SktTakibi = false)
+    bool SktTakibi = false,
+    string? Ad2 = null,
+    string? VarsayilanTevkifatKodu = null)
 {
     public static StokKartiBilgileri Istekten(StokKartiKaydetIstegi i) => new(
         i.Ad.Trim(), i.Tur, i.TemelBirim, Temiz(i.Barkod), i.KdvOrani, i.AlisFiyati, i.SatisFiyati, i.PerakendeFiyati, i.ParaBirimi,
-        i.GrupId, i.KritikSeviye, Temiz(i.Aciklama), i.Izleme, i.SktTakibi);
+        i.GrupId, i.KritikSeviye, Temiz(i.Aciklama), i.Izleme, i.SktTakibi, Temiz(i.Ad2), Temiz(i.VarsayilanTevkifatKodu));
 
     private static string? Temiz(string? deger) => string.IsNullOrWhiteSpace(deger) ? null : deger.Trim();
 }

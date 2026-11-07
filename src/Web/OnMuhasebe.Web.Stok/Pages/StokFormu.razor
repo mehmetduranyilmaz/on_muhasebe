@@ -1,5 +1,6 @@
 @page "/stok/yeni"
 @page "/stok/{Id:guid}/duzenle"
+@using OnMuhasebe.Shared.Contracts.Vergi
 @inject OturumYoneticisi Oturum
 @inject ApiIstemcisi Api
 @inject ZorunluAlanServisi ZorunluAlanlar
@@ -25,6 +26,10 @@ else
             </MudItem>
             <MudItem xs="12" sm="8" md="5">
                 <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad" Label="Ad" Required="true" RequiredError="Ad gerekli." MaxLength="250" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_ad2" Label="İkinci ad (ör. yabancı dilde)" MaxLength="250"
+                              HelperText="İhracat faturası ve yabancı müşteri tekliflerinde; aramada da bulunur" />
             </MudItem>
             <MudItem xs="6" md="2">
                 <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_tur" Label="Tür" Disabled="_hareketVarMi"
@@ -86,14 +91,20 @@ else
         @if (MaliyetGorur)
         {
             <MudItem xs="12" sm="4">
-                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_alisFiyati" Required="Z(StokZorunluAlanlari.AlisFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Alış fiyatı" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_alisFiyati" Required="Z(StokZorunluAlanlari.AlisFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Alış fiyatı" HelperText="KDV hariç" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="Dahil(_alisFiyati)" ValueChanged="@((decimal? d) => _alisFiyati = Haric(d))"
+                                 Label="KDV dahil karşılığı" Format="N2" Min="0" HideSpinButtons="true" Class="mt-1" />
             </MudItem>
         }
             <MudItem xs="12" sm="4">
                 <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_satisFiyati" Required="Z(StokZorunluAlanlari.SatisFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Toptan satış fiyatı" HelperText="KDV hariç" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="Dahil(_satisFiyati)" ValueChanged="@((decimal? d) => _satisFiyati = Haric(d))"
+                                 Label="KDV dahil karşılığı" Format="N2" Min="0" HideSpinButtons="true" Class="mt-1" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_perakendeFiyati" Required="Z(StokZorunluAlanlari.PerakendeFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Perakende satış fiyatı" HelperText="KDV dahil" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_perakendeFiyati" Required="Z(StokZorunluAlanlari.PerakendeFiyati)" RequiredError="Bu alan zorunlu (firma ayarı)." Label="Perakende satış fiyatı" HelperText="KDV dahil (raf fiyatı)" Format="N2" Min="0" HideSpinButtons="true" />
+                <MudNumericField T="decimal?" Variant="Variant.Outlined" Margin="Margin.Dense" Value="HaricGosterim(_perakendeFiyati)" ValueChanged="@((decimal? h) => _perakendeFiyati = Dahil(h))"
+                                 Label="KDV hariç karşılığı" Format="N2" Min="0" HideSpinButtons="true" Class="mt-1" />
             </MudItem>
             <MudItem xs="6">
                 <MudSelect Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_paraBirimi" Label="Para birimi">
@@ -108,6 +119,15 @@ else
                     @foreach (var oran in KdvOranlari.Tumu)
                     {
                         <MudSelectItem Value="oran">%@oran</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="string" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_varsayilanTevkifatKodu" Label="Varsayılan KDV tevkifatı" Clearable="true"
+                           Disabled="@(_kdvOrani == 0)" HelperText="Ürüne özgü tevkifat (ör. hurda, temizlik, yapım işi); faturada bu ürünün satırına önerilir">
+                    @foreach (var t in TevkifatKodlari.Tumu)
+                    {
+                        <MudSelectItem T="string" Value="t.Kod">@t.Kod · @t.Aciklama (@t.Pay/@t.Payda)</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
@@ -171,6 +191,8 @@ else
     private decimal? _alisFiyati;
     private decimal? _satisFiyati;
     private decimal? _perakendeFiyati;
+    private string? _ad2;
+    private string? _varsayilanTevkifatKodu;
     private string _paraBirimi = ParaBirimleri.Tl;
     private Guid? _grupId;
     private decimal? _kritikSeviye;
@@ -207,6 +229,7 @@ else
             (_alisFiyati, _satisFiyati, _perakendeFiyati, _paraBirimi, _grupId, _kritikSeviye) = (k.AlisFiyati, k.SatisFiyati, k.PerakendeFiyati, k.ParaBirimi, k.GrupId, k.KritikSeviye);
             (_aciklama, _surum, _hareketVarMi) = (k.Aciklama, k.Surum, k.HareketVarMi);
             (_izleme, _sktTakibi) = (k.Izleme, k.SktTakibi);
+            (_ad2, _varsayilanTevkifatKodu) = (k.Ad2, k.VarsayilanTevkifatKodu);
             _ekBirimler.AddRange(k.EkBirimler.Select(b => new EkBirimSatiri { BirimKodu = b.BirimKodu, Katsayi = b.Katsayi, Barkod = b.Barkod }));
         }
 
@@ -222,6 +245,16 @@ else
         _ekBirimler.Add(new EkBirimSatiri { BirimKodu = bos?.Kod ?? "KOLI", Katsayi = bos?.Kod == "DUZINE" ? 12 : 1 });
     }
 
+    // Çift fiyat girişi: saklanan fiyat değişmez (toptan/alış KDV hariç, perakende KDV dahil), karşılığı seçili KDV oranıyla hesaplanır.
+    // Dahilden hariç fiyata dönüşte 4 ondalık tutulur ki dahil fiyat yeniden hesaplandığında kuruşu kaymasın.
+    private decimal Carpan => 1m + _kdvOrani / 100m;
+
+    private decimal? Dahil(decimal? haric) => haric is { } h ? Math.Round(h * Carpan, 2, MidpointRounding.AwayFromZero) : null;
+
+    private decimal? Haric(decimal? dahil) => dahil is { } d ? Math.Round(d / Carpan, 4, MidpointRounding.AwayFromZero) : null;
+
+    private decimal? HaricGosterim(decimal? dahil) => dahil is { } d ? Math.Round(d / Carpan, 2, MidpointRounding.AwayFromZero) : null;
+
     private async Task KaydetAsync()
     {
         await _form.ValidateAsync();
@@ -234,7 +267,8 @@ else
             _kod, _ad, _tur, _temelBirim, _barkod, _kdvOrani, _alisFiyati, _satisFiyati, _perakendeFiyati, _paraBirimi, _grupId,
             _tur == StokTuru.Urun ? _kritikSeviye : null, _aciklama,
             _ekBirimler.Select(e => new EkBirim(e.BirimKodu, e.Katsayi, e.Barkod)).ToList(), _surum,
-            _tur == StokTuru.Urun ? _izleme : IzlemeTuru.Yok, _tur == StokTuru.Urun && _izleme != IzlemeTuru.Yok && _sktTakibi);
+            _tur == StokTuru.Urun ? _izleme : IzlemeTuru.Yok, _tur == StokTuru.Urun && _izleme != IzlemeTuru.Yok && _sktTakibi,
+            _ad2, _kdvOrani > 0 ? _varsayilanTevkifatKodu : null);
         var sonuc = Id is { } id
             ? await Api.PutAsync<StokKartiDetayi>($"api/stok/kartlar/{id}", istek, islemAnahtari: _anahtar.Deger)
             : await Api.PostAsync<StokKartiDetayi>("api/stok/kartlar", istek, islemAnahtari: _anahtar.Deger);
