@@ -154,7 +154,7 @@ internal sealed class FaturaBelgesi : FirmaEntity, ISilinebilir, IDonemeTabi, II
             return FaturaHatalari.GenelIskontoFazla;
         }
 
-        SatisSekli = FaturaTurleri.SatisTarafiMi(b.Tur) ? b.SatisSekli ?? Contracts.SatisSekli.Toptan : null;
+        SatisSekli = FaturaTurleri.SatisSekliVarMi(b.Tur) ? b.SatisSekli ?? Contracts.SatisSekli.Toptan : null;
         Tarih = b.Tarih;
         VadeTarihi = b.VadeTarihi;
         if (!GidenMi)

@@ -477,6 +477,7 @@ internal sealed class FaturaKayitServisi(
         FaturaTuru.AlistanIade => (CariHareketTuru.AlistanIadeFaturasi, HareketYonu.Borc),
         FaturaTuru.GiderPusulasi => (CariHareketTuru.GiderPusulasi, HareketYonu.Alacak),
         FaturaTuru.SerbestMeslekMakbuzu => (CariHareketTuru.SerbestMeslekMakbuzu, HareketYonu.Alacak),
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => (CariHareketTuru.VerilenSerbestMeslekMakbuzu, HareketYonu.Borc),
         _ => throw new ArgumentOutOfRangeException(nameof(tur))
     };
 
@@ -501,6 +502,7 @@ internal static class FaturaMetinleri
         FaturaTuru.AlistanIade => "Alıştan iade faturası",
         FaturaTuru.GiderPusulasi => "Gider pusulası",
         FaturaTuru.SerbestMeslekMakbuzu => "Serbest meslek makbuzu",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "Serbest meslek makbuzu",
         _ => tur.ToString()
     };
 }

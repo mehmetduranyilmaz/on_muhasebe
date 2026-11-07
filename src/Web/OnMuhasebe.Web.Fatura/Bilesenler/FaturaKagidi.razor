@@ -30,7 +30,7 @@
             }
         </div>
         <div class="fk-baslik">
-            <div class="fk-tur">@FaturaMetinleri.Tur(Fatura.Tur).ToUpper(_tr)</div>
+            <div class="fk-tur">@(MakbuzMu ? "SERBEST MESLEK MAKBUZU" : FaturaMetinleri.Tur(Fatura.Tur).ToUpper(_tr))</div>
             <table class="fk-bilgi">
                 <tr><th>@(FaturaTurleri.StopajliMi(Fatura.Tur) ? "Belge No" : "Fatura No")</th><td>@(Fatura.Numara ?? "—")</td></tr>
                 <tr><th>Tarih</th><td>@Bicim.Tarih(Fatura.Tarih)</td></tr>
@@ -150,7 +150,7 @@
                     <tr><th>Gelir Vergisi Stopajı (−)</th><td>@Bicim.Tutar(Fatura.StopajTutari)</td></tr>
                 }
             }
-            <tr class="fk-genel"><th>Ödenecek Tutar</th><td>@Bicim.Tutar(Fatura.OdenecekTutar, Fatura.ParaBirimi)</td></tr>
+            <tr class="fk-genel"><th>@(MakbuzMu ? "Tahsil Edilen Tutar" : "Ödenecek Tutar")</th><td>@Bicim.Tutar(Fatura.OdenecekTutar, Fatura.ParaBirimi)</td></tr>
             @if (Fatura.ParaBirimi != ParaBirimleri.Tl)
             {
                 <tr><th>TL Karşılığı</th><td>@Bicim.Tutar(FaturaHesaplayici.Yuvarla(Fatura.OdenecekTutar * Fatura.Kur), ParaBirimleri.Tl)</td></tr>
@@ -166,6 +166,9 @@
     [Parameter] public FirmaBilgileri? Firma { get; set; }
 
     // Bizim sevk ettiğimiz (giden) faturada irsaliyesiz ürün satırı varsa mal faturayla sevk edilmiştir: irsaliyeli fatura (VUK 231).
+    // Verilen makbuz, alıcısına "serbest meslek makbuzu" başlığıyla verilir (brüt ücret, stopaj, net ücret, KDV, tahsil edilen).
+    private bool MakbuzMu => Fatura.Tur == FaturaTuru.VerilenSerbestMeslekMakbuzu;
+
     private bool IrsaliyeYerineGecerMi => FaturaTurleri.GidenMi(Fatura.Tur) && Fatura.Satirlar.Any(s => s.StokluMu && s.IrsaliyeSatiriId is null);
 
     private static string Yer(string? ilce, string? il) => string.Join(" / ", new[] { ilce, il }.Where(x => !string.IsNullOrEmpty(x)));

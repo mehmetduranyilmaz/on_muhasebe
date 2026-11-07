@@ -26,9 +26,9 @@ else
 
     <MudGrid Spacing="3">
         <MudItem xs="12" lg="8">
-            <FormBolumu Baslik="@(StopajliMi ? "Belge bilgileri" : "Fatura bilgileri")" Aciklama="@(SatisTarafiMi ? "Satış şekli, cari ve tarihler" : "Cari, belge numarası ve tarihler")"
+            <FormBolumu Baslik="@(StopajliMi ? "Belge bilgileri" : "Fatura bilgileri")" Aciklama="@(SatisSekliVarMi ? "Satış şekli, cari ve tarihler" : GidenMi ? "Cari ve tarihler" : "Cari, belge numarası ve tarihler")"
                         Ikon="@Icons.Material.Filled.Description" Sira="0">
-                @if (SatisTarafiMi)
+                @if (SatisSekliVarMi)
                 {
                     <MudItem xs="12">
                         <div class="tur-sekmeleri mb-0">
@@ -88,7 +88,7 @@ else
                         </MudItem>
                     }
                 }
-                @if (Oturum.ModulAcikMi(ModulKodlari.Cari) && ((_satisSekli == SatisSekli.Perakende && SatisTarafiMi) || StopajliMi))
+                @if (Oturum.ModulAcikMi(ModulKodlari.Cari) && ((_satisSekli == SatisSekli.Perakende && SatisSekliVarMi) || StopajliMi))
                 {
                     <MudItem xs="12" Class="pt-0">
                         <MudSwitch T="bool" Value="_nihaiTuketici" ValueChanged="NihaiDegisti" Color="Color.Secondary"
@@ -403,7 +403,8 @@ else
                     <div class="stopaj-girisi mb-3">
                         <MudNumericField T="decimal" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="_stopajOrani" Label="Gelir vergisi stopajı"
                                          HideSpinButtons="true" Min="0" Max="100" Immediate="true" DebounceInterval="250"
-                                         Adornment="Adornment.End" AdornmentText="%" HelperText="Matrah üzerinden kesilir; muhtasarla beyan edilir" />
+                                         Adornment="Adornment.End" AdornmentText="%"
+                                         HelperText="@(VerilenMakbuzMu ? "Müşteri keser ve beyan eder; yıllık beyannamenizde mahsup edilir" : "Matrah üzerinden kesilir; muhtasarla beyan edilir")" />
                         <div class="d-flex gap-1 flex-wrap mt-1">
                             @foreach (var (oran, aciklama) in HizliStopajOranlari)
                             {
@@ -411,7 +412,7 @@ else
                                          OnClick="() => _stopajOrani = oran">%@oran · @aciklama</MudChip>
                             }
                         </div>
-                        @if (_stopajOrani == 0)
+                        @if (_stopajOrani == 0 && !VerilenMakbuzMu)
                         {
                             <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">Stopaj oranı girilmedi; @FaturaMetinleri.Tur(_tur).ToLower(Bicim.Kultur) stopajsız kaydedilecek.</MudAlert>
                         }
@@ -613,21 +614,32 @@ else
     private ApiHatasi? _hata;
 
     private bool SatisTarafiMi => FaturaTurleri.SatisTarafiMi(_tur);
+    private bool SatisSekliVarMi => FaturaTurleri.SatisSekliVarMi(_tur);
+    private bool VerilenMakbuzMu => _tur == FaturaTuru.VerilenSerbestMeslekMakbuzu;
     private bool StokGirisiMi => _tur is FaturaTuru.Alis or FaturaTuru.SatistanIade or FaturaTuru.GiderPusulasi;
     private bool ParaGirisi => FaturaTurleri.ParaGirisiMi(_tur);
     private bool KdvsizMi => FaturaTurleri.KdvsizMi(_tur);
     private bool StopajliMi => FaturaTurleri.StopajliMi(_tur);
 
-    private string KisiEtiketi => _tur == FaturaTuru.GiderPusulasi ? "Satıcının adı soyadı" : "Serbest meslek erbabının adı soyadı";
+    private string KisiEtiketi => _tur switch
+    {
+        FaturaTuru.GiderPusulasi => "Satıcının adı soyadı",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "Müşterinin adı soyadı",
+        _ => "Serbest meslek erbabının adı soyadı"
+    };
     private string NumaraEtiketi => _tur == FaturaTuru.SerbestMeslekMakbuzu ? "Makbuz numarası" : "Fatura numarası";
     private string NumaraAciklamasi => _tur == FaturaTuru.SerbestMeslekMakbuzu
         ? "Serbest meslek erbabının düzenlediği makbuzdaki numara"
         : "Karşı tarafın düzenlediği faturadaki numara";
 
     // GVK 94: gider pusulasında mal alımı %2 (havlu, çarşaf, hurda vb.) / %5 (diğer mal), hizmet %10; serbest meslek ödemesi %20.
-    private IReadOnlyList<(decimal Oran, string Aciklama)> HizliStopajOranlari => _tur == FaturaTuru.GiderPusulasi
-        ? [(2m, "ev üretimi mal, hurda"), (5m, "diğer mal"), (10m, "hizmet")]
-        : [(20m, "serbest meslek")];
+    // GVK 94/2: müşteri işletme veya kurumsa serbest meslek ödemesinden %20 keser; bireysel müşteri (nihai) stopaj kesmez.
+    private IReadOnlyList<(decimal Oran, string Aciklama)> HizliStopajOranlari => _tur switch
+    {
+        FaturaTuru.GiderPusulasi => [(2m, "ev üretimi mal, hurda"), (5m, "diğer mal"), (10m, "hizmet")],
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => [(20m, "işletme / kurum müşteri"), (0m, "bireysel müşteri")],
+        _ => [(20m, "serbest meslek")]
+    };
 
     // Peşin hesap faturanın dövizinde olmalı; kredi kartına tahsilat, POS'tan ödeme yapılmaz.
     private IEnumerable<HesapOzeti> UygunPesinHesaplar => _pesinHesaplar.Where(h => h.ParaBirimi == _paraBirimi
@@ -654,7 +666,7 @@ else
     private string ParaSimgesi => _paraBirimi == ParaBirimleri.Tl ? "TL" : _paraBirimi;
 
     // Cari modülü yoksa perakende satış her zaman nihai tüketiciye kesilir; gider pusulası/SMM de cari açmadan kişiye kesilebilir.
-    private bool NihaiTuketiciMi => (SatisTarafiMi && _satisSekli == SatisSekli.Perakende || StopajliMi)
+    private bool NihaiTuketiciMi => (SatisSekliVarMi && _satisSekli == SatisSekli.Perakende || StopajliMi)
                                     && (_nihaiTuketici || !Oturum.ModulAcikMi(ModulKodlari.Cari));
 
     private bool KaydedilebilirMi => _satirlar.Count > 0 && (NihaiTuketiciMi || _cari is not null)
@@ -705,9 +717,9 @@ else
             _tarih = Zaman.GetLocalNow().Date;
 
             // Serbest meslek ödemesinde GV stopajı %20'dir; gider pusulasında oran mal/hizmete göre seçilir.
-            _stopajOrani = _tur == FaturaTuru.SerbestMeslekMakbuzu ? 20m : 0m;
+            _stopajOrani = _tur is FaturaTuru.SerbestMeslekMakbuzu or FaturaTuru.VerilenSerbestMeslekMakbuzu ? 20m : 0m;
             _nihaiTuketici = !Oturum.ModulAcikMi(ModulKodlari.Cari);
-            if (!Oturum.ModulAcikMi(ModulKodlari.Cari) && SatisTarafiMi)
+            if (!Oturum.ModulAcikMi(ModulKodlari.Cari) && SatisSekliVarMi)
             {
                 _satisSekli = SatisSekli.Perakende;
             }
@@ -1013,6 +1025,13 @@ else
     private void NihaiDegisti(bool nihai)
     {
         _nihaiTuketici = nihai;
+
+        // Bireysel müşteri vergi kesintisi yapmaz; makbuz kurumsal müşteriye dönerse %20 stopaj geri gelir.
+        if (VerilenMakbuzMu)
+        {
+            _stopajOrani = nihai ? 0m : 20m;
+        }
+
         if (nihai)
         {
             _cari = null;
@@ -1218,7 +1237,7 @@ else
         SatirEkle(new FaturaSatirModeli { KdvDahilMi = VarsayilanKdvDahil, Birim = Birimler.Adet, KdvOrani = KdvsizMi ? 0 : KdvOranlari.Genel });
 
     private bool VarsayilanKdvDahil => KdvsizMi ? false
-        : SatisTarafiMi && _satisSekli == SatisSekli.Perakende
+        : SatisSekliVarMi && _satisSekli == SatisSekli.Perakende
             ? _ayar?.PerakendeKdvDahil ?? true
             : _ayar?.ToptanKdvDahil ?? false;
 
@@ -1246,7 +1265,7 @@ else
 
         var istek = new FaturaKaydetIstegi(
             _tur,
-            SatisTarafiMi ? _satisSekli : null,
+            SatisSekliVarMi ? _satisSekli : null,
             NihaiTuketiciMi ? null : _cari?.Id,
             NihaiTuketiciMi ? new NihaiTuketiciBilgisi(_nihaiAd, _nihaiTckn) : null,
             tarih,

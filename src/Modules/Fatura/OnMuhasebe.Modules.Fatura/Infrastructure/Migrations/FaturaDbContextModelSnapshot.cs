@@ -84,6 +84,12 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("perakende_seri");
 
+                    b.Property<string>("SerbestMeslekSeri")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("serbest_meslek_seri");
+
                     b.Property<uint>("Surum")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -317,8 +323,8 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
 
                     b.Property<string>("Tur")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("tur");
 
                     b.Property<DateOnly?>("VadeTarihi")
@@ -347,7 +353,7 @@ namespace OnMuhasebe.Modules.Fatura.Infrastructure.Migrations
                     b.HasIndex("FirmaId", "Numara")
                         .IsUnique()
                         .HasDatabaseName("ix_fatura_firma_id_numara")
-                        .HasFilter("numara IS NOT NULL AND tur IN ('Satis', 'AlistanIade', 'GiderPusulasi')");
+                        .HasFilter("numara IS NOT NULL AND tur IN ('Satis', 'AlistanIade', 'GiderPusulasi', 'VerilenSerbestMeslekMakbuzu')");
 
                     b.HasIndex("FirmaId", "Tarih")
                         .HasDatabaseName("ix_fatura_firma_id_tarih");

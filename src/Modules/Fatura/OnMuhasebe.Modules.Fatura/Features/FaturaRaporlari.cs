@@ -101,7 +101,7 @@ internal static class FaturaRaporlari
                 g.Key,
                 g.Sum(f => f.Tur switch
                 {
-                    FaturaTuru.Satis => Tl(f.Matrah, f.Kur),
+                    FaturaTuru.Satis or FaturaTuru.VerilenSerbestMeslekMakbuzu => Tl(f.Matrah, f.Kur),
                     FaturaTuru.SatistanIade => -Tl(f.Matrah, f.Kur),
                     _ => 0m
                 }),
@@ -133,7 +133,7 @@ internal static class FaturaRaporlari
         }
 
         var faturalar = await Faturalar(db, isyeriId).AsNoTracking().Include(f => f.Satirlar)
-            .Where(f => f.Durum == FaturaDurumu.Onayli && (f.Tur == FaturaTuru.Satis || f.Tur == FaturaTuru.SatistanIade)
+            .Where(f => f.Durum == FaturaDurumu.Onayli && (f.Tur == FaturaTuru.Satis || f.Tur == FaturaTuru.SatistanIade || f.Tur == FaturaTuru.VerilenSerbestMeslekMakbuzu)
                         && f.Tarih >= bas && f.Tarih <= son)
             .ToListAsync(cancellationToken);
 
@@ -214,6 +214,7 @@ internal static class FaturaRaporlari
 
     // Alış tarafı giderleri: alış faturası, gider pusulası ve serbest meslek makbuzu.
     private static readonly FaturaTuru[] _alisTurleri = [FaturaTuru.Alis, FaturaTuru.GiderPusulasi, FaturaTuru.SerbestMeslekMakbuzu];
+    private static readonly FaturaTuru[] _satisTurleri = [FaturaTuru.Satis, FaturaTuru.VerilenSerbestMeslekMakbuzu];
 
     // Ana sayfa özeti: yalnızca onaylı faturalar; tutarlar TL ve KDV hariç, iadeler düşülmüş.
     // KDV1 mantığı: satıcı tevkif edilen KDV'yi hesaplanan KDV'ye katmaz (alıcı KDV2 ile öder); alıcı KDV'nin tamamını indirir.
@@ -244,13 +245,13 @@ internal static class FaturaRaporlari
         decimal Kdv(int yil, int ay, params FaturaTuru[] turler) =>
             aylik.Where(a => a.Year == yil && a.Month == ay && turler.Contains(a.Tur)).Sum(a => a.Kdv);
 
-        decimal SaticiKdvsi(int yil, int ay, FaturaTuru tur) =>
-            aylik.Where(a => a.Year == yil && a.Month == ay && a.Tur == tur).Sum(a => a.Kdv - a.Tevkif);
+        decimal SaticiKdvsi(int yil, int ay, params FaturaTuru[] turler) =>
+            aylik.Where(a => a.Year == yil && a.Month == ay && turler.Contains(a.Tur)).Sum(a => a.Kdv - a.Tevkif);
 
         var sonAylar = Enumerable.Range(0, GrafikAySayisi)
             .Select(i => ilkAy.AddMonths(i))
             .Select(a => new AylikFaturaTutari(a.Year, a.Month,
-                Para.Yuvarla(Matrah(a.Year, a.Month, FaturaTuru.Satis) - Matrah(a.Year, a.Month, FaturaTuru.SatistanIade)),
+                Para.Yuvarla(Matrah(a.Year, a.Month, _satisTurleri) - Matrah(a.Year, a.Month, FaturaTuru.SatistanIade)),
                 Para.Yuvarla(Matrah(a.Year, a.Month, _alisTurleri) - Matrah(a.Year, a.Month, FaturaTuru.AlistanIade))))
             .ToList();
 
@@ -267,7 +268,7 @@ internal static class FaturaRaporlari
         return TypedResults.Ok(new FaturaOzetRaporu(
             sonAylar[^1].Satis,
             sonAylar[^1].Alis,
-            Para.Yuvarla(SaticiKdvsi(y, m, FaturaTuru.Satis) - SaticiKdvsi(y, m, FaturaTuru.SatistanIade)),
+            Para.Yuvarla(SaticiKdvsi(y, m, _satisTurleri) - SaticiKdvsi(y, m, FaturaTuru.SatistanIade)),
             Para.Yuvarla(Kdv(y, m, _alisTurleri) - Kdv(y, m, FaturaTuru.AlistanIade)),
             aylik.Where(a => a.Year == y && a.Month == m).Sum(a => a.Sayi),
             taslakSayisi,

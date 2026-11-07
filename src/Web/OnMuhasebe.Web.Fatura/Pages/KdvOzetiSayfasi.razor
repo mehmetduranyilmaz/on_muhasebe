@@ -159,6 +159,13 @@
                         </tbody>
                     </MudSimpleTable>
                 }
+                @if (o.KesilenStopajTl > 0)
+                {
+                    <div class="ozet-alt mt-2">
+                        Müşterilerinizin satışlarınızdan (verilen makbuz, stopajlı fatura) kestiği stopaj: <b>@Tl(o.KesilenStopajTl)</b>.
+                        Muhtasarı müşteri verir; bu tutar sizin için geçici/yıllık beyanda mahsup edilecek peşin ödenmiş vergidir.
+                    </div>
+                }
             </div>
 
             <MudAlert Severity="Severity.Info" Dense="true">

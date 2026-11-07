@@ -357,6 +357,7 @@ else if (_hata is null)
     {
         FaturaTuru.GiderPusulasi => "Satıcı",
         FaturaTuru.SerbestMeslekMakbuzu => "Serbest meslek erbabı",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu when f.CariHesapId is null => "Müşteri (bireysel)",
         _ when f.CariHesapId is null => "Nihai tüketici",
         _ => FaturaTurleri.SatisTarafiMi(f.Tur) ? "Müşteri" : "Tedarikçi"
     };

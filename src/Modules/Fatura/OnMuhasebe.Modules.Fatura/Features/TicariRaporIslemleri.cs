@@ -44,7 +44,7 @@ internal static class TicariRaporIslemleri
     }
 
     private static FaturaTuru[] Turler(TicariTaraf taraf) => taraf == TicariTaraf.Satis
-        ? [FaturaTuru.Satis, FaturaTuru.SatistanIade]
+        ? [FaturaTuru.Satis, FaturaTuru.VerilenSerbestMeslekMakbuzu, FaturaTuru.SatistanIade]
         : [FaturaTuru.Alis, FaturaTuru.SerbestMeslekMakbuzu, FaturaTuru.GiderPusulasi, FaturaTuru.AlistanIade];
 
     private static bool IadeMi(FaturaTuru tur) => tur is FaturaTuru.SatistanIade or FaturaTuru.AlistanIade;

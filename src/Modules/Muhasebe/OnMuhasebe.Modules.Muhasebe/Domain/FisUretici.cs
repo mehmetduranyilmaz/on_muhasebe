@@ -259,6 +259,7 @@ internal static class FisUretici
         FaturaTuru.SatistanIade => "Satıştan iade faturası",
         FaturaTuru.AlistanIade => "Alıştan iade faturası",
         FaturaTuru.GiderPusulasi => "Gider pusulası",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "Serbest meslek makbuzu",
         _ => "Serbest meslek makbuzu"
     };
 }

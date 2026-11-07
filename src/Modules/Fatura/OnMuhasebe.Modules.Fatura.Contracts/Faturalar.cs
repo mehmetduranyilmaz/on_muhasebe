@@ -12,7 +12,10 @@ public enum FaturaTuru
     // Vergi mükellefi olmayandan alım için biz düzenleriz (KDV yok, stopaj var).
     GiderPusulasi,
     // Serbest meslek erbabının düzenlediği belge; biz alırız (KDV + gelir vergisi stopajı).
-    SerbestMeslekMakbuzu
+    SerbestMeslekMakbuzu,
+    // Serbest meslek erbabı olarak bizim düzenlediğimiz makbuz (avukat, mali müşavir, hekim...). Müşteri işletme ya da kurumsa
+    // gelir vergisi stopajını keser ve kendi muhtasarında beyan eder; bize brüt + KDV − stopaj ödenir. Bireysel müşteride stopaj yoktur.
+    VerilenSerbestMeslekMakbuzu
 }
 
 // Satış ve satıştan iade faturalarında; fiyat önerisini, numara serisini ve nihai tüketiciye kesilebilmeyi belirler.
@@ -42,18 +45,28 @@ public static class FaturaTurleri
 {
     // Numarasını firmanın verdiği (bizim düzenlediğimiz) belgeler; diğerlerinde karşı tarafın numarası girilir.
     // Gider pusulasını da biz düzenleriz (kendi serisiyle numaralanır); SMM'yi karşı taraf düzenler.
-    public static bool GidenMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade or FaturaTuru.GiderPusulasi;
+    public static bool GidenMi(FaturaTuru tur) =>
+        tur is FaturaTuru.Satis or FaturaTuru.AlistanIade or FaturaTuru.GiderPusulasi or FaturaTuru.VerilenSerbestMeslekMakbuzu;
 
-    public static bool SatisTarafiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.SatistanIade;
+    // Gelir (hasılat) tarafı: hesaplanan KDV, 600/610 hesapları, müşteri cari.
+    public static bool SatisTarafiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.SatistanIade or FaturaTuru.VerilenSerbestMeslekMakbuzu;
+
+    // Toptan/perakende ayrımı (fiyat, seri, nihai tüketici) yalnızca satış faturasında ve iadesinde vardır.
+    public static bool SatisSekliVarMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.SatistanIade;
+
+    // Stopajı bizim muhtasarımızda beyan ettiğimiz belgeler (stopajı biz keseriz). Verilen makbuzdaki stopajı müşteri beyan eder;
+    // bizim için yıllık beyanda mahsup edilecek peşin ödenmiş vergidir.
+    public static bool StopajBeyaniBizdeMi(FaturaTuru tur) => tur is FaturaTuru.GiderPusulasi or FaturaTuru.SerbestMeslekMakbuzu;
 
     // Peşin işlemde paranın yönü: satışta ve alıştan iadede para bize girer; alış/GP/SMM'de bizden çıkar.
-    public static bool ParaGirisiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade;
+    public static bool ParaGirisiMi(FaturaTuru tur) => tur is FaturaTuru.Satis or FaturaTuru.AlistanIade or FaturaTuru.VerilenSerbestMeslekMakbuzu;
 
     // Gider pusulası KDV mükellefi olmayana düzenlenir: satırlarda KDV olmaz.
     public static bool KdvsizMi(FaturaTuru tur) => tur is FaturaTuru.GiderPusulasi;
 
     // Gelir vergisi stopajı (tevkifatı) uygulanabilen belgeler.
-    public static bool StopajliMi(FaturaTuru tur) => tur is FaturaTuru.GiderPusulasi or FaturaTuru.SerbestMeslekMakbuzu;
+    public static bool StopajliMi(FaturaTuru tur) =>
+        tur is FaturaTuru.GiderPusulasi or FaturaTuru.SerbestMeslekMakbuzu or FaturaTuru.VerilenSerbestMeslekMakbuzu;
 
     // Mal/hizmet satırları stok hareketi oluşturabilir mi (alış tarafı gibi). SMM yalnızca hizmettir.
     public static bool StoklaIliskiliMi(FaturaTuru tur) =>
@@ -247,7 +260,8 @@ public sealed record FaturaAyarlari(
     int VarsayilanVadeGunu,
     string GiderPusulasiSeri = "GPS",
     string IrsaliyeSeri = "IRS",
-    string? VarsayilanAciklama = null);
+    string? VarsayilanAciklama = null,
+    string SerbestMeslekSeri = "SMM");
 
 // Tutarlar TL ve KDV hariçtir; iadeler düşülmüştür.
 public sealed record AylikFaturaTutari(int Yil, int Ay, decimal Satis, decimal Alis);

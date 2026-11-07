@@ -504,11 +504,11 @@ internal sealed class EkstreServisi(
             : KasaBankaHatalari.SatirBelgeGecersiz;
     }
 
-    // Faturalardan doğan açık kalemler; satış faturası giren parayla, alış faturası çıkan parayla kapanır.
+    // Faturalardan (gider pusulası ve makbuzlar dahil) doğan açık kalemler; borç kalemi giren parayla, alacak kalemi çıkan parayla kapanır.
     private async Task<List<(EkstreFaturaAdayi Aday, bool GirisIcin)>> FaturaAdaylariAsync(KasaHesabi hesap, CancellationToken ct) =>
         (await cariSorgusu.AcikKalemlerAsync(ct))
         .Where(k => k.KaynakBelgeId is not null && k.ParaBirimi == hesap.ParaBirimi
-                    && k.Tur is CariHareketTuru.SatisFaturasi or CariHareketTuru.AlisFaturasi or CariHareketTuru.SatistanIadeFaturasi or CariHareketTuru.AlistanIadeFaturasi)
+                    && CariHareketTurleri.FaturaHareketiMi(k.Tur))
         .Select(k => (new EkstreFaturaAdayi(k.KaynakBelgeId!.Value, k.BelgeNo, k.CariHesapId, k.Unvan, k.Vade, k.Kalan), k.Yon == HareketYonu.Borc))
         .ToList();
 

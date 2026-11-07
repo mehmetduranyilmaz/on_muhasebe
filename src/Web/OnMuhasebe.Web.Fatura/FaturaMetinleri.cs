@@ -26,7 +26,8 @@ public static class FaturaMetinleri
         FaturaTuru.SatistanIade => "Satıştan İade",
         FaturaTuru.AlistanIade => "Alıştan İade",
         FaturaTuru.GiderPusulasi => "Gider Pusulası",
-        FaturaTuru.SerbestMeslekMakbuzu => "Serbest Meslek Makbuzu",
+        FaturaTuru.SerbestMeslekMakbuzu => "Alınan Serbest Meslek Makbuzu",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "Verilen Serbest Meslek Makbuzu",
         _ => tur.ToString()
     };
 
@@ -37,7 +38,8 @@ public static class FaturaMetinleri
         FaturaTuru.SatistanIade => "Satıştan iade",
         FaturaTuru.AlistanIade => "Alıştan iade",
         FaturaTuru.GiderPusulasi => "Gider pusulası",
-        FaturaTuru.SerbestMeslekMakbuzu => "SMM",
+        FaturaTuru.SerbestMeslekMakbuzu => "Alınan SMM",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "Verilen SMM",
         _ => tur.ToString()
     };
 
@@ -48,7 +50,8 @@ public static class FaturaMetinleri
         FaturaTuru.SatistanIade => "Müşteriden geri gelen mal; stok girer",
         FaturaTuru.AlistanIade => "Tedarikçiye geri gönderilen mal; stok çıkar",
         FaturaTuru.GiderPusulasi => "Mükellef olmayandan alım; KDV yok, stopaj kesilir",
-        FaturaTuru.SerbestMeslekMakbuzu => "Serbest meslek ödemesi; KDV ve gelir vergisi stopajı",
+        FaturaTuru.SerbestMeslekMakbuzu => "Avukat, mali müşavir gibi serbest meslek erbabına ödeme; KDV ve stopaj",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "Serbest meslek erbabı olarak düzenlediğiniz makbuz; müşteri stopaj keser",
         _ => ""
     };
 
@@ -60,6 +63,7 @@ public static class FaturaMetinleri
         FaturaTuru.AlistanIade => Icons.Material.Filled.KeyboardReturn,
         FaturaTuru.GiderPusulasi => Icons.Material.Filled.ReceiptLong,
         FaturaTuru.SerbestMeslekMakbuzu => Icons.Material.Filled.WorkOutline,
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => Icons.Material.Filled.Gavel,
         _ => Icons.Material.Filled.ReceiptLong
     };
 
@@ -71,6 +75,7 @@ public static class FaturaMetinleri
         FaturaTuru.AlistanIade => "#8B5CF6",
         FaturaTuru.GiderPusulasi => "#EC4899",
         FaturaTuru.SerbestMeslekMakbuzu => "#0EA5E9",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "#10B981",
         _ => UygulamaTemasi.Turkuaz
     };
 
@@ -83,6 +88,7 @@ public static class FaturaMetinleri
         FaturaTuru.AlistanIade => "alistan-iade",
         FaturaTuru.GiderPusulasi => "gider-pusulasi",
         FaturaTuru.SerbestMeslekMakbuzu => "serbest-meslek-makbuzu",
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => "verilen-serbest-meslek-makbuzu",
         _ => tur.ToString().ToLowerInvariant()
     };
 

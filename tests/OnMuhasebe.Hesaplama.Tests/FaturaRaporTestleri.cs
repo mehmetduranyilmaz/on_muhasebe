@@ -91,6 +91,23 @@ public class FaturaRaporTestleri
     }
 
     [Fact]
+    public void Verilen_makbuzun_kdvsi_hesaplanana_girer_stopaji_muhtasara_degil_kesilen_stopaja_yazilir()
+    {
+        var o = FaturaRaporHesaplayici.KdvOzeti(2026, 11,
+            [Kdv(FaturaTuru.VerilenSerbestMeslekMakbuzu, 10_000m), Kdv(FaturaTuru.SerbestMeslekMakbuzu, 1_000m)],
+            [
+                new StopajKalemi(FaturaTuru.VerilenSerbestMeslekMakbuzu, 20m, 10_000m, 2_000m),   // müşteri keser, müşteri beyan eder
+                new StopajKalemi(FaturaTuru.Satis, 20m, 500m, 100m),                              // satışta kesilen stopaj da müşterinin
+                new StopajKalemi(FaturaTuru.SerbestMeslekMakbuzu, 20m, 1_000m, 200m)              // bizim kestiğimiz: muhtasar
+            ], 2);
+
+        Assert.Equal(2_000m, o.HesaplananKdvTl);
+        Assert.Equal(200m, o.MuhtasarToplamTl);
+        Assert.Equal(FaturaTuru.SerbestMeslekMakbuzu, o.Muhtasar.Single().Tur);
+        Assert.Equal(2_100m, o.KesilenStopajTl);
+    }
+
+    [Fact]
     public void Muhtasar_tur_ve_orana_gore_toplanir_stopajsizlar_atilir()
     {
         var o = FaturaRaporHesaplayici.KdvOzeti(2026, 11, [],

@@ -217,6 +217,11 @@ istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATI
 kontrol 201 "Teslimat adresi faturaya kopyalandi (kirpilmis)" '"teslimatAdresi":{"baslik":"Depo","aliciAdi":"Ali Veli","telefon":null,"ulke":null,"il":"Kocaeli","ilce":"Cayirova","adres":"OSB 5. Cad. No:3"'
 istek POST /api/fatura/faturalar "$T" "$(fatura Satis "$TL_CARI" "${ISTISNA_SATIRI/KDV/0}" '"teslimatAdresi":{"il":"Kocaeli","adres":""}')"
 kontrol 400 "Bos teslimat adresi reddedildi" "Teslimat adresi gerekli"
+HIZMET_SATIRI='{"ad":"Hukuki danismanlik","birim":"SAAT","miktar":10,"birimFiyat":1000,"kdvOrani":20,"kdvDahilMi":false,"iskonto1":0,"iskonto2":0,"iskonto3":0}'
+istek POST /api/fatura/faturalar "$T" "$(fatura VerilenSerbestMeslekMakbuzu "$TL_CARI" "$HIZMET_SATIRI" '"stopajOrani":20')"
+kontrol 201 "Verilen makbuz: kendi serisiyle, %20 stopaj, tahsil edilecek = brut + KDV - stopaj" '"numara":"SMM2026000000001".*"genelToplam":12000.*"stopajTutari":2000.*"odenecekTutar":10000'
+istek POST /api/fatura/faturalar "$T" "$(fatura VerilenSerbestMeslekMakbuzu "" "$HIZMET_SATIRI" '"stopajOrani":0,"nihaiTuketici":{"adSoyad":"Ayse Kaya","tckn":"10000000146"}')"
+kontrol 201 "Bireysel musteriye stopajsiz makbuz, cari acmadan" '"numara":"SMM2026000000002".*"cariUnvan":"Ayse Kaya".*"odenecekTutar":12000'
 istek GET "/api/fatura/raporlar/fatura-ozeti?baslangic=2026-10-01&bitis=2026-10-31&taraf=Satis&kirilim=Ay" "$T"
 kontrol 200 "Satis ozeti ay kiriliminda Turkce ay adiyla" '"anahtar":"Ekim 2026"'
 kontrol 200 "Satis ozetinde satistan iade sayildi" '"iadeSayisi":[1-9]'

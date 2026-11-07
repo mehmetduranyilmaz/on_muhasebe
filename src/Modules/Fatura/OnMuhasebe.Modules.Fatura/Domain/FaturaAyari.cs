@@ -14,6 +14,7 @@ internal sealed class FaturaAyari : FirmaEntity
     public string IadeSeri { get; private set; } = "IAD";
     public string GiderPusulasiSeri { get; private set; } = "GPS";
     public string IrsaliyeSeri { get; private set; } = "IRS";
+    public string SerbestMeslekSeri { get; private set; } = "SMM";
     public bool ToptanKdvDahil { get; private set; }
     public bool PerakendeKdvDahil { get; private set; } = true;
     public int VarsayilanVadeGunu { get; private set; }
@@ -29,6 +30,7 @@ internal sealed class FaturaAyari : FirmaEntity
         IadeSeri = a.IadeSeri.ToUpperInvariant();
         GiderPusulasiSeri = a.GiderPusulasiSeri.ToUpperInvariant();
         IrsaliyeSeri = a.IrsaliyeSeri.ToUpperInvariant();
+        SerbestMeslekSeri = a.SerbestMeslekSeri.ToUpperInvariant();
         ToptanKdvDahil = a.ToptanKdvDahil;
         PerakendeKdvDahil = a.PerakendeKdvDahil;
         VarsayilanVadeGunu = a.VarsayilanVadeGunu;
@@ -42,12 +44,14 @@ internal sealed class FaturaAyari : FirmaEntity
         FaturaTuru.Satis => satisSekli == SatisSekli.Perakende ? ozel?.PerakendeSeri ?? PerakendeSeri : ozel?.ToptanSeri ?? ToptanSeri,
         FaturaTuru.AlistanIade => ozel?.IadeSeri ?? IadeSeri,
         FaturaTuru.GiderPusulasi => ozel?.GiderPusulasiSeri ?? GiderPusulasiSeri,
+        // Makbuz kişiye özgü mesleki belgedir; işyerine göre ayrı seri tutulmaz.
+        FaturaTuru.VerilenSerbestMeslekMakbuzu => SerbestMeslekSeri,
         _ => throw new InvalidOperationException($"{tur} belgesinin numarasını karşı taraf verir.")
     };
 
     public FaturaAyarlari Sozlesme() =>
         new(KayitAkisi, ToptanSeri, PerakendeSeri, IadeSeri, ToptanKdvDahil, PerakendeKdvDahil, VarsayilanVadeGunu, GiderPusulasiSeri, IrsaliyeSeri,
-            VarsayilanAciklama);
+            VarsayilanAciklama, SerbestMeslekSeri);
 }
 
 // Seri + yıl başına son verilen sıra. Satır, numara alan transaction bitene kadar kilitli kalır; böylece

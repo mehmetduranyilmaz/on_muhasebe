@@ -61,7 +61,7 @@ internal sealed class FaturaHazirlayici(
     {
         var lisans = await lisansSorgusu.GetirAsync(mevcutKullanici.FirmaId!.Value, cancellationToken);
         var moduller = lisans?.Moduller ?? [];
-        var satisSekli = FaturaTurleri.SatisTarafiMi(istek.Tur) ? istek.SatisSekli ?? SatisSekli.Toptan : (SatisSekli?)null;
+        var satisSekli = FaturaTurleri.SatisSekliVarMi(istek.Tur) ? istek.SatisSekli ?? SatisSekli.Toptan : (SatisSekli?)null;
 
         var cari = await CariAsync(istek, satisSekli, moduller, cancellationToken);
         if (!cari.BasariliMi)

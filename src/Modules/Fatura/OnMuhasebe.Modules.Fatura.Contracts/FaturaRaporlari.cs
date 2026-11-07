@@ -91,7 +91,8 @@ public sealed record KdvBeyanOzeti(
     IReadOnlyList<StopajSatiri> Muhtasar,
     decimal MuhtasarToplamTl,
     int FaturaSayisi,
-    IReadOnlyList<KdvIstisnaSatiri> Istisnalar);
+    IReadOnlyList<KdvIstisnaSatiri> Istisnalar,
+    decimal KesilenStopajTl = 0m);
 
 public static class FaturaRaporHesaplayici
 {
@@ -125,7 +126,7 @@ public static class FaturaRaporHesaplayici
     {
         static bool AlisTarafi(FaturaTuru t) => t is FaturaTuru.Alis or FaturaTuru.SerbestMeslekMakbuzu or FaturaTuru.GiderPusulasi;
 
-        var satislar = kalemler.Where(k => k.Tur == FaturaTuru.Satis).ToList();
+        var satislar = kalemler.Where(k => k.Tur is FaturaTuru.Satis or FaturaTuru.VerilenSerbestMeslekMakbuzu).ToList();
         // İstisna kodlu (%0) satırların bedeli matrah tablosunda değil, KDV1'in istisnalar tablosunda beyan edilir.
         var teslim = OranlaraGore(satislar.Where(k => k.TevkifatPayda == 0 && k.KdvIstisnaKodu is null));
         var kismi = Tevkifatlar(satislar.Where(k => k.TevkifatPayda > 0), satici: true);
@@ -139,7 +140,8 @@ public static class FaturaRaporHesaplayici
         var indirimler = indirilecek + sorumlu + satistanIade;
 
         var kdv2 = Tevkifatlar(alislar.Where(k => k.TevkifatPayda > 0), satici: false);
-        var muhtasar = stopajlar.Where(s => s.StopajTl > 0)
+        // Muhtasara yalnızca bizim kestiğimiz stopaj girer; satışta müşterinin kestiği stopaj peşin ödenmiş vergimizdir.
+        var muhtasar = stopajlar.Where(s => s.StopajTl > 0 && FaturaTurleri.StopajBeyaniBizdeMi(s.Tur))
             .GroupBy(s => (s.Tur, s.Oran))
             .OrderBy(g => g.Key.Tur).ThenBy(g => g.Key.Oran)
             .Select(g => new StopajSatiri(g.Key.Tur, g.Key.Oran, g.Sum(s => s.MatrahTl), g.Sum(s => s.StopajTl), g.Count()))
@@ -152,7 +154,8 @@ public static class FaturaRaporHesaplayici
             .ToList();
 
         return new KdvBeyanOzeti(yil, ay, teslim, kismi, alistanIade, hesaplanan, indirilecek, sorumlu, satistanIade, indirimler,
-            hesaplanan - indirimler, kdv2, kdv2.Sum(s => s.BeyanEdilecekTl), muhtasar, muhtasar.Sum(s => s.StopajTl), faturaSayisi, istisnalar);
+            hesaplanan - indirimler, kdv2, kdv2.Sum(s => s.BeyanEdilecekTl), muhtasar, muhtasar.Sum(s => s.StopajTl), faturaSayisi, istisnalar,
+            stopajlar.Where(s => FaturaTurleri.SatisTarafiMi(s.Tur)).Sum(s => s.StopajTl));
     }
 
     private static List<KdvOranSatiri> OranlaraGore(IEnumerable<KdvKalemi> kalemler) =>

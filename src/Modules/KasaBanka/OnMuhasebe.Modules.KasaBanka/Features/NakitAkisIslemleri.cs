@@ -139,8 +139,7 @@ internal static class NakitAkisIslemleri
             kurlar.Where(k => k.Value is null).Select(k => k.Key).ToList()));
     }
 
-    private static bool FaturaHareketiMi(CariHareketTuru tur) => tur is CariHareketTuru.SatisFaturasi or CariHareketTuru.AlisFaturasi
-        or CariHareketTuru.SatistanIadeFaturasi or CariHareketTuru.AlistanIadeFaturasi or CariHareketTuru.GiderPusulasi or CariHareketTuru.SerbestMeslekMakbuzu;
+    private static bool FaturaHareketiMi(CariHareketTuru tur) => CariHareketTurleri.FaturaHareketiMi(tur);
 
     // POS valörü: iş günü sayımında hafta sonu atlanır (resmi tatiller hesaba katılmaz; yaklaşık).
     private static DateOnly Valor(DateOnly bugun, int gun, BlokeGunTipi? tip)

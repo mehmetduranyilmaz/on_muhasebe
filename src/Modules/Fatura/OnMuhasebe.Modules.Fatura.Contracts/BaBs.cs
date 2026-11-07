@@ -20,7 +20,7 @@ public static class BaBsHesaplayici
     public static bool? BaMi(FaturaTuru tur, bool nihaiTuketiciMi) => tur switch
     {
         FaturaTuru.Alis or FaturaTuru.SatistanIade or FaturaTuru.SerbestMeslekMakbuzu => true,
-        FaturaTuru.Satis or FaturaTuru.AlistanIade => nihaiTuketiciMi ? null : false,
+        FaturaTuru.Satis or FaturaTuru.AlistanIade or FaturaTuru.VerilenSerbestMeslekMakbuzu => nihaiTuketiciMi ? null : false,
         _ => null
     };
 
