@@ -1,0 +1,140 @@
+@* Ana sayfanın en üstündeki finansal durum: mini bilanço, vade kovaları ve son 12 ayın gerçekleşen nakit akışı. *@
+@inject ApiIstemcisi Api
+@inject OturumYoneticisi Oturum
+
+<div class="panel-baslik belirme"><MudIcon Icon="@Icons.Material.Filled.Insights" Color="Color.Secondary" /> Finansal durum</div>
+
+@if (_rapor is null)
+{
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" md="6"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Animation="Animation.Wave" Class="rounded-lg" /></MudItem>
+        <MudItem xs="12" md="6"><MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Animation="Animation.Wave" Class="rounded-lg" /></MudItem>
+    </MudGrid>
+}
+else
+{
+    var r = _rapor;
+    var b = r.Bilanco;
+    <MudGrid Spacing="3" Class="mb-4">
+        <MudItem xs="12" lg="6">
+            <div class="panel-kart kart belirme" style="--i:0; height:100%">
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <div class="ozet-baslik">Mini bilanço</div>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@(b.NetTl >= 0 ? Color.Success : Color.Error)">
+                        Net @(b.NetTl >= 0 ? "pozitif" : "negatif") @Tl(b.NetTl)
+                    </MudChip>
+                </div>
+                <div class="mini-bilanco">
+                    <div>
+                        <div class="mini-bilanco-baslik varlik">Varlıklar</div>
+                        <BilancoSatiri Ad="Kasa ve banka" Tutar="b.KasaBankaTl" Href="kasabanka" />
+                        @if (b.PosBekleyenTl != 0)
+                        {
+                            <BilancoSatiri Ad="POS'ta bekleyen" Tutar="b.PosBekleyenTl" Href="kasabanka" />
+                        }
+                        @if (CariAcik)
+                        {
+                            <BilancoSatiri Ad="Tahsil edilecekler (cari)" Tutar="b.CariAlacakTl" Href="cari/bakiye-listesi" />
+                        }
+                        <BilancoSatiri Ad="Tahsil edilecek çek/senet" Tutar="b.AlinanCekSenetTl" Href="cek-senet" />
+                        <BilancoSatiri Ad="Toplam varlık" Tutar="b.ToplamVarlikTl" Kalin="true" />
+                    </div>
+                    <div>
+                        <div class="mini-bilanco-baslik kaynak">Yükümlülükler</div>
+                        @if (CariAcik)
+                        {
+                            <BilancoSatiri Ad="Ödenecekler (cari)" Tutar="b.CariBorcTl" Href="cari/bakiye-listesi" />
+                        }
+                        <BilancoSatiri Ad="Ödenecek çek/senet" Tutar="b.VerilenCekSenetTl" Href="cek-senet?yon=verilen" />
+                        <BilancoSatiri Ad="Kredi kartı borcu" Tutar="b.KrediKartiBorcuTl" Href="kasabanka" />
+                        <BilancoSatiri Ad="Banka kredileri (anapara)" Tutar="b.KrediAnaparaTl" Href="krediler" />
+                        <BilancoSatiri Ad="Toplam yükümlülük" Tutar="b.ToplamYukumlulukTl" Kalin="true" />
+                    </div>
+                </div>
+                <div class="ozet-alt mt-2">Güncel TCMB döviz alış kuruyla TL. Stok ve demirbaş değerleri dahil değildir.</div>
+            </div>
+        </MudItem>
+        <MudItem xs="12" lg="6">
+            <div class="panel-kart kart belirme" style="--i:1; height:100%">
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <div class="ozet-baslik">Vadeye göre tahsil edilecek / ödenecek</div>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Href="nakit-akis" EndIcon="@Icons.Material.Filled.ChevronRight">Nakit akış</MudButton>
+                </div>
+                @{ var enBuyuk = Math.Max(1m, r.VadeKovalari.Max(k => Math.Max(k.TahsilEdilecekTl, k.OdenecekTl))); }
+                @foreach (var k in r.VadeKovalari)
+                {
+                    <div class="vade-kovasi @(k.GunBaslangic is null ? "gecmis" : "")">
+                        <div class="vade-kovasi-ad">@k.Ad</div>
+                        <div class="vade-kovasi-cubuklar">
+                            <div class="vade-cubuk tahsil" style="width:@Yuzde(k.TahsilEdilecekTl, enBuyuk)%" title="Tahsil edilecek @Tl(k.TahsilEdilecekTl)"></div>
+                            <div class="vade-cubuk odeme" style="width:@Yuzde(k.OdenecekTl, enBuyuk)%" title="Ödenecek @Tl(k.OdenecekTl)"></div>
+                        </div>
+                        <div class="vade-kovasi-tutar">
+                            <span class="bakiye-alacakli">+@Tl(k.TahsilEdilecekTl)</span>
+                            <span class="bakiye-borclu">−@Tl(k.OdenecekTl)</span>
+                        </div>
+                    </div>
+                }
+                <div class="ozet-alt mt-2">Cari açık kalemleri ile portföydeki ve verilen çek/senetler; vadesiz kalem işlem tarihindedir.</div>
+            </div>
+        </MudItem>
+        <MudItem xs="12">
+            <div class="panel-kart kart belirme" style="--i:2">
+                <div class="d-flex align-center justify-space-between mb-2 flex-wrap gap-2">
+                    <div class="ozet-baslik">Son 12 ay nakit girişi ve çıkışı</div>
+                    <div class="ozet-alt">
+                        12 ay net: <b class="@(r.Aylar.Sum(a => a.NetTl) >= 0 ? "bakiye-alacakli" : "bakiye-borclu")">@Tl(r.Aylar.Sum(a => a.NetTl))</b>
+                        · ay sonu nakit @Tl(r.Aylar[^1].AySonuNakitTl)
+                    </div>
+                </div>
+                <SutunGrafigi Gruplar="Gruplar(r)" Seriler="_seriler" Bicimle="Tl" />
+                <div class="aylik-nakit-tablosu">
+                    @foreach (var a in r.Aylar)
+                    {
+                        <div title="Giriş @Tl(a.GirisTl) · Çıkış @Tl(a.CikisTl) · Ay sonu nakit @Tl(a.AySonuNakitTl)">
+                            <span class="ozet-alt">@AyAdi(a)</span>
+                            <b class="@(a.NetTl >= 0 ? "bakiye-alacakli" : "bakiye-borclu")">@KisaTl(a.NetTl)</b>
+                        </div>
+                    }
+                </div>
+                <div class="ozet-alt mt-2">Gerçekleşen kasa, banka ve POS hareketleri (işlem kuruyla TL); hesaplar arası virman ve açılış kayıtları sayılmaz.</div>
+            </div>
+        </MudItem>
+    </MudGrid>
+    @if (r.KuruBulunamayanlar.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-4">Kuru bulunamayan dövizler toplamlara katılmadı: @string.Join(", ", r.KuruBulunamayanlar)</MudAlert>
+    }
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo _tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    private static readonly IReadOnlyList<SutunSerisi> _seriler = [new("Giriş", "#16A34A"), new("Çıkış", "#DC2626")];
+
+    private FinansalDurumRaporu? _rapor;
+
+    private bool CariAcik => Oturum.ModulAcikMi(ModulKodlari.Cari);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var sonuc = await Api.GetAsync<FinansalDurumRaporu>("api/kasabanka/raporlar/finansal-durum");
+        _rapor = sonuc.BasariliMi ? sonuc.Deger : null;
+    }
+
+    private static IReadOnlyList<SutunGrubu> Gruplar(FinansalDurumRaporu r) =>
+        r.Aylar.Select(a => new SutunGrubu(AyAdi(a), [a.GirisTl, a.CikisTl])).ToList();
+
+    private static string AyAdi(AylikNakitHareketi a) => new DateTime(a.Yil, a.Ay, 1).ToString("MMM yy", _tr);
+
+    private static string Yuzde(decimal tutar, decimal enBuyuk) => (tutar / enBuyuk * 100m).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Tl(decimal d) => Bicim.Tutar(d, ParaBirimleri.Tl);
+
+    // Küçük kutucuklarda binlik kısaltma: 1.250.000 → 1,25 Mn ₺, 48.300 → 48,3 B ₺.
+    private static string KisaTl(decimal d) => Math.Abs(d) switch
+    {
+        >= 1_000_000m => $"{(d / 1_000_000m).ToString("0.##", _tr)} Mn ₺",
+        >= 1_000m => $"{(d / 1_000m).ToString("0.#", _tr)} B ₺",
+        _ => Tl(d)
+    };
+}

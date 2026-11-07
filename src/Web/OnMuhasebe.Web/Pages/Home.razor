@@ -60,7 +60,9 @@ else
     protected override async Task OnInitializedAsync()
     {
         _acikModuller = ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(m.GorunumYetkisi)).ToList();
-        foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(SayfaYetkileri.OzetPaneli[m.Kod])))
+        // Kasa/Banka paneli finansal durumu (mini bilanço, vade kovaları, 12 aylık nakit) içerdiği için en üstte durur.
+        foreach (var modul in ModulMenusu.Tumu.Where(m => Oturum.ModulAcikMi(m.Kod) && Oturum.YetkiVarMi(SayfaYetkileri.OzetPaneli[m.Kod]))
+                     .OrderBy(m => m.Kod == ModulKodlari.KasaBanka ? 0 : 1))
         {
             if (await Yukleyici.OzetPaneliAsync(modul.Kod) is { } panel)
             {

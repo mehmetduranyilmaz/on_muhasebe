@@ -1,0 +1,12 @@
+@* Mini bilançoda bir kalem; bağlantı verilirse ilgili listeye gider. *@
+<a class="bilanco-satiri @(Kalin ? "toplam" : "") @(Href is null ? "baglantisiz" : "")" href="@Href">
+    <span>@Ad</span>
+    <span class="sayi">@Bicim.Tutar(Tutar, ParaBirimleri.Tl)</span>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public string Ad { get; set; } = "";
+    [Parameter] public decimal Tutar { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public bool Kalin { get; set; }
+}

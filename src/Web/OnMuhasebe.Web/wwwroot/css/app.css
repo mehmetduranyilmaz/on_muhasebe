@@ -3566,3 +3566,24 @@ td.soluk {
 .rol-karti-yetki { font-size: .8rem; color: var(--mud-palette-text-secondary); }
 
 .isyeri-secici { text-transform: none; font-weight: 500; }
+
+/* Ana sayfa finansal durum */
+.mini-bilanco { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .mini-bilanco { grid-template-columns: 1fr; } }
+.mini-bilanco-baslik { font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; padding: 4px 0 6px; border-bottom: 2px solid; margin-bottom: 4px; }
+.mini-bilanco-baslik.varlik { color: #16A34A; border-color: #16A34A; }
+.mini-bilanco-baslik.kaynak { color: #DC2626; border-color: #DC2626; }
+.bilanco-satiri { display: flex; justify-content: space-between; gap: 8px; padding: 5px 4px; border-radius: 6px; color: inherit; text-decoration: none; font-size: .9rem; }
+.bilanco-satiri:not(.baglantisiz):hover { background: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent); }
+.bilanco-satiri.baglantisiz { pointer-events: none; }
+.bilanco-satiri.toplam { font-weight: 700; border-top: 1px solid var(--mud-palette-lines-default); margin-top: 4px; padding-top: 8px; }
+.vade-kovasi { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--mud-palette-lines-default); }
+.vade-kovasi.gecmis .vade-kovasi-ad { color: #DC2626; font-weight: 600; }
+.vade-kovasi-ad { font-size: .85rem; }
+.vade-kovasi-cubuklar { display: flex; flex-direction: column; gap: 3px; }
+.vade-cubuk { height: 7px; border-radius: 4px; min-width: 2px; transition: width .6s ease; }
+.vade-cubuk.tahsil { background: #16A34A; }
+.vade-cubuk.odeme { background: #DC2626; }
+.vade-kovasi-tutar { display: flex; flex-direction: column; align-items: flex-end; font-size: .8rem; line-height: 1.25; }
+.aylik-nakit-tablosu { display: grid; grid-template-columns: repeat(12, minmax(64px, 1fr)); gap: 6px; overflow-x: auto; margin-top: 8px; }
+.aylik-nakit-tablosu > div { display: flex; flex-direction: column; align-items: center; padding: 4px; border-radius: 6px; background: color-mix(in srgb, var(--mud-palette-primary) 4%, transparent); font-size: .8rem; }
